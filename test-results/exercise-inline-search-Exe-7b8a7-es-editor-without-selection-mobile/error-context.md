@@ -1,0 +1,103 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - link "Toggle navigation menu" [ref=e6] [cursor=pointer]:
+            - /url: javascript:void(0)
+          - link "Fitness Field Notes" [ref=e8] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e9]: Fitness Field Notes
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - link "Browse Workouts" [ref=e12] [cursor=pointer]:
+              - /url: /public-workouts.html
+          - listitem [ref=e13]:
+            - link "Sign In" [ref=e14] [cursor=pointer]:
+              - /url: javascript:void(0);
+    - generic [ref=e17]:
+      - complementary [ref=e18]:
+        - navigation "Main navigation" [ref=e19]:
+          - list [ref=e20]:
+            - listitem [ref=e21]: Navigation
+            - listitem [ref=e22]:
+              - link "Home" [ref=e23] [cursor=pointer]:
+                - /url: index.html
+                - generic [ref=e25]: Home
+            - listitem [ref=e26]:
+              - link "Workouts" [ref=e27] [cursor=pointer]:
+                - /url: workout-database.html
+                - generic [ref=e29]: Workouts
+            - listitem [ref=e30]:
+              - link "History" [ref=e31] [cursor=pointer]:
+                - /url: workout-history.html?all=true
+                - generic [ref=e33]: History
+      - generic [ref=e39]:
+        - generic [ref=e41]:
+          - generic [ref=e44]:
+            - textbox "Workout Name" [ref=e46]: New Workout - Mar 20, 4:08 PM
+            - generic [ref=e47]:
+              - textbox "Tags (comma-separated)" [ref=e50]
+              - textbox "Description" [ref=e53]
+          - generic [ref=e54]:
+            - generic [ref=e55]:
+              - heading "Exercises" [level=6] [ref=e56]: Exercises
+              - generic [ref=e58]:
+                - button "Import" [ref=e59] [cursor=pointer]: Import
+                - button "Reorder" [ref=e61] [cursor=pointer]: Reorder
+            - generic [ref=e63]:
+              - generic [ref=e66]:
+                - generic [ref=e67]:
+                  - generic [ref=e69]: Click edit to add exercises
+                  - generic [ref=e70]: 3×8-12 • 60s rest
+                - generic [ref=e71]:
+                  - button "Edit exercise" [ref=e72] [cursor=pointer]
+                  - button "More options" [ref=e74] [cursor=pointer]
+              - generic [ref=e80]:
+                - generic [ref=e81]:
+                  - generic [ref=e83]: Click edit to add exercises
+                  - generic [ref=e84]: 3×8-12 • 60s rest
+                - generic [ref=e85]:
+                  - button "Edit exercise" [ref=e86] [cursor=pointer]
+                  - button "More options" [ref=e88] [cursor=pointer]
+            - button "Add Exercise" [ref=e90] [cursor=pointer]: Add Exercise
+            - generic [ref=e92]:
+              - button "Activity" [ref=e93] [cursor=pointer]: Activity
+              - button "Note" [ref=e95] [cursor=pointer]: Note
+              - button "Block" [ref=e97] [cursor=pointer]: Block
+        - generic:
+          - button "More options" [ref=e99] [cursor=pointer]
+          - button "Save workout" [ref=e101] [cursor=pointer]
+          - button "Start workout" [ref=e103] [cursor=pointer]
+  - dialog "Add Exercise" [active] [ref=e106]:
+    - generic [ref=e107]:
+      - generic [ref=e108]: Add Exercise
+      - button "Close" [ref=e109] [cursor=pointer]
+    - generic [ref=e110]:
+      - generic [ref=e113]:
+        - textbox "Exercise name" [ref=e114]
+        - button "Match" [ref=e115] [cursor=pointer]: Match
+      - button "Add Alternate" [ref=e120] [cursor=pointer]: Add Alternate
+      - generic [ref=e122]:
+        - generic [ref=e123]: Protocol
+        - textbox "Enter sets and reps (e.g. 3x8-12)" [ref=e124]: 3×8-12
+        - generic [ref=e125]: "Example: 3x10, 5x5, AMRAP, 5,4,3,2,1"
+      - generic [ref=e126]:
+        - generic [ref=e127]: Default Weight
+        - generic [ref=e128]:
+          - textbox "135" [ref=e129]
+          - combobox [ref=e130] [cursor=pointer]:
+            - option "lbs" [selected]
+            - option "kg"
+            - option "DIY"
+      - generic [ref=e131]:
+        - generic [ref=e132]: Rest
+        - textbox "60s" [ref=e133]
+        - generic [ref=e134]: e.g., 60s, 2min, 90s
+    - generic [ref=e137]:
+      - button "Cancel" [ref=e138] [cursor=pointer]
+      - button "Save Changes" [ref=e139] [cursor=pointer]
+```

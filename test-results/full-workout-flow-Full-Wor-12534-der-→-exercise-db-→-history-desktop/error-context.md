@@ -1,0 +1,162 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]:
+      - link "Fitness Field Notes" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e7]: Fitness Field Notes
+      - list [ref=e8]:
+        - listitem [ref=e9]:
+          - link "Browse Workouts" [ref=e10] [cursor=pointer]:
+            - /url: /public-workouts.html
+        - listitem [ref=e11]:
+          - link "Sign In" [ref=e12] [cursor=pointer]:
+            - /url: javascript:void(0);
+  - generic [ref=e20]:
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]: Your Digital Gym Notebook
+        - heading "Track Workouts Like You Would on Paper" [level=1] [ref=e26]
+        - paragraph [ref=e27]: A minimalist workout log for lifters who just want to write down what they did. Build programs, track sessions, and see your progress over time.
+        - generic [ref=e28]:
+          - link "Start Logging — It's Free" [ref=e29] [cursor=pointer]:
+            - /url: /public-workouts.html
+          - link "See a Demo" [ref=e30] [cursor=pointer]:
+            - /url: "#how-it-works"
+      - generic [ref=e32]:
+        - img "Fitness Field Notes desktop dashboard" [ref=e35]
+        - img "Fitness Field Notes workout mode on mobile" [ref=e38]
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - generic [ref=e43]: 1,600+
+        - generic [ref=e44]: Exercises
+      - generic [ref=e45]:
+        - generic [ref=e46]: 100%
+        - generic [ref=e47]: Free Forever
+      - generic [ref=e48]:
+        - generic [ref=e49]: "No"
+        - generic [ref=e50]: Credit Card Required
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - heading "Snap a photo. Your workout is logged." [level=2] [ref=e54]
+        - paragraph [ref=e55]: Take a picture of your gym's whiteboard, your fitness watch, or just describe what you did. AI turns it into a structured workout log instantly.
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - generic [ref=e58]: Photo or screenshot
+          - generic [ref=e63]: AI parses it
+          - generic [ref=e68]: Structured workout
+        - link "Try It Now" [ref=e71] [cursor=pointer]:
+          - /url: /activity-log.html?action=quicklog
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - heading "Everything you need to train smarter" [level=2] [ref=e75]
+        - paragraph [ref=e76]: Simple tools that stay out of your way so you can focus on what matters — the workout.
+      - generic [ref=e77]:
+        - link "Log workouts fast Track every rep in real time, quick-log with AI, or snap a photo. Built-in rest timers and weight progression keep you moving." [ref=e78] [cursor=pointer]:
+          - /url: /workout-mode.html
+          - heading "Log workouts fast" [level=3] [ref=e81]
+          - paragraph [ref=e82]: Track every rep in real time, quick-log with AI, or snap a photo. Built-in rest timers and weight progression keep you moving.
+        - link "Build and plan ahead Create workout templates, organize them into programs, and browse 1,600+ exercises. Flexible format — numbers, ranges, or AMRAP." [ref=e83] [cursor=pointer]:
+          - /url: /workout-builder.html
+          - heading "Build and plan ahead" [level=3] [ref=e86]
+          - paragraph [ref=e87]: Create workout templates, organize them into programs, and browse 1,600+ exercises. Flexible format — numbers, ranges, or AMRAP.
+        - link "Track your progress See your workout history, track streaks, and export sessions as PDFs or shareable images. Your data, your way." [ref=e88] [cursor=pointer]:
+          - /url: /workout-history.html
+          - heading "Track your progress" [level=3] [ref=e91]
+          - paragraph [ref=e92]: See your workout history, track streaks, and export sessions as PDFs or shareable images. Your data, your way.
+    - generic [ref=e95]:
+      - img "Workout builder showing exercises and sets" [ref=e99]
+      - generic [ref=e100]:
+        - heading "Build your perfect workout" [level=3] [ref=e101]
+        - paragraph [ref=e102]: Create workout templates your way. Add exercises from our database or your own custom movements, then configure sets and reps in any format you prefer.
+        - list [ref=e103]:
+          - listitem [ref=e104]: Flexible sets/reps — numbers, ranges, or "AMRAP"
+          - listitem [ref=e106]: Exercise groups with alternates for equipment swaps
+          - listitem [ref=e108]: Bonus exercises for supplemental work
+          - listitem [ref=e110]: Drag-to-reorder exercises
+        - link "Try it" [ref=e112] [cursor=pointer]:
+          - /url: /workout-builder.html
+          - text: Try it
+    - generic [ref=e116]:
+      - img "Live workout session with timer and weight tracking" [ref=e120]
+      - generic [ref=e121]:
+        - heading "Track every rep in real time" [level=3] [ref=e122]
+        - paragraph [ref=e123]: Start a session and log weights, reps, and rest times as you go. See your last performance to know exactly what to beat.
+        - list [ref=e124]:
+          - listitem [ref=e125]: Built-in rest timer between sets
+          - listitem [ref=e127]: Weight progression color indicators
+          - listitem [ref=e129]: Quick log mode for rapid data entry
+          - listitem [ref=e131]: Session history and performance tracking
+        - link "Try it" [ref=e133] [cursor=pointer]:
+          - /url: /workout-mode.html
+          - text: Try it
+    - generic [ref=e137]:
+      - img "AI-powered workout logging from photo" [ref=e141]
+      - generic [ref=e142]:
+        - heading "Log workouts with AI" [level=3] [ref=e143]
+        - paragraph [ref=e144]: Take a photo of your gym whiteboard, Apple Watch, or handwritten notes. Our AI parses it into structured workout data — strength or cardio.
+        - list [ref=e145]:
+          - listitem [ref=e146]: Upload photos or describe your session in text
+          - listitem [ref=e148]: Supports both strength and cardio activities
+          - listitem [ref=e150]: Clarifying questions when data is ambiguous
+          - listitem [ref=e152]: Optionally save as a reusable template
+        - link "Try it" [ref=e154] [cursor=pointer]:
+          - /url: /workout-mode.html
+          - text: Try it
+    - generic [ref=e157]:
+      - generic [ref=e158]:
+        - heading "Start logging in 3 steps" [level=2] [ref=e159]
+        - paragraph [ref=e160]: No setup required. Open the app and start training.
+      - generic [ref=e161]:
+        - generic [ref=e163]:
+          - heading "Create a workout" [level=3] [ref=e166]
+          - paragraph [ref=e167]: Build a template with your exercises, sets, and reps — or import one.
+        - generic [ref=e168]:
+          - heading "Hit the gym" [level=3] [ref=e171]
+          - paragraph [ref=e172]: Start a session and log your weights and reps in real time.
+        - generic [ref=e173]:
+          - heading "Track your progress" [level=3] [ref=e176]
+          - paragraph [ref=e177]: Review your history, see streaks, and share workouts with friends.
+    - generic [ref=e179]:
+      - heading "Start tracking your workouts today" [level=2] [ref=e180]
+      - paragraph [ref=e181]: Free forever. No credit card required.
+      - link "Start Logging — It's Free" [ref=e182] [cursor=pointer]:
+        - /url: /public-workouts.html
+      - generic [ref=e183]:
+        - text: Already have an account?
+        - link "Sign in" [ref=e184] [cursor=pointer]:
+          - /url: "#"
+    - contentinfo [ref=e185]:
+      - generic [ref=e186]:
+        - generic [ref=e187]:
+          - generic [ref=e188]:
+            - generic [ref=e189]: Fitness Field Notes
+            - paragraph [ref=e190]: Your gym journal, digitized. A minimalist workout tracker for lifters who want to focus on training.
+          - generic [ref=e191]:
+            - heading "App" [level=4] [ref=e192]
+            - list [ref=e193]:
+              - listitem [ref=e194]:
+                - link "Dashboard" [ref=e195] [cursor=pointer]:
+                  - /url: /
+              - listitem [ref=e196]:
+                - link "Exercise Database" [ref=e197] [cursor=pointer]:
+                  - /url: /exercise-database
+              - listitem [ref=e198]:
+                - link "Public Workouts" [ref=e199] [cursor=pointer]:
+                  - /url: /public-workouts
+          - generic [ref=e200]:
+            - heading "Links" [level=4] [ref=e201]
+            - list [ref=e202]:
+              - listitem [ref=e203]:
+                - link "Features" [ref=e204] [cursor=pointer]:
+                  - /url: "#features"
+              - listitem [ref=e205]:
+                - link "How It Works" [ref=e206] [cursor=pointer]:
+                  - /url: "#how-it-works"
+              - listitem [ref=e207]:
+                - link "Feature Requests" [ref=e208] [cursor=pointer]:
+                  - /url: /feedback-voting
+        - generic [ref=e209]: © 2026 Fitness Field Notes. All rights reserved.
+```
