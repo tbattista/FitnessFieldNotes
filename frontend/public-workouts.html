@@ -61,6 +61,8 @@
     
     <!-- Navbar CSS -->
     <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
+    <link rel="stylesheet" href="/static/assets/css/workouts-tab-bar.css" />
     
     <!-- Component CSS (includes all component styles) -->
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
@@ -71,9 +73,6 @@
 
     <!-- Workout Database CSS (reuse for consistency) -->
     <link rel="stylesheet" href="/static/assets/css/workout-database.css" />
-    
-    <!-- Bottom Action Bar CSS -->
-    <link rel="stylesheet" href="/static/assets/css/bottom-action-bar.css" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -132,6 +131,9 @@
             <!-- Content -->
             <div class="container-xxl flex-grow-1 container-p-y">
               
+              <!-- Workouts Tab Bar -->
+              <div id="workouts-tab-bar"></div>
+
               <!-- Header -->
               <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
@@ -334,11 +336,21 @@
 
     <!-- Load templates FIRST (before main.js) -->
     <script src="/static/assets/js/components/menu-template.js"></script>
+    <script src="/static/assets/js/components/workouts-tab-bar-template.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var el = document.getElementById('workouts-tab-bar');
+        if (el && window.getWorkoutsTabBarHTML) el.innerHTML = getWorkoutsTabBarHTML('explore');
+      });
+    </script>
     <script src="/static/assets/js/components/navbar-template.js"></script>
     <script src="/static/assets/js/components/auth-modals-template.js"></script>
     
     <!-- Inject components SECOND (before main.js) -->
     <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/universal-log-service.js"></script>
+    <script type="module" src="/static/assets/js/components/offcanvas/offcanvas-universal-logger.js"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
     <script src="/static/assets/js/services/navbar-injection-service.js"></script>
     
     <!-- Feedback System (Global) -->
@@ -348,9 +360,6 @@
     <script src="/static/assets/js/main.js?v=20260216"></script>
     
     <!-- Bottom Action Bar (load after main.js) -->
-    <script src="/static/assets/js/config/bottom-action-bar-config.js"></script>
-    <script src="/static/assets/js/services/bottom-action-bar-service.js"></script>
-
     <!-- Firebase Services -->
     <script src="/static/assets/js/firebase/firebase-init.js?v=20251020-03"></script>
     <script src="/static/assets/js/firebase/auth-service.js?v=20251020-03"></script>

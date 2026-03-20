@@ -118,13 +118,6 @@
             subtitle: 'Manage feedback and feature requests',
             showSearch: false
         },
-        'dashboard.html': {
-            title: 'Dashboard',
-            icon: 'bx-home',
-            subtitle: 'Your fitness overview at a glance',
-            showSearch: false
-        },
-
         // Fallback for unknown pages
         'default': {
             title: 'Fitness Field Notes',

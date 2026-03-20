@@ -113,16 +113,6 @@
     gap: 2px;
 }
 
-/* Ensure buttons in action-buttons-row fill available space */
-.action-buttons-row .action-btn {
-    flex: 1 1 0;
-    max-width: none;
-    height: 44px;
-    min-width: 48px;
-    border-radius: 12px;
-    padding: 0;
-}
-
 .action-btn:hover {
     background: rgba(var(--bs-primary-rgb), 0.08);
     color: var(--bs-primary);
@@ -393,7 +383,7 @@
    ============================================ */
 
 body.has-bottom-action-bar .content-wrapper {
-    padding-bottom: var(--bottom-bar-content-padding, 128px);
+    padding-bottom: var(--bottom-bar-content-padding, 80px);
 }
 
 /* ============================================

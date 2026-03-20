@@ -1,0 +1,126 @@
+/**
+ * Global Log FAB (Floating Action Button)
+ * Persistent button linking to activity-log.html
+ * Appears on all pages except workout-mode and workout-builder
+ */
+
+/* ============================================
+   FAB BASE
+   ============================================ */
+
+.global-log-fab {
+    position: fixed;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--gs-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    line-height: 1;
+    text-decoration: none;
+    border: none;
+    padding: 0;
+    appearance: none;
+    cursor: pointer;
+    box-shadow:
+        0 3px 5px -1px rgba(0, 0, 0, 0.2),
+        0 6px 10px 0 rgba(0, 0, 0, 0.14),
+        0 1px 18px 0 rgba(0, 0, 0, 0.12);
+    z-index: 1040;
+    transition: transform var(--gs-duration-fast, 150ms) ease,
+                box-shadow var(--gs-duration-fast, 150ms) ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Rotate + to × when bottom sheet is open */
+.global-log-fab i {
+    transition: transform var(--gs-duration-fast, 150ms) ease;
+}
+
+.global-log-fab.is-open i {
+    transform: rotate(45deg);
+}
+
+/* ============================================
+   HOVER / ACTIVE STATES
+   ============================================ */
+
+.global-log-fab:hover {
+    color: #fff;
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow:
+        0 5px 5px -3px rgba(0, 0, 0, 0.2),
+        0 8px 10px 1px rgba(0, 0, 0, 0.14),
+        0 3px 14px 2px rgba(0, 0, 0, 0.12);
+}
+
+.global-log-fab:active {
+    transform: scale(0.95);
+}
+
+/* ============================================
+   DESKTOP: WIDER MARGIN
+   ============================================ */
+
+@media (min-width: 1200px) {
+    .global-log-fab {
+        right: 24px;
+    }
+}
+
+/* ============================================
+   OFFSET WHEN BOTTOM ACTION BAR IS PRESENT
+   ============================================ */
+
+body.has-bottom-action-bar .global-log-fab {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
+[data-bs-theme="dark"] .global-log-fab {
+    box-shadow:
+        0 3px 5px -1px rgba(0, 0, 0, 0.4),
+        0 6px 10px 0 rgba(0, 0, 0, 0.3),
+        0 1px 18px 0 rgba(0, 0, 0, 0.25);
+}
+
+[data-bs-theme="dark"] .global-log-fab:hover {
+    box-shadow:
+        0 5px 5px -3px rgba(0, 0, 0, 0.4),
+        0 8px 10px 1px rgba(0, 0, 0, 0.3),
+        0 3px 14px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+.global-log-fab:focus-visible {
+    outline: 2px solid var(--gs-primary);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .global-log-fab {
+        transition: none;
+    }
+}
+
+/* ============================================
+   PRINT: HIDE
+   ============================================ */
+
+@media print {
+    .global-log-fab {
+        display: none;
+    }
+}

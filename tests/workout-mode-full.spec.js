@@ -22,9 +22,9 @@ test.describe('Workout Mode', () => {
     await page.goto(`${BASE}/workout-mode.html`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Elements should exist in static HTML before JS modifies them
-    const fabExists = await page.evaluate(() => !!document.getElementById('workoutModeFabs'));
-    expect(fabExists).toBe(true);
+    // Session bottom bar should exist in static HTML
+    const bottomBarExists = await page.evaluate(() => !!document.getElementById('workoutModeBottomBar'));
+    expect(bottomBarExists).toBe(true);
     await context.close();
   });
 
@@ -81,5 +81,116 @@ test.describe('Workout Mode', () => {
     // Should now be on workout-database with library content
     const toolbarExists = await page.evaluate(() => !!document.getElementById('workoutToolbar'));
     expect(toolbarExists).toBe(true);
+  });
+});
+
+test.describe('Workout Mode - Auto-Start Session', () => {
+
+  test('auto-starts session with no JS errors', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+
+    // Collect JS errors
+    const jsErrors = [];
+    page.on('pageerror', (err) => jsErrors.push(err.message));
+
+    // Pre-populate localStorage with workout
+    await page.goto(`${BASE}/settings.html`);
+    await page.evaluate((workout) => {
+      localStorage.setItem('gym_workouts', JSON.stringify([workout]));
+      // Clear any persisted session from previous tests
+      localStorage.removeItem('ffn_active_workout_session');
+    }, STANDARD_WORKOUT);
+
+    // Navigate to workout-mode with workout ID
+    await page.goto(`${BASE}/workout-mode.html?id=${STANDARD_WORKOUT.id}`);
+    await waitForAppReady(page);
+    await page.waitForTimeout(4000);
+
+    // Should still be on workout-mode (not redirected)
+    expect(page.url()).toContain('workout-mode.html');
+
+    // No JS errors should have occurred
+    const criticalErrors = jsErrors.filter(e =>
+      e.includes('is not a function') ||
+      e.includes('is not defined') ||
+      e.includes('Cannot read properties')
+    );
+    expect(criticalErrors).toEqual([]);
+  });
+
+  test('auto-start shows login prompt for unauthenticated users', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+
+    await page.goto(`${BASE}/settings.html`);
+    await page.evaluate((workout) => {
+      localStorage.setItem('gym_workouts', JSON.stringify([workout]));
+      localStorage.removeItem('ffn_active_workout_session');
+    }, STANDARD_WORKOUT);
+
+    await page.goto(`${BASE}/workout-mode.html?id=${STANDARD_WORKOUT.id}`);
+    await waitForAppReady(page);
+    await page.waitForTimeout(4000);
+
+    // Unauthenticated users get a login prompt on auto-start
+    // Bottom bar stays hidden until auth succeeds
+    const loginModalVisible = await page.evaluate(() => !!document.querySelector('.modal.show'));
+    expect(loginModalVisible).toBe(true);
+  });
+
+  test('bottom bar exists in DOM with correct buttons', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(`${BASE}/workout-mode.html`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Bottom bar should exist with Add Exercise and Finish buttons
+    const bottomBar = page.locator('#workoutModeBottomBar');
+    await expect(bottomBar).toBeAttached();
+    await expect(bottomBar.locator('[data-action="add-exercise"]')).toBeAttached();
+    await expect(bottomBar.locator('[data-action="end"]')).toBeAttached();
+
+    // Finish button should say "Finish" not "End"
+    await expect(bottomBar.locator('[data-action="end"]')).toContainText('Finish');
+  });
+
+  test('header timer element exists in DOM', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(`${BASE}/workout-mode.html`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Timer elements should exist in the header
+    await expect(page.locator('#sessionTimerDisplay')).toBeAttached();
+    await expect(page.locator('#headerTimer')).toBeAttached();
+  });
+
+  test('no Quick Log or Start buttons exist', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+
+    await page.goto(`${BASE}/workout-mode.html`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Old FAB elements should not exist in DOM
+    await expect(page.locator('#wmSlotPreSession')).toHaveCount(0);
+    await expect(page.locator('#wmFabQuickLog')).toHaveCount(0);
+    await expect(page.locator('#wmFabStart')).toHaveCount(0);
+    await expect(page.locator('#wmSlotQuickLogActive')).toHaveCount(0);
+  });
+
+  test('exercise cards render during auto-start session', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+
+    await page.goto(`${BASE}/settings.html`);
+    await page.evaluate((workout) => {
+      localStorage.setItem('gym_workouts', JSON.stringify([workout]));
+      localStorage.removeItem('ffn_active_workout_session');
+    }, STANDARD_WORKOUT);
+
+    await page.goto(`${BASE}/workout-mode.html?id=${STANDARD_WORKOUT.id}`);
+    await waitForAppReady(page);
+    await page.waitForTimeout(4000);
+
+    // Exercise cards should be rendered
+    const cards = page.locator('#exerciseCardsContainer .workout-card');
+    const count = await cards.count();
+    expect(count).toBeGreaterThanOrEqual(1);
   });
 });

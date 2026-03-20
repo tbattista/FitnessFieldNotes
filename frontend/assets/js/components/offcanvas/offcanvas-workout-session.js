@@ -141,12 +141,11 @@ export function setupWeightEditListeners(offcanvasElement, offcanvas, exerciseNa
  * Create complete workout confirmation offcanvas
  * Notebook-style design: clean, calm, save-first hierarchy
  * @param {Object} data - Session and workout data
- * @param {boolean} data.isQuickLog - Whether this is a Quick Log session
  * @param {Function} onConfirm - Callback when user confirms completion (receives durationMinutes)
  * @returns {Object} Offcanvas instance
  */
 export function createCompleteWorkout(data, onConfirm) {
-    const { workoutName, minutes, totalExercises, isQuickLog = false, isBuildMode = false } = data;
+    const { workoutName, minutes, totalExercises, isBuildMode = false } = data;
 
     // Format current date/time for display
     const now = new Date();
@@ -157,9 +156,8 @@ export function createCompleteWorkout(data, onConfirm) {
         minute: '2-digit'
     });
 
-    // Duration value: empty for Quick Log, actual minutes for timed workout
-    const durationValue = isQuickLog ? '' : (minutes || '');
-    const durationPlaceholder = isQuickLog ? '--' : '';
+    const durationValue = minutes || '';
+    const durationPlaceholder = '';
 
     const offcanvasHtml = `
         <div class="offcanvas offcanvas-bottom offcanvas-bottom-base" tabindex="-1" id="completeWorkoutOffcanvas" aria-labelledby="completeWorkoutOffcanvasLabel" data-bs-scroll="false">

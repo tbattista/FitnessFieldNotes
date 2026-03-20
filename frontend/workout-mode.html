@@ -44,6 +44,7 @@
     
     <!-- Navbar CSS -->
     <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
     
     <!-- Component CSS (includes all component styles) -->
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
@@ -132,6 +133,10 @@
                       <span id="workoutName">Loading workout...</span>
                     </h6>
                     <p class="text-muted small mb-0">
+                      <span id="sessionTimerDisplay" style="display: none;">
+                        <i class="bx bx-time-five me-1"></i><span id="headerTimer">00:00</span>
+                        <span class="mx-1">&middot;</span>
+                      </span>
                       Last completed: <span id="lastCompletedDate">Never</span>
                     </p>
                   </div>
@@ -249,14 +254,6 @@
                   <button type="button" class="btn btn-outline-primary w-100 mb-2" id="inlineAddExerciseBtn" data-action="add-exercise">
                     <i class="bx bx-plus me-1"></i>Add Exercise
                   </button>
-                  <div class="d-flex gap-2 mb-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="inlineAddNoteBtn" data-action="add-note">
-                      <i class="bx bx-note me-1"></i>Note
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" id="inlineReorderBtn" data-action="reorder">
-                      <i class="bx bx-sort me-1"></i>Reorder
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -273,40 +270,28 @@
       <!-- Overlay -->
       <div class="layout-overlay layout-menu-toggle"></div>
 
-      <!-- Workout Mode Floating FABs (replaces bottom action bar) -->
-      <div class="workout-mode-floating-fabs" id="workoutModeFabs" style="display: none;">
-        <!-- Dynamic slot: pre-session, timed-active, or quick-log-active -->
-        <div class="wm-fab-dynamic" id="wmFabDynamic">
-          <!-- Pre-session: Quick Log + Start -->
-          <div class="wm-fab-slot" id="wmSlotPreSession">
-            <button type="button" class="wm-fab wm-fab-quicklog" id="wmFabQuickLog" data-action="quicklog" title="Quick Log" aria-label="Quick Log">
-              <i class="bx bx-edit-alt me-1"></i><span>Quick Log</span>
+      <!-- Session Bottom Bar -->
+      <div class="workout-mode-bottom-bar" id="workoutModeBottomBar" style="display: none;">
+        <div class="wm-bottom-bar-inner">
+          <div class="wm-bottom-bar-actions">
+            <button type="button" class="btn btn-outline-primary" data-action="add-exercise">
+              <i class="bx bx-plus me-1"></i>Exercise
             </button>
-            <button type="button" class="wm-fab wm-fab-start" id="wmFabStart" data-action="start" title="Start Timed" aria-label="Start timed workout">
-              <i class="bx bx-play me-1"></i><span>Start</span>
+            <button type="button" class="btn btn-outline-secondary" data-action="add-note">
+              <i class="bx bx-note me-1"></i>Note
             </button>
-          </div>
-          <!-- Timed active: Rest Timer + Timer + End -->
-          <div class="wm-fab-slot" id="wmSlotTimedActive" style="display: none;">
-            <div class="global-rest-timer-button" id="globalRestTimerButton"></div>
-            <div class="wm-fab wm-fab-timer" id="wmFabTimer">
-              <i class="bx bx-time-five me-1"></i><span id="floatingTimer">0:00:00</span>
-            </div>
-            <button type="button" class="wm-fab wm-fab-end" id="wmFabEnd" data-action="end" title="End Workout" aria-label="End workout">
-              <i class="bx bx-stop me-1"></i><span>End</span>
+            <button type="button" class="btn btn-outline-secondary" data-action="reorder">
+              <i class="bx bx-sort me-1"></i>Reorder
             </button>
           </div>
-          <!-- Quick Log active: Cancel + Save -->
-          <div class="wm-fab-slot" id="wmSlotQuickLogActive" style="display: none;">
-            <button type="button" class="wm-fab wm-fab-cancel" id="wmFabCancel" data-action="cancel" title="Cancel Quick Log" aria-label="Cancel quick log">
-              <i class="bx bx-x"></i>
-            </button>
-            <button type="button" class="wm-fab wm-fab-save" id="wmFabSave" data-action="save" title="Save Quick Log" aria-label="Save quick log">
-              <i class="bx bx-check me-1"></i><span>Save</span>
-            </button>
-          </div>
+          <button type="button" class="btn btn-success" data-action="end">
+            <i class="bx bx-check me-1"></i>Finish
+          </button>
         </div>
       </div>
+
+      <!-- Global Rest Timer (floats above bottom bar) -->
+      <div class="global-rest-timer-floating" id="globalRestTimerButton"></div>
 
     </div>
     <!-- / Layout wrapper -->
@@ -349,9 +334,6 @@
     <!-- Toast Notifications -->
     <script src="/static/assets/js/utils/toast-notifications.js"></script>
 
-    <!-- Dropdown Z-Index Fix (for workout cards) -->
-    <script src="/static/assets/js/utils/dropdown-z-index-fix.js"></script>
-    
     <!-- Dropdown Z-Index Fix (for workout cards) -->
     <script src="/static/assets/js/utils/dropdown-z-index-fix.js"></script>
     

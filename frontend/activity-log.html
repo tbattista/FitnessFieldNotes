@@ -47,6 +47,7 @@
 
     <!-- Navbar CSS -->
     <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
 
     <!-- Activity Log CSS -->
     <link rel="stylesheet" href="/static/assets/css/activity-log.css" />
@@ -106,7 +107,7 @@
               <!-- Page Header -->
               <div class="mb-3">
                 <h5 class="mb-1">
-                  <i class="bx bx-edit-alt me-1"></i>Log
+                  <i class="bx bx-run me-1"></i>Log Activity
                 </h5>
                 <p class="text-muted small mb-0">Log cardio activities and track your sessions</p>
               </div>
@@ -121,68 +122,8 @@
               <!-- Main Content (shown when authenticated) -->
               <div id="activityLogContent" style="display: none;">
 
-                <!-- Action buttons: mobile=offcanvas, desktop=inline collapse -->
-                <div class="d-grid gap-2 mb-4">
-
-                  <!-- Quick Log (AI) -->
-                  <div>
-                    <button type="button" id="logAiToggleBtn"
-                            class="btn btn-outline-primary w-100 py-2 d-flex align-items-center px-3">
-                      <i class="bx bx-camera fs-4 me-2 flex-shrink-0"></i>
-                      <span class="fw-semibold flex-grow-1 text-start">Quick Log</span>
-                      <small class="opacity-75 me-2 d-none d-sm-inline">photo, screenshot, or describe</small>
-                      <i class="bx bx-chevron-right flex-shrink-0 d-md-none"></i>
-                      <i class="bx bx-chevron-down flex-shrink-0 d-none d-md-inline" id="logAiChevron" style="transition: transform 0.2s;"></i>
-                    </button>
-                    <div class="collapse" id="logAiBody">
-                      <div class="card mt-1">
-                        <div class="card-body py-3">
-                          <textarea class="form-control mb-2" id="logAiText" rows="3"
-                            placeholder="Describe your activity...&#10;&#10;e.g. 2.3 miles on the treadmill in 18:20, burned 340 cal&#10;   Bench Press 3×10 at 135lbs, Squats 4×8 at 185lbs&#10;&#10;Or add photos below"></textarea>
-                          <div id="logAiThumbnails" class="d-flex flex-wrap gap-2 mb-2"></div>
-                          <div class="d-flex gap-2">
-                            <label class="btn btn-sm btn-outline-secondary flex-shrink-0 mb-0" for="logAiFileInput">
-                              <i class="bx bx-image-add me-1"></i>Add Photos
-                              <input type="file" id="logAiFileInput"
-                                     accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                                     multiple class="d-none">
-                            </label>
-                            <button type="button" class="btn btn-sm btn-primary w-100" id="logAiAnalyzeBtn" disabled>
-                              <i class="bx bx-analyse me-1"></i>Analyze Activity
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Build & Log -->
-                  <button type="button" id="buildAndLogBtn"
-                          class="btn btn-outline-primary w-100 py-2 d-flex align-items-center px-3">
-                    <i class="bx bx-plus-circle fs-4 me-2 flex-shrink-0"></i>
-                    <span class="fw-semibold flex-grow-1 text-start">Build & Log</span>
-                    <small class="opacity-75 me-2 d-none d-sm-inline">add exercises as you go</small>
-                    <i class="bx bx-chevron-right flex-shrink-0"></i>
-                  </button>
-
-                  <!-- Start a Workout -->
-                  <a href="workout-database.html" class="btn btn-primary w-100 py-2 d-flex align-items-center px-3">
-                    <i class="bx bx-dumbbell fs-4 me-2 flex-shrink-0"></i>
-                    <span class="fw-semibold flex-grow-1 text-start">Start a Workout</span>
-                    <i class="bx bx-chevron-right flex-shrink-0"></i>
-                  </a>
-
-                  <!-- Quick Log -->
-                  <div>
-                    <button type="button" id="quickLogToggleBtn"
-                            class="btn btn-outline-secondary w-100 py-2 d-flex align-items-center px-3">
-                      <i class="bx bx-run fs-4 me-2 flex-shrink-0"></i>
-                      <span class="fw-semibold flex-grow-1 text-start">Log an Activity</span>
-                      <i class="bx bx-chevron-right flex-shrink-0 d-md-none"></i>
-                      <i class="bx bx-chevron-down flex-shrink-0 d-none d-md-inline" id="quickLogChevron" style="transition: transform 0.2s;"></i>
-                    </button>
-                    <div class="collapse" id="quickLogBody">
-                    <div class="card mt-1">
+                <!-- Activity Log Form -->
+                <div class="card mb-4">
                   <div class="card-body">
 
                     <!-- Activity Type Selector (rendered dynamically by activity-log.js) -->
@@ -371,11 +312,7 @@
                     </button>
 
                   </div>
-                </div>
-                </div><!-- /collapse#quickLogBody -->
-                  </div><!-- /Quick Log wrapper -->
-
-                </div><!-- /d-grid action buttons -->
+                </div><!-- /Activity Log Form card -->
 
                 <!-- Recent Sessions -->
                 <div class="mb-4">
@@ -440,6 +377,7 @@
 
     <!-- Inject components SECOND -->
     <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
     <script src="/static/assets/js/services/navbar-injection-service.js"></script>
 
     <!-- Feedback System (Global) -->
@@ -476,9 +414,6 @@
     <!-- Universal Logger (AI-powered session logging) -->
     <script src="/static/assets/js/services/universal-log-service.js?v=1"></script>
     <script type="module" src="/static/assets/js/components/offcanvas/offcanvas-universal-logger.js?v=1.1"></script>
-
-    <!-- Menu Navigation System -->
-    <script src="/static/assets/js/menu-navigation.js?v=20251020-04"></script>
 
     <!-- Initialize -->
     <script>
@@ -552,248 +487,6 @@
                     }
                 }
             }, 3000);
-
-            // Desktop chevron rotation via collapse events
-            function wireDesktopChevron(collapseId, chevronId) {
-                const collapseEl = document.getElementById(collapseId);
-                const chevronEl  = document.getElementById(chevronId);
-                if (!collapseEl || !chevronEl) return;
-                collapseEl.addEventListener('show.bs.collapse', () => { chevronEl.style.transform = 'rotate(180deg)'; });
-                collapseEl.addEventListener('hide.bs.collapse', () => { chevronEl.style.transform = 'rotate(0deg)'; });
-            }
-            wireDesktopChevron('quickLogBody', 'quickLogChevron');
-            wireDesktopChevron('logAiBody',    'logAiChevron');
-
-            // Responsive breakpoint helper (Bootstrap md = 768px)
-            function isMobile() { return window.innerWidth < 768; }
-
-            // ── Log with AI toggle (mobile: wizard offcanvas, desktop: inline collapse) ──
-            document.getElementById('logAiToggleBtn')?.addEventListener('click', () => {
-                if (isMobile()) {
-                    if (typeof window.createUniversalLogger === 'function') {
-                        window.createUniversalLogger({
-                            onSaveComplete: () => {
-                                if (window.loadRecentCardioSessions) window.loadRecentCardioSessions();
-                            },
-                        });
-                    }
-                } else {
-                    const collapseEl = document.getElementById('logAiBody');
-                    if (collapseEl) bootstrap.Collapse.getOrCreateInstance(collapseEl).toggle();
-                }
-            });
-
-            // ── Build & Log (create ad-hoc workout, navigate to workout mode) ──
-            document.getElementById('buildAndLogBtn')?.addEventListener('click', async () => {
-                const user = window.firebaseAuth?.currentUser;
-                if (!user) {
-                    window.toastNotifications?.warning('Sign in to use Build & Log');
-                    window.authService?.showLoginModal();
-                    return;
-                }
-                const btn = document.getElementById('buildAndLogBtn');
-                try {
-                    btn.disabled = true;
-                    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    const workout = await window.dataManager.createWorkout({
-                        name: `Workout - ${today}`,
-                        exercise_groups: [],
-                        is_archived: true
-                    });
-                    if (!workout?.id) throw new Error('No workout ID returned');
-                    window.location.href = `workout-mode.html?id=${workout.id}&mode=build`;
-                } catch (err) {
-                    console.error('Build & Log failed:', err);
-                    window.toastNotifications?.error('Failed to start Build & Log');
-                    btn.disabled = false;
-                }
-            });
-
-            // ── Quick Log toggle (mobile: bottom sheet offcanvas, desktop: inline collapse) ──
-            document.getElementById('quickLogToggleBtn')?.addEventListener('click', () => {
-                if (isMobile()) {
-                    openQuickLogOffcanvas();
-                } else {
-                    const collapseEl = document.getElementById('quickLogBody');
-                    if (collapseEl) bootstrap.Collapse.getOrCreateInstance(collapseEl).toggle();
-                }
-            });
-
-            // Quick Log as bottom-sheet on mobile — moves the existing card DOM node
-            // into a temporary offcanvas so there's no form duplication.
-            function openQuickLogOffcanvas() {
-                const offcanvasId = 'quickLogMobileOffcanvas';
-                document.getElementById(offcanvasId)?.remove(); // remove any stale instance
-
-                document.body.insertAdjacentHTML('beforeend', `
-                    <div class="offcanvas offcanvas-bottom offcanvas-bottom-base offcanvas-bottom-full"
-                         tabindex="-1" id="${offcanvasId}" data-bs-scroll="false">
-                        <div class="offcanvas-header border-bottom">
-                            <h5 class="offcanvas-title">
-                                <i class="bx bx-run me-2"></i>Quick Log an Activity
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-                        </div>
-                        <div class="offcanvas-body p-0" id="${offcanvasId}-body" style="overflow-y:auto;"></div>
-                    </div>`);
-
-                const offcanvasEl   = document.getElementById(offcanvasId);
-                const offcanvasBody = document.getElementById(`${offcanvasId}-body`);
-
-                // Move the card (with all its wired-up DOM nodes) into the offcanvas
-                const card           = document.querySelector('#quickLogBody .card');
-                const originalParent = card?.parentElement;
-                if (card) offcanvasBody.appendChild(card);
-
-                const bsOffcanvas = new bootstrap.Offcanvas(offcanvasEl, { backdrop: true, scroll: false });
-                bsOffcanvas.show();
-
-                // Return card to inline collapse on close, then clean up the offcanvas element
-                offcanvasEl.addEventListener('hidden.bs.offcanvas', () => {
-                    if (card && originalParent) originalParent.appendChild(card);
-                    offcanvasEl.remove();
-                }, { once: true });
-            }
-
-            // ── Log with AI Inline Panel ──────────────────────────────────
-            let logAiImages = [];
-
-            function updateLogAiBtn() {
-                const hasText   = document.getElementById('logAiText')?.value.trim().length > 0;
-                const hasPhotos = logAiImages.length > 0;
-                const btn = document.getElementById('logAiAnalyzeBtn');
-                if (btn) btn.disabled = !(hasText || hasPhotos);
-            }
-
-            function renderLogAiThumbnails() {
-                const container = document.getElementById('logAiThumbnails');
-                if (!container) return;
-                container.innerHTML = '';
-                logAiImages.forEach((file, idx) => {
-                    const url = URL.createObjectURL(file);
-                    const wrap = document.createElement('div');
-                    wrap.className = 'position-relative d-inline-flex';
-                    wrap.innerHTML = `
-                        <img src="${url}" alt="" class="rounded border"
-                             style="height:52px;width:52px;object-fit:cover;">
-                        <button type="button"
-                                class="btn-close btn-close-sm position-absolute bg-white rounded-circle shadow-sm"
-                                style="top:-4px;right:-4px;padding:3px;font-size:0.5rem;"
-                                data-ai-idx="${idx}" aria-label="Remove"></button>
-                    `;
-                    container.appendChild(wrap);
-                });
-                // "Add more" slot
-                if (logAiImages.length > 0 && logAiImages.length < 5) {
-                    const addMore = document.createElement('label');
-                    addMore.className = 'border rounded d-flex align-items-center justify-content-center text-muted';
-                    addMore.style.cssText = 'height:52px;width:52px;cursor:pointer;font-size:1.25rem;';
-                    addMore.innerHTML = '<i class="bx bx-plus"></i>';
-                    addMore.setAttribute('for', 'logAiFileInput');
-                    container.appendChild(addMore);
-                }
-            }
-
-            // Remove thumbnail on ✕ click (single delegated listener)
-            document.getElementById('logAiThumbnails')?.addEventListener('click', (e) => {
-                const btn = e.target.closest('[data-ai-idx]');
-                if (!btn) return;
-                const idx = parseInt(btn.dataset.aiIdx, 10);
-                if (!isNaN(idx)) {
-                    URL.revokeObjectURL(btn.closest('.position-relative')?.querySelector('img')?.src);
-                    logAiImages.splice(idx, 1);
-                    renderLogAiThumbnails();
-                    updateLogAiBtn();
-                }
-            });
-
-            document.getElementById('logAiFileInput')?.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files);
-                const remaining = 5 - logAiImages.length;
-                logAiImages = logAiImages.concat(files.slice(0, remaining));
-                e.target.value = '';
-                renderLogAiThumbnails();
-                updateLogAiBtn();
-            });
-
-            document.getElementById('logAiText')?.addEventListener('input', updateLogAiBtn);
-
-            // Save original card body HTML for inline mode restore
-            const logAiCardBody = document.querySelector('#logAiBody .card-body');
-            const logAiOriginalHtml = logAiCardBody ? logAiCardBody.innerHTML : '';
-
-            function restoreLogAiInlinePanel() {
-                if (logAiCardBody) {
-                    logAiCardBody.innerHTML = logAiOriginalHtml;
-                    // Re-wire the inline panel event listeners
-                    logAiImages = [];
-                    document.getElementById('logAiFileInput')?.addEventListener('change', (e) => {
-                        const files = Array.from(e.target.files);
-                        const remaining = 5 - logAiImages.length;
-                        logAiImages = logAiImages.concat(files.slice(0, remaining));
-                        e.target.value = '';
-                        renderLogAiThumbnails();
-                        updateLogAiBtn();
-                    });
-                    document.getElementById('logAiText')?.addEventListener('input', updateLogAiBtn);
-                    document.getElementById('logAiAnalyzeBtn')?.addEventListener('click', handleAnalyzeClick);
-                    document.getElementById('logAiThumbnails')?.addEventListener('click', (e) => {
-                        const btn = e.target.closest('[data-ai-idx]');
-                        if (!btn) return;
-                        const idx = parseInt(btn.dataset.aiIdx, 10);
-                        if (!isNaN(idx)) {
-                            URL.revokeObjectURL(btn.closest('.position-relative')?.querySelector('img')?.src);
-                            logAiImages.splice(idx, 1);
-                            renderLogAiThumbnails();
-                            updateLogAiBtn();
-                        }
-                    });
-                    updateLogAiBtn();
-                }
-            }
-
-            function handleAnalyzeClick() {
-                const text   = document.getElementById('logAiText')?.value.trim() || null;
-                const images = [...logAiImages];
-
-                if (typeof window.createUniversalLogger !== 'function') return;
-
-                if (isMobile()) {
-                    // Mobile: collapse inline panel, open offcanvas
-                    const logAiBody = document.getElementById('logAiBody');
-                    if (logAiBody) bootstrap.Collapse.getOrCreateInstance(logAiBody).hide();
-
-                    window.createUniversalLogger({
-                        prefillText:   text,
-                        prefillImages: images,
-                        autoAnalyze:   true,
-                        onSaveComplete: () => {
-                            if (window.loadRecentCardioSessions) window.loadRecentCardioSessions();
-                            logAiImages = [];
-                            renderLogAiThumbnails();
-                            const logAiText = document.getElementById('logAiText');
-                            if (logAiText) logAiText.value = '';
-                            updateLogAiBtn();
-                        },
-                    });
-                } else {
-                    // Desktop: render wizard inline inside the card body
-                    window.createUniversalLogger({
-                        prefillText:   text,
-                        prefillImages: images,
-                        autoAnalyze:   true,
-                        inlineContainer: logAiCardBody,
-                        onSaveComplete: () => {
-                            if (window.loadRecentCardioSessions) window.loadRecentCardioSessions();
-                        },
-                        onReset: () => {
-                            restoreLogAiInlinePanel();
-                        },
-                    });
-                }
-            }
-
-            document.getElementById('logAiAnalyzeBtn')?.addEventListener('click', handleAnalyzeClick);
 
             console.log('✅ Activity Log page ready!');
         });

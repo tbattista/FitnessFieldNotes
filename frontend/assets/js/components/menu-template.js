@@ -5,100 +5,63 @@
  */
 
 /**
- * Generate the complete menu HTML with authentication UI
- * @param {string} activePage - The currently active page ('home', 'programs', 'workouts', 'exercises')
+ * Generate the complete menu HTML
+ * Simplified to 3 primary nav items with no section headers
+ * @param {string} activePage - The currently active page identifier
  * @returns {string} Complete menu HTML
  */
 function getMenuHTML(activePage = 'home') {
+    const isHome = activePage === 'home';
+    const isWorkouts = activePage === 'workout-database';
+    const isHistory = activePage === 'workout-history';
+
     return `
-        <div class="menu-inner-shadow"></div>
+        <nav aria-label="Main navigation">
+            <ul class="menu-inner py-1">
+                <li class="menu-header small text-uppercase">
+                    <span class="menu-header-text">Navigation</span>
+                </li>
 
-        <ul class="menu-inner py-1">
-            <!-- Navigation -->
-            <li class="menu-header small text-uppercase">
-                <span class="menu-header-text">Navigation</span>
-            </li>
+                <li class="menu-item ${isHome ? 'active' : ''}"${isHome ? ' aria-current="page"' : ''}>
+                    <a href="index.html" class="menu-link">
+                        <i class="menu-icon tf-icons bx ${isHome ? 'bxs-home' : 'bx-home'}"></i>
+                        <div class="text-truncate">Home</div>
+                    </a>
+                </li>
 
-            <!-- Session - Only visible when active session exists -->
-            <li class="menu-item ${activePage === 'workout-mode' ? 'active' : ''}" id="sessionMenuItem" style="display: none;">
-                <a href="workout-mode.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-play"></i>
-                    <div class="text-truncate">Session</div>
-                </a>
-            </li>
+                <li class="menu-item ${isWorkouts ? 'active' : ''}"${isWorkouts ? ' aria-current="page"' : ''}>
+                    <a href="workout-database.html" class="menu-link">
+                        <i class="menu-icon tf-icons bx ${isWorkouts ? 'bx-dumbbell' : 'bx-dumbbell'}"></i>
+                        <div class="text-truncate">Workouts</div>
+                    </a>
+                </li>
 
-            <!-- Home -->
-            <li class="menu-item ${activePage === 'home' ? 'active' : ''}">
-                <a href="index.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-home"></i>
-                    <div class="text-truncate">Home</div>
-                </a>
-            </li>
+                <li class="menu-item ${isHistory ? 'active' : ''}"${isHistory ? ' aria-current="page"' : ''}>
+                    <a href="workout-history.html?all=true" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-history"></i>
+                        <div class="text-truncate">History</div>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    `;
+}
 
-            <!-- Log -->
-            <li class="menu-item ${activePage === 'activity-log' ? 'active' : ''}">
-                <a href="activity-log.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-edit-alt"></i>
-                    <div class="text-truncate">Log</div>
-                </a>
-            </li>
-
-            <!-- Library (was Workout Database) -->
-            <li class="menu-item ${activePage === 'workout-database' ? 'active' : ''}">
-                <a href="workout-database.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-library"></i>
-                    <div class="text-truncate">Library</div>
-                </a>
-            </li>
-
-            <!-- History (was Workout History) -->
-            <li class="menu-item ${activePage === 'workout-history' ? 'active' : ''}">
-                <a href="workout-history.html?all=true" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-history"></i>
-                    <div class="text-truncate">History</div>
-                </a>
-            </li>
-
-            <!-- Workout Management -->
-            <li class="menu-header small text-uppercase">
-                <span class="menu-header-text">Workout Management</span>
-            </li>
-            <li class="menu-item ${activePage === 'workouts' ? 'active' : ''}">
-                <a href="workout-builder.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-dumbbell"></i>
-                    <div class="text-truncate">Builder</div>
-                </a>
-            </li>
-            <li class="menu-item ${activePage === 'programs' ? 'active' : ''}">
-                <a href="programs.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-folder"></i>
-                    <div class="text-truncate">Programs</div>
-                </a>
-            </li>
-            <li class="menu-item ${activePage === 'public-workouts' ? 'active' : ''}">
-                <a href="public-workouts.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-globe"></i>
-                    <div class="text-truncate">Explore</div>
-                </a>
-            </li>
-
-            <!-- Data Management -->
-            <li class="menu-header small text-uppercase">
-                <span class="menu-header-text">Data Management</span>
-            </li>
-            <li class="menu-item ${activePage === 'exercises' ? 'active' : ''}">
-                <a href="exercise-database.html" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-book-content"></i>
-                    <div class="text-truncate">Exercises</div>
-                </a>
-            </li>
-
-        </ul>
+/**
+ * Generate the global floating log button HTML
+ * @returns {string} FAB button that opens the log session bottom sheet
+ */
+function getGlobalLogFabHTML() {
+    return `
+        <button type="button" class="global-log-fab" id="globalLogFab" aria-label="Log a workout">
+            <i class="bx bx-plus"></i>
+        </button>
     `;
 }
 
 // Make globally available immediately
 window.getMenuHTML = getMenuHTML;
+window.getGlobalLogFabHTML = getGlobalLogFabHTML;
 
 /**
  * Cycle through theme options: auto → dark → light → auto

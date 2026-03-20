@@ -178,6 +178,34 @@ body.menu-open {
    ============================================ */
 
 /* ============================================
+   ACCESSIBILITY - KEYBOARD FOCUS
+   ============================================ */
+
+.menu-item .menu-link:focus-visible {
+    outline: 2px solid var(--gs-primary);
+    outline-offset: -2px;
+    border-radius: var(--gs-radius-sm, 4px);
+}
+
+/* ============================================
+   ACCESSIBILITY - REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .layout-menu {
+        transition: none;
+    }
+
+    .layout-overlay {
+        transition: none;
+    }
+
+    .menu-item .menu-link {
+        transition: none;
+    }
+}
+
+/* ============================================
    DARK MODE - FOOTER
    ============================================ */
 

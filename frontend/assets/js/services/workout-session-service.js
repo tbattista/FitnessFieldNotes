@@ -120,8 +120,8 @@ class WorkoutSessionService {
     // SESSION LIFECYCLE FACADES
     // ============================================
 
-    async startSession(workoutId, workoutName, workoutData = null, sessionMode = 'timed') {
-        return this.lifecycleApiService.startSession(workoutId, workoutName, workoutData, sessionMode);
+    async startSession(workoutId, workoutName, workoutData = null) {
+        return this.lifecycleApiService.startSession(workoutId, workoutName, workoutData);
     }
 
     async completeSession(exercisesPerformed, durationMinutes = null) {
@@ -328,14 +328,6 @@ class WorkoutSessionService {
         return this.currentSession && this.currentSession.status === 'in_progress';
     }
 
-    isQuickLogMode() {
-        return this.currentSession?.sessionMode === 'quick_log';
-    }
-
-    getSessionMode() {
-        return this.currentSession?.sessionMode || 'timed';
-    }
-
     getExerciseWeight(exerciseName) {
         if (!this.currentSession || !this.currentSession.exercises) {
             return null;
@@ -362,7 +354,6 @@ class WorkoutSessionService {
 
         console.log('\ud83e\uddf9 Session cleared');
         this.notifyListeners('sessionCleared', {});
-        window.dispatchEvent(new CustomEvent('sessionStateChanged', { detail: { type: 'cleared' } }));
 
         this.clearPersistedSession();
     }

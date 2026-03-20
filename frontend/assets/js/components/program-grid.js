@@ -278,11 +278,13 @@ class ProgramGrid {
         const pagePrograms = this.programs.slice(startIndex, endIndex);
 
         // Create and render cards
+        const activeProgramId = localStorage.getItem('ffn_active_program_id');
         pagePrograms.forEach(program => {
             const cardConfig = {
                 ...this.config.cardConfig,
                 workouts: this.config.workouts,
                 isSelected: this.selectedIds.has(program.id),
+                isActiveProgram: program.id === activeProgramId,
                 onSelectionChange: (programId, isSelected) => {
                     this.handleSelectionChange(programId, isSelected);
                 }

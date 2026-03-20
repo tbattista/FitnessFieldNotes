@@ -215,9 +215,9 @@ class WorkoutModeController {
 
             await this.loadWorkout(workoutId);
 
-            // Build & Log: auto-start timed session immediately
-            if (this.isBuildMode && !this.sessionService.isSessionActive()) {
-                console.log('🏗️ Build & Log mode - auto-starting timed session');
+            // Auto-start session immediately (for all modes, not just build)
+            if (!this.sessionService.isSessionActive()) {
+                console.log('▶️ Auto-starting session');
                 await this.lifecycleManager.handleStartWorkout();
             }
 
@@ -271,9 +271,6 @@ class WorkoutModeController {
             // Set context and render
             this.lifecycleManager.setWorkout(this.currentWorkout);
             this.renderWorkout();
-            await this.uiStateManager.updateStartButtonTooltip(this.authService.isUserAuthenticated());
-            this.lifecycleManager.showFloatingControls(false);
-            this.lifecycleManager.showBottomBar(true);
             this.uiStateManager.hideLoading();
 
             console.log('✅ Workout loaded:', this.currentWorkout.name);
@@ -317,7 +314,6 @@ class WorkoutModeController {
     /** Handle auth state change - update tooltip only */
     async handleAuthStateChange(user) {
         console.log('🔄 Auth state changed:', user ? 'authenticated' : 'anonymous');
-        this.uiStateManager.updateStartButtonTooltip(this.authService.isUserAuthenticated());
     }
 
     // ========================================================================
@@ -410,8 +406,6 @@ class WorkoutModeController {
     // Session lifecycle (bottom-action-bar-config.js)
     async handleStartWorkout() { return await this.lifecycleManager.handleStartWorkout(); }
     async handleCompleteWorkout() { return this.lifecycleManager.handleCompleteWorkout(); }
-    async handleStartQuickLog() { return await this.lifecycleManager.handleStartQuickLog(); }
-    async handleSaveQuickLog() { return await this.lifecycleManager.handleSaveQuickLog(); }
     handleAddNote() { return this.notesManager.handleAddNote(); }
     showAddExerciseForm() { return this.exerciseOpsManager.showAddExerciseForm(); }
     showReorderOffcanvas() { this.reorderManager.showReorderOffcanvas(); }
@@ -420,9 +414,6 @@ class WorkoutModeController {
     // Card navigation (global-rest-timer.js, workout-mode-refactored.js)
     toggleExerciseCard(idx) { if (this.cardManager) this.cardManager.toggle(idx); }
     goToNextExercise(idx) { if (this.cardManager) this.cardManager.goToNext(idx, () => this.handleCompleteWorkout()); }
-
-    // Tooltip (workout-mode.html)
-    async initializeStartButtonTooltip() { return this.uiStateManager.updateStartButtonTooltip(this.authService.isUserAuthenticated()); }
 }
 
 // Initialize controller on page load

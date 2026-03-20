@@ -119,24 +119,111 @@
                 });
             }
 
-            // Render greeting with date and user name
             renderGreeting();
 
-            // Check for active session (for Resume button)
-            checkActiveSession();
-
-            // Load workouts for favorites
             const workouts = await loadWorkouts();
-            renderFavoritesSection(workouts);
-
-            // Load sessions for weekly progress and recent activity
             const sessions = await loadSessions();
-            renderWeeklyProgress(sessions);
-            renderActivityChart(sessions);
-            renderRecentActivity(sessions);
+
+            const isNewUser = sessions.length === 0;
+            const newUserWelcome = document.getElementById('newUserWelcome');
+            const returningDashboard = document.getElementById('returningUserDashboard');
+
+            if (isNewUser) {
+                if (newUserWelcome) newUserWelcome.style.display = '';
+                if (returningDashboard) returningDashboard.style.display = 'none';
+            } else {
+                if (newUserWelcome) newUserWelcome.style.display = 'none';
+                if (returningDashboard) returningDashboard.style.display = '';
+
+                // Wire the Log Session button to open the bottom sheet
+                const logBtn = document.getElementById('homeLogSessionBtn');
+                if (logBtn) {
+                    logBtn.addEventListener('click', () => {
+                        if (window.openLogSessionSheet) window.openLogSessionSheet();
+                    });
+                }
+
+                await renderWhatsNextCard(workouts);
+                renderWeeklyProgress(sessions);
+                renderActivityChart(sessions);
+                renderRecentActivity(sessions);
+                renderFavoritesSection(workouts);
+            }
         } catch (error) {
             console.error('Error loading home sections:', error);
         }
+    }
+
+    // --- What's Next Card ---
+    async function renderWhatsNextCard(workouts) {
+        const container = document.getElementById('whatsNextCard');
+        if (!container) return;
+
+        // 1. Check for active session to resume
+        try {
+            const persisted = localStorage.getItem('ffn_active_workout_session');
+            if (persisted) {
+                const session = JSON.parse(persisted);
+                if (session.workoutId && session.status === 'in_progress') {
+                    container.innerHTML = `
+                        <div class="card whats-next-card">
+                            <div class="card-body py-3 px-3">
+                                <small class="text-muted text-uppercase fw-semibold">Resume</small>
+                                <h6 class="fw-bold mt-1 mb-2">${escapeHtml(session.workoutName || 'Workout')}</h6>
+                                <a href="workout-mode.html?id=${session.workoutId}" class="btn btn-warning btn-sm">
+                                    <i class="bx bx-play me-1"></i>Resume Workout
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        // 2. Check for active program (stored in localStorage, synced with API)
+        const activeProgramId = localStorage.getItem('ffn_active_program_id');
+        if (activeProgramId) {
+            // Try to load the active program's next workout
+            try {
+                const programs = await window.dataManager?.getPrograms?.({ pageSize: 100 });
+                const activeProgram = (programs || []).find(p => p.id === activeProgramId);
+                if (activeProgram && activeProgram.workouts?.length > 0) {
+                    // Find next workout: first one not completed in last 7 days
+                    const nextWorkout = activeProgram.workouts[0]; // Simple: show first workout
+                    const workoutName = nextWorkout.custom_name || nextWorkout.workout_id;
+                    container.innerHTML = `
+                        <div class="card whats-next-card">
+                            <div class="card-body py-3 px-3">
+                                <small class="text-muted text-uppercase fw-semibold">Your Program</small>
+                                <h6 class="fw-bold mt-1 mb-1">${escapeHtml(activeProgram.name)}</h6>
+                                <p class="text-muted small mb-2">Next: ${escapeHtml(workoutName)}</p>
+                                <a href="workout-mode.html?id=${nextWorkout.workout_id}" class="btn btn-primary btn-sm">
+                                    <i class="bx bx-play me-1"></i>Start Workout
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+            } catch (e) {
+                console.warn('Could not load active program:', e);
+            }
+        }
+
+        // 3. No active program — prompt to set one up
+        container.innerHTML = `
+            <div class="card whats-next-card">
+                <div class="card-body py-3 px-3">
+                    <small class="text-muted text-uppercase fw-semibold">What's Next</small>
+                    <h6 class="fw-bold mt-1 mb-2">Set up a training program</h6>
+                    <p class="text-muted small mb-2">Pin a program to see your next scheduled workout here.</p>
+                    <a href="programs.html" class="btn btn-outline-primary btn-sm">
+                        <i class="bx bx-list-check me-1"></i>Browse Programs
+                    </a>
+                </div>
+            </div>
+        `;
     }
 
     // --- Greeting ---
@@ -160,37 +247,6 @@
             const fbUser = window.firebaseAuth?.currentUser;
             const userName = user?.displayName || fbUser?.displayName || user?.email?.split('@')[0] || fbUser?.email?.split('@')[0] || '';
             greetingEl.textContent = userName ? `${greeting}, ${userName}!` : `${greeting}!`;
-        }
-    }
-
-    // --- Active Session & CTA ---
-    function checkActiveSession() {
-        try {
-            const persistedSession = localStorage.getItem('ffn_active_workout_session');
-            if (persistedSession) {
-                const session = JSON.parse(persistedSession);
-                if (session.workoutId && session.status === 'in_progress') {
-                    activeSession = session;
-
-                    // Update CTA button to "Resume"
-                    const ctaBtn = document.getElementById('homePrimaryCTA');
-                    if (ctaBtn) {
-                        ctaBtn.textContent = 'Resume Workout';
-                        ctaBtn.classList.add('btn-warning');
-                        ctaBtn.classList.remove('btn-primary');
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('Could not load session state:', e);
-        }
-    }
-
-    function handlePrimaryCTA() {
-        if (activeSession && activeSession.workoutId) {
-            window.location.href = `workout-mode.html?id=${activeSession.workoutId}`;
-        } else {
-            window.location.href = 'workout-database.html';
         }
     }
 
@@ -241,25 +297,27 @@
             return date >= weekStart;
         });
         const completed = weekSessions.length;
-        const goal = 7;
-        const percentage = Math.min(Math.round((completed / goal) * 100), 100);
         const streak = calculateStreak(sessions);
 
         const statEl = document.getElementById('weeklyStatText');
         if (statEl) {
-            statEl.textContent = `This Week: ${completed}/${goal} Activities`;
+            statEl.textContent = completed === 0
+                ? 'No sessions this week yet'
+                : `${completed} session${completed !== 1 ? 's' : ''} this week`;
         }
 
         const streakBadge = document.getElementById('weeklyStreakBadge');
         if (streakBadge) {
             if (streak > 0) {
-                streakBadge.textContent = `\uD83D\uDD25 ${streak} day streak`;
+                streakBadge.textContent = `${streak} day streak!`;
                 streakBadge.style.display = 'inline';
             } else {
                 streakBadge.style.display = 'none';
             }
         }
 
+        // Progress bar: use 7 as a soft visual guide (not a hard goal)
+        const percentage = Math.min(Math.round((completed / 7) * 100), 100);
         const progressFill = document.getElementById('weeklyProgressFill');
         if (progressFill) {
             setTimeout(() => {
@@ -269,12 +327,7 @@
 
         const progressText = document.getElementById('weeklyProgressText');
         if (progressText) {
-            let motivationalText = "Let's get started!";
-            if (percentage >= 100) motivationalText = '100% complete \uD83C\uDF89 Goal achieved!';
-            else if (percentage >= 80) motivationalText = `${percentage}% complete \uD83D\uDCAA Almost there!`;
-            else if (percentage >= 50) motivationalText = `${percentage}% complete \uD83D\uDC4D Halfway there!`;
-            else if (completed > 0) motivationalText = `${percentage}% complete \u2728 Great start!`;
-            progressText.textContent = motivationalText;
+            progressText.textContent = completed === 0 ? '' : `Keep it up!`;
         }
     }
 
@@ -356,8 +409,8 @@
     }
 
     function renderFavoritesSection(workouts) {
+        const section = document.getElementById('favoritesSection');
         const container = document.getElementById('favoritesContent');
-        const emptyState = document.getElementById('favoritesEmpty');
 
         if (!container) return;
 
@@ -366,12 +419,12 @@
             .sort((a, b) => new Date(b.favorited_at) - new Date(a.favorited_at));
 
         if (favorites.length === 0) {
-            container.innerHTML = '';
-            if (emptyState) emptyState.style.display = 'block';
+            // Hide entire section when no favorites
+            if (section) section.style.display = 'none';
             return;
         }
 
-        if (emptyState) emptyState.style.display = 'none';
+        if (section) section.style.display = '';
         const cardRenderer = window.renderFavoriteCard || renderFavoriteCard;
         container.innerHTML = favorites.map(workout => cardRenderer(workout)).join('');
     }
@@ -404,20 +457,18 @@
 
     // --- Recent Activity ---
     function renderRecentActivity(sessions) {
+        const section = document.getElementById('recentActivitySection');
         const container = document.getElementById('recentActivityContent');
 
         if (!container) return;
 
         if (sessions.length === 0) {
-            container.innerHTML = `
-                <div class="text-center text-muted py-4">
-                    <i class="bx bx-history mb-2" style="font-size: 2rem;"></i>
-                    <p class="mb-0 small">No recent activity yet</p>
-                </div>
-            `;
+            // Hide entire section when no sessions
+            if (section) section.style.display = 'none';
             return;
         }
 
+        if (section) section.style.display = '';
         const recentSessions = sessions.slice(0, window._homeConfig.maxRecentSessions);
         const cardRenderer = window.renderActivityCard || renderActivityCard;
         container.innerHTML = recentSessions.map(session => cardRenderer(session)).join('');
@@ -549,12 +600,10 @@
     // Expose on window for cross-module access and onclick handlers
     window.initHomePage = initHomePage;
     window.loadHomeSections = loadHomeSections;
-    window.handlePrimaryCTA = handlePrimaryCTA;
     window.viewWorkoutDetails = viewWorkoutDetails;
     window.startWorkout = startWorkout;
     window.viewSessionDetails = viewSessionDetails;
     window.showWorkoutDetail = showWorkoutDetail;
-    window.checkActiveSession = checkActiveSession;
 
     // Expose rendering functions for desktop adapter overrides
     window.renderFavoriteCard = renderFavoriteCard;

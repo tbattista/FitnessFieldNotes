@@ -1,105 +1,41 @@
 /**
- * Workout Mode FAB Manager
- * Manages floating action buttons and inline add buttons for the workout mode page.
- * Uses event delegation on data-action attributes so buttons never lose their handlers.
- * @version 2.0.0
- * @date 2026-02-26
+ * Workout Mode Action Manager
+ * Routes data-action button clicks to controller methods via event delegation.
+ * Also manages the kebab settings menu.
+ * @version 3.0.0
+ * @date 2026-03-19
  */
 
 class WorkoutModeFabManager {
     constructor() {
-        this.state = 'pre-session'; // pre-session | timed-active | quicklog-active | completed
-        this.timerInterval = null;
         this._initialized = false;
 
         // Action map: data-action value → handler
-        // All button routing lives here — add new actions by adding a row
         this._actions = {
-            'quicklog':      () => window.workoutModeController?.handleStartQuickLog(),
-            'start':         () => window.workoutModeController?.handleStartWorkout(),
             'end':           () => window.workoutModeController?.handleCompleteWorkout(),
-            'cancel':        () => window.workoutModeController?.handleCancelWorkout(),
-            'save':          () => window.workoutModeController?.handleSaveQuickLog(),
             'add-exercise':  () => window.workoutModeController?.showAddExerciseForm(),
             'add-note':      () => window.workoutModeController?.handleAddNote(),
             'reorder':       () => window.workoutModeController?.showReorderOffcanvas(),
             'options':       () => this.openSettingsMenu()
         };
 
-        // Self-attach delegation listener on the document body.
-        // Uses capture:false so it runs in bubble phase on any [data-action] click.
-        // This runs once in the constructor — no initialize() call required for wiring.
+        // Event delegation on document body for all [data-action] clicks
         document.addEventListener('click', (e) => this._handleDelegatedClick(e));
 
-        console.log('🎯 Workout Mode FAB Manager created (event delegation active)');
+        console.log('🎯 Workout Mode Action Manager created (event delegation active)');
     }
 
     /**
-     * Initialize: show FAB container and set initial state.
-     * Safe to call multiple times (idempotent).
+     * Initialize (idempotent)
      */
     initialize() {
         if (this._initialized) return;
         this._initialized = true;
-
-        // Show the FAB container
-        const fabs = document.getElementById('workoutModeFabs');
-        if (fabs) fabs.style.display = 'flex';
-
-        // Set initial state
-        this.updateState('pre-session');
-
-        console.log('✅ Workout Mode FAB Manager initialized');
+        console.log('✅ Workout Mode Action Manager initialized');
     }
 
     /**
-     * Update the FAB state (shows/hides the correct slot).
-     * Auto-calls initialize() if it hasn't run yet — safety net so no
-     * code-path reordering can leave buttons invisible.
-     * @param {string} newState - 'pre-session' | 'timed-active' | 'quicklog-active' | 'completed'
-     */
-    updateState(newState) {
-        if (!this._initialized) this.initialize();
-
-        this.state = newState;
-        console.log('🔄 FAB state →', newState);
-
-        const preSession = document.getElementById('wmSlotPreSession');
-        const timedActive = document.getElementById('wmSlotTimedActive');
-        const quickLogActive = document.getElementById('wmSlotQuickLogActive');
-        const fabContainer = document.getElementById('workoutModeFabs');
-
-        // Hide all slots
-        if (preSession) preSession.style.display = 'none';
-        if (timedActive) timedActive.style.display = 'none';
-        if (quickLogActive) quickLogActive.style.display = 'none';
-
-        switch (newState) {
-            case 'pre-session':
-                if (preSession) preSession.style.display = 'contents';
-                if (fabContainer) fabContainer.style.display = 'flex';
-                this._hideQuickLogBanner();
-                break;
-            case 'timed-active':
-                if (timedActive) timedActive.style.display = 'contents';
-                if (fabContainer) fabContainer.style.display = 'flex';
-                this._hideQuickLogBanner();
-                break;
-            case 'quicklog-active':
-                if (quickLogActive) quickLogActive.style.display = 'contents';
-                if (fabContainer) fabContainer.style.display = 'flex';
-                this._showQuickLogBanner();
-                break;
-            case 'completed':
-                if (fabContainer) fabContainer.style.display = 'none';
-                this._hideQuickLogBanner();
-                break;
-        }
-    }
-
-    /**
-     * Delegated click handler — routes any [data-action] click to the right method.
-     * Walks up from the click target to find the nearest [data-action] element.
+     * Delegated click handler — routes [data-action] clicks
      * @param {Event} e - Click event
      * @private
      */
@@ -116,22 +52,6 @@ class WorkoutModeFabManager {
         } catch (error) {
             console.error(`❌ Action "${action}" failed:`, error);
         }
-    }
-
-    /**
-     * Start the session timer display (delegates to WorkoutTimerManager via #floatingTimer element)
-     * No-op: the timer manager updates #floatingTimer directly
-     */
-    startTimer(startedAt) {
-        // Timer display is managed by WorkoutTimerManager which updates #floatingTimer
-    }
-
-    /**
-     * Stop the session timer display
-     * No-op: the timer manager handles stopping
-     */
-    stopTimer() {
-        // Timer display is managed by WorkoutTimerManager
     }
 
     /**
@@ -220,41 +140,9 @@ class WorkoutModeFabManager {
             ]
         });
     }
-
-    /**
-     * Show Quick Log mode banner
-     * @private
-     */
-    _showQuickLogBanner() {
-        let banner = document.getElementById('quickLogModeBanner');
-        if (!banner) {
-            banner = document.createElement('div');
-            banner.id = 'quickLogModeBanner';
-            banner.className = 'quick-log-mode-banner';
-            banner.innerHTML = `
-                <i class="bx bx-edit-alt"></i>
-                <span>Quick Log Mode</span>
-                <small>Log your completed workout</small>
-            `;
-            const contentWrapper = document.querySelector('.content-wrapper');
-            if (contentWrapper) {
-                contentWrapper.insertBefore(banner, contentWrapper.firstChild);
-            }
-        }
-        banner.style.display = 'flex';
-    }
-
-    /**
-     * Hide Quick Log mode banner
-     * @private
-     */
-    _hideQuickLogBanner() {
-        const banner = document.getElementById('quickLogModeBanner');
-        if (banner) banner.style.display = 'none';
-    }
 }
 
 // Make globally available
 window.WorkoutModeFabManager = WorkoutModeFabManager;
 
-console.log('📦 Workout Mode FAB Manager loaded');
+console.log('📦 Workout Mode Action Manager loaded');

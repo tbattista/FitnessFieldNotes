@@ -115,7 +115,8 @@
                 onCardClick: (program) => openProgramDetail(program),
                 onEdit: (program) => editProgram(program.id),
                 onGenerate: (program) => showGenerateModal(program),
-                onDelete: (programId, programName) => handleDeleteProgram(programId, programName)
+                onDelete: (programId, programName) => handleDeleteProgram(programId, programName),
+                onSetActive: (program, setActive) => handleSetActiveProgram(program, setActive)
             },
             onPageChange: (page) => {
                 console.log('📄 Page changed to:', page);
@@ -517,6 +518,36 @@
         if (programDetailOffcanvas) {
             programDetailOffcanvas.config.workouts = state.workouts;
             programDetailOffcanvas.show(program);
+        }
+    }
+
+    /**
+     * Handle set/unset active program
+     */
+    async function handleSetActiveProgram(program, setActive) {
+        try {
+            const token = await window.dataManager?.getAuthToken();
+            if (setActive) {
+                await fetch('/api/user/active-program', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ program_id: program.id })
+                });
+                localStorage.setItem('ffn_active_program_id', program.id);
+                if (window.showAlert) window.showAlert(`"${program.name}" set as active program`, 'success');
+            } else {
+                await fetch('/api/user/active-program', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                localStorage.removeItem('ffn_active_program_id');
+                if (window.showAlert) window.showAlert('Active program removed', 'info');
+            }
+            // Re-render grid to update badges
+            if (programGrid) programGrid.renderCards();
+        } catch (err) {
+            console.error('Error setting active program:', err);
+            if (window.showAlert) window.showAlert('Failed to update active program', 'danger');
         }
     }
 

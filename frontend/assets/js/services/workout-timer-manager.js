@@ -42,9 +42,9 @@ class WorkoutTimerManager {
             timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
         
-        const floatingTimer = document.getElementById('floatingTimer');
-        if (floatingTimer) {
-            floatingTimer.textContent = timeStr;
+        const headerTimer = document.getElementById('headerTimer');
+        if (headerTimer) {
+            headerTimer.textContent = timeStr;
         }
     }
     
@@ -80,11 +80,8 @@ class WorkoutTimerManager {
             this.sessionTimerInterval = null;
         }
         
-        // Reset timer display to 0:00:00 (fixed width format)
-        const floatingTimer = document.getElementById('floatingTimer');
-        if (floatingTimer) floatingTimer.textContent = '0:00:00';
-        
-        // Timer combo stays visible, just shows 0:00:00 and "Start" button
+        const headerTimer = document.getElementById('headerTimer');
+        if (headerTimer) headerTimer.textContent = '00:00';
     }
     
     /**

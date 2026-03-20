@@ -145,21 +145,5 @@
         `;
     }
 
-    // ============================================
-    // PATCH: checkActiveSession for desktop CTA icon
-    // ============================================
-
-    const _origCheckActiveSession = window.checkActiveSession;
-    if (_origCheckActiveSession) {
-        window.checkActiveSession = function() {
-            _origCheckActiveSession();
-            // After original runs, update icon for desktop CTA
-            const ctaBtn = document.getElementById('homePrimaryCTA');
-            if (ctaBtn && ctaBtn.textContent.includes('Resume')) {
-                ctaBtn.innerHTML = '<i class="bx bx-refresh me-1"></i>Resume Workout';
-            }
-        };
-    }
-
     console.log('Desktop home adapter loaded');
 })();

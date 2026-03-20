@@ -44,13 +44,12 @@ class SessionLifecycleApiService {
      * @param {string} workoutId - Workout ID
      * @param {string} workoutName - Workout name
      * @param {Object|null} workoutData - Optional workout template data
-     * @param {string} sessionMode - Session mode: 'timed' (default) or 'quick_log'
      * @returns {Promise<Object>} Session object
      */
-    async startSession(workoutId, workoutName, workoutData = null, sessionMode = 'timed') {
+    async startSession(workoutId, workoutName, workoutData = null) {
         try {
-            const modeIcon = sessionMode === 'quick_log' ? '\ud83d\udcdd' : '\ud83c\udfcb\ufe0f';
-            console.log(`${modeIcon} Starting ${sessionMode} workout session:`, workoutName);
+            const sessionMode = 'timed';
+            console.log(`🏋️ Starting workout session:`, workoutName);
 
             // Local-only session for anonymous users
             if (!window.authService?.isUserAuthenticated()) {
@@ -79,7 +78,6 @@ class SessionLifecycleApiService {
 
                 console.log('✅ Local workout session started:', localSession.id);
                 this.onNotify('sessionStarted', localSession);
-                window.dispatchEvent(new CustomEvent('sessionStateChanged', { detail: { type: 'started' } }));
                 this.onPersist();
 
                 return localSession;
@@ -236,7 +234,6 @@ class SessionLifecycleApiService {
 
                 console.log('✅ Local workout session completed:', currentSession.id);
                 this.onNotify('sessionCompleted', completedSession);
-                window.dispatchEvent(new CustomEvent('sessionStateChanged', { detail: { type: 'completed' } }));
                 this.onClearPersistedSession();
 
                 return completedSession;
@@ -486,8 +483,7 @@ class SessionLifecycleApiService {
 
                     console.log('\u2705 Recovery session completed successfully:', newSession.id);
                     this.onNotify('sessionCompleted', completedSession);
-                    window.dispatchEvent(new CustomEvent('sessionStateChanged', { detail: { type: 'completed' } }));
-                    this.onClearPersistedSession();
+                        this.onClearPersistedSession();
 
                     return completedSession;
                 }

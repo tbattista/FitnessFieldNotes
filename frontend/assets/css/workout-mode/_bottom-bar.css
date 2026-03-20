@@ -1,13 +1,14 @@
 /**
- * Workout Mode - Floating FABs & Inline Add Buttons
- * Replaces the old bottom action bar with builder-consistent floating FABs
+ * Workout Mode - Bottom Bar, Header Timer & Inline Add Buttons
+ * Session bottom bar with Add Exercise + Finish, compact header timer,
+ * global rest timer floating above bottom bar.
  *
- * @version 5.0.0 - Floating FAB Revamp
- * @date 2026-02-22
+ * @version 6.0.0 - Auto-Start Redesign
+ * @date 2026-03-19
  */
 
 /* ============================================
-   HEADER OPTIONS BUTTON (FAB-style)
+   HEADER OPTIONS BUTTON
    ============================================ */
 
 .wm-options-btn {
@@ -40,213 +41,72 @@
 }
 
 /* ============================================
-   WORKOUT MODE FLOATING FABS
-   Fixed bottom-right, matching builder pattern
+   SESSION HEADER TIMER (compact, passive)
    ============================================ */
 
-.workout-mode-floating-fabs {
-    position: fixed;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    right: 16px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    z-index: 1050;
-    pointer-events: none;
-}
-
-/* Base FAB button */
-.wm-fab {
-    height: 52px;
-    min-width: 52px;
-    border-radius: 14px;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    pointer-events: auto;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-    white-space: nowrap;
-    padding: 0 16px;
-    color: #fff;
-}
-
-.wm-fab:active {
-    transform: scale(0.93);
-}
-
-/* Quick Log button */
-.wm-fab-quicklog {
-    background: var(--gs-action-quicklog, #6c757d);
-}
-
-.wm-fab-quicklog:hover {
-    filter: brightness(0.9);
-}
-
-/* Start button (green) */
-.wm-fab-start {
-    background: var(--gs-action-start, var(--bs-success));
-}
-
-.wm-fab-start:hover {
-    filter: brightness(0.9);
-}
-
-/* Timer display (not a button) */
-.wm-fab-timer {
-    background: var(--bs-body-bg);
-    color: var(--bs-body-color);
-    border: 2px solid var(--bs-primary);
-    cursor: default;
+#sessionTimerDisplay {
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-variant-numeric: tabular-nums;
-    min-width: 110px;
-}
-
-.wm-fab-timer i {
-    color: var(--bs-primary);
-}
-
-/* End button (red) */
-.wm-fab-end {
-    background: var(--bs-danger);
-}
-
-.wm-fab-end:hover {
-    filter: brightness(0.9);
-}
-
-/* Cancel button (red, icon-only) */
-.wm-fab-cancel {
-    background: var(--bs-danger);
-    width: 52px;
-    padding: 0;
-    font-size: 22px;
-}
-
-.wm-fab-cancel:hover {
-    filter: brightness(0.9);
-}
-
-/* Save button (green) */
-.wm-fab-save {
-    background: var(--gs-action-start, var(--bs-success));
-}
-
-.wm-fab-save:hover {
-    filter: brightness(0.9);
-}
-
-/* FAB slot containers */
-.wm-fab-dynamic {
-    display: contents;
-}
-
-.wm-fab-slot {
-    display: contents;
+    letter-spacing: 0.02em;
 }
 
 /* ============================================
-   INLINE ADD BUTTONS (below exercise cards)
-   Matches the workout builder pattern
+   SESSION BOTTOM BAR
+   Fixed bottom, Add Exercise (left) + Finish (right)
    ============================================ */
 
-.workout-mode-add-buttons {
-    margin-top: 0.5rem;
-    padding-bottom: 1rem;
-}
-
-/* ============================================
-   CONTENT PADDING
-   Reduced: no bottom bar, just FABs + inline buttons
-   FABs (44px) + gap (16px) + breathing room (40px) = 100px
-   ============================================ */
-
-#exerciseCardsContainer {
-    padding-bottom: 20px;
-}
-
-/* Add buttons area needs clearance for floating FABs */
-.workout-mode-add-buttons {
-    padding-bottom: 80px;
-}
-
-/* Landing page padding for floating FABs */
-#workoutLandingPage {
-    padding-bottom: 100px;
-}
-
-/* ============================================
-   DARK MODE
-   ============================================ */
-
-[data-bs-theme="dark"] .wm-fab {
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
-}
-
-[data-bs-theme="dark"] .wm-fab-timer {
+.workout-mode-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     background: var(--bs-body-bg);
-    border-color: var(--bs-primary);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
-}
-
-/* ============================================
-   QUICK LOG MODE BANNER
-   Shows at top of page during Quick Log mode
-   ============================================ */
-
-.quick-log-mode-banner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: linear-gradient(135deg, var(--gs-action-quicklog, #6c757d) 0%, var(--gs-action-quicklog-dark, #495057) 100%);
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    position: sticky;
-    top: 0;
+    border-top: 1px solid var(--bs-border-color);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
     z-index: 1050;
 }
 
-.quick-log-mode-banner i {
-    font-size: 18px;
+.wm-bottom-bar-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-.quick-log-mode-banner span {
-    font-weight: 700;
+.wm-bottom-bar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
-.quick-log-mode-banner small {
-    font-weight: 400;
-    opacity: 0.85;
-    margin-left: 4px;
+.wm-bottom-bar-inner .btn {
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    white-space: nowrap;
 }
 
-[data-bs-theme="dark"] .quick-log-mode-banner {
-    background: linear-gradient(135deg, var(--gs-action-quicklog-dark, #495057) 0%, var(--gs-gray-700, #343a40) 100%);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+.wm-bottom-bar-inner .btn-success {
+    padding: 8px 20px;
+}
+
+[data-bs-theme="dark"] .workout-mode-bottom-bar {
+    border-top-color: var(--bs-border-color);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================
-   GLOBAL REST TIMER BUTTON
-   Floating rest timer that morphs between states
-   (Moved from bottom-action-bar.css — only used by workout-mode)
+   GLOBAL REST TIMER (floats above bottom bar)
    ============================================ */
 
-.global-rest-timer-button {
-    flex-shrink: 0;
-    margin-right: var(--floating-fab-gap);
-    z-index: 1002;
+.global-rest-timer-floating {
+    position: fixed;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    z-index: 1051;
     pointer-events: auto;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     width: var(--floating-timer-width);
@@ -255,6 +115,11 @@
     height: var(--floating-fab-height);
     align-self: center;
 }
+
+/* ============================================
+   GLOBAL REST TIMER STATES
+   (Morphing button: ready → counting → paused → done)
+   ============================================ */
 
 .global-timer-btn {
     width: var(--floating-timer-width);
@@ -276,12 +141,12 @@
     white-space: nowrap;
 }
 
-.global-rest-timer-button.ready .global-timer-btn {
+.global-rest-timer-floating.ready .global-timer-btn {
     background: var(--bs-success);
     color: white;
 }
 
-.global-rest-timer-button.ready .global-timer-btn:hover {
+.global-rest-timer-floating.ready .global-timer-btn:hover {
     background: var(--gs-action-success-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(var(--gs-success-rgb), 0.4);
@@ -397,7 +262,7 @@
     background: rgba(var(--gs-success-rgb), 1);
 }
 
-.global-rest-timer-button.done .global-timer-btn {
+.global-rest-timer-floating.done .global-timer-btn {
     background: var(--bs-success);
     color: white;
     animation: timer-complete-pulse 2s ease-in-out;
@@ -473,6 +338,36 @@
     }
 }
 
+/* ============================================
+   INLINE ADD BUTTONS (below exercise cards)
+   ============================================ */
+
+.workout-mode-add-buttons {
+    margin-top: 0.5rem;
+    padding-bottom: 1rem;
+}
+
+/* ============================================
+   CONTENT PADDING
+   Bottom bar (56px) + gap + breathing room
+   ============================================ */
+
+#exerciseCardsContainer {
+    padding-bottom: 20px;
+}
+
+.workout-mode-add-buttons {
+    padding-bottom: 80px;
+}
+
+#workoutLandingPage {
+    padding-bottom: 100px;
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
 [data-bs-theme="dark"] .global-timer-countdown,
 [data-bs-theme="dark"] .global-timer-countdown-mobile {
     background: var(--bs-body-bg);
@@ -487,13 +382,22 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-.global-rest-timer-button:focus-within {
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+.global-rest-timer-floating:focus-within {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+.workout-mode-bottom-bar .btn:focus-visible {
     outline: 2px solid var(--bs-primary);
     outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .global-rest-timer-button,
+    .global-rest-timer-floating,
     .global-timer-btn,
     .global-timer-countdown,
     .global-timer-countdown-mobile,
@@ -502,27 +406,18 @@
         transition: none;
     }
 
-    .global-rest-timer-button.done .global-timer-btn {
+    .global-rest-timer-floating.done .global-timer-btn {
         animation: none;
     }
 }
 
 /* ============================================
-   RESPONSIVE
+   PRINT: HIDE
    ============================================ */
 
-
-/* ============================================
-   ACCESSIBILITY
-   ============================================ */
-
-.wm-fab:focus-visible {
-    outline: 2px solid var(--bs-primary);
-    outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .wm-fab {
-        transition: none;
+@media print {
+    .workout-mode-bottom-bar,
+    .global-rest-timer-floating {
+        display: none;
     }
 }

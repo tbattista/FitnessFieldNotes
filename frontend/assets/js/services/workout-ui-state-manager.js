@@ -246,19 +246,9 @@ class WorkoutUIStateManager {
         if (isActive) {
             if (sessionIndicator) sessionIndicator.style.display = 'block';
             if (sessionInfo) sessionInfo.style.display = 'block';
-            
-            // Update FABs to show active session state
-            if (window.workoutModeFabManager) {
-                window.workoutModeFabManager.updateState('timed-active');
-            }
         } else {
             if (sessionIndicator) sessionIndicator.style.display = 'none';
             if (sessionInfo) sessionInfo.style.display = 'none';
-            
-            // Update FABs to show pre-session state
-            if (window.workoutModeFabManager) {
-                window.workoutModeFabManager.updateState('pre-session');
-            }
         }
     }
     
@@ -295,35 +285,6 @@ class WorkoutUIStateManager {
     
     // ==================== Start Button Tooltip ====================
     
-    /**
-     * Update start button tooltip based on auth state
-     * @param {boolean} isAuthenticated - Whether user is authenticated
-     */
-    updateStartButtonTooltip(isAuthenticated) {
-        const startBtn = document.getElementById('startWorkoutBtn');
-        if (!startBtn) return;
-        
-        // Destroy existing tooltip
-        const existingTooltip = window.bootstrap?.Tooltip?.getInstance(startBtn);
-        if (existingTooltip) {
-            existingTooltip.dispose();
-        }
-        
-        if (isAuthenticated) {
-            startBtn.setAttribute('data-bs-original-title', 'Start tracking your workout with weight logging');
-            startBtn.classList.remove('btn-outline-primary');
-            startBtn.classList.add('btn-primary');
-        } else {
-            startBtn.setAttribute('data-bs-original-title', '🔒 Log in to track weights and save progress');
-            startBtn.classList.remove('btn-primary');
-            startBtn.classList.add('btn-outline-primary');
-        }
-        
-        // Initialize Bootstrap tooltip
-        if (window.bootstrap && window.bootstrap.Tooltip) {
-            new window.bootstrap.Tooltip(startBtn);
-        }
-    }
 }
 
 // Export for module use

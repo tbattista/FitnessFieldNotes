@@ -294,6 +294,12 @@
     color: var(--bs-body-color);
 }
 
+/* Active program highlight */
+.program-card.active-program {
+    border-color: var(--bs-primary);
+    border-width: 2px;
+}
+
 /* Selected state in delete mode */
 .program-card.selected {
     border-color: var(--bs-danger);

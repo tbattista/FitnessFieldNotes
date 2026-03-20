@@ -38,31 +38,20 @@ class WorkoutLifecycleManager {
     }
     
     /**
-     * Handle start workout button click (timed session)
+     * Handle start workout (auto-start, always timed mode)
      * Validates state, checks auth, handles conflicts
      * @returns {Promise<boolean>} Success status
      */
     async handleStartWorkout() {
-        return this._handleStartSession('timed');
+        return this._handleStartSession();
     }
 
     /**
-     * Handle start Quick Log button click
-     * Same validation as timed, but without timer
-     * @returns {Promise<boolean>} Success status
-     */
-    async handleStartQuickLog() {
-        return this._handleStartSession('quick_log');
-    }
-
-    /**
-     * Internal handler for starting any session type
-     * @param {string} sessionMode - 'timed' or 'quick_log'
+     * Internal handler for starting a session
      * @returns {Promise<boolean>} Success status
      * @private
      */
-    async _handleStartSession(sessionMode = 'timed') {
-        const modeIcon = sessionMode === 'quick_log' ? '📝' : '▶️';
+    async _handleStartSession() {
 
         if (!this.currentWorkout) {
             console.error('❌ No workout loaded');
@@ -92,20 +81,17 @@ class WorkoutLifecycleManager {
             const persistedSession = this.sessionService.restoreSession();
             if (persistedSession && persistedSession.workoutId !== this.currentWorkout.id) {
                 const modalManager = this.getModalManager();
-                const modeName = sessionMode === 'quick_log' ? 'Quick Log' : 'timed session';
 
                 return new Promise((resolve) => {
                     modalManager.confirm(
                         'Active Session Found',
-                        `You have an active session for <strong>${WorkoutUtils.escapeHtml(persistedSession.workoutName)}</strong>. Starting a new ${modeName} will end that session. Continue?`,
+                        `You have an active session for <strong>${WorkoutUtils.escapeHtml(persistedSession.workoutName)}</strong>. Starting a new session will end that session. Continue?`,
                         async () => {
-                            // User chose to start fresh - clear old session and start new one
                             this.sessionService.clearPersistedSession();
-                            const result = await this.startNewSession(sessionMode);
+                            const result = await this.startNewSession();
                             resolve(result);
                         },
                         () => {
-                            // User cancelled - reset flag
                             this.isStartingSession = false;
                             resolve(false);
                         }
@@ -113,10 +99,10 @@ class WorkoutLifecycleManager {
                 });
             }
 
-            return await this.startNewSession(sessionMode);
+            return await this.startNewSession();
 
         } catch (error) {
-            console.error(`❌ Error starting ${sessionMode} session:`, error);
+            console.error('❌ Error starting session:', error);
             this.isStartingSession = false;
 
             const modalManager = this.getModalManager();
@@ -128,20 +114,18 @@ class WorkoutLifecycleManager {
     /**
      * Start a new workout session
      * Creates session, fetches history, updates UI
-     * @param {string} sessionMode - 'timed' (default) or 'quick_log'
      * @returns {Promise<boolean>} Success status
      */
-    async startNewSession(sessionMode = 'timed') {
+    async startNewSession() {
         try {
-            const modeIcon = sessionMode === 'quick_log' ? '📝' : '🏋️';
-            console.log(`${modeIcon} Starting ${sessionMode} session...`);
+            console.log('🏋️ Starting session...');
 
             // Pass workout data and session mode to create session
             await this.sessionService.startSession(
                 this.currentWorkout.id,
                 this.currentWorkout.name,
                 this.currentWorkout,
-                sessionMode
+                'timed'
             );
 
             // Fetch exercise history
@@ -150,16 +134,11 @@ class WorkoutLifecycleManager {
             // Update UI
             this.uiStateManager.updateSessionState(true, this.sessionService.getCurrentSession());
 
-            // Only start timer for timed sessions (not Quick Log)
-            if (sessionMode !== 'quick_log') {
-                this.timerManager.startSessionTimer();
-            }
+            // Start elapsed timer
+            this.timerManager.startSessionTimer();
 
-            // Show floating controls (mode-aware)
-            this.showFloatingControls(true, sessionMode);
-
-            // Show bottom action bar
-            this.showBottomBar(true);
+            // Show bottom bar and timer display
+            this.showFloatingControls(true);
 
             // Re-render to show weight inputs
             this.onRenderWorkout();
@@ -169,31 +148,15 @@ class WorkoutLifecycleManager {
                 this.onExpandFirstCard();
             }, 300);
 
-            // Show success message (mode-aware)
-            if (sessionMode === 'quick_log') {
-                // Use toast notification for Quick Log - more prominent and follows UX best practices
-                if (window.toastNotifications) {
-                    window.toastNotifications.info(
-                        'Log your completed exercises below',
-                        'Quick Log Mode'
-                    );
-                } else if (window.showAlert) {
-                    window.showAlert('Quick Log started! Log your exercises below.', 'success');
-                }
-            } else {
-                // Use showAlert for timed sessions (existing behavior)
-                if (window.showAlert) {
-                    window.showAlert('Workout session started! 💪', 'success');
-                }
+            if (window.showAlert) {
+                window.showAlert('Workout session started! 💪', 'success');
             }
 
-            // Reset flag
             this.isStartingSession = false;
-
             return true;
 
         } catch (error) {
-            console.error(`❌ Error starting ${sessionMode} session:`, error);
+            console.error('❌ Error starting session:', error);
             this.isStartingSession = false;
 
             const modalManager = this.getModalManager();
@@ -202,18 +165,6 @@ class WorkoutLifecycleManager {
         }
     }
 
-    /**
-     * Handle save Quick Log button click
-     * Similar to handleCompleteWorkout but for Quick Log mode
-     * @returns {Promise<boolean>} Success status
-     */
-    async handleSaveQuickLog() {
-        console.log('💾 Saving Quick Log...');
-        // Quick Log uses the same completion flow as timed sessions
-        // The only difference is in how duration is calculated (manual vs auto)
-        return this.handleCompleteWorkout();
-    }
-    
     /**
      * Handle complete workout button click
      * Shows completion offcanvas
@@ -252,9 +203,6 @@ class WorkoutLifecycleManager {
             return;
         }
 
-        // Detect session mode (Quick Log vs Timed)
-        const isQuickLog = this.sessionService.isQuickLogMode();
-
         // Calculate session stats
         const elapsed = Math.floor((Date.now() - session.startedAt.getTime()) / 1000);
         const minutes = Math.floor(elapsed / 60);
@@ -278,7 +226,7 @@ class WorkoutLifecycleManager {
             workoutName: this.currentWorkout.name,
             minutes,
             totalExercises,
-            isQuickLog,
+            isQuickLog: false,
             isBuildMode
         }, async (durationMinutes, templateOpts = {}) => {
             try {
@@ -318,20 +266,14 @@ class WorkoutLifecycleManager {
                     }
                 }
 
-                // NOW hide floating controls after workout is actually completed
+                // Hide controls after workout is completed
                 this.showFloatingControls(false);
-
-                // Hide Quick Log banner if it was showing
-                if (window.workoutModeFabManager) {
-                    window.workoutModeFabManager._hideQuickLogBanner();
-                }
 
                 // Show completion summary
                 this.showCompletionSummary(completedSession);
             } catch (error) {
                 console.error('❌ Error completing workout:', error);
 
-                // Show error to user
                 const modalManager = this.getModalManager();
                 modalManager.alert(
                     'Save Failed',
@@ -339,9 +281,8 @@ class WorkoutLifecycleManager {
                     'danger'
                 );
 
-                // Re-show floating controls so user can try again
-                const sessionMode = this.sessionService.getSessionMode();
-                this.showFloatingControls(true, sessionMode);
+                // Re-show controls so user can try again
+                this.showFloatingControls(true);
             }
         });
     }
@@ -539,9 +480,8 @@ class WorkoutLifecycleManager {
      */
     async resumeSession(sessionData) {
         try {
-            const sessionMode = sessionData.sessionMode || 'timed';
-            const modeIcon = sessionMode === 'quick_log' ? '📝' : '🔄';
-            console.log(`${modeIcon} Resuming ${sessionMode} workout session...`);
+            // Always resume as timed (backward compat: old quick_log sessions treated as timed)
+            console.log('🔄 Resuming workout session...');
 
             // Verify session exists in Firestore before resuming
             // If not found, recreate it to avoid 404 on completion
@@ -558,7 +498,7 @@ class WorkoutLifecycleManager {
                 workoutName: sessionData.workoutName,
                 startedAt: new Date(sessionData.startedAt),
                 status: sessionData.status,
-                sessionMode: sessionMode,
+                sessionMode: 'timed',
                 exercises: sessionData.exercises || {}
             };
 
@@ -568,36 +508,24 @@ class WorkoutLifecycleManager {
             // Update UI to show active session
             this.uiStateManager.updateSessionState(true, this.sessionService.getCurrentSession());
 
-            // Only start timer for timed sessions (not Quick Log)
-            if (sessionMode !== 'quick_log') {
-                this.timerManager.startSessionTimer(this.sessionService.getCurrentSession());
-            }
+            // Start elapsed timer
+            this.timerManager.startSessionTimer(this.sessionService.getCurrentSession());
 
-            // Show floating controls for resumed session (mode-aware)
-            this.showFloatingControls(true, sessionMode);
+            // Show bottom bar and timer
+            this.showFloatingControls(true);
 
-            // Show bottom action bar
-            this.showBottomBar(true);
-
-            // ✅ FIX: Persist session to update lastUpdated timestamp
-            // This prevents offcanvas from showing on immediate subsequent refresh
+            // Persist session to update lastUpdated timestamp
             this.sessionService.persistSession();
-            console.log('💾 Session timestamp updated after resume');
 
-            // Show success message (mode-aware)
+            // Show resume message
             if (window.showAlert) {
-                if (sessionMode === 'quick_log') {
-                    window.showAlert('Quick Log session resumed!', 'success');
-                } else {
-                    // Calculate elapsed time for timed sessions
-                    const elapsedMinutes = Math.floor(
-                        (Date.now() - this.sessionService.currentSession.startedAt.getTime()) / (1000 * 60)
-                    );
-                    window.showAlert(
-                        `Workout resumed! You've been working out for ${elapsedMinutes} minutes.`,
-                        'success'
-                    );
-                }
+                const elapsedMinutes = Math.floor(
+                    (Date.now() - this.sessionService.currentSession.startedAt.getTime()) / (1000 * 60)
+                );
+                window.showAlert(
+                    `Workout resumed! You've been working out for ${elapsedMinutes} minutes.`,
+                    'success'
+                );
             }
 
             console.log('✅ Session resumed successfully');
@@ -750,44 +678,22 @@ class WorkoutLifecycleManager {
     }
     
     /**
-     * Show/hide floating controls
-     * Uses WorkoutModeFabManager for state transitions
-     * @param {boolean} sessionActive - True to show timer+end, false to show FAB
-     * @param {string} sessionMode - Session mode: 'timed' or 'quick_log'
+     * Show/hide session UI controls (bottom bar + header timer)
+     * @param {boolean} sessionActive - True to show, false to hide
      */
-    showFloatingControls(sessionActive, sessionMode = 'timed') {
-        console.log('🎮 showFloatingControls called:', { sessionActive, sessionMode });
-
-        const fabManager = window.workoutModeFabManager;
-        if (!fabManager) {
-            console.warn('⚠️ WorkoutModeFabManager not available');
-            return;
-        }
+    showFloatingControls(sessionActive) {
+        const bottomBar = document.getElementById('workoutModeBottomBar');
+        const timerDisplay = document.getElementById('sessionTimerDisplay');
+        const inlineAddBtns = document.getElementById('workoutModeAddButtons');
 
         if (sessionActive) {
-            if (sessionMode === 'quick_log') {
-                fabManager.updateState('quicklog-active');
-            } else {
-                fabManager.updateState('timed-active');
-                // Start timer display
-                const session = this.sessionService.getCurrentSession();
-                if (session?.startedAt) {
-                    fabManager.startTimer(session.startedAt);
-                }
-            }
+            if (bottomBar) bottomBar.style.display = '';
+            if (timerDisplay) timerDisplay.style.display = '';
+            if (inlineAddBtns) inlineAddBtns.style.display = 'none';
         } else {
-            fabManager.stopTimer();
-            fabManager.updateState('pre-session');
+            if (bottomBar) bottomBar.style.display = 'none';
+            if (timerDisplay) timerDisplay.style.display = 'none';
         }
-    }
-    
-    /**
-     * Show/hide bottom action bar
-     * Now a no-op — workout mode uses floating FABs instead
-     * @param {boolean} show - True to show, false to hide
-     */
-    showBottomBar(show) {
-        // No-op: workout mode no longer uses a bottom action bar
     }
 }
 

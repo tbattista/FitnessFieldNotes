@@ -15,6 +15,10 @@ class ProgramCard {
             showDifficulty: true,
             showDuration: true,
 
+            // Active program state
+            isActiveProgram: false,
+            onSetActive: null,
+
             // Dropdown menu actions
             dropdownActions: ['edit', 'delete'],
 
@@ -48,6 +52,9 @@ class ProgramCard {
 
         // Build card classes
         let cardClass = 'card program-card h-100';
+        if (this.config.isActiveProgram) {
+            cardClass += ' active-program';
+        }
         if (this.config.deleteMode) {
             cardClass += ' delete-mode';
             if (this.config.isSelected) {
@@ -83,6 +90,17 @@ class ProgramCard {
 
         const dropdownActions = this.config.dropdownActions || ['edit', 'delete'];
         let menuItems = '';
+
+        // Active program toggle (always shown if callback exists)
+        if (this.config.onSetActive) {
+            const isActive = this.config.isActiveProgram;
+            menuItems += `
+                <li>
+                    <a class="dropdown-item" href="javascript:void(0);" data-action="toggle-active">
+                        <i class="bx ${isActive ? 'bxs-pin' : 'bx-pin'} me-2"></i>${isActive ? 'Remove as Active' : 'Set as Active Program'}
+                    </a>
+                </li>`;
+        }
 
         if (dropdownActions.includes('edit')) {
             menuItems += `
@@ -175,10 +193,14 @@ class ProgramCard {
             durationBadge = `<span class="badge bg-label-secondary badge-sm">${this.program.duration_weeks}w</span>`;
         }
 
+        const activeBadge = this.config.isActiveProgram
+            ? '<span class="badge bg-primary badge-sm ms-1"><i class="bx bxs-pin me-1" style="font-size:0.65rem"></i>Active</span>'
+            : '';
+
         return `
             <div class="mb-2" style="padding-right: 2rem; ${this.config.deleteMode ? 'padding-left: 2rem;' : ''}">
                 <h6 class="card-title mb-1 text-truncate" title="${this._escapeHtml(name)}">
-                    ${this._escapeHtml(name)}
+                    ${this._escapeHtml(name)}${activeBadge}
                 </h6>
                 <div class="d-flex gap-1 flex-wrap">
                     ${difficultyBadge}
@@ -320,6 +342,11 @@ class ProgramCard {
                     case 'generate':
                         if (this.config.onGenerate) {
                             this.config.onGenerate(this.program);
+                        }
+                        break;
+                    case 'toggle-active':
+                        if (this.config.onSetActive) {
+                            this.config.onSetActive(this.program, !this.config.isActiveProgram);
                         }
                         break;
                 }

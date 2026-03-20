@@ -36,12 +36,6 @@
     line-height: 1.3;
 }
 
-.desktop-primary-cta {
-    font-weight: 600;
-    padding: 0.5rem 1.5rem;
-    font-size: 0.9375rem;
-}
-
 /* ============================================
    CARD HEADER SEPARATOR
    ============================================ */
@@ -111,36 +105,6 @@
 /* ============================================
    QUICK ACTIONS CARD (DESKTOP)
    ============================================ */
-.desktop-quick-actions .desktop-quick-action-item {
-    text-decoration: none;
-    color: var(--bs-body-color);
-    border-bottom: 1px solid var(--bs-border-color);
-    transition: background-color 0.15s ease;
-    border-radius: 0;
-}
-
-.desktop-quick-actions .desktop-quick-action-item:last-child {
-    border-bottom: none;
-}
-
-.desktop-quick-actions .desktop-quick-action-item:hover {
-    background: rgba(var(--bs-primary-rgb), 0.04);
-    border-radius: var(--bs-border-radius);
-}
-
-.desktop-quick-actions .desktop-quick-action-item .bg-label-primary,
-.desktop-quick-actions .desktop-quick-action-item .bg-label-info,
-.desktop-quick-actions .desktop-quick-action-item .bg-label-success,
-.desktop-quick-actions .desktop-quick-action-item .bg-label-warning {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 1.1rem;
-}
-
 /* ============================================
    DESKTOP LANDING (UNAUTHENTICATED)
    ============================================ */
@@ -187,11 +151,6 @@
         font-size: 1.25rem;
     }
 
-    .desktop-primary-cta {
-        padding: 0.4rem 1rem;
-        font-size: 0.875rem;
-    }
-
     .desktop-weekly-card .activity-block {
         width: 10px;
         height: 10px;
@@ -229,8 +188,7 @@
    DARK MODE
    ============================================ */
 [data-bs-theme="dark"] .desktop-favorites-list .desktop-favorite-item:hover,
-[data-bs-theme="dark"] .desktop-recent-activity-list .desktop-activity-item:hover,
-[data-bs-theme="dark"] .desktop-quick-actions .desktop-quick-action-item:hover {
+[data-bs-theme="dark"] .desktop-recent-activity-list .desktop-activity-item:hover {
     background: rgba(255, 255, 255, 0.04);
 }
 

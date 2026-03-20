@@ -4,7 +4,8 @@ Handles user profile operations including account deletion
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Dict, Any
+from pydantic import BaseModel
+from typing import Dict, Any, Optional
 import logging
 
 from ..middleware.auth import get_current_user
@@ -13,6 +14,10 @@ from ..services.firebase_service import firebase_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/user", tags=["user"])
+
+
+class ActiveProgramRequest(BaseModel):
+    program_id: str
 
 
 @router.get("/profile")
@@ -180,4 +185,95 @@ async def update_user_profile(
         raise
     except Exception as e:
         logger.error(f"❌ Error updating user profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/active-program")
+async def get_active_program(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Get the user's active (pinned) program ID"""
+    try:
+        user_id = current_user.get('uid')
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID not found")
+
+        if not firebase_service.is_available():
+            return {"program_id": None}
+
+        db = firebase_service.get_firestore()
+        if not db:
+            return {"program_id": None}
+
+        user_doc = db.collection('users').document(user_id).get()
+        if user_doc.exists:
+            data = user_doc.to_dict()
+            return {"program_id": data.get('active_program_id')}
+
+        return {"program_id": None}
+
+    except Exception as e:
+        logger.error(f"❌ Error getting active program: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/active-program")
+async def set_active_program(
+    request: ActiveProgramRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Set a program as the user's active (pinned) program"""
+    try:
+        user_id = current_user.get('uid')
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID not found")
+
+        if not firebase_service.is_available():
+            raise HTTPException(status_code=503, detail="Firebase not available")
+
+        db = firebase_service.get_firestore()
+        if not db:
+            raise HTTPException(status_code=503, detail="Firestore not available")
+
+        user_ref = db.collection('users').document(user_id)
+        user_ref.set({'active_program_id': request.program_id}, merge=True)
+
+        logger.info(f"✅ Set active program {request.program_id} for user {user_id}")
+        return {"success": True, "program_id": request.program_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error setting active program: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/active-program")
+async def clear_active_program(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Clear the user's active program"""
+    try:
+        user_id = current_user.get('uid')
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID not found")
+
+        if not firebase_service.is_available():
+            return {"success": True}
+
+        db = firebase_service.get_firestore()
+        if not db:
+            return {"success": True}
+
+        from google.cloud.firestore_v1 import DELETE_FIELD
+        user_ref = db.collection('users').document(user_id)
+        user_ref.update({'active_program_id': DELETE_FIELD})
+
+        logger.info(f"✅ Cleared active program for user {user_id}")
+        return {"success": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error clearing active program: {e}")
         raise HTTPException(status_code=500, detail=str(e))

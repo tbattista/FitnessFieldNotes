@@ -1,0 +1,126 @@
+/**
+ * Workouts Tab Bar
+ * Page-routing tabs for My Workouts / Programs / Explore
+ * Uses Bootstrap nav-tabs as base with brand color overrides
+ */
+
+/* ============================================
+   TAB BAR CONTAINER
+   ============================================ */
+
+.workouts-tab-bar {
+    margin-bottom: 1rem;
+}
+
+.workouts-tab-bar .nav-tabs {
+    border-bottom: 2px solid var(--bs-border-color);
+    gap: 0;
+}
+
+/* ============================================
+   TAB ITEMS
+   ============================================ */
+
+.workouts-tab-bar .nav-link {
+    color: var(--gs-gray-500);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.625rem 1rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    border-radius: 0;
+    transition: color var(--gs-duration-fast, 150ms) ease,
+                border-color var(--gs-duration-fast, 150ms) ease;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.workouts-tab-bar .nav-link i {
+    font-size: 1rem;
+    vertical-align: -1px;
+}
+
+/* ============================================
+   HOVER STATE
+   ============================================ */
+
+.workouts-tab-bar .nav-link:hover {
+    color: var(--gs-gray-700);
+    border-bottom-color: var(--gs-gray-300);
+    background: transparent;
+}
+
+/* ============================================
+   ACTIVE STATE
+   ============================================ */
+
+.workouts-tab-bar .nav-link.active {
+    color: var(--gs-primary);
+    border-bottom-color: var(--gs-primary);
+    background: transparent;
+    font-weight: 600;
+}
+
+.workouts-tab-bar .nav-link.active:hover {
+    color: var(--gs-primary);
+    border-bottom-color: var(--gs-primary);
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
+[data-bs-theme="dark"] .workouts-tab-bar .nav-tabs {
+    border-bottom-color: var(--gs-gray-700);
+}
+
+[data-bs-theme="dark"] .workouts-tab-bar .nav-link {
+    color: var(--gs-gray-500);
+}
+
+[data-bs-theme="dark"] .workouts-tab-bar .nav-link:hover {
+    color: var(--gs-gray-300);
+    border-bottom-color: var(--gs-gray-500);
+}
+
+[data-bs-theme="dark"] .workouts-tab-bar .nav-link.active {
+    color: var(--gs-primary);
+    border-bottom-color: var(--gs-primary);
+}
+
+/* ============================================
+   MOBILE: EQUAL-WIDTH TABS
+   ============================================ */
+
+@media (max-width: 575.98px) {
+    .workouts-tab-bar .nav-tabs {
+        justify-content: stretch;
+    }
+
+    .workouts-tab-bar .nav-item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .workouts-tab-bar .nav-link {
+        padding: 0.5rem 0.5rem;
+        font-size: 0.8125rem;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+.workouts-tab-bar .nav-link:focus-visible {
+    outline: 2px solid var(--gs-primary);
+    outline-offset: -2px;
+    border-radius: var(--gs-radius-sm, 4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .workouts-tab-bar .nav-link {
+        transition: none;
+    }
+}

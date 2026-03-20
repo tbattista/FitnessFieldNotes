@@ -44,6 +44,8 @@
     
     <!-- Navbar CSS -->
     <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
+    <link rel="stylesheet" href="/static/assets/css/workouts-tab-bar.css" />
     
     <!-- Component CSS (includes all component styles) -->
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
@@ -121,11 +123,14 @@
             <!-- Content -->
             <div class="container-xxl flex-grow-1 container-p-y">
 
+              <!-- Workouts Tab Bar -->
+              <div id="workouts-tab-bar"></div>
+
               <!-- Page Header -->
               <div class="mb-3">
                 <h5 class="mb-1">
-                  <i class="bx bx-library me-1"></i>
-                  Workout Library
+                  <i class="bx bx-dumbbell me-1"></i>
+                  My Workouts
                 </h5>
                 <p class="text-muted small mb-0">Browse and manage your <span id="totalWorkoutsCount">0</span> workout templates</p>
               </div>
@@ -323,11 +328,21 @@
 
     <!-- Load templates FIRST (before main.js) -->
     <script src="/static/assets/js/components/menu-template.js"></script>
+    <script src="/static/assets/js/components/workouts-tab-bar-template.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var el = document.getElementById('workouts-tab-bar');
+        if (el && window.getWorkoutsTabBarHTML) el.innerHTML = getWorkoutsTabBarHTML('my-workouts');
+      });
+    </script>
     <script src="/static/assets/js/components/navbar-template.js"></script>
     <script src="/static/assets/js/components/auth-modals-template.js"></script>
     
     <!-- Inject components SECOND (before main.js) -->
     <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/universal-log-service.js"></script>
+    <script type="module" src="/static/assets/js/components/offcanvas/offcanvas-universal-logger.js"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
     <script src="/static/assets/js/services/navbar-injection-service.js"></script>
     
     <!-- Feedback System (Global) -->

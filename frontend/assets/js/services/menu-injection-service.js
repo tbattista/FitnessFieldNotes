@@ -67,7 +67,7 @@ class MenuInjectionService {
         // Dispatch event to notify that menu content is ready
         window.dispatchEvent(new CustomEvent('menuContentInjected'));
         console.log('✅ Menu content injected, initialization event dispatched');
-        
+
         // Re-attach menu toggle listeners
         // Small delay to ensure Menu class has initialized
         setTimeout(() => {
@@ -76,7 +76,7 @@ class MenuInjectionService {
                 // Remove old listeners by cloning
                 const newItem = item.cloneNode(true);
                 item.parentNode.replaceChild(newItem, item);
-                
+
                 // Add fresh listener with mobile support
                 newItem.addEventListener('click', event => {
                     event.preventDefault();
@@ -107,53 +107,51 @@ class MenuInjectionService {
                     }
                 });
             });
-            
+
             console.log('✅ Menu toggle listeners re-attached');
-
-            // Update session menu visibility after injection
-            this.updateSessionMenuVisibility();
-
-            // Listen for session state changes
-            window.addEventListener('sessionStateChanged', () => {
-                this.updateSessionMenuVisibility();
-            });
-
-            // Listen for storage changes (cross-tab support)
-            window.addEventListener('storage', (e) => {
-                if (e.key === 'ffn_active_workout_session') {
-                    this.updateSessionMenuVisibility();
-                }
-            });
         }, 150); // Slightly longer delay to ensure Menu is fully initialized
     }
 
 
 
     /**
-     * Inject the menu into the layout-menu container
+     * Inject the sidebar menu and global log FAB
      */
     injectMenu() {
         const menuContainer = document.getElementById('layout-menu');
-        
+
         if (!menuContainer) {
             console.warn('⚠️ Menu container (#layout-menu) not found');
             return;
         }
-        
+
         if (!window.getMenuHTML) {
             console.error('❌ getMenuHTML function not available. Make sure menu-template.js is loaded first.');
             return;
         }
-        
+
         // Determine active page from URL
         const activePage = this.getActivePageFromURL();
-        
-        // Inject menu HTML
+
+        // Inject sidebar menu HTML
         menuContainer.innerHTML = window.getMenuHTML(activePage);
-        
+
+        // Inject global log FAB (skip on workout-mode and workout-builder)
+        if (window.getGlobalLogFabHTML) {
+            const filename = window.location.pathname.split('/').pop() || '';
+            const excludedPages = ['workout-mode', 'workout-builder', 'index'];
+            const isExcluded = excludedPages.some(p => filename.includes(p));
+            if (!isExcluded) {
+                const fabWrapper = document.createElement('div');
+                fabWrapper.innerHTML = window.getGlobalLogFabHTML();
+                const fab = fabWrapper.firstElementChild;
+                if (fab) document.body.appendChild(fab);
+            }
+        }
+
         console.log(`✅ Menu injected with active page: ${activePage}`);
     }
-    
+
     /**
      * Inject modals at the end of the body
      */
@@ -176,72 +174,29 @@ class MenuInjectionService {
     }
     
     /**
-     * Check if there's an active session in localStorage
-     * @returns {boolean} True if active session exists
-     */
-    hasPersistedSession() {
-        try {
-            const stored = localStorage.getItem('ffn_active_workout_session');
-            if (!stored) return false;
-
-            const session = JSON.parse(stored);
-            return session.status === 'in_progress' && session.sessionId;
-        } catch {
-            return false;
-        }
-    }
-
-    /**
-     * Check if user is currently on the workout-mode page
-     * @returns {boolean} True if on workout-mode.html
-     */
-    isOnWorkoutModePage() {
-        const path = window.location.pathname;
-        const filename = path.split('/').pop() || '';
-        return filename.includes('workout-mode');
-    }
-
-    /**
-     * Update Session menu item visibility based on session state
-     * Shows when: on workout-mode page OR has persisted in_progress session
-     */
-    updateSessionMenuVisibility() {
-        const sessionMenuItem = document.getElementById('sessionMenuItem');
-        if (!sessionMenuItem) return;
-
-        const onWorkoutPage = this.isOnWorkoutModePage();
-        const hasPersistedSession = this.hasPersistedSession();
-        const shouldShow = onWorkoutPage || hasPersistedSession;
-
-        sessionMenuItem.style.display = shouldShow ? '' : 'none';
-        console.log(`📍 Session menu visibility: ${shouldShow ? 'visible' : 'hidden'} (onPage: ${onWorkoutPage}, persisted: ${hasPersistedSession})`);
-    }
-
-    /**
      * Determine the active page from the current URL
+     * Maps all pages to one of: home, workout-database, workout-history, profile
+     * Sub-pages map to their parent nav item
      * @returns {string} The active page identifier
      */
     getActivePageFromURL() {
         const path = window.location.pathname;
-
-        // Extract filename from path
         const filename = path.split('/').pop() || 'index.html';
 
-        // Map filenames to page identifiers
-        // More specific patterns MUST come before general ones
-        if (filename.includes('dashboard')) return 'dashboard';
-        if (filename.includes('programs')) return 'programs';
-        if (filename.includes('workout-mode')) return 'workout-mode';
-        if (filename.includes('activity-log')) return 'activity-log';
+        // Primary nav pages
         if (filename.includes('workout-history')) return 'workout-history';
         if (filename.includes('workout-database')) return 'workout-database';
-        if (filename.includes('workout-builder')) return 'workouts';
-        if (filename.includes('public-workouts')) return 'public-workouts';
-        if (filename.includes('exercise-database')) return 'exercises';
-        if (filename.includes('settings')) return 'settings';
+        if (filename.includes('profile')) return 'profile';
+
+        // Sub-pages map to "Workouts" parent
+        if (filename.includes('workout-builder')) return 'workout-database';
+        if (filename.includes('programs')) return 'workout-database';
+        if (filename.includes('public-workouts')) return 'workout-database';
+        if (filename.includes('exercise-database')) return 'workout-database';
+
+        // Everything else maps to Home
         if (filename.includes('index') || filename === '') return 'home';
 
-        // Default to home
         return 'home';
     }
 }

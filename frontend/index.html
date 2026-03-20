@@ -94,6 +94,7 @@
     
     <!-- Navbar CSS -->
     <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
     
     <!-- Landing Page CSS -->
     <link rel="stylesheet" href="/static/assets/css/landing-page.css" />
@@ -197,10 +198,10 @@
                           </p>
                           <div class="lp-hero-buttons">
                             <a href="/public-workouts.html" class="lp-btn lp-btn-primary lp-btn-lg">
-                              <i class="bx bx-play"></i> Browse Workouts
+                              Start Logging — It's Free
                             </a>
-                            <a href="#features" class="lp-btn lp-btn-ghost lp-btn-lg">
-                              See How It Works
+                            <a href="#how-it-works" class="lp-btn lp-btn-ghost lp-btn-lg">
+                              See a Demo
                             </a>
                           </div>
                         </div>
@@ -243,8 +244,49 @@
                         </div>
                         <div class="lp-stat-item">
                           <span class="lp-stat-number">No</span>
-                          <span class="lp-stat-label">Account Needed</span>
+                          <span class="lp-stat-label">Credit Card Required</span>
                         </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <!-- AI IMPORT SHOWCASE -->
+                  <section class="lp-section lp-section-subtle" id="ai-import">
+                    <div class="lp-container">
+                      <div class="lp-section-heading" data-reveal>
+                        <h2>Snap a photo. Your workout is logged.</h2>
+                        <p>Take a picture of your gym's whiteboard, your fitness watch, or just describe what you did. AI turns it into a structured workout log instantly.</p>
+                      </div>
+                      <div class="text-center" data-reveal data-reveal-delay="200">
+                        <div class="d-flex justify-content-center gap-4 flex-wrap mb-4">
+                          <div class="text-center">
+                            <div class="lp-feature-icon lp-feature-icon-amber mx-auto mb-2">
+                              <i class="bx bx-camera"></i>
+                            </div>
+                            <small class="text-muted">Photo or screenshot</small>
+                          </div>
+                          <div class="d-flex align-items-center text-muted">
+                            <i class="bx bx-right-arrow-alt" style="font-size: 1.5rem;"></i>
+                          </div>
+                          <div class="text-center">
+                            <div class="lp-feature-icon lp-feature-icon-sage mx-auto mb-2">
+                              <i class="bx bx-brain"></i>
+                            </div>
+                            <small class="text-muted">AI parses it</small>
+                          </div>
+                          <div class="d-flex align-items-center text-muted">
+                            <i class="bx bx-right-arrow-alt" style="font-size: 1.5rem;"></i>
+                          </div>
+                          <div class="text-center">
+                            <div class="lp-feature-icon lp-feature-icon-clay mx-auto mb-2">
+                              <i class="bx bx-check-circle"></i>
+                            </div>
+                            <small class="text-muted">Structured workout</small>
+                          </div>
+                        </div>
+                        <a href="/activity-log.html?action=quicklog" class="lp-btn lp-btn-primary">
+                          Try It Now
+                        </a>
                       </div>
                     </div>
                   </section>
@@ -258,52 +300,28 @@
                       </div>
 
                       <div class="lp-feature-grid">
-                        <a href="/workout-builder.html" class="lp-feature-card" data-reveal data-reveal-delay="100">
+                        <a href="/workout-mode.html" class="lp-feature-card" data-reveal data-reveal-delay="100">
                           <div class="lp-feature-icon lp-feature-icon-clay">
-                            <i class="bx bx-edit-alt"></i>
-                          </div>
-                          <h3>Workout Builder</h3>
-                          <p>Create custom workout templates with exercises, sets, reps, and rest times. Flexible format — numbers, ranges, or AMRAP.</p>
-                        </a>
-
-                        <a href="/workout-mode.html" class="lp-feature-card" data-reveal data-reveal-delay="200">
-                          <div class="lp-feature-icon lp-feature-icon-sage">
                             <i class="bx bx-timer"></i>
                           </div>
-                          <h3>Live Session Tracking</h3>
-                          <p>Track every rep in real time with built-in rest timers, weight progression indicators, and auto-complete sets.</p>
+                          <h3>Log workouts fast</h3>
+                          <p>Track every rep in real time, quick-log with AI, or snap a photo. Built-in rest timers and weight progression keep you moving.</p>
                         </a>
 
-                        <a href="/workout-mode.html" class="lp-feature-card" data-reveal data-reveal-delay="300">
-                          <div class="lp-feature-icon lp-feature-icon-amber">
-                            <i class="bx bx-brain"></i>
-                          </div>
-                          <h3>AI-Powered Logging</h3>
-                          <p>Snap a photo of your gym whiteboard or watch screen. AI turns it into a structured workout log instantly.</p>
-                        </a>
-
-                        <a href="/exercise-database.html" class="lp-feature-card" data-reveal data-reveal-delay="100">
-                          <div class="lp-feature-icon lp-feature-icon-slate">
-                            <i class="bx bx-search-alt"></i>
-                          </div>
-                          <h3>Exercise Database</h3>
-                          <p>Browse 1,600+ exercises filterable by muscle group, equipment, and difficulty. Or create your own custom exercises.</p>
-                        </a>
-
-                        <a href="/programs.html" class="lp-feature-card" data-reveal data-reveal-delay="200">
-                          <div class="lp-feature-icon lp-feature-icon-clay">
-                            <i class="bx bx-folder"></i>
-                          </div>
-                          <h3>Programs</h3>
-                          <p>Organize workouts into structured training programs. Follow a plan, track completion, and stay consistent.</p>
-                        </a>
-
-                        <a href="/public-workouts.html" class="lp-feature-card" data-reveal data-reveal-delay="300">
+                        <a href="/workout-builder.html" class="lp-feature-card" data-reveal data-reveal-delay="200">
                           <div class="lp-feature-icon lp-feature-icon-sage">
-                            <i class="bx bx-share-alt"></i>
+                            <i class="bx bx-edit-alt"></i>
                           </div>
-                          <h3>Export &amp; Share</h3>
-                          <p>Share workouts as PDF reference sheets, printable 4-week gym logs, social media images, or plain text.</p>
+                          <h3>Build and plan ahead</h3>
+                          <p>Create workout templates, organize them into programs, and browse 1,600+ exercises. Flexible format — numbers, ranges, or AMRAP.</p>
+                        </a>
+
+                        <a href="/workout-history.html" class="lp-feature-card" data-reveal data-reveal-delay="300">
+                          <div class="lp-feature-icon lp-feature-icon-amber">
+                            <i class="bx bx-line-chart"></i>
+                          </div>
+                          <h3>Track your progress</h3>
+                          <p>See your workout history, track streaks, and export sessions as PDFs or shareable images. Your data, your way.</p>
                         </a>
                       </div>
                     </div>
@@ -441,7 +459,7 @@
                       <h2>Start tracking your workouts today</h2>
                       <p>Free forever. No credit card required.</p>
                       <a href="/public-workouts.html" class="lp-btn lp-btn-primary lp-btn-lg">
-                        <i class="bx bx-play"></i> Browse Workouts
+                        Start Logging — It's Free
                       </a>
                       <div class="lp-cta-secondary">
                         Already have an account? <a href="#" onclick="showAuthModal('signin'); return false;">Sign in</a>
@@ -494,95 +512,116 @@
               <!-- Alert Container -->
               <div id="alertContainer"></div>
 
-              <!-- Authenticated User Dashboard (Card-Based Layout) -->
+              <!-- Authenticated User Dashboard -->
               <div id="authenticatedDashboard" style="display: none;">
 
-                <!-- Section 2: Greeting -->
+                <!-- Greeting (always shown) -->
                 <div class="home-greeting-section mb-3">
                   <p class="text-muted mb-0 small" id="homeDate">Thursday, January 29</p>
                   <h4 class="mb-0 fw-bold" id="homeGreeting">Good Evening!</h4>
                 </div>
 
-                <!-- Section 3: Weekly Progress Card -->
-                <div id="weeklyProgressCard" class="card home-weekly-card mb-4">
-                  <div class="card-body py-2 px-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                      <span class="home-weekly-stat" id="weeklyStatText">This Week: 0/7 Activities</span>
-                      <span class="home-streak-badge" id="weeklyStreakBadge">🔥 0 day streak</span>
+                <!-- NEW USER WELCOME (hidden by default, shown when zero sessions) -->
+                <div id="newUserWelcome" style="display: none;">
+                  <div class="new-user-welcome">
+                    <h5 class="fw-bold mb-2">Welcome to your fitness notebook!</h5>
+                    <p class="text-muted mb-4">Let's log your first session. It takes less than a minute.</p>
+                    <div class="new-user-options">
+                      <a href="workout-database.html" class="new-user-option-card">
+                        <i class="bx bx-list-check"></i>
+                        <div>
+                          <div class="fw-semibold">Start a Saved Workout</div>
+                          <small class="text-muted">Pick from your library</small>
+                        </div>
+                        <i class="bx bx-chevron-right ms-auto"></i>
+                      </a>
+                      <a href="workout-mode.html?mode=build" class="new-user-option-card">
+                        <i class="bx bx-edit-alt"></i>
+                        <div>
+                          <div class="fw-semibold">Build As You Go</div>
+                          <small class="text-muted">Add exercises as you work out</small>
+                        </div>
+                        <i class="bx bx-chevron-right ms-auto"></i>
+                      </a>
+                      <button type="button" class="new-user-option-card" onclick="if(window.createUniversalLogger){window.createUniversalLogger().offcanvas?.show()}else{window.location.href='activity-log.html?action=quicklog'}">
+                        <i class="bx bx-camera"></i>
+                        <div>
+                          <div class="fw-semibold">Quick Log / AI Import</div>
+                          <small class="text-muted">Photo, screenshot, or describe it</small>
+                        </div>
+                        <i class="bx bx-chevron-right ms-auto"></i>
+                      </button>
+                      <a href="activity-log.html" class="new-user-option-card">
+                        <i class="bx bx-run"></i>
+                        <div>
+                          <div class="fw-semibold">Log an Activity</div>
+                          <small class="text-muted">Run, bike, row, swim, etc.</small>
+                        </div>
+                        <i class="bx bx-chevron-right ms-auto"></i>
+                      </a>
                     </div>
-                    <div class="progress home-progress-bar mb-2">
-                      <div class="progress-bar" id="weeklyProgressFill" role="progressbar" style="width: 0%"></div>
-                    </div>
-                    <small class="text-muted" id="weeklyProgressText">Let's get started!</small>
-                    <!-- Activity Chart (inside weekly card) -->
-                    <div id="activityChartSection" class="mt-2" style="display: none;">
-                      <div id="activityBlockChart"></div>
-                    </div>
+                    <p class="text-center mt-4 mb-0">
+                      <a href="public-workouts.html" class="text-primary text-decoration-none small">
+                        Or browse community workouts <i class="bx bx-right-arrow-alt"></i>
+                      </a>
+                    </p>
                   </div>
                 </div>
 
-                <!-- Section 4: Action Buttons -->
-                <div class="home-nav-buttons mb-2">
-                  <a href="workout-builder.html" class="btn btn-outline-secondary w-100">
-                    <i class="bx bx-plus me-2"></i>Create New Workout
-                  </a>
-                </div>
+                <!-- RETURNING USER DASHBOARD (hidden by default, shown when has sessions) -->
+                <div id="returningUserDashboard" style="display: none;">
 
-                <div class="d-flex gap-2 mb-4">
-                  <button id="homePrimaryCTA" class="btn btn-primary flex-fill py-3 home-primary-cta" onclick="handlePrimaryCTA()">
-                    Start Training
+                  <!-- Weekly Progress Card (streak at top) -->
+                  <div id="weeklyProgressCard" class="card home-weekly-card mb-4">
+                    <div class="card-body py-2 px-3">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="home-weekly-stat" id="weeklyStatText">Loading...</span>
+                        <span class="home-streak-badge" id="weeklyStreakBadge"></span>
+                      </div>
+                      <div class="progress home-progress-bar mb-2">
+                        <div class="progress-bar" id="weeklyProgressFill" role="progressbar" style="width: 0%"></div>
+                      </div>
+                      <small class="text-muted" id="weeklyProgressText"></small>
+                      <div id="activityChartSection" class="mt-2" style="display: none;">
+                        <div id="activityBlockChart"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- What's Next Card -->
+                  <div id="whatsNextCard" class="mb-4"></div>
+
+                  <!-- Log Session Button -->
+                  <button type="button" class="btn btn-primary w-100 py-3 mb-3 home-log-session-btn" id="homeLogSessionBtn">
+                    <i class="bx bx-plus me-1"></i>Log Session
                   </button>
-                  <button type="button" id="homeQuickLogBtn" class="btn btn-outline-primary flex-fill py-3">
-                    <i class="bx bx-edit me-1"></i>Quick Log
-                  </button>
-                </div>
 
-                <!-- Section 5: Favorites -->
-                <div id="favoritesSection" class="mb-4">
-                  <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="d-flex align-items-center gap-2">
-                      <i class="bx bxs-heart text-danger"></i>
-                      <span class="fw-semibold">Favorites</span>
-                    </span>
-                    <a href="workout-database.html" class="small text-primary text-decoration-none">View All</a>
-                  </div>
-                  <div id="favoritesContent">
-                    <!-- Favorite workout cards rendered by JS -->
-                    <div class="placeholder-glow">
-                      <div class="placeholder col-12 mb-2" style="height: 60px; border-radius: 0.5rem;"></div>
-                      <div class="placeholder col-12 mb-2" style="height: 60px; border-radius: 0.5rem;"></div>
+                  <!-- Favorites (hidden if empty) -->
+                  <div id="favoritesSection" class="mb-4" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <span class="d-flex align-items-center gap-2">
+                        <i class="bx bxs-heart text-danger"></i>
+                        <span class="fw-semibold">Favorites</span>
+                      </span>
+                      <a href="workout-database.html" class="small text-primary text-decoration-none">View All</a>
                     </div>
+                    <div id="favoritesContent"></div>
                   </div>
-                  <div id="favoritesEmpty" class="text-center text-muted py-4" style="display: none;">
-                    <i class="bx bx-heart mb-2" style="font-size: 2rem;"></i>
-                    <p class="mb-0 small">No favorites yet. Heart a workout to add it here!</p>
-                  </div>
-                </div>
 
-                <!-- Section 7: Recent Activity -->
-                <div id="recentActivitySection" class="mb-4">
-                  <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="d-flex align-items-center gap-2">
-                      <i class="bx bx-history"></i>
-                      <span class="fw-semibold">Recent Activity</span>
-                    </span>
-                    <a href="workout-history.html" class="small text-primary text-decoration-none">View All</a>
-                  </div>
-                  <div id="recentActivityContent">
-                    <!-- Recent session cards rendered by JS -->
-                    <div class="placeholder-glow">
-                      <div class="placeholder col-12 mb-2" style="height: 80px; border-radius: 0.5rem;"></div>
-                      <div class="placeholder col-12 mb-2" style="height: 80px; border-radius: 0.5rem;"></div>
+                  <!-- Recent Activity (hidden if empty) -->
+                  <div id="recentActivitySection" class="mb-4" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <span class="d-flex align-items-center gap-2">
+                        <i class="bx bx-history"></i>
+                        <span class="fw-semibold">Recent Activity</span>
+                      </span>
+                      <a href="workout-history.html" class="small text-primary text-decoration-none">View All</a>
                     </div>
+                    <div id="recentActivityContent"></div>
                   </div>
-                </div>
 
-                <!-- Section 8: Bottom Navigation -->
-                <div class="home-bottom-nav">
-                  <a href="workout-history.html?view=calendar" class="btn btn-outline-secondary w-100">
-                    <i class="bx bx-calendar me-2"></i>View Calendar
-                  </a>
                 </div>
+                <!-- / Returning User Dashboard -->
 
               </div>
 
@@ -598,146 +637,149 @@
                 <!-- Desktop Authenticated Dashboard -->
                 <div id="desktopAuthDashboard" style="display: none;">
 
-                  <!-- Top Bar: Greeting left, Actions right -->
+                  <!-- Top Bar: Greeting + Log Button -->
                   <div class="desktop-home-topbar d-flex justify-content-between align-items-center mb-4">
                     <div>
                       <p class="text-muted mb-0 small" id="desktopHomeDate">Thursday, January 29</p>
                       <h3 class="mb-0 fw-bold" id="desktopHomeGreeting">Good Evening!</h3>
                     </div>
-                    <div class="d-flex gap-2">
-                      <a href="workout-builder.html?new=true" class="btn btn-outline-secondary">
-                        <i class="bx bx-plus me-1"></i>New Workout
-                      </a>
-                      <button id="desktopPrimaryCTA" class="btn btn-primary desktop-primary-cta"
-                              onclick="handlePrimaryCTA()">
-                        <i class="bx bx-play me-1"></i>Start Training
-                      </button>
+                    <button type="button" class="btn btn-primary home-log-session-btn" id="desktopHomeLogSessionBtn">
+                      <i class="bx bx-plus me-1"></i>Log Session
+                    </button>
+                  </div>
+
+                  <!-- NEW USER WELCOME (desktop) -->
+                  <div id="desktopNewUserWelcome" style="display: none;">
+                    <div class="new-user-welcome">
+                      <h5 class="fw-bold mb-2">Welcome to your fitness notebook!</h5>
+                      <p class="text-muted mb-4">Let's log your first session. It takes less than a minute.</p>
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <a href="workout-database.html" class="new-user-option-card">
+                            <i class="bx bx-list-check"></i>
+                            <div>
+                              <div class="fw-semibold">Start a Saved Workout</div>
+                              <small class="text-muted">Pick from your library</small>
+                            </div>
+                            <i class="bx bx-chevron-right ms-auto"></i>
+                          </a>
+                        </div>
+                        <div class="col-md-6">
+                          <a href="workout-mode.html?mode=build" class="new-user-option-card">
+                            <i class="bx bx-edit-alt"></i>
+                            <div>
+                              <div class="fw-semibold">Build As You Go</div>
+                              <small class="text-muted">Add exercises as you work out</small>
+                            </div>
+                            <i class="bx bx-chevron-right ms-auto"></i>
+                          </a>
+                        </div>
+                        <div class="col-md-6">
+                          <a href="activity-log.html?action=quicklog" class="new-user-option-card">
+                            <i class="bx bx-camera"></i>
+                            <div>
+                              <div class="fw-semibold">Quick Log / AI Import</div>
+                              <small class="text-muted">Photo, screenshot, or describe it</small>
+                            </div>
+                            <i class="bx bx-chevron-right ms-auto"></i>
+                          </a>
+                        </div>
+                        <div class="col-md-6">
+                          <a href="activity-log.html" class="new-user-option-card">
+                            <i class="bx bx-run"></i>
+                            <div>
+                              <div class="fw-semibold">Log an Activity</div>
+                              <small class="text-muted">Run, bike, row, swim, etc.</small>
+                            </div>
+                            <i class="bx bx-chevron-right ms-auto"></i>
+                          </a>
+                        </div>
+                      </div>
+                      <p class="text-center mt-4 mb-0">
+                        <a href="public-workouts.html" class="text-primary text-decoration-none small">
+                          Or browse community workouts <i class="bx bx-right-arrow-alt"></i>
+                        </a>
+                      </p>
                     </div>
                   </div>
 
-                  <!-- 2-Column Grid -->
-                  <div class="row g-4">
+                  <!-- RETURNING USER DASHBOARD (desktop) -->
+                  <div id="desktopReturningUserDashboard" style="display: none;">
 
-                    <!-- LEFT COLUMN: Progress + Recent Activity -->
-                    <div class="col-lg-8">
+                    <!-- 2-Column Grid -->
+                    <div class="row g-4">
 
-                      <!-- Weekly Progress Card (enhanced) -->
-                      <div id="desktopWeeklyProgressCard" class="card desktop-weekly-card mb-4">
-                        <div class="card-header py-3 px-4">
-                          <div class="d-flex justify-content-between align-items-center">
+                      <!-- LEFT COLUMN: What's Next + Progress + Recent Activity -->
+                      <div class="col-lg-8">
+
+                        <!-- What's Next Card -->
+                        <div id="desktopWhatsNextCard" class="mb-4"></div>
+
+                        <!-- Weekly Progress Card -->
+                        <div id="desktopWeeklyProgressCard" class="card desktop-weekly-card mb-4">
+                          <div class="card-header py-3 px-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                              <h6 class="mb-0 fw-semibold">
+                                <i class="bx bx-bar-chart-alt-2 me-2"></i>Weekly Progress
+                              </h6>
+                              <span class="home-streak-badge" id="desktopWeeklyStreakBadge"></span>
+                            </div>
+                          </div>
+                          <div class="card-body py-3 px-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                              <span class="home-weekly-stat" id="desktopWeeklyStatText">Loading...</span>
+                            </div>
+                            <div class="progress home-progress-bar mb-2" style="height: 10px;">
+                              <div class="progress-bar" id="desktopWeeklyProgressFill"
+                                   role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted" id="desktopWeeklyProgressText"></small>
+                            <div id="desktopActivityChartSection" class="mt-3" style="display: none;">
+                              <div id="desktopActivityBlockChart"></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div id="desktopRecentActivityCard" class="card mb-4" style="display: none;">
+                          <div class="card-header py-3 px-4 d-flex justify-content-between align-items-center">
                             <h6 class="mb-0 fw-semibold">
-                              <i class="bx bx-bar-chart-alt-2 me-2"></i>Weekly Progress
+                              <i class="bx bx-history me-2"></i>Recent Activity
                             </h6>
-                            <span class="home-streak-badge" id="desktopWeeklyStreakBadge"></span>
+                            <a href="workout-history.html" class="small text-primary text-decoration-none">View All</a>
+                          </div>
+                          <div class="card-body p-0">
+                            <div id="desktopRecentActivityContent" class="desktop-recent-activity-list"></div>
                           </div>
                         </div>
-                        <div class="card-body py-3 px-4">
-                          <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="home-weekly-stat" id="desktopWeeklyStatText">This Week: 0/7 Activities</span>
-                          </div>
-                          <div class="progress home-progress-bar mb-2" style="height: 10px;">
-                            <div class="progress-bar" id="desktopWeeklyProgressFill"
-                                 role="progressbar" style="width: 0%"></div>
-                          </div>
-                          <small class="text-muted" id="desktopWeeklyProgressText">Let's get started!</small>
-                          <!-- Activity Chart (wider on desktop) -->
-                          <div id="desktopActivityChartSection" class="mt-3" style="display: none;">
-                            <div id="desktopActivityBlockChart"></div>
-                          </div>
-                        </div>
-                      </div>
 
-                      <!-- Recent Activity (5 sessions on desktop) -->
-                      <div class="card mb-4">
-                        <div class="card-header py-3 px-4 d-flex justify-content-between align-items-center">
-                          <h6 class="mb-0 fw-semibold">
-                            <i class="bx bx-history me-2"></i>Recent Activity
-                          </h6>
-                          <a href="workout-history.html" class="small text-primary text-decoration-none">View All</a>
-                        </div>
-                        <div class="card-body p-0">
-                          <div id="desktopRecentActivityContent" class="desktop-recent-activity-list">
-                            <div class="placeholder-glow p-4">
-                              <div class="placeholder col-12 mb-2" style="height: 60px; border-radius: 0.5rem;"></div>
-                              <div class="placeholder col-12 mb-2" style="height: 60px; border-radius: 0.5rem;"></div>
-                              <div class="placeholder col-12 mb-2" style="height: 60px; border-radius: 0.5rem;"></div>
-                            </div>
+                      </div>
+                      <!-- / LEFT COLUMN -->
+
+                      <!-- RIGHT COLUMN: Favorites -->
+                      <div class="col-lg-4">
+
+                        <!-- Favorites Card (hidden if empty) -->
+                        <div class="card mb-4" id="desktopFavoritesCard" style="display: none;">
+                          <div class="card-header py-3 px-4 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-semibold">
+                              <i class="bx bxs-heart text-danger me-2"></i>Favorites
+                            </h6>
+                            <a href="workout-database.html" class="small text-primary text-decoration-none">View All</a>
+                          </div>
+                          <div class="card-body p-0">
+                            <div id="desktopFavoritesContent" class="desktop-favorites-list"></div>
                           </div>
                         </div>
+
                       </div>
+                      <!-- / RIGHT COLUMN -->
 
                     </div>
-                    <!-- / LEFT COLUMN -->
-
-                    <!-- RIGHT COLUMN: Favorites + Quick Actions -->
-                    <div class="col-lg-4">
-
-                      <!-- Favorites Card -->
-                      <div class="card mb-4">
-                        <div class="card-header py-3 px-4 d-flex justify-content-between align-items-center">
-                          <h6 class="mb-0 fw-semibold">
-                            <i class="bx bxs-heart text-danger me-2"></i>Favorites
-                          </h6>
-                          <a href="workout-database.html" class="small text-primary text-decoration-none">View All</a>
-                        </div>
-                        <div class="card-body p-0">
-                          <div id="desktopFavoritesContent" class="desktop-favorites-list">
-                            <div class="placeholder-glow p-4">
-                              <div class="placeholder col-12 mb-2" style="height: 50px; border-radius: 0.5rem;"></div>
-                              <div class="placeholder col-12 mb-2" style="height: 50px; border-radius: 0.5rem;"></div>
-                            </div>
-                          </div>
-                          <div id="desktopFavoritesEmpty" class="text-center text-muted py-4" style="display: none;">
-                            <i class="bx bx-heart mb-2" style="font-size: 2rem;"></i>
-                            <p class="mb-0 small">No favorites yet. Heart a workout to add it here!</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Quick Actions Card -->
-                      <div class="card desktop-quick-actions mb-4">
-                        <div class="card-header py-3 px-4">
-                          <h6 class="mb-0 fw-semibold">
-                            <i class="bx bx-rocket me-2"></i>Quick Actions
-                          </h6>
-                        </div>
-                        <div class="card-body py-2 px-4">
-                          <a href="workout-builder.html?new=true"
-                             class="desktop-quick-action-item d-flex align-items-center gap-3 py-2">
-                            <div class="bg-label-primary rounded p-2">
-                              <i class="bx bx-plus"></i>
-                            </div>
-                            <span>Create New Workout</span>
-                          </a>
-                          <a href="workout-history.html?view=calendar"
-                             class="desktop-quick-action-item d-flex align-items-center gap-3 py-2">
-                            <div class="bg-label-info rounded p-2">
-                              <i class="bx bx-calendar"></i>
-                            </div>
-                            <span>View Calendar</span>
-                          </a>
-                          <a href="workout-history.html"
-                             class="desktop-quick-action-item d-flex align-items-center gap-3 py-2">
-                            <div class="bg-label-success rounded p-2">
-                              <i class="bx bx-line-chart"></i>
-                            </div>
-                            <span>View History</span>
-                          </a>
-                          <a href="workout-database.html"
-                             class="desktop-quick-action-item d-flex align-items-center gap-3 py-2">
-                            <div class="bg-label-warning rounded p-2">
-                              <i class="bx bx-library"></i>
-                            </div>
-                            <span>Workout Library</span>
-                          </a>
-                        </div>
-                      </div>
-
-                    </div>
-                    <!-- / RIGHT COLUMN -->
+                    <!-- / 2-Column Grid -->
 
                   </div>
-                  <!-- / 2-Column Grid -->
+                  <!-- / Returning User Dashboard -->
 
                 </div>
                 <!-- / Desktop Authenticated Dashboard -->
@@ -769,6 +811,10 @@
           ['authenticatedDashboard', 'desktopAuthDashboard'],
           ['homeDate', 'desktopHomeDate'],
           ['homeGreeting', 'desktopHomeGreeting'],
+          ['newUserWelcome', 'desktopNewUserWelcome'],
+          ['returningUserDashboard', 'desktopReturningUserDashboard'],
+          ['homeLogSessionBtn', 'desktopHomeLogSessionBtn'],
+          ['whatsNextCard', 'desktopWhatsNextCard'],
           ['weeklyStatText', 'desktopWeeklyStatText'],
           ['weeklyStreakBadge', 'desktopWeeklyStreakBadge'],
           ['weeklyProgressFill', 'desktopWeeklyProgressFill'],
@@ -776,8 +822,6 @@
           ['activityChartSection', 'desktopActivityChartSection'],
           ['activityBlockChart', 'desktopActivityBlockChart'],
           ['favoritesContent', 'desktopFavoritesContent'],
-          ['favoritesEmpty', 'desktopFavoritesEmpty'],
-          ['homePrimaryCTA', 'desktopPrimaryCTA'],
           ['recentActivityContent', 'desktopRecentActivityContent'],
           ['weeklyProgressCard', 'desktopWeeklyProgressCard']
         ];
@@ -806,6 +850,7 @@
 
     <!-- Inject components SECOND -->
     <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
     <script src="/static/assets/js/services/navbar-injection-service.js"></script>
     
     <!-- Feedback System (Global) -->
@@ -828,9 +873,6 @@
 
     <!-- UI Helpers -->
     <script src="/static/assets/js/dashboard/ui-helpers.js?v=20251020-04"></script>
-
-    <!-- Menu Navigation System -->
-    <script src="/static/assets/js/menu-navigation.js?v=20251020-04"></script>
 
     <!-- Component Scripts -->
     <script src="/static/assets/js/components/workout-card.js"></script>
@@ -861,20 +903,5 @@
     <!-- Desktop Home Adapter (must load after home-page.js) -->
     <script src="/static/assets/js/pages/desktop-home-adapter.js?v=20260216-02"></script>
 
-    <!-- Quick Log button handler -->
-    <script type="module">
-      document.getElementById('homeQuickLogBtn')?.addEventListener('click', () => {
-        if (typeof window.createUniversalLogger === 'function') {
-          const { offcanvas } = window.createUniversalLogger({
-            onSaveComplete: () => {
-              // Refresh recent activity after logging
-              if (typeof window.loadRecentActivity === 'function') window.loadRecentActivity();
-              if (typeof window.loadWeeklyProgress === 'function') window.loadWeeklyProgress();
-            }
-          });
-          if (offcanvas) offcanvas.show();
-        }
-      });
-    </script>
   </body>
 </html>
