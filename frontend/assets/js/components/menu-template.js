@@ -14,6 +14,7 @@ function getMenuHTML(activePage = 'home') {
     const isHome = activePage === 'home';
     const isWorkouts = activePage === 'workout-database';
     const isHistory = activePage === 'workout-history';
+    const isExercises = activePage === 'exercise-database';
 
     return `
         <nav aria-label="Main navigation">
@@ -40,6 +41,17 @@ function getMenuHTML(activePage = 'home') {
                     <a href="workout-history.html?all=true" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-history"></i>
                         <div class="text-truncate">History</div>
+                    </a>
+                </li>
+
+                <li class="menu-header small text-uppercase">
+                    <span class="menu-header-text">Data Management</span>
+                </li>
+
+                <li class="menu-item ${isExercises ? 'active' : ''}"${isExercises ? ' aria-current="page"' : ''}>
+                    <a href="exercise-database.html" class="menu-link">
+                        <i class="menu-icon tf-icons bx ${isExercises ? 'bxs-data' : 'bx-data'}"></i>
+                        <div class="text-truncate">Exercises</div>
                     </a>
                 </li>
             </ul>

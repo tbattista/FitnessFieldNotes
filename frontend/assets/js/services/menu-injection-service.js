@@ -192,7 +192,8 @@ class MenuInjectionService {
         if (filename.includes('workout-builder')) return 'workout-database';
         if (filename.includes('programs')) return 'workout-database';
         if (filename.includes('public-workouts')) return 'workout-database';
-        if (filename.includes('exercise-database')) return 'workout-database';
+        if (filename.includes('exercise-database')) return 'exercise-database';
+        if (filename.includes('exercise-edit')) return 'exercise-database';
 
         // Everything else maps to Home
         if (filename.includes('index') || filename === '') return 'home';
