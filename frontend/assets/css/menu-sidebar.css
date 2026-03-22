@@ -240,6 +240,8 @@ body.menu-open {
     .layout-menu-fixed .layout-menu,
     .layout-menu-fixed-offcanvas .layout-menu {
         inline-size: 15.625rem; /* 250px */
+        top: 60px; /* Below the desktop navbar */
+        height: calc(100vh - 60px);
     }
 
     .layout-menu-fixed:not(.layout-menu-collapsed) .layout-page,
