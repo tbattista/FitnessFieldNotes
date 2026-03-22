@@ -28,10 +28,10 @@ body.menu-open {
 /* Mobile Menu Overlay */
 .layout-overlay {
     position: fixed;
-    top: 0;
+    top: 56px; /* Below mobile navbar */
     left: 0;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 56px);
     background: rgba(0, 0, 0, 0.5);
     z-index: 1040;
     opacity: 0;
@@ -51,9 +51,9 @@ body.menu-open {
 @media (max-width: 1199.98px) {
     .layout-menu {
         position: fixed;
-        top: 0;
+        top: 56px; /* Below mobile navbar */
         left: 0;
-        height: 100vh;
+        height: calc(100vh - 56px);
         width: 260px;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
@@ -74,6 +74,19 @@ body.menu-open {
 
     .layout-menu .layout-menu-toggle .bx-chevron-left {
         display: block !important;
+    }
+}
+
+/* Tablet (992-1199px): navbar is 60px tall */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .layout-menu {
+        top: 60px;
+        height: calc(100vh - 60px);
+    }
+
+    .layout-overlay {
+        top: 60px;
+        height: calc(100% - 60px);
     }
 }
 

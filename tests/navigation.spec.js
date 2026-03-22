@@ -4,31 +4,33 @@ const { BASE, waitForAppReady } = require('./fixtures');
 
 test.describe('Navigation - Sidebar', () => {
 
-  test('sidebar has exactly 3 nav items: Home, Workouts, History', async ({ page }) => {
+  test('sidebar has 4 nav items: Home, Workouts, History, Exercises', async ({ page }) => {
     await page.goto(`${BASE}/index.html`);
     await waitForAppReady(page);
 
     const menu = page.locator('#layout-menu');
     await expect(menu).toBeAttached();
 
-    // Verify the 3 nav items exist
+    // Verify the 4 nav items exist
     const menuItems = menu.locator('.menu-item');
-    await expect(menuItems).toHaveCount(3);
+    await expect(menuItems).toHaveCount(4);
 
     // Verify correct links within the nav element (not the brand link)
     const nav = menu.locator('nav[aria-label="Main navigation"]');
     await expect(nav.locator('a[href*="index.html"]')).toBeAttached();
     await expect(nav.locator('a[href*="workout-database.html"]')).toBeAttached();
     await expect(nav.locator('a[href*="workout-history.html"]')).toBeAttached();
+    await expect(nav.locator('a[href*="exercise-database.html"]')).toBeAttached();
   });
 
-  test('sidebar has one Navigation section header', async ({ page }) => {
+  test('sidebar has Navigation and Data Management section headers', async ({ page }) => {
     await page.goto(`${BASE}/index.html`);
     await waitForAppReady(page);
 
     const headers = page.locator('#layout-menu .menu-header');
-    await expect(headers).toHaveCount(1);
-    await expect(headers.first()).toHaveText('Navigation');
+    await expect(headers).toHaveCount(2);
+    await expect(headers.nth(0)).toHaveText('Navigation');
+    await expect(headers.nth(1)).toHaveText('Data Management');
   });
 
   test('sidebar wraps menu in semantic nav element', async ({ page }) => {
@@ -67,7 +69,6 @@ test.describe('Navigation - Sidebar', () => {
     await expect(menu.locator('a[href*="workout-builder.html"]')).toHaveCount(0);
     await expect(menu.locator('a[href*="programs.html"]')).toHaveCount(0);
     await expect(menu.locator('a[href*="public-workouts.html"]')).toHaveCount(0);
-    await expect(menu.locator('a[href*="exercise-database.html"]')).toHaveCount(0);
   });
 });
 
@@ -161,8 +162,8 @@ test.describe('Navigation - Workouts Tab Bar', () => {
 
 test.describe('Navigation - Global Log FAB', () => {
 
-  test('log FAB is visible on dashboard', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard.html`);
+  test('log FAB is visible on home page', async ({ page }) => {
+    await page.goto(`${BASE}/index.html`);
     await waitForAppReady(page);
 
     const fab = page.locator('.global-log-fab');
@@ -178,7 +179,7 @@ test.describe('Navigation - Global Log FAB', () => {
   });
 
   test('log FAB is a button that opens bottom sheet', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard.html`);
+    await page.goto(`${BASE}/index.html`);
     await waitForAppReady(page);
 
     const fab = page.locator('.global-log-fab');
@@ -197,7 +198,7 @@ test.describe('Navigation - Global Log FAB', () => {
   });
 
   test('log FAB has accessible label', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard.html`);
+    await page.goto(`${BASE}/index.html`);
     await waitForAppReady(page);
 
     const fab = page.locator('.global-log-fab');

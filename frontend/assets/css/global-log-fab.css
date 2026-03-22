@@ -37,6 +37,43 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+/* Label — hidden by default, shown on home page */
+.global-log-fab-label {
+    display: none;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+/* ============================================
+   HOME PAGE: FULL-WIDTH PILL
+   ============================================ */
+
+.global-log-fab.is-home {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    border-radius: 50px;
+    gap: 4px;
+    font-size: 20px;
+    height: 52px;
+}
+
+.global-log-fab.is-home .global-log-fab-label {
+    display: inline;
+}
+
+@media (min-width: 1200px) {
+    .global-log-fab.is-home {
+        left: auto;
+        width: auto;
+        max-width: 220px;
+        right: 24px;
+    }
+}
+
 /* Rotate + to × when bottom sheet is open */
 .global-log-fab i {
     transition: transform var(--gs-duration-fast, 150ms) ease;
@@ -44,6 +81,11 @@
 
 .global-log-fab.is-open i {
     transform: rotate(45deg);
+}
+
+/* Hide label when sheet is open (show × only) */
+.global-log-fab.is-open .global-log-fab-label {
+    display: none;
 }
 
 /* ============================================

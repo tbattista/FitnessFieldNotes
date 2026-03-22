@@ -59,16 +59,6 @@
 }
 
 /* ============================================
-   LOG SESSION BUTTON (home page primary CTA)
-   ============================================ */
-.home-log-session-btn {
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 0.75rem;
-  letter-spacing: 0.01em;
-}
-
-/* ============================================
    WHAT'S NEXT CARD
    ============================================ */
 .whats-next-card {
