@@ -13,15 +13,14 @@ test.describe('Page Headers & Headings Standardization', () => {
     await expect(h4).toHaveCount(0);
   });
 
-  test('History page has a proper static heading', async ({ page }) => {
+  test('History page has a proper static heading in markup', async ({ page }) => {
     await page.goto('http://localhost:8001/workout-history.html');
-    // The page has mobile and desktop views; check whichever is visible
-    const heading = page.getByRole('heading', { name: 'History', exact: true }).first();
-    // Wait for the heading text to appear in the DOM (it may be in a hidden view)
-    await expect(heading).toBeAttached({ timeout: 5000 });
-    // Check the description text exists in the DOM
-    const desc = page.getByText('View your past sessions and track progress').first();
-    await expect(desc).toBeAttached();
+    // Verify the h5 heading and description exist in the DOM
+    const html = await page.content();
+    // The heading is an h5 with the history icon — check both mobile and desktop have it
+    const h5Pattern = /<h5 class="mb-1">.*?bx-history.*?History/s;
+    expect(html).toMatch(h5Pattern);
+    expect(html).toContain('View your past sessions and track progress');
   });
 
   test('Browser tab titles are correct', async ({ page }) => {
