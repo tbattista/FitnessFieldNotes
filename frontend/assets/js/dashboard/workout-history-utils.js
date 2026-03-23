@@ -60,17 +60,18 @@ function getThisMonthSessionCount() {
 function renderWorkoutInfo() {
   const isAllMode = window.ffn.workoutHistory.isAllMode;
 
+  // Subheader containers (hidden by default)
+  const subheader = document.getElementById('workoutHistorySubheader');
+  const desktopSubheader = document.getElementById('desktopWorkoutHistorySubheader');
+
   if (isAllMode) {
-    // All Sessions mode - show generic title
-    document.getElementById('workoutName').textContent = 'All Workout History';
-    const descEl = document.getElementById('workoutDescription');
-    if (descEl) {
-      descEl.textContent = 'View all your completed workouts';
-    }
+    // All Sessions mode - static heading is sufficient, hide subheader
+    if (subheader) subheader.style.display = 'none';
+    if (desktopSubheader) desktopSubheader.style.display = 'none';
     return;
   }
 
-  // Single workout mode - show workout info
+  // Single workout mode - show workout info in subheader
   const info = window.ffn.workoutHistory.workoutInfo;
   if (info) {
     document.getElementById('workoutName').textContent = info.name;
@@ -78,6 +79,8 @@ function renderWorkoutInfo() {
     if (descEl) {
       descEl.textContent = info.description || '';
     }
+    if (subheader) subheader.style.display = '';
+    if (desktopSubheader) desktopSubheader.style.display = '';
   }
 }
 
@@ -265,10 +268,6 @@ function showError(message) {
  */
 function showEmptyState() {
   hideLoading();
-  const nameEl = document.getElementById('workoutName');
-  if (nameEl && nameEl.textContent === 'Loading...') {
-    nameEl.textContent = 'Workout History';
-  }
   document.getElementById('historyEmptyState').style.display = 'block';
   document.getElementById('historyContent').style.display = 'none';
 }

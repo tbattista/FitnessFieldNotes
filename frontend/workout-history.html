@@ -127,11 +127,15 @@
               <div data-view="mobile">
 
                 <!-- Page Header -->
-                <div class="mb-4">
-                  <h4 class="mb-2" id="workoutHistoryTitle">
-                    <span id="workoutName">Workout History</span>
-                  </h4>
-                  <p class="text-muted mb-0" id="workoutDescription"></p>
+                <div class="mb-3">
+                  <h5 class="mb-1"><i class="bx bx-history me-1"></i>History</h5>
+                  <p class="text-muted small mb-0">View your past sessions and track progress</p>
+                </div>
+                <div class="mb-4" id="workoutHistorySubheader" style="display: none;">
+                  <h6 class="mb-1" id="workoutHistoryTitle">
+                    <span id="workoutName"></span>
+                  </h6>
+                  <p class="text-muted small mb-0" id="workoutDescription"></p>
                 </div>
 
                 <!-- Loading State -->
@@ -284,16 +288,20 @@
                   <p class="text-muted">Complete your first session to see it here</p>
                 </div>
 
+                <!-- Page Header (always visible on desktop) -->
+                <div class="mb-3">
+                  <h5 class="mb-1"><i class="bx bx-history me-1"></i>History</h5>
+                  <p class="text-muted small mb-0">View your past sessions and track progress</p>
+                </div>
+                <div class="mb-4" id="desktopWorkoutHistorySubheader" style="display: none;">
+                  <h6 class="mb-1">
+                    <span id="desktopWorkoutName"></span>
+                  </h6>
+                  <p class="text-muted small mb-0" id="desktopWorkoutDescription"></p>
+                </div>
+
                 <!-- Desktop History Content -->
                 <div id="desktopHistoryContent" style="display: none;">
-
-                  <!-- Page Header -->
-                  <div class="mb-4">
-                    <h4 class="mb-1">
-                      <span id="desktopWorkoutName">Workout History</span>
-                    </h4>
-                    <p class="text-muted mb-0" id="desktopWorkoutDescription"></p>
-                  </div>
 
                   <!-- Suppress mobile tabs on desktop -->
                   <div id="desktopHistoryTabs" style="display: none;"></div>
