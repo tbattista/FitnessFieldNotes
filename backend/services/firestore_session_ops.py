@@ -3,6 +3,7 @@ Firestore Workout Session & Exercise History Operations
 Mixin providing session lifecycle, exercise tracking, and history management
 """
 
+import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
@@ -201,10 +202,11 @@ class FirestoreSessionOps:
             # Get completed session
             completed_session = await self.get_workout_session(user_id, session_id)
 
-            # Update exercise histories
+            # Update exercise histories in the background to avoid timeout
             if completed_session:
-                await self._update_exercise_histories_batch(user_id, completed_session)
-                await self._auto_update_personal_records(user_id, completed_session)
+                asyncio.create_task(
+                    self._update_histories_background(user_id, session_id, completed_session)
+                )
 
             logger.info(f"Completed workout session {session_id} for user {user_id}")
             return completed_session
@@ -212,6 +214,15 @@ class FirestoreSessionOps:
         except Exception as e:
             logger.error(f"Failed to complete workout session: {str(e)}")
             return None
+
+    async def _update_histories_background(self, user_id: str, session_id: str, completed_session) -> None:
+        """Run exercise history and personal record updates in the background."""
+        try:
+            await self._update_exercise_histories_batch(user_id, completed_session)
+            await self._auto_update_personal_records(user_id, completed_session)
+            logger.info(f"Background history updates completed for session {session_id}")
+        except Exception as e:
+            logger.error(f"Background history update failed for session {session_id}: {str(e)}")
 
     async def create_and_complete_workout_session(self, user_id: str, request) -> Optional[Any]:
         """
@@ -275,9 +286,10 @@ class FirestoreSessionOps:
 
             logger.info(f"Atomically created and completed session {session.id} for user {user_id}")
 
-            # Update exercise histories
-            await self._update_exercise_histories_batch(user_id, session)
-            await self._auto_update_personal_records(user_id, session)
+            # Update exercise histories in the background to avoid timeout
+            asyncio.create_task(
+                self._update_histories_background(user_id, session.id, session)
+            )
 
             return session
 

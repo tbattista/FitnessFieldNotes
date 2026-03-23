@@ -22,6 +22,30 @@ class SessionLifecycleApiService {
     }
 
     /**
+     * Fetch with retry for transient network errors (e.g. "TypeError: Load failed").
+     * @param {string} url
+     * @param {Object} options - fetch options
+     * @param {number} retries - max retries (default 2)
+     * @returns {Promise<Response>}
+     */
+    async _fetchWithRetry(url, options, retries = 2) {
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                return await fetch(url, options);
+            } catch (err) {
+                const isNetworkError = err instanceof TypeError &&
+                    (err.message.includes('Load failed') || err.message.includes('Failed to fetch') || err.message.includes('NetworkError'));
+                if (!isNetworkError || attempt === retries) {
+                    throw err;
+                }
+                const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
+                console.warn(`⚠️ Network error on attempt ${attempt + 1}, retrying in ${delay}ms...`, err.message);
+                await new Promise(r => setTimeout(r, delay));
+            }
+        }
+    }
+
+    /**
      * Extract a human-readable error message from API error responses.
      * Handles FastAPI 422 validation errors where detail is an array of objects.
      * @param {Object} errorData - Parsed JSON error response
@@ -276,7 +300,7 @@ class SessionLifecycleApiService {
                 console.log('\u23f1\ufe0f Including manual duration for Quick Log:', durationMinutes, 'minutes');
             }
 
-            const response = await fetch(url, {
+            const response = await this._fetchWithRetry(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -372,7 +396,7 @@ class SessionLifecycleApiService {
         }
 
         console.log('\ud83d\ude80 Trying atomic create-and-complete endpoint...');
-        const response = await fetch(url, {
+        const response = await this._fetchWithRetry(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -414,7 +438,7 @@ class SessionLifecycleApiService {
         // Step 1: Create session
         console.log('\ud83d\udcdd Creating recovery session (two-step fallback)...');
         const createUrl = window.config.api.getUrl('/api/v3/workout-sessions');
-        const createResponse = await fetch(createUrl, {
+        const createResponse = await this._fetchWithRetry(createUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -465,7 +489,7 @@ class SessionLifecycleApiService {
 
             try {
                 const completeUrl = window.config.api.getUrl(`/api/v3/workout-sessions/${newSession.id}/complete`);
-                const completeResponse = await fetch(completeUrl, {
+                const completeResponse = await this._fetchWithRetry(completeUrl, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
