@@ -200,6 +200,11 @@ class WorkoutModeController {
             // Get workout ID from URL
             const workoutId = this.getWorkoutIdFromUrl();
             if (!workoutId) {
+                if (this.isBuildMode) {
+                    // Build mode without ID: create empty workout and proceed
+                    await this.handleBuildModeStart();
+                    return;
+                }
                 console.log('📄 No workout ID provided, redirecting to library...');
                 sessionStorage.setItem('ffn_pending_toast', JSON.stringify({
                     message: 'No workout in progress. Choose a workout from your library to get started.',
@@ -231,6 +236,32 @@ class WorkoutModeController {
     /** Get workout ID from URL query params */
     getWorkoutIdFromUrl() {
         return new URLSearchParams(window.location.search).get('id');
+    }
+
+    /** Handle build mode entry without a workout ID — creates an empty workout inline */
+    async handleBuildModeStart() {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user) {
+            window.toastNotifications?.warning('Sign in to use Build & Log');
+            window.authService?.showLoginModal();
+            return;
+        }
+        this.uiStateManager.updateLoadingMessage('Setting up your session...');
+        const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const workout = await this.dataManager.createWorkout({
+            name: `Workout - ${today}`,
+            exercise_groups: [],
+            is_archived: true
+        });
+        if (!workout?.id) throw new Error('Failed to create workout');
+        // Update URL so session persistence and reload work correctly
+        window.history.replaceState({}, '', `workout-mode.html?id=${workout.id}&mode=build`);
+        await this.loadWorkout(workout.id);
+        if (!this.sessionService.isSessionActive()) {
+            console.log('▶️ Auto-starting build mode session');
+            await this.lifecycleManager.handleStartWorkout();
+        }
+        console.log('✅ Build mode session started');
     }
 
     /** Load workout data, fetch history, render */

@@ -83,12 +83,6 @@ function getNavbarHTML(pageTitle = 'Fitness Field Notes', pageIcon = 'bx-home', 
                 <!-- Right Section: Utility Icons -->
                 <ul class="navbar-nav flex-row align-items-center ms-auto">
                 
-                <!-- Landing CTA (visible only when signed out) -->
-                <li class="nav-item me-2 auth-sign-in">
-                    <a href="/public-workouts.html" class="btn btn-primary btn-sm navbar-cta-btn">
-                        Browse Workouts
-                    </a>
-                </li>
 
                 <!-- Feedback Button (hidden when signed out) -->
                 <li class="nav-item me-2 me-xl-3 auth-sign-out d-none">

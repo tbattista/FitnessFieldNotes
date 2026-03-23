@@ -95,6 +95,18 @@ class WorkoutModeFabManager {
                         }
                     }
                 },
+                {
+                    icon: 'bx-note',
+                    title: 'Add Note',
+                    description: 'Add a note to this session',
+                    onClick: () => window.workoutModeController?.handleAddNote()
+                },
+                {
+                    icon: 'bx-sort',
+                    title: 'Reorder Exercises',
+                    description: 'Change exercise order',
+                    onClick: () => window.workoutModeController?.showReorderOffcanvas()
+                },
                 { type: 'divider' },
                 {
                     icon: 'bx-share-alt',

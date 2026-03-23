@@ -1,26 +1,28 @@
 /**
  * Global Log FAB (Floating Action Button)
- * Persistent button linking to activity-log.html
+ * Persistent full-width pill button on all pages
  * Appears on all pages except workout-mode and workout-builder
  */
 
 /* ============================================
-   FAB BASE
+   FAB BASE — FULL-WIDTH PILL (MOBILE)
    ============================================ */
 
 .global-log-fab {
     position: fixed;
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
     right: 16px;
-    width: 52px;
+    width: auto;
     height: 52px;
-    border-radius: 14px;
+    border-radius: 50px;
     background: var(--gs-primary);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 26px;
+    gap: 4px;
+    font-size: 20px;
     line-height: 1;
     text-decoration: none;
     border: none;
@@ -37,41 +39,14 @@
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Label — hidden by default, shown on home page */
+/* Label — always visible */
 .global-log-fab-label {
-    display: none;
+    display: inline;
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 0.01em;
     margin-left: 6px;
     white-space: nowrap;
-}
-
-/* ============================================
-   HOME PAGE: FULL-WIDTH PILL
-   ============================================ */
-
-.global-log-fab.is-home {
-    left: 16px;
-    right: 16px;
-    width: auto;
-    border-radius: 50px;
-    gap: 4px;
-    font-size: 20px;
-    height: 52px;
-}
-
-.global-log-fab.is-home .global-log-fab-label {
-    display: inline;
-}
-
-@media (min-width: 1200px) {
-    .global-log-fab.is-home {
-        left: auto;
-        width: auto;
-        max-width: 220px;
-        right: 24px;
-    }
 }
 
 /* Rotate + to × when bottom sheet is open */
@@ -107,11 +82,14 @@
 }
 
 /* ============================================
-   DESKTOP: WIDER MARGIN
+   DESKTOP: SHRINK TO FIT
    ============================================ */
 
 @media (min-width: 1200px) {
     .global-log-fab {
+        left: auto;
+        width: auto;
+        max-width: 220px;
         right: 24px;
     }
 }

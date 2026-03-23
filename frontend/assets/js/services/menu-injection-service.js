@@ -141,13 +141,11 @@ class MenuInjectionService {
             const filename = window.location.pathname.split('/').pop() || '';
             const excludedPages = ['workout-mode', 'workout-builder'];
             const isExcluded = excludedPages.some(p => filename.includes(p));
-            const isHome = filename === '' || filename.includes('index');
             if (!isExcluded) {
                 const fabWrapper = document.createElement('div');
                 fabWrapper.innerHTML = window.getGlobalLogFabHTML();
                 const fab = fabWrapper.firstElementChild;
                 if (fab) {
-                    if (isHome) fab.classList.add('is-home');
                     document.body.appendChild(fab);
                 }
             }

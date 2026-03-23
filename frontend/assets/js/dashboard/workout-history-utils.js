@@ -264,6 +264,11 @@ function showError(message) {
  * Show empty state
  */
 function showEmptyState() {
+  hideLoading();
+  const nameEl = document.getElementById('workoutName');
+  if (nameEl && nameEl.textContent === 'Loading...') {
+    nameEl.textContent = 'Workout History';
+  }
   document.getElementById('historyEmptyState').style.display = 'block';
   document.getElementById('historyContent').style.display = 'none';
 }
