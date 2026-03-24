@@ -57,7 +57,7 @@ test.describe('FIX 2: Consistent FAB on all pages', () => {
   ];
 
   for (const { path, name } of pages) {
-    test(`FAB is a full-width pill on ${name} page (mobile)`, async ({ page }) => {
+    test(`FAB is a compact right-aligned pill on ${name} page (mobile)`, async ({ page }) => {
       await page.setViewportSize({ width: 430, height: 932 });
       await page.goto(`${BASE}/${path}`);
       await page.waitForLoadState('domcontentloaded');
@@ -69,14 +69,24 @@ test.describe('FIX 2: Consistent FAB on all pages', () => {
       const count = await fab.count();
       if (count > 0) {
         await expect(fab).toBeVisible();
-        // Should have the label visible (pill style, not icon-only)
+        // Should have the label with "+ Log Session" text
         const label = fab.locator('.global-log-fab-label');
         await expect(label).toBeVisible();
-        // Should not have is-home class (removed)
-        await expect(fab).not.toHaveClass(/is-home/);
+        await expect(label).toHaveText('+ Log Session');
         // Check it's pill-shaped (border-radius: 50px)
         const borderRadius = await fab.evaluate(el => getComputedStyle(el).borderRadius);
         expect(borderRadius).toBe('50px');
+        // Check it's right-aligned (not full-width)
+        const styles = await fab.evaluate(el => {
+          const cs = getComputedStyle(el);
+          return { left: cs.left, right: cs.right, width: cs.width };
+        });
+        expect(styles.left).toBe('auto');
+        // Check body has padding class for content visibility
+        const hasPaddingClass = await page.evaluate(() =>
+          document.body.classList.contains('has-global-log-fab')
+        );
+        expect(hasPaddingClass).toBe(true);
       }
     });
   }
