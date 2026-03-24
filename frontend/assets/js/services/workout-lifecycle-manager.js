@@ -377,10 +377,11 @@ class WorkoutLifecycleManager {
     
     /**
      * Check for and handle persisted session on page load
+     * @param {Object} [preRestoredSession] - Already restored session data (to avoid double-restore)
      * @returns {Promise<boolean>} True if session was found and handled
      */
-    async checkPersistedSession() {
-        const persistedSession = this.sessionService.restoreSession();
+    async checkPersistedSession(preRestoredSession) {
+        const persistedSession = preRestoredSession || this.sessionService.restoreSession();
         
         if (persistedSession) {
             // Calculate time since page was last active

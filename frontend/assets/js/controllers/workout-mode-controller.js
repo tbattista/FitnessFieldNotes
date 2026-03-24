@@ -193,12 +193,19 @@ class WorkoutModeController {
             this.settingsManager.initialize();
             this.fabManager.initialize();
 
-            // Check for persisted session
-            const hasSession = await this.lifecycleManager.checkPersistedSession();
-            if (hasSession) return;
-
             // Get workout ID from URL
             const workoutId = this.getWorkoutIdFromUrl();
+
+            // Check for persisted session — but if the URL specifies a different
+            // workout, the user explicitly chose a new one, so skip resume
+            const persistedSession = this.sessionService.restoreSession();
+            if (persistedSession && (!workoutId || persistedSession.workoutId === workoutId)) {
+                const hasSession = await this.lifecycleManager.checkPersistedSession(persistedSession);
+                if (hasSession) return;
+            } else if (persistedSession && workoutId && persistedSession.workoutId !== workoutId) {
+                console.log(`🔄 URL workout (${workoutId}) differs from persisted session (${persistedSession.workoutId}), starting fresh`);
+                this.sessionService.clearPersistedSession();
+            }
             if (!workoutId) {
                 if (this.isBuildMode) {
                     // Build mode without ID: create empty workout and proceed
