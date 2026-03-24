@@ -1,20 +1,20 @@
 /**
  * Global Log FAB (Floating Action Button)
- * Persistent full-width pill button on all pages
+ * Compact right-aligned pill button on all pages
  * Appears on all pages except workout-mode and workout-builder
  */
 
 /* ============================================
-   FAB BASE — FULL-WIDTH PILL (MOBILE)
+   FAB BASE — COMPACT RIGHT-ALIGNED PILL
    ============================================ */
 
 .global-log-fab {
     position: fixed;
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-    left: 16px;
     right: 16px;
+    left: auto;
     width: auto;
-    height: 52px;
+    height: 40px;
     border-radius: 50px;
     background: var(--gs-primary);
     color: #fff;
@@ -22,17 +22,17 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    font-size: 20px;
+    font-size: 16px;
     line-height: 1;
     text-decoration: none;
     border: none;
-    padding: 0;
+    padding: 0 16px;
     appearance: none;
     cursor: pointer;
     box-shadow:
-        0 3px 5px -1px rgba(0, 0, 0, 0.2),
-        0 6px 10px 0 rgba(0, 0, 0, 0.14),
-        0 1px 18px 0 rgba(0, 0, 0, 0.12);
+        0 2px 4px -1px rgba(0, 0, 0, 0.2),
+        0 4px 5px 0 rgba(0, 0, 0, 0.14),
+        0 1px 10px 0 rgba(0, 0, 0, 0.12);
     z-index: 1040;
     transition: transform var(--gs-duration-fast, 150ms) ease,
                 box-shadow var(--gs-duration-fast, 150ms) ease;
@@ -42,25 +42,23 @@
 /* Label — always visible */
 .global-log-fab-label {
     display: inline;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     letter-spacing: 0.01em;
-    margin-left: 6px;
     white-space: nowrap;
 }
 
-/* Rotate + to × when bottom sheet is open */
-.global-log-fab i {
-    transition: transform var(--gs-duration-fast, 150ms) ease;
+/* ============================================
+   BOTTOM PADDING — PREVENT FAB FROM COVERING CONTENT
+   ============================================ */
+
+body.has-global-log-fab .content-wrapper {
+    padding-bottom: 80px;
 }
 
-.global-log-fab.is-open i {
-    transform: rotate(45deg);
-}
-
-/* Hide label when sheet is open (show × only) */
-.global-log-fab.is-open .global-log-fab-label {
-    display: none;
+/* Dim when bottom sheet is open */
+.global-log-fab.is-open {
+    opacity: 0.7;
 }
 
 /* ============================================
@@ -72,9 +70,9 @@
     text-decoration: none;
     transform: translateY(-2px);
     box-shadow:
-        0 5px 5px -3px rgba(0, 0, 0, 0.2),
-        0 8px 10px 1px rgba(0, 0, 0, 0.14),
-        0 3px 14px 2px rgba(0, 0, 0, 0.12);
+        0 4px 5px -2px rgba(0, 0, 0, 0.2),
+        0 6px 8px 0 rgba(0, 0, 0, 0.14),
+        0 2px 12px 1px rgba(0, 0, 0, 0.12);
 }
 
 .global-log-fab:active {
@@ -82,14 +80,11 @@
 }
 
 /* ============================================
-   DESKTOP: SHRINK TO FIT
+   DESKTOP: SLIGHT OFFSET
    ============================================ */
 
 @media (min-width: 1200px) {
     .global-log-fab {
-        left: auto;
-        width: auto;
-        max-width: 220px;
         right: 24px;
     }
 }
@@ -99,7 +94,7 @@
    ============================================ */
 
 body.has-bottom-action-bar .global-log-fab {
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ============================================
@@ -108,16 +103,16 @@ body.has-bottom-action-bar .global-log-fab {
 
 [data-bs-theme="dark"] .global-log-fab {
     box-shadow:
-        0 3px 5px -1px rgba(0, 0, 0, 0.4),
-        0 6px 10px 0 rgba(0, 0, 0, 0.3),
-        0 1px 18px 0 rgba(0, 0, 0, 0.25);
+        0 2px 4px -1px rgba(0, 0, 0, 0.4),
+        0 4px 5px 0 rgba(0, 0, 0, 0.3),
+        0 1px 10px 0 rgba(0, 0, 0, 0.25);
 }
 
 [data-bs-theme="dark"] .global-log-fab:hover {
     box-shadow:
-        0 5px 5px -3px rgba(0, 0, 0, 0.4),
-        0 8px 10px 1px rgba(0, 0, 0, 0.3),
-        0 3px 14px 2px rgba(0, 0, 0, 0.25);
+        0 4px 5px -2px rgba(0, 0, 0, 0.4),
+        0 6px 8px 0 rgba(0, 0, 0, 0.3),
+        0 2px 12px 1px rgba(0, 0, 0, 0.25);
 }
 
 /* ============================================

@@ -147,6 +147,7 @@ class MenuInjectionService {
                 const fab = fabWrapper.firstElementChild;
                 if (fab) {
                     document.body.appendChild(fab);
+                    document.body.classList.add('has-global-log-fab');
                 }
             }
         }

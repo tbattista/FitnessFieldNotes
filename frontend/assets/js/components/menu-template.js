@@ -66,8 +66,7 @@ function getMenuHTML(activePage = 'home') {
 function getGlobalLogFabHTML() {
     return `
         <button type="button" class="global-log-fab" id="globalLogFab" aria-label="Log a workout">
-            <i class="bx bx-plus"></i>
-            <span class="global-log-fab-label">Log Session</span>
+            <span class="global-log-fab-label">+ Log Session</span>
         </button>
     `;
 }
