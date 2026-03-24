@@ -75,36 +75,50 @@
 }
 
 /* ============================================
-   HISTORY TABS
+   HISTORY TABS — matches workouts-tab-bar styling
    ============================================ */
 
 .history-tabs {
   border-bottom-color: var(--bs-border-color);
+  gap: 0;
 }
 
 .history-tabs .nav-link {
+  color: var(--gs-gray-500);
+  font-size: 0.875rem;
   font-weight: 500;
-  color: var(--bs-secondary-color);
+  padding: 0.625rem 1rem;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 0.625rem 1rem;
   margin-bottom: -2px;
-}
-
-.history-tabs .nav-link:hover {
-  color: var(--bs-heading-color);
-  border-bottom-color: var(--bs-gray-300);
-}
-
-.history-tabs .nav-link.active {
-  color: var(--bs-primary);
-  border-bottom-color: var(--bs-primary);
-  background: transparent;
+  border-radius: 0;
+  transition: color var(--gs-duration-fast, 150ms) ease,
+              border-color var(--gs-duration-fast, 150ms) ease;
+  white-space: nowrap;
+  text-decoration: none;
 }
 
 .history-tabs .nav-link i {
-  font-size: 1.125rem;
-  vertical-align: -0.15em;
+  font-size: 1rem;
+  vertical-align: -1px;
+}
+
+.history-tabs .nav-link:hover {
+  color: var(--gs-gray-700);
+  border-bottom-color: var(--gs-gray-300);
+  background: transparent;
+}
+
+.history-tabs .nav-link.active {
+  color: var(--gs-primary);
+  border-bottom-color: var(--gs-primary);
+  background: transparent;
+  font-weight: 600;
+}
+
+.history-tabs .nav-link.active:hover {
+  color: var(--gs-primary);
+  border-bottom-color: var(--gs-primary);
 }
 
 /* History Tabs Wrapper */
@@ -115,6 +129,30 @@
 
 .history-tabs-wrapper .history-tabs {
   border-bottom: none;
+}
+
+/* Mobile: equal-width tabs */
+@media (max-width: 575.98px) {
+  .history-tabs {
+    justify-content: stretch;
+  }
+
+  .history-tabs .nav-item {
+    flex: 1;
+    text-align: center;
+  }
+
+  .history-tabs .nav-link {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .history-tabs-wrapper {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 
 /* Tab content - remove outer padding */
@@ -231,18 +269,6 @@
     font-size: 0.75rem;
   }
 
-  .history-tabs .nav-link {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-  }
-
-  /* Extend tabs edge-to-edge on mobile (pull out of container padding) */
-  .history-tabs-wrapper {
-    margin-left: -0.5rem;
-    margin-right: -0.5rem;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
 }
 
 /* ============================================
@@ -261,13 +287,33 @@
   background-color: var(--bs-gray-800);
 }
 
+[data-bs-theme="dark"] .history-tabs-wrapper {
+  border-bottom-color: var(--gs-gray-700);
+}
+
+[data-bs-theme="dark"] .history-tabs .nav-link {
+  color: var(--gs-gray-500);
+}
+
 [data-bs-theme="dark"] .history-tabs .nav-link:hover {
-  border-bottom-color: var(--bs-gray-600);
+  color: var(--gs-gray-300);
+  border-bottom-color: var(--gs-gray-500);
+}
+
+[data-bs-theme="dark"] .history-tabs .nav-link.active {
+  color: var(--gs-primary);
+  border-bottom-color: var(--gs-primary);
 }
 
 /* ============================================
    ACCESSIBILITY
    ============================================ */
+
+.history-tabs .nav-link:focus-visible {
+  outline: 2px solid var(--gs-primary);
+  outline-offset: -2px;
+  border-radius: var(--gs-radius-sm, 4px);
+}
 
 .history-header:focus {
   outline: 2px solid var(--bs-primary);
@@ -294,6 +340,7 @@
    ============================================ */
 
 @media (prefers-reduced-motion: reduce) {
+  .history-tabs .nav-link,
   .history-card,
   .history-header,
   .bx-chevron-down,

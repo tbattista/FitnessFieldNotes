@@ -212,9 +212,12 @@ async def get_active_program(
 
         return {"program_id": None}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Error getting active program: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return null rather than 500 — this is a non-critical read
+        return {"program_id": None}
 
 
 @router.put("/active-program")

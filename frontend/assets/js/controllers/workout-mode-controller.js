@@ -274,8 +274,12 @@ class WorkoutModeController {
             this.currentWorkout = workouts.find(w => w.id === workoutId);
 
             if (!this.currentWorkout) {
+                // Log details for debugging, but show user-friendly error
                 const availableIds = workouts?.map(w => w.id).join(', ') || 'none';
-                throw new Error(`Workout not found (ID: ${workoutId})\n\nAvailable: ${workouts?.length || 0} workouts (${availableIds})\nStorage: ${this.dataManager?.storageMode || 'unknown'}, Auth: ${this.authService?.isUserAuthenticated() ? 'Yes' : 'No'}`);
+                console.warn(`Workout ${workoutId} not in ${workouts?.length || 0} workouts: ${availableIds}`);
+                const error = new Error('This workout may have been deleted or is no longer available.');
+                error.workoutNotFound = true;
+                throw error;
             }
 
             // Update page title and header

@@ -532,13 +532,24 @@ class WorkoutLifecycleManager {
             
         } catch (error) {
             console.error('❌ Error resuming session:', error);
-            
+
             // Clear invalid session
             this.sessionService.clearPersistedSession();
-            
-            // Show error
-            this.uiStateManager.showError('Failed to resume workout. The workout may have been deleted.');
-            
+
+            // If workout was deleted, show a friendly message and redirect
+            if (error.workoutNotFound) {
+                if (window.showAlert) {
+                    window.showAlert('The workout for this session has been deleted. Redirecting to workout database.', 'warning');
+                }
+                setTimeout(() => {
+                    window.location.href = 'workout-database.html';
+                }, 2000);
+                return;
+            }
+
+            // Show error for other failures
+            this.uiStateManager.showError('Failed to resume workout. Please try again.');
+
             throw error;
         }
     }

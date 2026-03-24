@@ -1,38 +1,34 @@
 /**
  * Global Log FAB (Floating Action Button)
- * Compact right-aligned button on all pages
+ * Full-width pill on mobile, compact pill on desktop
  * Appears on all pages except workout-mode and workout-builder
  */
 
 /* ============================================
-   FAB BASE — COMPACT RIGHT-ALIGNED BUTTON
+   FAB BASE — MOBILE-FIRST FULL-WIDTH PILL
    ============================================ */
 
 .global-log-fab {
     position: fixed;
-    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     right: 16px;
-    left: auto;
-    width: auto;
-    height: 40px;
-    border-radius: 8px;
+    left: 16px;
+    height: 48px;
+    border-radius: 50px;
     background: var(--gs-primary);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    font-size: 16px;
+    gap: 8px;
+    font-size: 15px;
     line-height: 1;
     text-decoration: none;
     border: none;
     padding: 0 16px;
     appearance: none;
     cursor: pointer;
-    box-shadow:
-        0 2px 4px -1px rgba(0, 0, 0, 0.2),
-        0 4px 5px 0 rgba(0, 0, 0, 0.14),
-        0 1px 10px 0 rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1040;
     transition: transform var(--gs-duration-fast, 150ms) ease,
                 box-shadow var(--gs-duration-fast, 150ms) ease;
@@ -42,7 +38,7 @@
 /* Label — always visible */
 .global-log-fab-label {
     display: inline;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.01em;
     white-space: nowrap;
@@ -53,7 +49,7 @@
    ============================================ */
 
 body.has-global-log-fab .content-wrapper {
-    padding-bottom: 80px;
+    padding-bottom: 88px;
 }
 
 /* Dim when bottom sheet is open */
@@ -69,10 +65,7 @@ body.has-global-log-fab .content-wrapper {
     color: #fff;
     text-decoration: none;
     transform: translateY(-2px);
-    box-shadow:
-        0 4px 5px -2px rgba(0, 0, 0, 0.2),
-        0 6px 8px 0 rgba(0, 0, 0, 0.14),
-        0 2px 12px 1px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 .global-log-fab:active {
@@ -80,12 +73,15 @@ body.has-global-log-fab .content-wrapper {
 }
 
 /* ============================================
-   DESKTOP: SLIGHT OFFSET
+   DESKTOP: COMPACT PILL, RIGHT-ALIGNED
    ============================================ */
 
-@media (min-width: 1200px) {
+@media (min-width: 769px) {
     .global-log-fab {
+        left: auto;
         right: 24px;
+        width: auto;
+        bottom: 24px;
     }
 }
 
@@ -102,17 +98,11 @@ body.has-bottom-action-bar .global-log-fab {
    ============================================ */
 
 [data-bs-theme="dark"] .global-log-fab {
-    box-shadow:
-        0 2px 4px -1px rgba(0, 0, 0, 0.4),
-        0 4px 5px 0 rgba(0, 0, 0, 0.3),
-        0 1px 10px 0 rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 [data-bs-theme="dark"] .global-log-fab:hover {
-    box-shadow:
-        0 4px 5px -2px rgba(0, 0, 0, 0.4),
-        0 6px 8px 0 rgba(0, 0, 0, 0.3),
-        0 2px 12px 1px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 /* ============================================
