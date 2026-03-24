@@ -15,6 +15,7 @@ class WorkoutModeFabManager {
             'end':           () => window.workoutModeController?.handleCompleteWorkout(),
             'add-exercise':  () => window.workoutModeController?.showAddExerciseForm(),
             'add-note':      () => window.workoutModeController?.handleAddNote(),
+            'add-activity':  () => { window.location.href = 'activity-log.html?returnTo=workout-mode'; },
             'reorder':       () => window.workoutModeController?.showReorderOffcanvas(),
             'options':       () => this.openSettingsMenu()
         };
@@ -93,20 +94,6 @@ class WorkoutModeFabManager {
                 }
             },
             { type: 'divider' },
-            {
-                icon: 'bx-note',
-                title: 'Add Note',
-                description: 'Add a note to this session',
-                onClick: () => window.workoutModeController?.handleAddNote()
-            },
-            {
-                icon: 'bx-run',
-                title: 'Add Activity',
-                description: 'Log cardio or other activity',
-                onClick: () => {
-                    window.location.href = 'activity-log.html?returnTo=workout-mode';
-                }
-            },
             {
                 icon: 'bx-sort',
                 title: 'Reorder Exercises',

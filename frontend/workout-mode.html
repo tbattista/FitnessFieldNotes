@@ -266,11 +266,18 @@
       <!-- Session Bottom Bar -->
       <div class="workout-mode-bottom-bar" id="workoutModeBottomBar" style="display: none;">
         <div class="wm-bottom-bar-inner">
-          <button type="button" class="btn btn-outline-primary" data-action="add-exercise">
-            <i class="bx bx-plus me-1"></i>Exercise
-          </button>
-          <button type="button" class="wm-more-btn" data-action="options" title="More options" aria-label="More options">
-            <i class="bx bx-dots-horizontal-rounded"></i>
+          <div class="dropup flex-fill">
+            <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bx bx-plus me-1"></i>Add
+            </button>
+            <ul class="dropdown-menu wm-add-dropup-menu">
+              <li><a class="dropdown-item" href="#" data-action="add-exercise"><i class="bx bx-dumbbell me-2"></i>Exercise</a></li>
+              <li><a class="dropdown-item" href="#" data-action="add-note"><i class="bx bx-note me-2"></i>Note</a></li>
+              <li><a class="dropdown-item" href="#" data-action="add-activity"><i class="bx bx-run me-2"></i>Activity</a></li>
+            </ul>
+          </div>
+          <button type="button" class="btn btn-outline-secondary" data-action="options">
+            <i class="bx bx-dots-horizontal-rounded me-1"></i>More
           </button>
           <button type="button" class="btn" style="background-color: #c4764e; color: #fff;" data-action="end">
             <i class="bx bx-check me-1"></i>Finish
