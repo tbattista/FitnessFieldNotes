@@ -1,11 +1,11 @@
 /**
  * Global Log FAB (Floating Action Button)
- * Compact right-aligned pill button on all pages
+ * Compact right-aligned button on all pages
  * Appears on all pages except workout-mode and workout-builder
  */
 
 /* ============================================
-   FAB BASE — COMPACT RIGHT-ALIGNED PILL
+   FAB BASE — COMPACT RIGHT-ALIGNED BUTTON
    ============================================ */
 
 .global-log-fab {
@@ -15,7 +15,7 @@
     left: auto;
     width: auto;
     height: 40px;
-    border-radius: 50px;
+    border-radius: 8px;
     background: var(--gs-primary);
     color: #fff;
     display: flex;
