@@ -312,6 +312,7 @@ class WorkoutModeController {
         } catch (error) {
             console.error('❌ Error loading workout:', error);
             this.uiStateManager.showError(error.message);
+            throw error;
         }
     }
 
