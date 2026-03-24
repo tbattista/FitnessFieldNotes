@@ -126,6 +126,33 @@
               <!-- ========== MOBILE VIEW ========== -->
               <div data-view="mobile">
 
+                <!-- Tab Navigation (always visible) -->
+                <div class="history-tabs-wrapper">
+                  <ul class="nav nav-tabs history-tabs mb-0" id="historyTabs" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="history-tab" data-bs-toggle="tab"
+                                data-bs-target="#historyTabPane" type="button" role="tab"
+                                aria-controls="historyTabPane" aria-selected="true">
+                          <i class="bx bx-history me-1"></i>History
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab"
+                                data-bs-target="#calendarTabPane" type="button" role="tab"
+                                aria-controls="calendarTabPane" aria-selected="false">
+                          <i class="bx bx-calendar me-1"></i>Calendar
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="exercises-tab" data-bs-toggle="tab"
+                                data-bs-target="#exercisesTabPane" type="button" role="tab"
+                                aria-controls="exercisesTabPane" aria-selected="false">
+                          <i class="bx bx-dumbbell me-1"></i>Exercises
+                        </button>
+                      </li>
+                    </ul>
+                </div>
+
                 <!-- Loading State -->
                 <div id="historyLoadingState" class="text-center py-5">
                   <div class="spinner-border text-primary" role="status">
@@ -153,33 +180,6 @@
 
                 <!-- History Content -->
                 <div id="historyContent" style="display: none;">
-
-                  <!-- Tab Navigation -->
-                  <div class="history-tabs-wrapper">
-                    <ul class="nav nav-tabs history-tabs mb-0" id="historyTabs" role="tablist">
-                      <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="history-tab" data-bs-toggle="tab"
-                                data-bs-target="#historyTabPane" type="button" role="tab"
-                                aria-controls="historyTabPane" aria-selected="true">
-                          <i class="bx bx-history me-1"></i>History
-                        </button>
-                      </li>
-                      <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab"
-                                data-bs-target="#calendarTabPane" type="button" role="tab"
-                                aria-controls="calendarTabPane" aria-selected="false">
-                          <i class="bx bx-calendar me-1"></i>Calendar
-                        </button>
-                      </li>
-                      <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="exercises-tab" data-bs-toggle="tab"
-                                data-bs-target="#exercisesTabPane" type="button" role="tab"
-                                aria-controls="exercisesTabPane" aria-selected="false">
-                          <i class="bx bx-dumbbell me-1"></i>Exercises
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
 
                   <!-- Page Header -->
                   <div class="mb-3">

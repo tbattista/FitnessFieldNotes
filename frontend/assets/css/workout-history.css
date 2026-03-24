@@ -235,6 +235,14 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
   }
+
+  /* Extend tabs edge-to-edge on mobile (pull out of container padding) */
+  .history-tabs-wrapper {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 
 /* ============================================

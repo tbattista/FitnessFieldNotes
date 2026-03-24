@@ -280,7 +280,7 @@ async function renderPRSection() {
   }).join('');
 
   const reorderBtnClass = _prReorderMode ? 'btn-warning' : 'btn-outline-secondary';
-  const reorderBtnIcon = _prReorderMode ? 'bx-check' : 'bx-sort-alt-2';
+  const reorderBtnLabel = _prReorderMode ? 'Done' : 'Reorder';
   const reorderBtnTitle = _prReorderMode ? 'Save order' : 'Reorder PRs';
 
   container.innerHTML = `
@@ -290,7 +290,7 @@ async function renderPRSection() {
       </span>
       <div class="d-flex align-items-center gap-1">
         <button class="btn btn-xs ${reorderBtnClass} pr-reorder-btn" onclick="togglePRReorderMode()" title="${reorderBtnTitle}">
-          <i class="bx ${reorderBtnIcon}"></i>
+          ${reorderBtnLabel}
         </button>
         <button class="pr-collapse-btn" onclick="togglePRSection()" title="Toggle PR section">
           <i class="bx ${isCollapsed ? 'bx-chevron-down' : 'bx-chevron-up'}"></i>
