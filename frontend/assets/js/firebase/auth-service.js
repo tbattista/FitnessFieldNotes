@@ -77,6 +77,7 @@ class AuthService {
         // Create/update user document in Firestore (fire-and-forget)
         if (user && !user.isAnonymous && window.firebaseDb && window.firestoreFunctions) {
             this._ensureUserDocument(user);
+            this._syncActiveProgram(user);
         }
 
         // Notify all listeners
@@ -117,6 +118,26 @@ class AuthService {
         }
     }
     
+    async _syncActiveProgram(user) {
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/user/active-program', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.program_id) {
+                    localStorage.setItem('ffn_active_program_id', data.program_id);
+                } else {
+                    localStorage.removeItem('ffn_active_program_id');
+                }
+                console.log('📌 Active program synced:', data.program_id || 'none');
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not sync active program:', error.message);
+        }
+    }
+
     // Public API Methods
     
     onAuthStateChange(callback) {
@@ -243,7 +264,8 @@ class AuthService {
         try {
             const { signOut } = window.firebaseAuthFunctions;
             await signOut(window.firebaseAuth);
-            
+            localStorage.removeItem('ffn_active_program_id');
+
             console.log('✅ Sign-out successful');
             
         } catch (error) {
