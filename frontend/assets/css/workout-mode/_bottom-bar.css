@@ -8,36 +8,36 @@
  */
 
 /* ============================================
-   HEADER OPTIONS BUTTON
+   BOTTOM BAR MORE BUTTON (•••)
    ============================================ */
 
-.wm-options-btn {
-    height: 40px;
-    width: 40px;
-    border-radius: 12px;
+.wm-more-btn {
+    width: 44px;
+    height: 44px;
     border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--bs-body-color);
+    font-size: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
     cursor: pointer;
-    background: var(--bs-body-bg);
-    color: var(--bs-body-color);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
     flex-shrink: 0;
+    transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.wm-options-btn:hover {
+.wm-more-btn:hover {
     background: rgba(var(--bs-primary-rgb), 0.08);
 }
 
-.wm-options-btn:active {
-    transform: scale(0.93);
+.wm-more-btn:active {
+    background: rgba(0, 0, 0, 0.06);
 }
 
-[data-bs-theme="dark"] .wm-options-btn {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+[data-bs-theme="dark"] .wm-more-btn:active {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 /* ============================================
@@ -73,6 +73,10 @@
     gap: 12px;
     max-width: 1200px;
     margin: 0 auto;
+}
+
+.wm-bottom-bar-inner .btn {
+    flex: 1;
 }
 
 .wm-bottom-bar-actions {
