@@ -49,7 +49,7 @@
    ============================================ */
 
 body.has-global-log-fab .content-wrapper {
-    padding-bottom: 88px;
+    padding-bottom: 88px !important;
 }
 
 /* Dim when bottom sheet is open */
