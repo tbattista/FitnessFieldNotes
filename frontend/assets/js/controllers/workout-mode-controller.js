@@ -451,6 +451,7 @@ class WorkoutModeController {
     async handleCompleteWorkout() { return this.lifecycleManager.handleCompleteWorkout(); }
     handleAddNote() { return this.notesManager.handleAddNote(); }
     showAddExerciseForm() { return this.exerciseOpsManager.showAddExerciseForm(); }
+    showAddActivityForm() { return this.exerciseOpsManager.showAddActivityForm(); }
     showReorderOffcanvas() { this.reorderManager.showReorderOffcanvas(); }
     initializeShareButton() { this.settingsManager.initializeShareButton(); }
 

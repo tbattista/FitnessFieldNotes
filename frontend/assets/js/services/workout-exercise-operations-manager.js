@@ -477,6 +477,69 @@ class WorkoutExerciseOperationsManager {
     }
     
     /**
+     * Show add activity form (cardio editor offcanvas)
+     * Opens the cardio editor to add an activity card inline to the workout
+     */
+    async showAddActivityForm() {
+        try {
+            if (!window.UnifiedOffcanvasFactory?.createCardioEditor) {
+                console.error('❌ Cardio editor not available');
+                return;
+            }
+
+            const groupId = `added-${Date.now()}`;
+
+            window.UnifiedOffcanvasFactory.createCardioEditor({
+                groupId,
+                cardioConfig: {},
+                onSave: (updatedCardioConfig) => {
+                    this._addActivityGroupToWorkout(updatedCardioConfig);
+                    this.onRenderWorkout();
+
+                    const Registry = window.ActivityTypeRegistry;
+                    const typeName = Registry?.getById(updatedCardioConfig.activity_type)?.name || 'Activity';
+                    const isSessionActive = this.sessionService.isSessionActive();
+                    const message = !isSessionActive
+                        ? `${typeName} added! It will be included when you start the workout. 💪`
+                        : `${typeName} added to your workout! 💪`;
+                    if (window.showAlert) window.showAlert(message, 'success');
+                }
+            });
+        } catch (error) {
+            console.error('❌ Error showing add activity form:', error);
+            const modalManager = this.getModalManager();
+            modalManager.alert('Error', 'Failed to load activity form. Please try again.', 'danger');
+        }
+    }
+
+    /**
+     * Add a new activity (cardio) group to the workout template
+     * @param {Object} cardioConfig - Cardio config from the editor
+     * @private
+     */
+    _addActivityGroupToWorkout(cardioConfig) {
+        const workout = this.onGetCurrentWorkout();
+        if (!workout) {
+            console.error('❌ Cannot add activity: no current workout');
+            return;
+        }
+
+        if (!workout.exercise_groups) {
+            workout.exercise_groups = [];
+        }
+
+        const newGroup = {
+            group_id: `added-${Date.now()}`,
+            group_type: 'cardio',
+            cardio_config: cardioConfig,
+            exercises: { a: cardioConfig.activity_type || 'Activity' }
+        };
+
+        workout.exercise_groups.push(newGroup);
+        console.log(`✅ Added activity "${cardioConfig.activity_type}" to workout`);
+    }
+
+    /**
      * Add a new exercise group to the workout template
      * @param {Object} exerciseData - Exercise data (name, sets, reps, rest, weight, weight_unit)
      * @param {number|null} insertAtIndex - Optional index to insert at (null = append)

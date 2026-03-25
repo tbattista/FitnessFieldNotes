@@ -15,7 +15,7 @@ class WorkoutModeFabManager {
             'end':           () => window.workoutModeController?.handleCompleteWorkout(),
             'add-exercise':  () => window.workoutModeController?.showAddExerciseForm(),
             'add-note':      () => window.workoutModeController?.handleAddNote(),
-            'add-activity':  () => { window.location.href = 'activity-log.html?returnTo=workout-mode'; },
+            'add-activity':  () => window.workoutModeController?.showAddActivityForm(),
             'reorder':       () => window.workoutModeController?.showReorderOffcanvas(),
             'options':       () => this.openSettingsMenu()
         };
