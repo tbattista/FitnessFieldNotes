@@ -138,6 +138,46 @@ class SessionExerciseStateService {
     }
 
     /**
+     * Update activity (cardio) details in current session
+     * Stores session-level overrides without modifying the workout template
+     * @param {string} exerciseName - Activity name (activity_type ID)
+     * @param {Object} cardioConfig - Updated cardio config from editor
+     */
+    updateActivityDetails(exerciseName, cardioConfig) {
+        const currentSession = this.onGetCurrentSession();
+        if (!currentSession) {
+            console.warn('No active session to update activity');
+            return;
+        }
+
+        if (!currentSession.exercises) {
+            currentSession.exercises = {};
+        }
+
+        const existingData = currentSession.exercises[exerciseName] || {};
+        currentSession.exercises[exerciseName] = {
+            ...existingData,
+            session_cardio_config: cardioConfig,
+            is_modified: true,
+            modified_at: new Date().toISOString()
+        };
+
+        console.log('🏃 Updated activity details:', exerciseName);
+        this.onNotify('activityDetailsUpdated', { exerciseName, cardioConfig });
+        this.onPersist();
+    }
+
+    /**
+     * Get session-level cardio config overrides for an activity
+     * @param {string} exerciseName - Activity name
+     * @returns {Object|null} Session cardio config or null if no overrides
+     */
+    getActivitySessionConfig(exerciseName) {
+        const currentSession = this.onGetCurrentSession();
+        return currentSession?.exercises?.[exerciseName]?.session_cardio_config || null;
+    }
+
+    /**
      * Update exercise notes before session starts (pre-session edits)
      * @param {string} exerciseName - Exercise name
      * @param {string} notes - Note text

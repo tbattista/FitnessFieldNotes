@@ -188,8 +188,24 @@ class SessionLifecycleApiService {
 
         if (workout.exercise_groups) {
             workout.exercise_groups.forEach((group, index) => {
-                // Skip non-exercise card types (cardio/activity, notes)
-                if (group.group_type === 'cardio' || group.group_type === 'note') return;
+                // Skip note card types
+                if (group.group_type === 'note') return;
+
+                // Cardio/activity groups get simplified session entries
+                if (group.group_type === 'cardio') {
+                    const exerciseName = group.exercises?.a;
+                    if (exerciseName) {
+                        exercises[exerciseName] = {
+                            is_completed: false,
+                            is_skipped: false,
+                            is_modified: false,
+                            order_index: index,
+                            notes: '',
+                            session_cardio_config: null
+                        };
+                    }
+                    return;
+                }
 
                 const exerciseName = group.exercises?.a;
                 if (exerciseName) {

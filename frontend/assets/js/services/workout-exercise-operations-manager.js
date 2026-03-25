@@ -513,6 +513,93 @@ class WorkoutExerciseOperationsManager {
     }
 
     /**
+     * Edit an existing activity card in workout mode
+     * Opens cardio editor with session overrides (or template config), saves to session only
+     * @param {string} exerciseName - Activity name (activity_type ID)
+     * @param {number} index - Card index
+     */
+    handleEditActivity(exerciseName, index) {
+        // Block editing if completed
+        if (this.sessionService.isSessionActive()) {
+            const exerciseData = this.sessionService.getExerciseWeight(exerciseName);
+            if (exerciseData?.is_completed) {
+                if (window.showAlert) {
+                    window.showAlert('Uncomplete this activity first to make changes', 'warning');
+                }
+                return;
+            }
+        }
+
+        // Find the exercise group in template
+        const workout = this.onGetCurrentWorkout();
+        const group = workout?.exercise_groups?.find(g =>
+            g.group_type === 'cardio' && g.exercises?.a === exerciseName
+        );
+        if (!group) {
+            console.error('❌ Activity group not found:', exerciseName);
+            return;
+        }
+
+        // Session config takes priority over template
+        const sessionConfig = this.sessionService.getActivitySessionConfig?.(exerciseName);
+        const currentConfig = sessionConfig || group.cardio_config || {};
+
+        try {
+            window.UnifiedOffcanvasFactory.createCardioEditor({
+                groupId: group.group_id,
+                cardioConfig: { ...currentConfig },
+                onSave: async (updatedConfig) => {
+                    // Store in session, NOT template
+                    this.sessionService.updateActivityDetails(exerciseName, updatedConfig);
+
+                    this.onRenderWorkout();
+
+                    try {
+                        await this.onAutoSave();
+                    } catch (error) {
+                        console.error('Failed to save activity updates:', error);
+                    }
+
+                    const Registry = window.ActivityTypeRegistry;
+                    const name = Registry?.getName(exerciseName) || 'Activity';
+                    const isSessionActive = this.sessionService.isSessionActive();
+                    const message = isSessionActive
+                        ? `${name} updated for this session`
+                        : `${name} updated — changes apply when you start`;
+                    if (window.showAlert) window.showAlert(message, 'success');
+                }
+            });
+        } catch (error) {
+            console.error('❌ Error showing activity editor:', error);
+        }
+    }
+
+    /**
+     * Replace an activity — skip current and open add activity form
+     * @param {string} exerciseName - Activity name
+     * @param {number} index - Card index
+     */
+    async handleReplaceActivity(exerciseName, index) {
+        const isSessionActive = this.sessionService.isSessionActive();
+
+        if (!isSessionActive) {
+            this.sessionService.skipPreSessionExercise(exerciseName, 'Replaced with another activity');
+            this.onRenderWorkout();
+            if (window.showAlert) window.showAlert('Activity will be replaced', 'info');
+            setTimeout(() => this.showAddActivityForm(), 300);
+            return;
+        }
+
+        this.sessionService.skipExercise(exerciseName, 'Replaced with another activity');
+        this.onRenderWorkout();
+
+        try { await this.onAutoSave(); } catch (e) { console.error(e); }
+
+        if (window.showAlert) window.showAlert('Activity skipped — add a replacement', 'info');
+        setTimeout(() => this.showAddActivityForm(), 300);
+    }
+
+    /**
      * Add a new activity (cardio) group to the workout template
      * @param {Object} cardioConfig - Cardio config from the editor
      * @private

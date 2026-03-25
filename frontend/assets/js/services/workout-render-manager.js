@@ -421,11 +421,11 @@ class WorkoutRenderManager {
      * @returns {string} HTML string
      */
     /**
-     * Render a cardio/activity card for workout mode (read-only summary)
+     * Render a cardio/activity card for workout mode (fully interactive)
      */
     renderCardioCard(group, index, totalCards) {
-        const config = group.cardio_config || {};
-        const activityType = config.activity_type || '';
+        const templateConfig = group.cardio_config || {};
+        const activityType = templateConfig.activity_type || '';
         const exercises = group.exercises || {};
         const exerciseName = exercises.a || activityType || 'Activity';
 
@@ -437,19 +437,27 @@ class WorkoutRenderManager {
             activityName = window.ActivityTypeRegistry.getName(activityType) || activityType;
         }
 
-        // Session and completion state
+        // Session state
         const isSessionActive = this.sessionService?.isSessionActive();
         const exerciseData = this.sessionService?.getExerciseWeight(exerciseName);
         const isCompleted = exerciseData?.is_completed || false;
+        const preSessionSkipped = !isSessionActive && this.sessionService?.isPreSessionSkipped?.(exerciseName);
+        const isSkipped = exerciseData?.is_skipped || preSessionSkipped || false;
+        const skipReason = exerciseData?.skip_reason || (preSessionSkipped ? 'Skipped before workout' : '');
 
-        // Build meta parts
+        // Session overrides take priority over template config
+        const sessionConfig = this.sessionService?.getActivitySessionConfig?.(exerciseName);
+        const displayConfig = sessionConfig || templateConfig;
+        const hasSessionOverrides = !!sessionConfig;
+
+        // Build meta parts from display config
         const metaParts = [];
-        if (config.duration_minutes) metaParts.push(`${config.duration_minutes} min`);
-        if (config.distance) metaParts.push(`${config.distance} ${config.distance_unit || 'mi'}`);
-        if (config.target_pace) metaParts.push(config.target_pace);
-        if (config.target_rpe) metaParts.push(`RPE ${config.target_rpe}`);
-        if (config.target_heart_rate) metaParts.push(`${config.target_heart_rate} bpm`);
-        if (config.target_calories) metaParts.push(`${config.target_calories} cal`);
+        if (displayConfig.duration_minutes) metaParts.push(`${displayConfig.duration_minutes} min`);
+        if (displayConfig.distance) metaParts.push(`${displayConfig.distance} ${displayConfig.distance_unit || 'mi'}`);
+        if (displayConfig.target_pace) metaParts.push(displayConfig.target_pace);
+        if (displayConfig.target_rpe) metaParts.push(`RPE ${displayConfig.target_rpe}`);
+        if (displayConfig.target_heart_rate) metaParts.push(`${displayConfig.target_heart_rate} bpm`);
+        if (displayConfig.target_calories) metaParts.push(`${displayConfig.target_calories} cal`);
         const metaText = metaParts.join(' \u00b7 ');
 
         const escapeHtml = (text) => {
@@ -462,9 +470,14 @@ class WorkoutRenderManager {
         const displayName = activityName || 'Activity';
         const escapedName = escapeHtml(exerciseName);
 
+        // State classes
+        const stateClasses = ['workout-card'];
+        if (isCompleted) stateClasses.push('logged');
+        if (isSkipped) stateClasses.push('skipped');
+
         // Completion button (same pattern as standard exercise cards)
         let completionButtonHtml = '';
-        if (isSessionActive) {
+        if (isSessionActive && !isSkipped) {
             if (isCompleted) {
                 completionButtonHtml = `
                     <div class="workout-actions">
@@ -485,32 +498,105 @@ class WorkoutRenderManager {
         }
 
         return `
-            <div class="workout-card${isCompleted ? ' completed' : ''}" data-exercise-index="${index}" data-card-type="cardio"
-                 onclick="if(!event.target.closest('.workout-more-btn') && !event.target.closest('.workout-primary-action')) { this.classList.toggle('expanded'); }">
+            <div class="${stateClasses.join(' ')}"
+                 data-exercise-index="${index}"
+                 data-exercise-name="${escapedName}"
+                 data-card-type="cardio"
+                 onclick="if(!event.target.closest('.workout-more-btn, .workout-edit-btn, .workout-menu, .workout-primary-action')) { this.classList.toggle('expanded'); if(this.classList.contains('expanded')) setTimeout(() => this.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }">
                 <div class="workout-card-header">
                     <div class="workout-exercise-name-row">
                         <div class="workout-exercise-name">
                             <i class="bx ${iconClass}" style="margin-right: 4px;"></i>${escapeHtml(displayName)}
                         </div>
                         <div class="workout-header-actions">
+                            <button class="workout-edit-btn${isCompleted ? ' edit-locked' : ''}"
+                                    onclick="window.workoutModeController?.handleEditActivity?.('${escapedName}', ${index}); event.stopPropagation();"
+                                    aria-label="${isCompleted ? 'Editing locked - uncomplete to edit' : 'Edit activity'}"
+                                    title="${isCompleted ? 'Uncomplete to edit' : 'Edit activity'}">
+                                <i class="bx ${isCompleted ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
+                            </button>
+                            <button class="workout-more-btn"
+                                    onclick="window.workoutModeController?.toggleExerciseMenu?.(this, '${escapedName}', ${index}); event.stopPropagation();"
+                                    title="More options">
+                                <i class="bx bx-dots-vertical"></i>
+                            </button>
                             <i class="bx bx-chevron-down workout-chevron"></i>
+                            ${this._renderActivityMoreMenu(exerciseName, index, isSkipped, isCompleted, totalCards)}
                         </div>
                     </div>
                     <div class="workout-exercise-info">
                         <span class="workout-meta">${metaText || 'Activity'}</span>
+                        ${hasSessionOverrides ? '<span class="workout-state-item highlight"><i class="bx bx-pencil"></i> Modified</span>' : ''}
                     </div>
                 </div>
                 ${completionButtonHtml}
-                <div class="workout-card-body">
-                    <div class="p-3 text-muted small">
-                        ${config.duration_minutes ? `<div><strong>Duration:</strong> ${config.duration_minutes} min</div>` : ''}
-                        ${config.distance ? `<div><strong>Distance:</strong> ${config.distance} ${config.distance_unit || 'mi'}</div>` : ''}
-                        ${config.target_pace ? `<div><strong>Target Pace:</strong> ${config.target_pace}</div>` : ''}
-                        ${config.target_rpe ? `<div><strong>RPE:</strong> ${config.target_rpe}/10</div>` : ''}
-                        ${config.target_heart_rate ? `<div><strong>Heart Rate:</strong> ${config.target_heart_rate} bpm</div>` : ''}
-                        ${config.target_calories ? `<div><strong>Calories:</strong> ${config.target_calories} cal</div>` : ''}
-                    </div>
+                <div class="workout-card-body" onclick="event.stopPropagation()">
+                    ${isSkipped ? `
+                        <div class="alert alert-warning">
+                            <i class="bx bx-info-circle me-2"></i>
+                            <strong>Activity Skipped</strong>
+                            ${skipReason ? `<p class="mb-0 mt-1 small">${escapeHtml(skipReason)}</p>` : ''}
+                        </div>
+                    ` : `
+                        <div class="p-3 text-muted small">
+                            ${displayConfig.duration_minutes ? `<div><strong>Duration:</strong> ${displayConfig.duration_minutes} min</div>` : ''}
+                            ${displayConfig.distance ? `<div><strong>Distance:</strong> ${displayConfig.distance} ${displayConfig.distance_unit || 'mi'}</div>` : ''}
+                            ${displayConfig.target_pace ? `<div><strong>Target Pace:</strong> ${displayConfig.target_pace}</div>` : ''}
+                            ${displayConfig.target_rpe ? `<div><strong>RPE:</strong> ${displayConfig.target_rpe}/10</div>` : ''}
+                            ${displayConfig.target_heart_rate ? `<div><strong>Heart Rate:</strong> ${displayConfig.target_heart_rate} bpm</div>` : ''}
+                            ${displayConfig.target_calories ? `<div><strong>Calories:</strong> ${displayConfig.target_calories} cal</div>` : ''}
+                            ${displayConfig.notes ? `<div class="mt-2"><strong>Notes:</strong> ${escapeHtml(displayConfig.notes)}</div>` : ''}
+                        </div>
+                    `}
                 </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render activity-specific more menu (kebab menu)
+     * @private
+     */
+    _renderActivityMoreMenu(exerciseName, index, isSkipped, isCompleted, totalCards) {
+        const escapeHtml = (text) => {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+        const escaped = escapeHtml(exerciseName);
+
+        return `
+            <div class="workout-menu" onclick="event.stopPropagation()">
+                ${!isSkipped ? `
+                    <button class="workout-menu-item" onclick="window.workoutModeController?.handleSkipExercise?.('${escaped}', ${index}); event.stopPropagation();">
+                        <i class="bx bx-skip-next"></i>
+                        Skip for today
+                    </button>
+                ` : `
+                    <button class="workout-menu-item" onclick="window.workoutModeController?.handleUnskipExercise?.('${escaped}', ${index}); event.stopPropagation();" style="color: var(--workout-success);">
+                        <i class="bx bx-undo" style="color: var(--workout-success);"></i>
+                        Unskip activity
+                    </button>
+                `}
+                <button class="workout-menu-item${isCompleted ? ' disabled' : ''}"
+                        onclick="window.workoutModeController?.handleEditActivity?.('${escaped}', ${index}); event.stopPropagation();"${isCompleted ? ' disabled' : ''}>
+                    <i class="bx ${isCompleted ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
+                    ${isCompleted ? 'Edit (uncomplete first)' : 'Edit activity'}
+                </button>
+                <button class="workout-menu-item" onclick="window.workoutModeController?.handleReplaceActivity?.('${escaped}', ${index}); event.stopPropagation();">
+                    <i class="bx bx-transfer-alt"></i>
+                    Replace activity
+                </button>
+                <div class="workout-menu-divider"></div>
+                <button class="workout-menu-item${index === 0 ? ' disabled' : ''}" onclick="window.workoutModeController?.handleMoveUp?.(${index}); event.stopPropagation();"${index === 0 ? ' disabled' : ''}>
+                    <i class="bx bx-chevron-up"></i>
+                    Move up
+                </button>
+                <button class="workout-menu-item${index >= totalCards - 1 ? ' disabled' : ''}" onclick="window.workoutModeController?.handleMoveDown?.(${index}); event.stopPropagation();"${index >= totalCards - 1 ? ' disabled' : ''}>
+                    <i class="bx bx-chevron-down"></i>
+                    Move down
+                </button>
             </div>
         `;
     }

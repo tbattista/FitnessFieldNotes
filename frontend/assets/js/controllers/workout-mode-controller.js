@@ -452,6 +452,8 @@ class WorkoutModeController {
     handleAddNote() { return this.notesManager.handleAddNote(); }
     showAddExerciseForm() { return this.exerciseOpsManager.showAddExerciseForm(); }
     showAddActivityForm() { return this.exerciseOpsManager.showAddActivityForm(); }
+    handleEditActivity(name, idx) { return this.exerciseOpsManager.handleEditActivity(name, idx); }
+    handleReplaceActivity(name, idx) { return this.exerciseOpsManager.handleReplaceActivity(name, idx); }
     showReorderOffcanvas() { this.reorderManager.showReorderOffcanvas(); }
     initializeShareButton() { this.settingsManager.initializeShareButton(); }
 
