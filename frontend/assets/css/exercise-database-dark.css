@@ -1,0 +1,89 @@
+/* ============================================
+   EXERCISE DATABASE — DARK MODE
+   All dark mode overrides for exercise database
+
+   Split from exercise-database.css
+   ============================================ */
+
+/* Card background */
+[data-bs-theme="dark"] #exerciseTableContainer .card {
+    background-color: #2b2c40;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Detail panel */
+[data-bs-theme="dark"] .exercise-detail-panel-inner {
+    background: transparent;
+}
+
+[data-bs-theme="dark"] .exercise-detail-content img,
+[data-bs-theme="dark"] #exerciseOffcanvasContent img {
+    background: #1a1b2e;
+}
+
+/* Selected card highlight */
+[data-bs-theme="dark"] .desktop-view .exercise-list-panel .exercise-card-selected {
+    background-color: rgba(var(--bs-primary-rgb), 0.10);
+    box-shadow: 0 2px 8px rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Pairing chips */
+[data-bs-theme="dark"] .pairing-exercise-chip {
+    background-color: rgba(var(--bs-primary-rgb), 0.08);
+}
+
+[data-bs-theme="dark"] .pairing-exercise-chip:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.14);
+}
+
+/* Toolbar search */
+[data-bs-theme="dark"] .exercise-toolbar-search input {
+    background-color: var(--bs-gray-900);
+    border-color: var(--bs-gray-600);
+    color: var(--bs-gray-200);
+}
+
+[data-bs-theme="dark"] .exercise-toolbar-search input::placeholder {
+    color: var(--bs-gray-500);
+}
+
+[data-bs-theme="dark"] .exercise-toolbar-search input:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.2);
+}
+
+/* Toolbar buttons */
+[data-bs-theme="dark"] .exercise-toolbar-btn.btn-outline-secondary {
+    background-color: var(--bs-gray-900);
+    border-color: var(--bs-gray-600);
+    color: var(--bs-gray-300);
+}
+
+[data-bs-theme="dark"] .exercise-toolbar-btn.btn-outline-secondary:hover {
+    background-color: var(--bs-gray-700);
+    border-color: var(--bs-gray-500);
+}
+
+/* Category chips */
+[data-bs-theme="dark"] .category-chip {
+    background-color: var(--bs-gray-900);
+    border-color: var(--bs-gray-600);
+    color: var(--bs-gray-400);
+}
+
+[data-bs-theme="dark"] .category-chip:hover {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+[data-bs-theme="dark"] .category-chip.active {
+    color: #fff;
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+/* Mobile cart bar */
+[data-bs-theme="dark"] .exercise-cart-bar {
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+}

@@ -20,6 +20,14 @@
         init() {
             this.createModalHTML();
             this.attachEventListeners();
+
+            // Initialize export handler (requires share-modal-export.js loaded first)
+            if (window.ShareModalExport) {
+                this.exportHandler = new window.ShareModalExport(this);
+            } else {
+                console.warn('⚠️ ShareModalExport not loaded — export features will be unavailable');
+            }
+
             console.log('✅ Share Modal component initialized');
         }
 
@@ -316,25 +324,25 @@
                 });
             }
 
-            // Export buttons
+            // Export buttons — delegated to ShareModalExport
             const exportImageBtn = document.getElementById('exportImageBtn');
             if (exportImageBtn) {
-                exportImageBtn.addEventListener('click', () => this.handleImageExport());
+                exportImageBtn.addEventListener('click', () => this.exportHandler?.handleImageExport());
             }
 
             const exportTextBtn = document.getElementById('exportTextBtn');
             if (exportTextBtn) {
-                exportTextBtn.addEventListener('click', () => this.handleTextExport());
+                exportTextBtn.addEventListener('click', () => this.exportHandler?.handleTextExport());
             }
 
             const exportPrintBtn = document.getElementById('exportPrintBtn');
             if (exportPrintBtn) {
-                exportPrintBtn.addEventListener('click', () => this.handlePrintExport());
+                exportPrintBtn.addEventListener('click', () => this.exportHandler?.handlePrintExport());
             }
 
             const exportGymLogBtn = document.getElementById('exportGymLogBtn');
             if (exportGymLogBtn) {
-                exportGymLogBtn.addEventListener('click', () => this.handleGymLogExport());
+                exportGymLogBtn.addEventListener('click', () => this.exportHandler?.handleGymLogExport());
             }
 
             // Public share button
@@ -573,224 +581,6 @@
                 btn.innerHTML = '<i class="bx bx-trash me-1"></i>Delete Link';
             }
             }, { confirmText: 'Delete', confirmClass: 'btn-danger', size: 'sm' });
-        }
-
-        // Export handlers
-        async handleImageExport() {
-            const btn = document.getElementById('exportImageBtn');
-            const originalHTML = btn.innerHTML;
-            const includeWeights = document.getElementById('includeWeightsCheckbox')?.checked || false;
-
-            try {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
-
-                const token = await this.getAuthToken();
-
-                const response = await fetch(`/api/v3/export/image/${this.currentWorkoutId}?include_weights=${includeWeights}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to generate image');
-                }
-
-                // Download the image
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${this.currentWorkout?.name || 'workout'}.png`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-
-                this.showExportStatus('Image downloaded successfully!', 'success');
-                if (window.analyticsService) {
-                    window.analyticsService.trackExport('image', this.currentWorkout?.name);
-                }
-                console.log('✅ Image exported');
-
-            } catch (error) {
-                console.error('❌ Error exporting image:', error);
-                this.showExportStatus(error.message, 'danger');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHTML;
-            }
-        }
-
-        async handleTextExport() {
-            const btn = document.getElementById('exportTextBtn');
-            const originalHTML = btn.innerHTML;
-            const includeWeights = document.getElementById('includeWeightsCheckbox')?.checked || false;
-
-            try {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Copying...';
-
-                const token = await this.getAuthToken();
-
-                const response = await fetch(`/api/v3/export/text/${this.currentWorkoutId}?include_weights=${includeWeights}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to generate text');
-                }
-
-                const text = await response.text();
-
-                // Copy to clipboard
-                await navigator.clipboard.writeText(text);
-
-                // Show success
-                btn.innerHTML = '<i class="bx bx-check me-1"></i>Copied!';
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-success');
-
-                this.showExportStatus('Text copied to clipboard!', 'success');
-                if (window.analyticsService) {
-                    window.analyticsService.trackExport('text', this.currentWorkout?.name);
-                }
-                console.log('✅ Text exported and copied');
-
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
-                    btn.classList.remove('btn-success');
-                    btn.classList.add('btn-outline-secondary');
-                }, 2000);
-
-            } catch (error) {
-                console.error('❌ Error exporting text:', error);
-                this.showExportStatus(error.message, 'danger');
-                btn.innerHTML = originalHTML;
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        async handlePrintExport() {
-            const btn = document.getElementById('exportPrintBtn');
-            const originalHTML = btn.innerHTML;
-            const includeWeights = document.getElementById('includeWeightsCheckbox')?.checked || false;
-
-            try {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
-
-                const token = await this.getAuthToken();
-
-                const response = await fetch(`/api/v3/export/print/${this.currentWorkoutId}?include_weights=${includeWeights}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to generate PDF');
-                }
-
-                // Download the PDF
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${this.currentWorkout?.name || 'workout'}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-
-                this.showExportStatus('PDF downloaded successfully!', 'success');
-                if (window.analyticsService) {
-                    window.analyticsService.trackExport('pdf', this.currentWorkout?.name);
-                }
-                console.log('✅ PDF exported');
-
-            } catch (error) {
-                console.error('❌ Error exporting PDF:', error);
-                this.showExportStatus(error.message, 'danger');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHTML;
-            }
-        }
-
-        async handleGymLogExport() {
-            const btn = document.getElementById('exportGymLogBtn');
-            const originalHTML = btn.innerHTML;
-            const includeWeights = document.getElementById('includeWeightsCheckbox')?.checked || false;
-
-            try {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
-
-                const token = await this.getAuthToken();
-
-                const response = await fetch(`/api/v3/export/print/${this.currentWorkoutId}?include_weights=${includeWeights}&format=log`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to generate PDF');
-                }
-
-                // Download the PDF
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${this.currentWorkout?.name || 'workout'}_log.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-
-                this.showExportStatus('Gym log PDF downloaded!', 'success');
-                if (window.analyticsService) {
-                    window.analyticsService.trackExport('gym-log', this.currentWorkout?.name);
-                }
-                console.log('✅ Gym log PDF exported');
-
-            } catch (error) {
-                console.error('❌ Error exporting gym log:', error);
-                this.showExportStatus(error.message, 'danger');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHTML;
-            }
-        }
-
-        showExportStatus(message, type) {
-            const statusEl = document.getElementById('exportStatusMessage');
-            if (!statusEl) return;
-
-            statusEl.textContent = message;
-            statusEl.className = `alert alert-${type} mb-0`;
-            statusEl.style.display = 'block';
-
-            // Auto-hide success messages
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 3000);
-            }
         }
 
         showPublicSuccess(publicWorkout) {

@@ -1,10 +1,13 @@
 /**
- * Ghost Gym - Unified Offcanvas Styles
+ * Ghost Gym - Unified Offcanvas Base Styles
  * Based on workout-mode offcanvas styling (offcanvas-base.css)
  * Extended with menu items, filters, and comprehensive patterns
- * 
- * @version 2.0.0
- * @date 2025-11-23
+ *
+ * Specialized components split to: unified-offcanvas-specialized.css
+ * Dark theme selectors split to: unified-offcanvas-dark.css
+ *
+ * @version 3.0.0
+ * @date 2026-03-25
  * @foundation offcanvas-base.css (workout-mode styling)
  */
 
@@ -494,24 +497,24 @@ body.offcanvas-scroll-locked {
     .offcanvas-bottom-base {
         max-height: 90vh;
     }
-    
+
     .offcanvas-bottom-base .offcanvas-header {
         padding: 1rem 1.25rem;
     }
-    
+
     .offcanvas-bottom-base .offcanvas-body {
         padding: 1.25rem;
     }
-    
+
     .offcanvas-bottom-base .offcanvas-footer {
         padding: 0.75rem 1rem;
     }
-    
+
     .offcanvas-bottom-base .btn {
         padding: 0.65rem 1.25rem;
         font-size: 0.95rem;
     }
-    
+
     .offcanvas-bottom-compact {
         max-height: 70vh;
     }
@@ -533,28 +536,28 @@ body.offcanvas-scroll-locked {
     .offcanvas-bottom-base {
         max-height: 95vh;
     }
-    
+
     .offcanvas-bottom-base .offcanvas-body {
         padding: 1rem;
     }
-    
+
     .offcanvas-bottom-base .offcanvas-footer {
         padding: 0.625rem 0.875rem;
     }
-    
+
     .offcanvas-bottom-base .offcanvas-title {
         font-size: 1rem;
     }
-    
+
     /* Stack buttons vertically on very small screens - EXCEPT workout builder and detail offcanvases */
     .offcanvas-bottom-base .offcanvas-footer .d-flex:not(.workout-builder-buttons):not(.detail-offcanvas-buttons) {
         flex-direction: column;
     }
-    
+
     .offcanvas-bottom-base .offcanvas-footer .flex-fill {
         width: 100%;
     }
-    
+
     .offcanvas-bottom-compact {
         max-height: 80vh;
     }
@@ -570,166 +573,6 @@ body.offcanvas-scroll-locked {
     .offcanvas-bottom-tall .offcanvas-body {
         max-height: calc(90vh - 140px);
     }
-}
-
-/* ============================================
-   DARK THEME SUPPORT
-   NOTE: Using hardcoded colors because Bootstrap's gray scale
-   is inverted in dark mode (gray-900 = light, gray-100 = dark)
-   ============================================ */
-
-[data-bs-theme="dark"] .offcanvas-bottom-base {
-    background-color: #1e293b;
-    color: #f8fafc;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-header {
-    background-color: #1e293b;
-    border-bottom-color: #475569;
-}
-
-/* Title and icon colors */
-[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-title,
-[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-title i {
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-footer {
-    border-top-color: #475569;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .form-label {
-    color: #cbd5e1;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .form-control,
-[data-bs-theme="dark"] .offcanvas-bottom-base .form-select {
-    background-color: #334155;
-    border-color: #475569;
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .form-control:focus,
-[data-bs-theme="dark"] .offcanvas-bottom-base .form-select:focus {
-    background-color: #334155;
-    border-color: var(--bs-primary);
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .card {
-    background-color: #334155;
-    border-color: #475569;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .detail-note-card {
-    border-left-color: #94a3b8;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .detail-cardio-card {
-    border-left-color: #60a5fa;
-}
-
-/* Stats card text in dark mode */
-[data-bs-theme="dark"] .offcanvas-bottom-base .card .h4,
-[data-bs-theme="dark"] .offcanvas-bottom-base .card .h3,
-[data-bs-theme="dark"] .offcanvas-bottom-base .card .h5 {
-    color: #f8fafc !important;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .card small.text-muted,
-[data-bs-theme="dark"] .offcanvas-bottom-base .card .text-muted {
-    color: #94a3b8 !important;
-}
-
-/* Paragraph and text-muted in offcanvas body */
-[data-bs-theme="dark"] .offcanvas-bottom-base p.text-muted,
-[data-bs-theme="dark"] .offcanvas-bottom-base .text-muted {
-    color: #94a3b8;
-}
-
-/* Main headings in offcanvas */
-[data-bs-theme="dark"] .offcanvas-bottom-base h4,
-[data-bs-theme="dark"] .offcanvas-bottom-base h5,
-[data-bs-theme="dark"] .offcanvas-bottom-base h6 {
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item {
-    border-color: #475569;
-    background: #334155;
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item .more-menu-item-title {
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item .more-menu-item-description {
-    color: #94a3b8;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item > i {
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--bs-primary);
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.toggle-item {
-    background: transparent;
-    border-color: #475569;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.toggle-item:hover {
-    background: transparent;
-    border: none;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.danger {
-    color: var(--gs-alert-danger-text);
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.danger .more-menu-item-title {
-    color: var(--gs-alert-danger-text);
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.danger:hover {
-    background: rgba(var(--gs-danger-rgb), 0.15);
-    border-color: var(--gs-danger);
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .list-group-item {
-    background-color: var(--gs-gray-100);
-    border-color: var(--gs-gray-200);
-    color: var(--gs-gray-800);
-}
-
-/* btn-close visibility in dark mode */
-[data-bs-theme="dark"] .offcanvas-bottom-base .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
-}
-
-/* Weight modal content dark mode */
-[data-bs-theme="dark"] .weight-modal-content .form-control,
-[data-bs-theme="dark"] .weight-modal-content .form-select {
-    background-color: var(--bs-gray-800);
-    border-color: var(--bs-gray-700);
-    color: var(--bs-body-color);
-}
-
-[data-bs-theme="dark"] .weight-modal-content .form-control:focus,
-[data-bs-theme="dark"] .weight-modal-content .form-select:focus {
-    background-color: var(--bs-gray-800);
-    border-color: var(--bs-primary);
-}
-
-/* DIY hint dark mode */
-[data-bs-theme="dark"] .diy-hint {
-    background-color: rgba(var(--bs-info-rgb), 0.15);
-    color: var(--bs-gray-400);
 }
 
 /* ============================================
@@ -762,543 +605,11 @@ body.offcanvas-scroll-locked {
 }
 
 /* ============================================
-   EXERCISE SLOT STYLES (for Exercise Group Editor)
-   ============================================ */
-
-.exercise-slot {
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-    min-height: 52px;
-}
-
-.exercise-slot.filled {
-    background: rgba(var(--bs-primary-rgb), 0.03);
-}
-
-/* Remove dotted border from exercise slot input groups */
-.exercise-slot .input-group {
-    border: none;
-}
-
-.exercise-slot .input-group .form-control,
-.exercise-slot .input-group .btn {
-    border: 2px solid var(--bs-border-color);
-}
-
-.exercise-slot.filled .input-group .form-control {
-    border-color: var(--bs-primary);
-}
-
-.exercise-slot-button {
-    width: 100%;
-    padding: 0.875rem 1rem;
-    border-radius: 0.375rem;
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.exercise-slot-button:hover {
-    background-color: rgba(var(--bs-primary-rgb), 0.1);
-    border-color: var(--bs-primary);
-    color: var(--bs-primary);
-}
-
-.exercise-slot-display {
-    animation: slideIn 0.2s ease-out;
-}
-
-.exercise-slot-display .exercise-name {
-    font-size: 0.95rem;
-    color: var(--bs-heading-color);
-    word-break: break-word;
-}
-
-.exercise-slot-display .btn-outline-danger {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
-/* Alternate exercise slot container */
-.alternate-exercise-slot-container {
-    animation: slideIn 0.2s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes slideOut {
-    from {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    to {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-}
-
-/* Dark theme support for exercise slots */
-[data-bs-theme="dark"] .exercise-slot {
-    border-color: var(--bs-gray-600);
-}
-
-[data-bs-theme="dark"] .exercise-slot.filled {
-    background: rgba(var(--bs-primary-rgb), 0.08);
-}
-
-[data-bs-theme="dark"] .exercise-slot-display .bg-light {
-    background-color: var(--bs-gray-800) !important;
-}
-
-[data-bs-theme="dark"] .exercise-slot-display .exercise-name {
-    color: var(--bs-body-color);
-}
-
-/* ============================================
-   FILTER OFFCANVAS STYLES
-   ============================================ */
-
-.filter-option {
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    user-select: none;
-}
-
-.filter-option:hover {
-    background-color: rgba(var(--bs-primary-rgb), 0.08);
-}
-
-.filter-option:active {
-    background-color: rgba(var(--bs-primary-rgb), 0.12);
-}
-
-.filter-option .checkmark {
-    width: 24px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Collapsible filter section headers */
-.filter-category-header {
-    cursor: pointer;
-    user-select: none;
-}
-
-.filter-category-header .filter-chevron {
-    transition: transform 0.3s ease;
-}
-
-.filter-category-header[aria-expanded="true"] .filter-chevron {
-    transform: rotate(180deg);
-}
-
-.filter-active-badge {
-    font-size: 0.65rem;
-    min-width: 18px;
-    line-height: 1;
-    padding: 0.2em 0.45em;
-}
-
-/* Dark theme support */
-[data-bs-theme="dark"] .filter-option:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-[data-bs-theme="dark"] .filter-option:active {
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
-/* ============================================
    PRINT STYLES
    ============================================ */
 
 @media print {
     .offcanvas-bottom-base {
         display: none;
-    }
-}
-
-/* ============================================
-   WEIGHT INPUT DIY MODE LAYOUT
-   Responsive layout that expands input and moves buttons on DIY selection
-   ============================================ */
-
-/* Override forms.css box styling - remove nested appearance */
-.offcanvas-bottom-base .weight-input-container {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    transition: gap 0.3s ease;
-}
-
-/* NEW: Full-width layout for offcanvas - input always full width, buttons on next line */
-.offcanvas-bottom-base .weight-input-container .weight-input {
-    flex: 0 0 100%;
-    max-width: 100%;
-}
-
-.offcanvas-bottom-base .weight-input-container .btn-group {
-    flex: 0 0 100%;
-}
-
-/* Keep original layout for non-offcanvas contexts (in-card editor) */
-.workout-card .weight-input-container .weight-input {
-    flex: 0 0 calc(33.333% - 0.25rem);
-    transition: flex 0.3s ease;
-}
-
-.workout-card .weight-input-container .btn-group {
-    flex: 0 0 calc(66.667% - 0.25rem);
-    transition: flex 0.3s ease;
-}
-
-/* DIY mode: input expands to full width, buttons move to new line (in-card only) */
-.workout-card .weight-input-container.diy-mode .weight-input {
-    flex: 0 0 100%;
-}
-
-.workout-card .weight-input-container.diy-mode .btn-group {
-    flex: 0 0 100%;
-}
-
-/* Dark theme support */
-[data-bs-theme="dark"] .weight-input-container .weight-input {
-    background-color: var(--bs-gray-800);
-    border-color: var(--bs-gray-700);
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-    .weight-input-container,
-    .weight-input-container .weight-input,
-    .weight-input-container .btn-group {
-        transition: none;
-    }
-}
-
-/* ============================================
-   REORDER EXERCISES OFFCANVAS
-   Drag-and-drop visual feedback styles for SortableJS
-   ============================================ */
-
-/* Reorder list container */
-#reorderList {
-    user-select: none;
-}
-
-/* Individual reorder items */
-.reorder-item {
-    transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-/* Drag handle cursor */
-.reorder-handle {
-    cursor: move;
-    cursor: grab;
-    touch-action: none;
-}
-
-.reorder-handle:active {
-    cursor: grabbing;
-}
-
-/* Ghost element (shows where item will be dropped) */
-.sortable-ghost {
-    opacity: 0.4;
-    background: rgba(var(--bs-primary-rgb), 0.1) !important;
-    border: 2px dashed var(--bs-primary) !important;
-}
-
-/* Chosen element (item being dragged - before fallback) */
-.sortable-chosen {
-    cursor: grabbing !important;
-}
-
-/* Drag element (the actual dragging element with fallback) */
-.sortable-drag {
-    opacity: 1 !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
-    transform: rotate(2deg);
-    cursor: grabbing !important;
-}
-
-/* Fallback element (mobile/touch fallback) */
-.sortable-fallback {
-    opacity: 1 !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
-    transform: rotate(2deg) scale(1.05);
-    cursor: grabbing !important;
-    background: var(--bs-white) !important;
-    z-index: 9999 !important;
-}
-
-/* List container state during drag */
-#reorderList.is-dragging {
-    cursor: grabbing;
-}
-
-/* Prevent text selection during drag */
-#reorderList.is-dragging * {
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-/* Reorder item content - prevent pointer events during drag */
-.sortable-drag .reorder-item > div,
-.sortable-fallback .reorder-item > div {
-    pointer-events: none;
-}
-
-/* Badge number styling in reorder list */
-.reorder-item .badge {
-    min-width: 32px;
-    min-height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.875rem;
-    font-weight: 600;
-    border-radius: 8px;
-}
-
-/* Reorder item inner - light mode default */
-.reorder-item-inner {
-    background-color: var(--bs-white, #fff);
-    border-color: var(--bs-border-color);
-    color: var(--bs-body-color);
-}
-
-/* Dark theme support */
-[data-bs-theme="dark"] .reorder-item-inner {
-    background-color: var(--bs-gray-800);
-    border-color: var(--bs-gray-700) !important;
-    color: var(--bs-body-color);
-}
-
-[data-bs-theme="dark"] .reorder-item .fw-medium {
-    color: var(--bs-body-color);
-}
-
-[data-bs-theme="dark"] .sortable-fallback {
-    background: var(--bs-gray-800) !important;
-}
-
-[data-bs-theme="dark"] .sortable-ghost {
-    background: rgba(var(--bs-primary-rgb), 0.15) !important;
-}
-
-[data-bs-theme="dark"] .sortable-drag .reorder-item-inner {
-    background-color: var(--bs-gray-700) !important;
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-    .reorder-item,
-    .sortable-ghost,
-    .sortable-drag,
-    .sortable-fallback {
-        transition: none;
-        transform: none !important;
-    }
-
-    .sortable-drag,
-    .sortable-fallback {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-    }
-}
-
-/* ============================================
-   SESSION COMPLETE - NOTEBOOK STYLE
-   Clean, calm completion panel with save-first hierarchy
-   ============================================ */
-
-/* Header - left aligned, no hero icon */
-.session-complete-header {
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--bs-border-color);
-}
-
-.session-complete-header h5 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: var(--bs-heading-color);
-}
-
-.session-complete-header small {
-    font-size: 0.8125rem;
-}
-
-/* Stats row - horizontal, neutral */
-.session-stats-row {
-    display: flex;
-    gap: 2rem;
-    padding: 1rem 0;
-}
-
-.session-stat {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--bs-body-color);
-}
-
-.session-stat i {
-    font-size: 1.125rem;
-    color: var(--bs-secondary-color);
-}
-
-.session-stat input {
-    width: 50px;
-    text-align: center;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    padding: 0.25rem;
-    font-size: 1rem;
-    font-weight: 600;
-    background: transparent;
-    transition: border-color 0.2s, background-color 0.2s;
-    color: var(--bs-body-color);
-}
-
-.session-stat input::placeholder {
-    color: var(--bs-secondary-color);
-    opacity: 0.7;
-}
-
-.session-stat input:hover {
-    border-color: var(--bs-border-color);
-    background: rgba(var(--bs-primary-rgb), 0.05);
-}
-
-.session-stat input:focus {
-    outline: none;
-    border-color: var(--bs-primary);
-    background: var(--bs-body-bg);
-    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.1);
-}
-
-.session-stat .stat-value {
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-/* Editable stat with pencil hint */
-.session-stat.editable {
-    cursor: pointer;
-    position: relative;
-}
-
-.session-stat .edit-hint {
-    font-size: 0.75rem;
-    color: var(--bs-secondary-color);
-    opacity: 0.6;
-    margin-left: 0.25rem;
-    transition: opacity 0.2s, color 0.2s;
-}
-
-.session-stat.editable:hover .edit-hint {
-    opacity: 1;
-    color: var(--bs-primary);
-}
-
-.session-stat.editable:hover input {
-    border-color: var(--bs-border-color);
-    background: rgba(var(--bs-primary-rgb), 0.05);
-}
-
-/* Link-style secondary buttons */
-.offcanvas-bottom-base .btn-link {
-    padding: 0.5rem 1rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: opacity 0.2s, color 0.2s;
-    border: none;
-    background: transparent;
-}
-
-.offcanvas-bottom-base .btn-link:hover {
-    text-decoration: underline;
-    opacity: 0.8;
-}
-
-.offcanvas-bottom-base .btn-link.text-muted {
-    color: var(--bs-secondary-color) !important;
-}
-
-.offcanvas-bottom-base .btn-link.text-muted:hover {
-    color: var(--bs-body-color) !important;
-}
-
-.offcanvas-bottom-base .btn-link.text-danger {
-    color: var(--bs-danger) !important;
-}
-
-.offcanvas-bottom-base .btn-link.text-danger:hover {
-    color: var(--bs-danger) !important;
-    opacity: 0.8;
-}
-
-/* Dark theme support for session complete */
-[data-bs-theme="dark"] .session-complete-header {
-    border-bottom-color: var(--bs-gray-700);
-}
-
-[data-bs-theme="dark"] .session-complete-header h5 {
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .session-stat {
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .session-stat input {
-    color: #f8fafc;
-}
-
-[data-bs-theme="dark"] .session-stat input::placeholder {
-    color: #94a3b8;
-}
-
-[data-bs-theme="dark"] .session-stat input:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--bs-gray-600);
-}
-
-[data-bs-theme="dark"] .session-stat input:focus {
-    background: var(--bs-gray-800);
-    border-color: var(--bs-primary);
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .btn-link.text-muted {
-    color: #94a3b8 !important;
-}
-
-[data-bs-theme="dark"] .offcanvas-bottom-base .btn-link.text-muted:hover {
-    color: #f8fafc !important;
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-    .session-stat input {
-        transition: none;
-    }
-
-    .offcanvas-bottom-base .btn-link {
-        transition: none;
     }
 }

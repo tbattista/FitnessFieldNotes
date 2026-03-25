@@ -1,0 +1,277 @@
+/**
+ * Ghost Gym - Unified Offcanvas Dark Theme Styles
+ * All [data-bs-theme="dark"] selectors for offcanvas components
+ *
+ * Split from unified-offcanvas.css
+ * @version 1.0.0
+ * @date 2026-03-25
+ */
+
+/* ============================================
+   BASE OFFCANVAS DARK THEME
+   NOTE: Using hardcoded colors because Bootstrap's gray scale
+   is inverted in dark mode (gray-900 = light, gray-100 = dark)
+   ============================================ */
+
+[data-bs-theme="dark"] .offcanvas-bottom-base {
+    background-color: #1e293b;
+    color: #f8fafc;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-header {
+    background-color: #1e293b;
+    border-bottom-color: #475569;
+}
+
+/* Title and icon colors */
+[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-title,
+[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-title i {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .offcanvas-footer {
+    border-top-color: #475569;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .form-label {
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .form-control,
+[data-bs-theme="dark"] .offcanvas-bottom-base .form-select {
+    background-color: #334155;
+    border-color: #475569;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .form-control:focus,
+[data-bs-theme="dark"] .offcanvas-bottom-base .form-select:focus {
+    background-color: #334155;
+    border-color: var(--bs-primary);
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .card {
+    background-color: #334155;
+    border-color: #475569;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .detail-note-card {
+    border-left-color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .detail-cardio-card {
+    border-left-color: #60a5fa;
+}
+
+/* Stats card text in dark mode */
+[data-bs-theme="dark"] .offcanvas-bottom-base .card .h4,
+[data-bs-theme="dark"] .offcanvas-bottom-base .card .h3,
+[data-bs-theme="dark"] .offcanvas-bottom-base .card .h5 {
+    color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .card small.text-muted,
+[data-bs-theme="dark"] .offcanvas-bottom-base .card .text-muted {
+    color: #94a3b8 !important;
+}
+
+/* Paragraph and text-muted in offcanvas body */
+[data-bs-theme="dark"] .offcanvas-bottom-base p.text-muted,
+[data-bs-theme="dark"] .offcanvas-bottom-base .text-muted {
+    color: #94a3b8;
+}
+
+/* Main headings in offcanvas */
+[data-bs-theme="dark"] .offcanvas-bottom-base h4,
+[data-bs-theme="dark"] .offcanvas-bottom-base h5,
+[data-bs-theme="dark"] .offcanvas-bottom-base h6 {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item {
+    border-color: #475569;
+    background: #334155;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item .more-menu-item-title {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item .more-menu-item-description {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item > i {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.toggle-item {
+    background: transparent;
+    border-color: #475569;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.toggle-item:hover {
+    background: transparent;
+    border: none;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.danger {
+    color: var(--gs-alert-danger-text);
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.danger .more-menu-item-title {
+    color: var(--gs-alert-danger-text);
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .more-menu-item.danger:hover {
+    background: rgba(var(--gs-danger-rgb), 0.15);
+    border-color: var(--gs-danger);
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .list-group-item {
+    background-color: var(--gs-gray-100);
+    border-color: var(--gs-gray-200);
+    color: var(--gs-gray-800);
+}
+
+/* btn-close visibility in dark mode */
+[data-bs-theme="dark"] .offcanvas-bottom-base .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Weight modal content dark mode */
+[data-bs-theme="dark"] .weight-modal-content .form-control,
+[data-bs-theme="dark"] .weight-modal-content .form-select {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-700);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .weight-modal-content .form-control:focus,
+[data-bs-theme="dark"] .weight-modal-content .form-select:focus {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-primary);
+}
+
+/* DIY hint dark mode */
+[data-bs-theme="dark"] .diy-hint {
+    background-color: rgba(var(--bs-info-rgb), 0.15);
+    color: var(--bs-gray-400);
+}
+
+/* ============================================
+   EXERCISE SLOT DARK THEME
+   ============================================ */
+
+[data-bs-theme="dark"] .exercise-slot {
+    border-color: var(--bs-gray-600);
+}
+
+[data-bs-theme="dark"] .exercise-slot.filled {
+    background: rgba(var(--bs-primary-rgb), 0.08);
+}
+
+[data-bs-theme="dark"] .exercise-slot-display .bg-light {
+    background-color: var(--bs-gray-800) !important;
+}
+
+[data-bs-theme="dark"] .exercise-slot-display .exercise-name {
+    color: var(--bs-body-color);
+}
+
+/* ============================================
+   FILTER OFFCANVAS DARK THEME
+   ============================================ */
+
+[data-bs-theme="dark"] .filter-option:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .filter-option:active {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ============================================
+   WEIGHT INPUT DARK THEME
+   ============================================ */
+
+[data-bs-theme="dark"] .weight-input-container .weight-input {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-700);
+}
+
+/* ============================================
+   REORDER EXERCISES DARK THEME
+   ============================================ */
+
+[data-bs-theme="dark"] .reorder-item-inner {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-700) !important;
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .reorder-item .fw-medium {
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .sortable-fallback {
+    background: var(--bs-gray-800) !important;
+}
+
+[data-bs-theme="dark"] .sortable-ghost {
+    background: rgba(var(--bs-primary-rgb), 0.15) !important;
+}
+
+[data-bs-theme="dark"] .sortable-drag .reorder-item-inner {
+    background-color: var(--bs-gray-700) !important;
+}
+
+/* ============================================
+   SESSION COMPLETE DARK THEME
+   ============================================ */
+
+[data-bs-theme="dark"] .session-complete-header {
+    border-bottom-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .session-complete-header h5 {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .session-stat {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .session-stat input {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .session-stat input::placeholder {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .session-stat input:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--bs-gray-600);
+}
+
+[data-bs-theme="dark"] .session-stat input:focus {
+    background: var(--bs-gray-800);
+    border-color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .btn-link.text-muted {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .offcanvas-bottom-base .btn-link.text-muted:hover {
+    color: #f8fafc !important;
+}

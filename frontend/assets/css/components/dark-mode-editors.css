@@ -1,0 +1,212 @@
+/**
+ * Ghost Gym - Dark Mode Editor Styles
+ * Edit mode states, editor actions, workout editor section, exercise preview,
+ * table styles, delete mode, floating timer, workout mode, skipped exercise
+ * Split from dark-mode.css
+ * @version 1.0.0
+ * @date 2026-03-25
+ */
+
+/* ============================================
+   DARK MODE EDIT MODE STATES
+   ============================================ */
+
+[data-bs-theme="dark"] .accordion-workout-groups.edit-mode-active {
+    background: rgba(var(--gs-warning-rgb), 0.1);
+    border-color: var(--bs-warning);
+}
+
+[data-bs-theme="dark"] .accordion-workout-groups.edit-mode-active .accordion-item {
+    background: rgba(var(--gs-warning-rgb), 0.15);
+    border-color: var(--bs-warning);
+}
+
+[data-bs-theme="dark"] .accordion-workout-groups.edit-mode-active .accordion-button {
+    background: rgba(var(--gs-warning-rgb), 0.2);
+}
+
+[data-bs-theme="dark"] .accordion-workout-groups.edit-mode-active .drag-handle {
+    color: var(--bs-warning);
+}
+
+/* Edit mode for compact cards */
+[data-bs-theme="dark"] .exercise-groups-container.edit-mode-active .exercise-group-card.compact .card {
+    background: rgba(var(--gs-warning-rgb), 0.1);
+    border-color: var(--bs-warning);
+}
+
+/* ============================================
+   DARK MODE EDITOR ACTIONS
+   ============================================ */
+
+[data-bs-theme="dark"] .editor-actions > div {
+    background: var(--bs-gray-900);
+    border-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .save-status {
+    color: var(--gs-gray-400);
+}
+
+/* ============================================
+   DARK MODE WORKOUT EDITOR SECTION
+   ============================================ */
+
+[data-bs-theme="dark"] .workout-editor-section {
+    background: var(--gs-gray-50);
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .workout-editor-empty-state {
+    color: var(--gs-gray-400);
+}
+
+/* ============================================
+   DARK MODE EXERCISE PREVIEW
+   ============================================ */
+
+[data-bs-theme="dark"] .exercise-preview .exercise-main {
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .exercise-preview .exercise-alternates {
+    color: var(--gs-gray-400);
+}
+
+[data-bs-theme="dark"] .exercise-line {
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .exercise-meta-text {
+    color: var(--gs-gray-400);
+}
+
+/* ============================================
+   DARK MODE TABLE STYLES
+   ============================================ */
+
+[data-bs-theme="dark"] .datatable-table thead th {
+    background-color: var(--bs-gray-800);
+    color: var(--bs-gray-200);
+}
+
+[data-bs-theme="dark"] .datatable-table tbody tr:hover {
+    background-color: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .exercise-list .d-flex {
+    background-color: var(--bs-gray-800);
+}
+
+/* ============================================
+   DARK MODE DELETE MODE
+   ============================================ */
+
+[data-bs-theme="dark"] .card.delete-mode {
+    background: rgba(var(--bs-danger-rgb), 0.08);
+}
+
+[data-bs-theme="dark"] .card.delete-mode:hover {
+    background: rgba(var(--bs-danger-rgb), 0.12);
+}
+
+/* ============================================
+   DARK MODE FLOATING TIMER
+   ============================================ */
+
+[data-bs-theme="dark"] .floating-timer-widget {
+    background: var(--bs-gray-900);
+    border-color: var(--gs-primary);
+    box-shadow: 0 8px 24px rgba(var(--bs-primary-rgb), 0.4);
+}
+
+[data-bs-theme="dark"] .floating-timer-widget:hover {
+    box-shadow: 0 12px 32px rgba(var(--bs-primary-rgb), 0.5);
+}
+
+/* ============================================
+   DARK MODE WORKOUT MODE SPECIFIC
+   ============================================ */
+
+[data-bs-theme="dark"] .workout-name-header {
+    background-color: var(--bs-gray-900);
+    border-bottom-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .session-controls {
+    background: var(--bs-gray-900);
+    border-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .session-controls.active {
+    background: rgba(var(--bs-success-rgb), 0.1);
+}
+
+[data-bs-theme="dark"] .exercise-card {
+    background: var(--bs-gray-900);
+    border-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .exercise-card:hover {
+    border-color: var(--gs-primary);
+    background: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .exercise-card-header {
+    background: var(--bs-gray-900);
+    border-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .exercise-card:not(.expanded) .exercise-card-header:hover {
+    background: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .exercise-card-body {
+    background: var(--bs-gray-900);
+}
+
+[data-bs-theme="dark"] .rest-timer-container {
+    background: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .workout-mode-footer {
+    background: var(--bs-gray-900);
+    border-color: var(--bs-gray-700);
+}
+
+/* ============================================
+   DARK MODE SKIPPED EXERCISE
+   ============================================ */
+
+[data-bs-theme="dark"] .exercise-card.skipped {
+    background: linear-gradient(135deg, rgba(var(--bs-warning-rgb), 0.08), rgba(var(--bs-warning-rgb), 0.12));
+    border-color: var(--bs-warning);
+}
+
+[data-bs-theme="dark"] .exercise-card.skipped .exercise-card-header {
+    background: linear-gradient(135deg, rgba(var(--bs-warning-rgb), 0.12), rgba(var(--bs-warning-rgb), 0.16));
+}
+
+/* ============================================
+   DARK MODE WEIGHT PROGRESSION INDICATORS
+   NOTE: Colors now handled via CSS variables in workout-mode/_variables.css
+   ============================================ */
+
+/* ============================================
+   DARK MODE EDIT BUTTON COMPACT
+   NOTE: Main styling is in card-actions.css
+   This only handles dark mode color adjustments
+   ============================================ */
+
+/* Dark mode edit button - minimal style matching card-actions.css */
+[data-bs-theme="dark"] .btn-edit-compact {
+    background: transparent;
+    border: none;
+    color: var(--bs-secondary);
+}
+
+[data-bs-theme="dark"] .btn-edit-compact:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--bs-body-color);
+    box-shadow: none;
+}

@@ -1,0 +1,177 @@
+/**
+ * Dashboard Stats CSS
+ * Stats grid, weekly progress card, progress stat badges, utilities
+ */
+
+/* ============================================
+   STATS GRID
+   ============================================ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.stat-card .stat-icon {
+  font-size: 1.25rem;
+  display: inline;
+}
+
+.stat-card .stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline;
+  margin-left: 0.375rem;
+}
+
+.stat-card .stat-label {
+  font-size: 0.625rem;
+  color: var(--bs-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+  display: block;
+  margin-top: 0.125rem;
+}
+
+/* ============================================
+   WEEKLY PROGRESS
+   ============================================ */
+
+.weekly-progress-card {
+  background: linear-gradient(135deg, var(--bs-primary-bg-subtle) 0%, var(--bs-card-bg) 100%);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0;
+}
+
+.weekly-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.weekly-progress-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.weekly-stat {
+  text-align: center;
+}
+
+.weekly-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.weekly-stat-label {
+  font-size: 0.75rem;
+  color: var(--bs-secondary);
+}
+
+.weekly-progress-bar-wrapper {
+  margin-top: 0.75rem;
+}
+
+.weekly-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--bs-gray-200);
+  overflow: hidden;
+}
+
+.weekly-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--bs-primary) 0%, var(--bs-success) 100%);
+  transition: width 0.5s ease;
+  border-radius: 3px;
+}
+
+.weekly-progress-text {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--bs-secondary);
+  text-align: center;
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+
+.text-gradient-primary {
+  background: linear-gradient(135deg, var(--bs-primary) 0%, var(--bs-info) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.badge-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ============================================
+   PROGRESS STAT BADGES (Flat Design)
+   ============================================ */
+
+.progress-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 0;
+  background: transparent;
+}
+
+.progress-stat-badge i {
+  font-size: 1.25rem;
+}
+
+.progress-stat-badge.improved {
+  color: var(--bs-success);
+}
+
+.progress-stat-badge.same {
+  color: var(--bs-secondary);
+}
+
+.progress-stat-badge.decreased {
+  color: var(--bs-danger);
+}

@@ -1,204 +1,59 @@
 /**
- * Section Manager Module
+ * Section Manager Module (Orchestrator)
  * Manages workout sections (containers for exercises).
- * Replaces the flat exercise_groups + block_id model with typed section containers.
+ * Delegates to focused sub-modules:
+ *   - SectionRenderer:       rendering, HTML generation, block chain classes
+ *   - SectionSortable:       SortableJS two-level drag-and-drop
+ *   - SectionMoveOps:        moving exercises between sections, dissolve, context menus
+ *   - SectionDataCollector:  serializing DOM state back to data
  *
- * Section types: standard, superset, circuit, tabata, emom, amrap
- * - Standard sections (1 exercise) render with no header (looks like a standalone card)
- * - Named sections (superset, circuit, etc.) render with a visible header
- *
- * SortableJS strategy (two levels):
- * - Parent Sortable on #exerciseGroups: section reorder via .section-drag-handle (named section headers only)
- * - Inner Sortable on ALL .section-exercises: exercise drag via .drag-handle
- *   - Named sections: group 'exercises' (pull+put) — accept drops from any section
- *   - Standard sections: group { pull: true, put: false } — can drag OUT to named sections only
- * - Standalone exercise reorder: use the Reorder offcanvas (no drag reorder for standard sections)
+ * This file retains:
+ *   - Constructor / state
+ *   - Section CRUD (add, remove, rename, delete)
+ *   - Event delegation (initHeaderListeners)
+ *   - isSectionsMode() utility
  */
 
 const SectionManager = {
 
-    // ─── Rendering ───────────────────────────────────────────────
+    // ─── Delegated Rendering ─────────────────────────────────────
 
-    /**
-     * Render sections from workout data into the container.
-     * Replaces the old flat-card + applyBlockGrouping() approach.
-     */
     renderSections(sections, container) {
-        container.innerHTML = '';
-        // Clear existing object to preserve cardRenderer reference (don't replace with new {})
-        const existing = window.exerciseGroupsData;
-        if (existing) {
-            Object.keys(existing).forEach(k => delete existing[k]);
-        } else {
-            window.exerciseGroupsData = {};
-        }
-
-        sections.forEach(section => {
-            const sectionEl = this.createSectionElement(section);
-            container.appendChild(sectionEl);
-        });
-
-        this.initSortable(container);
+        window.SectionRenderer.renderSections(sections, container);
     },
 
-    /**
-     * Create a complete section wrapper element with header (if named) and exercise cards.
-     */
     createSectionElement(section) {
-        const sectionEl = document.createElement('div');
-        const isNamed = section.type !== 'standard';
-        sectionEl.className = `workout-section${isNamed ? ` section-${section.type}` : ''}`;
-        sectionEl.dataset.sectionId = section.section_id;
-        sectionEl.dataset.sectionType = section.type;
-        if (section.description) {
-            sectionEl.dataset.sectionDescription = section.description;
-        }
-
-        // Named sections: header + description as direct children (no card wrapper)
-        if (isNamed) {
-            sectionEl.insertAdjacentHTML('beforeend', this._createSectionHeaderHtml(section));
-        }
-
-        // Exercise container — always a direct child of .workout-section
-        const exercisesEl = document.createElement('div');
-        exercisesEl.className = 'section-exercises';
-
-        if (section.exercises.length === 0 && isNamed) {
-            exercisesEl.innerHTML = this._placeholderHtml(section.section_id);
-        } else {
-            const totalExercises = section.exercises.length;
-            section.exercises.forEach((exercise, exIndex) => {
-                const groupData = this._exerciseToGroupData(exercise);
-
-                const cardHtml = window.createExerciseGroupCard(
-                    exercise.exercise_id, groupData, exIndex + 1, exIndex, totalExercises
-                );
-                exercisesEl.insertAdjacentHTML('beforeend', cardHtml);
-
-                window.exerciseGroupsData[exercise.exercise_id] = groupData;
-            });
-        }
-
-        sectionEl.appendChild(exercisesEl);
-
-        // Apply left-border chain classes to exercise cards in named sections
-        if (isNamed) {
-            this._applyBlockChainClasses(exercisesEl);
-        }
-
-        // Add zone for named sections with exercises
-        if (isNamed && section.exercises.length > 0) {
-            sectionEl.insertAdjacentHTML('beforeend', this._addZoneHtml(section.section_id));
-        }
-
-        return sectionEl;
+        return window.SectionRenderer.createSectionElement(section);
     },
 
-    /**
-     * Convert a SectionExercise object to the groupData format used by card renderers.
-     */
-    _exerciseToGroupData(exercise) {
-        const groupData = {
-            exercises: { a: exercise.name || '' },
-            sets: exercise.sets || '3',
-            reps: exercise.reps || '10',
-            rest: exercise.rest || '60s',
-            default_weight: exercise.default_weight || null,
-            default_weight_unit: exercise.default_weight_unit || 'lbs'
-        };
+    // ─── Delegated Sortable ──────────────────────────────────────
 
-        // Add alternates as b, c, d, ...
-        (exercise.alternates || []).forEach((alt, i) => {
-            const key = String.fromCharCode(98 + i); // b=98, c=99, ...
-            groupData.exercises[key] = alt;
-        });
-
-        // Preserve note card properties
-        if (exercise.group_type === 'note') {
-            groupData.group_type = 'note';
-            groupData.note_content = exercise.note_content || '';
-        }
-
-        // Preserve cardio/activity card properties
-        if (exercise.group_type === 'cardio') {
-            groupData.group_type = 'cardio';
-            groupData.cardio_config = exercise.cardio_config || {};
-        }
-
-        return groupData;
+    initSortable(container) {
+        window.SectionSortable.initSortable(container);
     },
 
-    /**
-     * Placeholder HTML for empty named sections (clickable).
-     */
-    _placeholderHtml(sectionId) {
-        return `<div class="section-placeholder text-center py-4" data-section-id="${sectionId}">
-            <i class="bx bx-plus-circle text-muted" style="font-size: 1.5rem;"></i>
-            <div class="text-muted mt-1" style="font-size: 0.8rem;">
-                Drop exercises here or tap to add
-            </div>
-        </div>`;
+    ensureSortable(container, newExercisesEl, isNamed = false) {
+        window.SectionSortable.ensureSortable(container, newExercisesEl, isNamed);
     },
 
-    /**
-     * Add-zone HTML for the bottom of populated named sections.
-     */
-    _addZoneHtml(sectionId) {
-        return `<div class="section-add-zone" data-section-id="${sectionId}">
-            <i class="bx bx-plus"></i> Add Exercise
-        </div>`;
+    // ─── Delegated Move Operations ───────────────────────────────
+
+    populateCardSectionMenu(groupId, menuEl) {
+        window.SectionMoveOps.populateCardSectionMenu(groupId, menuEl);
     },
 
-    /**
-     * Apply left-border chain positional classes to exercise cards in a named section.
-     * Adds exercise-in-block + block-first/block-middle/block-last to each card.
-     */
-    _applyBlockChainClasses(exercisesEl) {
-        const cards = exercisesEl.querySelectorAll('.exercise-group-card');
-        cards.forEach(card => {
-            card.classList.remove('exercise-in-block', 'block-first', 'block-middle', 'block-last');
-        });
-        if (cards.length === 0) return;
-
-        cards.forEach((card, idx) => {
-            card.classList.add('exercise-in-block');
-            if (cards.length === 1) {
-                card.classList.add('block-first', 'block-last');
-            } else if (idx === 0) {
-                card.classList.add('block-first');
-            } else if (idx === cards.length - 1) {
-                card.classList.add('block-last');
-            } else {
-                card.classList.add('block-middle');
-            }
-        });
+    moveExerciseToSection(exerciseId, targetSectionId) {
+        window.SectionMoveOps.moveExerciseToSection(exerciseId, targetSectionId);
     },
 
-    /**
-     * Create HTML for a section header.
-     */
-    _createSectionHeaderHtml(section) {
-        const displayName = section.name || 'Block';
-        const description = section.description || '';
-        const hasDescription = !!description;
+    dissolveSection(sectionId) {
+        window.SectionMoveOps.dissolveSection(sectionId);
+    },
 
-        return `
-            <div class="section-block-header">
-                <div class="section-header-left">
-                    <span class="section-drag-handle"><i class="bx bx-grid-vertical"></i></span>
-                    <input type="text" class="section-name-input" value="${displayName}"
-                           placeholder="Block name..." maxlength="50">
-                </div>
-                <div class="section-actions">
-                    <button type="button" class="btn-section-menu" data-section-id="${section.section_id}">
-                        <i class="bx bx-dots-vertical-rounded"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="section-description-area" style="display: ${hasDescription ? 'block' : 'none'};">
-                <textarea class="section-description-input" placeholder="Add notes..."
-                          maxlength="500">${description}</textarea>
-            </div>`;
+    // ─── Delegated Data Collection ───────────────────────────────
+
+    collectSections() {
+        return window.SectionDataCollector.collectSections();
     },
 
     // ─── Section CRUD ────────────────────────────────────────────
@@ -230,11 +85,11 @@ const SectionManager = {
             }]
         };
 
-        const sectionEl = this.createSectionElement(section);
+        const sectionEl = window.SectionRenderer.createSectionElement(section);
         container.appendChild(sectionEl);
 
         // Ensure sorting is available for the new section
-        this.ensureSortable(container, sectionEl.querySelector('.section-exercises'), false);
+        window.SectionSortable.ensureSortable(container, sectionEl.querySelector('.section-exercises'), false);
 
         // Auto-open editor for the new exercise
         setTimeout(() => {
@@ -266,11 +121,11 @@ const SectionManager = {
             exercises: []
         };
 
-        const sectionEl = this.createSectionElement(section);
+        const sectionEl = window.SectionRenderer.createSectionElement(section);
         container.appendChild(sectionEl);
 
         // Ensure sorting is available for the new section
-        this.ensureSortable(container, sectionEl.querySelector('.section-exercises'), true);
+        window.SectionSortable.ensureSortable(container, sectionEl.querySelector('.section-exercises'), true);
 
         if (window.markEditorDirty) window.markEditorDirty();
 
@@ -321,11 +176,11 @@ const SectionManager = {
 
         // Re-apply block chain classes
         if (sectionEl.dataset.sectionType !== 'standard') {
-            this._applyBlockChainClasses(exercisesContainer);
+            window.SectionRenderer.applyBlockChainClasses(exercisesContainer);
 
             // Ensure add zone exists
             if (!sectionEl.querySelector('.section-add-zone')) {
-                sectionEl.insertAdjacentHTML('beforeend', this._addZoneHtml(sectionId));
+                sectionEl.insertAdjacentHTML('beforeend', window.SectionRenderer.addZoneHtml(sectionId));
             }
         }
 
@@ -353,7 +208,6 @@ const SectionManager = {
         // Only meaningful for named sections (superset, circuit, etc.)
         if (!sectionType || sectionType === 'standard') return;
 
-        const container = document.getElementById('exerciseGroups');
         const newSectionId = `section-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
         // Create a new standard section
@@ -374,12 +228,12 @@ const SectionManager = {
         sectionEl.after(newSection);
 
         // Init inner Sortable so this exercise can be dragged to named sections
-        this._initExerciseSortable(exercisesEl, false);
+        window.SectionSortable._initExerciseSortable(exercisesEl, false);
 
         // Clean up source section and re-chain remaining cards
-        this._cleanupSection(sectionEl);
+        window.SectionMoveOps.cleanupSection(sectionEl);
         const sourceExercises = sectionEl.querySelector('.section-exercises');
-        if (sourceExercises) this._applyBlockChainClasses(sourceExercises);
+        if (sourceExercises) window.SectionRenderer.applyBlockChainClasses(sourceExercises);
 
         if (window.markEditorDirty) window.markEditorDirty();
     },
@@ -425,342 +279,30 @@ const SectionManager = {
         }
     },
 
-    // ─── Move Exercise Between Sections ──────────────────────────
+    // ─── Backward-compat delegations for external callers ──────
 
-    /**
-     * Populate the card menu with "Move to [Block]" / "Remove from Block" items.
-     * Called by WorkoutBuilderCardMenu.toggleMenu() after opening.
-     * @param {string} groupId - Exercise group ID
-     * @param {HTMLElement} menuEl - The .builder-card-menu element
-     */
-    populateCardSectionMenu(groupId, menuEl) {
-        const divider = menuEl.querySelector('.section-menu-divider');
-        const itemsContainer = menuEl.querySelector('.section-menu-items');
-        if (!divider || !itemsContainer) return;
-
-        itemsContainer.innerHTML = '';
-
-        const cardEl = document.querySelector(`.exercise-group-card[data-group-id="${groupId}"]`);
-        if (!cardEl) { divider.style.display = 'none'; return; }
-
-        const currentSection = cardEl.closest('.workout-section');
-        const isInNamedSection = currentSection?.dataset.sectionType !== 'standard';
-
-        // Find all named sections in the builder
-        const namedSections = document.querySelectorAll('.workout-section:not([data-section-type="standard"])');
-        const items = [];
-
-        // "Remove from Block" if exercise is inside a named section
-        if (isInNamedSection) {
-            items.push(`<button type="button" class="builder-menu-item" data-action="remove-from-block" data-group-id="${groupId}">
-                <i class="bx bx-unlink"></i> Remove from Block
-            </button>`);
-        }
-
-        // "Move to [Block Name]" for each OTHER named section (max 8)
-        let count = 0;
-        namedSections.forEach(sectionEl => {
-            if (count >= 8) return;
-            const sectionId = sectionEl.dataset.sectionId;
-            if (currentSection && sectionId === currentSection.dataset.sectionId) return;
-
-            const nameInput = sectionEl.querySelector('.section-name-input');
-            const blockName = nameInput?.value?.trim() || 'Block';
-            items.push(`<button type="button" class="builder-menu-item" data-action="move-to-section" data-group-id="${groupId}" data-target-section="${sectionId}">
-                <i class="bx bx-right-arrow-alt"></i> Move to ${blockName}
-            </button>`);
-            count++;
-        });
-
-        if (count >= 8 && namedSections.length > 9) {
-            items.push(`<div class="builder-menu-hint text-muted" style="padding: 4px 14px; font-size: 0.7rem;">Use Reorder to manage more blocks</div>`);
-        }
-
-        if (items.length === 0) {
-            divider.style.display = 'none';
-            return;
-        }
-
-        divider.style.display = '';
-
-        // Clone container to strip any previously accumulated event listeners
-        const freshContainer = itemsContainer.cloneNode(false);
-        itemsContainer.parentNode.replaceChild(freshContainer, itemsContainer);
-        freshContainer.innerHTML = items.join('');
-
-        // Delegate clicks on the fresh container
-        freshContainer.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const btn = e.target.closest('[data-action]');
-            if (!btn) return;
-
-            const action = btn.dataset.action;
-            const gId = btn.dataset.groupId;
-
-            if (action === 'remove-from-block') {
-                this.removeExerciseFromSection(gId);
-            } else if (action === 'move-to-section') {
-                this.moveExerciseToSection(gId, btn.dataset.targetSection);
-            }
-
-            window.builderCardMenu?.closeAllMenus();
-        });
-    },
-
-    /**
-     * Move an exercise card to a target named section.
-     * @param {string} exerciseId - The exercise group ID
-     * @param {string} targetSectionId - Target section ID
-     */
-    moveExerciseToSection(exerciseId, targetSectionId) {
-        const cardEl = document.querySelector(`.exercise-group-card[data-group-id="${exerciseId}"]`);
-        const targetSection = document.querySelector(`.workout-section[data-section-id="${targetSectionId}"]`);
-        if (!cardEl || !targetSection) return;
-
-        const sourceSection = cardEl.closest('.workout-section');
-        const targetExercises = targetSection.querySelector('.section-exercises');
-        if (!targetExercises) return;
-
-        // Remove placeholder in target if present
-        const placeholder = targetExercises.querySelector('.section-placeholder');
-        if (placeholder) placeholder.remove();
-
-        // Move DOM element
-        targetExercises.appendChild(cardEl);
-
-        // Re-chain target section
-        this._applyBlockChainClasses(targetExercises);
-
-        // Ensure add zone exists on target
-        if (!targetSection.querySelector('.section-add-zone')) {
-            targetSection.insertAdjacentHTML('beforeend', this._addZoneHtml(targetSectionId));
-        }
-
-        // Cleanup source section and re-chain remaining cards
-        if (sourceSection) {
-            this._cleanupSection(sourceSection);
-            const sourceExercises = sourceSection.querySelector('.section-exercises');
-            if (sourceExercises && sourceSection.dataset.sectionType !== 'standard') {
-                this._applyBlockChainClasses(sourceExercises);
-            }
-        }
-
-        if (window.markEditorDirty) window.markEditorDirty();
-
-        if (window.showToast) {
-            const targetName = targetSection.querySelector('.section-name-input')?.value?.trim() || 'Block';
-            window.showToast({
-                message: `Moved to ${targetName}`,
-                type: 'success',
-                icon: 'bx-check',
-                delay: 2000
-            });
-        }
-    },
-
-    /**
-     * Clean up a section after an exercise was removed:
-     * - Standard section with 0 exercises: remove
-     * - Named section with 0 exercises: show placeholder (keep section for user to re-add)
-     * - Named section with 1+ exercises: keep as-is
-     */
     _cleanupSection(sectionEl) {
-        const exercisesContainer = sectionEl.querySelector('.section-exercises');
-        if (!exercisesContainer) return;
-
-        const remainingCards = exercisesContainer.querySelectorAll('.exercise-group-card');
-        const isNamed = sectionEl.dataset.sectionType !== 'standard';
-
-        if (remainingCards.length === 0) {
-            if (isNamed) {
-                // Remove add zone and show placeholder
-                const addZone = sectionEl.querySelector('.section-add-zone');
-                if (addZone) addZone.remove();
-                if (!exercisesContainer.querySelector('.section-placeholder')) {
-                    exercisesContainer.innerHTML = this._placeholderHtml(sectionEl.dataset.sectionId);
-                }
-            } else {
-                // Destroy inner Sortable before removing from DOM
-                if (exercisesContainer._exerciseSortable) {
-                    exercisesContainer._exerciseSortable.destroy();
-                    exercisesContainer._exerciseSortable = null;
-                }
-                sectionEl.remove();
-            }
-        }
+        window.SectionMoveOps.cleanupSection(sectionEl);
     },
 
-    // ─── SortableJS ──────────────────────────────────────────────
-
-    /**
-     * Initialize two-level SortableJS:
-     * - Level 1: Section reorder (parent container)
-     * - Level 2: Exercise reorder within named sections
-     */
-    initSortable(container) {
-        if (!window.Sortable) {
-            console.warn('⚠️ SortableJS not loaded, cannot init sorting');
-            return;
-        }
-
-        // Destroy desktop-view-adapter's flat Sortable if present (prevents dual-sortable conflict)
-        if (container.sortableInstance) {
-            container.sortableInstance.destroy();
-            container.sortableInstance = null;
-        }
-
-        // Destroy existing section Sortable instances
-        if (container._sectionSortable) {
-            container._sectionSortable.destroy();
-        }
-
-        // Level 1: Section reorder + exercise drop zone
-        // The parent accepts items from the 'exercises' group so exercises dragged
-        // out of named sections can land between sections (becoming standalone).
-        container._sectionSortable = new Sortable(container, {
-            animation: 150,
-            handle: '.section-drag-handle',
-            draggable: '.workout-section',
-            ghostClass: 'section-ghost',
-            group: { name: 'sections', put: ['exercises'] },
-            onStart: function() {
-                container.classList.add('is-dragging');
-            },
-            onEnd: function() {
-                container.classList.remove('is-dragging');
-                if (window.markEditorDirty) window.markEditorDirty();
-            },
-            onAdd: (evt) => {
-                // An exercise card was dropped between sections — wrap in a new standard section
-                const card = evt.item;
-                // Strip block classes — now standalone
-                card.classList.remove('exercise-in-block', 'block-first', 'block-middle', 'block-last');
-
-                const newSectionId = `section-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-
-                const newSection = document.createElement('div');
-                newSection.className = 'workout-section';
-                newSection.dataset.sectionId = newSectionId;
-                newSection.dataset.sectionType = 'standard';
-
-                const exercisesEl = document.createElement('div');
-                exercisesEl.className = 'section-exercises';
-                newSection.appendChild(exercisesEl);
-
-                // Replace the bare card (now a direct child of #exerciseGroups) with the section wrapper
-                container.replaceChild(newSection, card);
-                exercisesEl.appendChild(card);
-
-                // Init inner Sortable on the new standard section
-                this._initExerciseSortable(exercisesEl, false);
-
-                // Cleanup source section and re-chain remaining cards
-                const fromSectionEl = evt.from.closest('.workout-section');
-                if (fromSectionEl) {
-                    this._cleanupSection(fromSectionEl);
-                    const fromExercises = fromSectionEl.querySelector('.section-exercises');
-                    if (fromExercises && fromSectionEl.dataset.sectionType !== 'standard') {
-                        this._applyBlockChainClasses(fromExercises);
-                    }
-                }
-
-                if (window.markEditorDirty) window.markEditorDirty();
-            }
-        });
-
-        // Level 2: Inner Sortables on ALL sections for cross-section exercise drag
-        // Named sections: full pull+put (accept drops)
-        // Standard sections: pull-only (can drag OUT to named sections, but nothing drops IN)
-        container.querySelectorAll('.workout-section .section-exercises').forEach(el => {
-            const isNamed = el.closest('.workout-section').dataset.sectionType !== 'standard';
-            this._initExerciseSortable(el, isNamed);
-        });
+    _applyBlockChainClasses(exercisesEl) {
+        window.SectionRenderer.applyBlockChainClasses(exercisesEl);
     },
 
-    /**
-     * Initialize exercise-level Sortable on a single section's exercise container.
-     * @param {HTMLElement} exercisesEl - The .section-exercises container
-     * @param {boolean} isNamed - true for named sections (pull+put), false for standard (pull only)
-     */
-    _initExerciseSortable(exercisesEl, isNamed = true) {
-        if (!window.Sortable) return;
-
-        // Destroy existing if present
-        if (exercisesEl._exerciseSortable) {
-            exercisesEl._exerciseSortable.destroy();
-        }
-
-        exercisesEl._exerciseSortable = new Sortable(exercisesEl, {
-            animation: 150,
-            handle: '.drag-handle',
-            draggable: '.exercise-group-card',
-            ghostClass: 'sortable-ghost',
-            // Named sections: accept drops from any section
-            // Standard sections: can only drag OUT (pull), nothing drops IN (put: false)
-            group: isNamed
-                ? 'exercises'
-                : { name: 'exercises', pull: true, put: false },
-            onStart: () => {
-                document.getElementById('exerciseGroups')?.classList.add('is-exercise-dragging');
-            },
-            onAdd: (evt) => {
-                // Exercise arrived from another section — remove placeholder if present
-                const placeholder = exercisesEl.querySelector('.section-placeholder');
-                if (placeholder) placeholder.remove();
-
-                // Re-chain target section
-                if (isNamed) {
-                    this._applyBlockChainClasses(exercisesEl);
-                    // Ensure add zone exists
-                    const sectionEl = exercisesEl.closest('.workout-section');
-                    if (sectionEl && !sectionEl.querySelector('.section-add-zone')) {
-                        sectionEl.insertAdjacentHTML('beforeend', this._addZoneHtml(sectionEl.dataset.sectionId));
-                    }
-                }
-
-                // Cleanup source section and re-chain remaining cards
-                const fromSectionEl = evt.from.closest('.workout-section');
-                if (fromSectionEl) {
-                    this._cleanupSection(fromSectionEl);
-                    const fromExercises = fromSectionEl.querySelector('.section-exercises');
-                    if (fromExercises && fromSectionEl.dataset.sectionType !== 'standard') {
-                        this._applyBlockChainClasses(fromExercises);
-                    }
-                }
-
-                // Strip block classes if card landed in a standard section
-                if (!isNamed) {
-                    evt.item.classList.remove('exercise-in-block', 'block-first', 'block-middle', 'block-last');
-                }
-
-                if (window.markEditorDirty) window.markEditorDirty();
-            },
-            onEnd: () => {
-                document.getElementById('exerciseGroups')?.classList.remove('is-exercise-dragging');
-                // Re-chain after internal reorder within same section
-                if (isNamed) this._applyBlockChainClasses(exercisesEl);
-                if (window.markEditorDirty) window.markEditorDirty();
-            }
-        });
+    _placeholderHtml(sectionId) {
+        return window.SectionRenderer.placeholderHtml(sectionId);
     },
 
-    /**
-     * Ensure sorting is available for a newly added section.
-     * If the parent Sortable doesn't exist yet, does a full init (parent + all inner).
-     * If the parent already exists, only initializes the new section's inner Sortable.
-     * @param {HTMLElement} container - The #exerciseGroups container
-     * @param {HTMLElement} newExercisesEl - The new section's .section-exercises element
-     * @param {boolean} isNamed - true for named sections (pull+put), false for standard
-     */
-    ensureSortable(container, newExercisesEl, isNamed = false) {
-        if (!container._sectionSortable) {
-            // No parent Sortable yet — full init (creates parent + ALL inner)
-            this.initSortable(container);
-        } else {
-            // Parent exists — only init the new section's inner Sortable
-            this._initExerciseSortable(newExercisesEl, isNamed);
-        }
+    _addZoneHtml(sectionId) {
+        return window.SectionRenderer.addZoneHtml(sectionId);
+    },
+
+    _showSectionMenu(sectionId, anchorEl) {
+        window.SectionMoveOps.showSectionMenu(sectionId, anchorEl);
+    },
+
+    _initExerciseSortable(exercisesEl, isNamed) {
+        window.SectionSortable._initExerciseSortable(exercisesEl, isNamed);
     },
 
     // ─── Event Delegation ────────────────────────────────────────
@@ -777,7 +319,7 @@ const SectionManager = {
             const menuBtn = e.target.closest('.btn-section-menu');
             if (menuBtn) {
                 const sectionId = menuBtn.dataset.sectionId;
-                if (sectionId) this._showSectionMenu(sectionId, menuBtn);
+                if (sectionId) window.SectionMoveOps.showSectionMenu(sectionId, menuBtn);
                 return;
             }
 
@@ -808,201 +350,7 @@ const SectionManager = {
         }, true); // useCapture for blur
     },
 
-    /**
-     * Dissolve a named section: move all exercises out as standalone standard sections.
-     */
-    dissolveSection(sectionId) {
-        const sectionEl = document.querySelector(`.workout-section[data-section-id="${sectionId}"]`);
-        if (!sectionEl) return;
-
-        const container = document.getElementById('exerciseGroups');
-        const cards = sectionEl.querySelectorAll('.section-exercises .exercise-group-card');
-
-        // Move each exercise to its own standard section, inserted after the current section
-        let insertAfter = sectionEl;
-        cards.forEach(cardEl => {
-            // Strip block chain classes
-            cardEl.classList.remove('exercise-in-block', 'block-first', 'block-middle', 'block-last');
-
-            const newSectionId = `section-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-            const newSection = document.createElement('div');
-            newSection.className = 'workout-section';
-            newSection.dataset.sectionId = newSectionId;
-            newSection.dataset.sectionType = 'standard';
-
-            const exercisesEl = document.createElement('div');
-            exercisesEl.className = 'section-exercises';
-            exercisesEl.appendChild(cardEl);
-            newSection.appendChild(exercisesEl);
-
-            insertAfter.after(newSection);
-            insertAfter = newSection;
-
-            // Init inner Sortable so this exercise can be dragged to named sections
-            this._initExerciseSortable(exercisesEl, false);
-        });
-
-        // Destroy old section's inner Sortable before removing from DOM
-        const oldExercisesEl = sectionEl.querySelector('.section-exercises');
-        if (oldExercisesEl?._exerciseSortable) {
-            oldExercisesEl._exerciseSortable.destroy();
-            oldExercisesEl._exerciseSortable = null;
-        }
-        sectionEl.remove();
-        if (window.markEditorDirty) window.markEditorDirty();
-    },
-
-    /**
-     * Show a context menu for a section (rename, dissolve, delete).
-     */
-    _showSectionMenu(sectionId, anchorEl) {
-        // Remove any existing menu
-        document.querySelectorAll('.section-context-menu').forEach(m => m.remove());
-
-        const sectionEl = document.querySelector(`.workout-section[data-section-id="${sectionId}"]`);
-        const hasExercises = sectionEl?.querySelectorAll('.exercise-group-card').length > 0;
-        const descArea = sectionEl?.querySelector('.section-description-area');
-        const isDescVisible = descArea && descArea.style.display !== 'none';
-
-        const menu = document.createElement('div');
-        menu.className = 'section-context-menu';
-        menu.innerHTML = `
-            <button class="section-menu-item" data-action="toggle-notes">
-                <i class="bx bx-note"></i> ${isDescVisible ? 'Hide Notes' : 'Notes'}
-            </button>
-            <button class="section-menu-item" data-action="rename">
-                <i class="bx bx-edit-alt"></i> Rename
-            </button>
-            ${hasExercises ? `<button class="section-menu-item" data-action="dissolve">
-                <i class="bx bx-layer-minus"></i> Ungroup Exercises
-            </button>` : ''}
-            <button class="section-menu-item section-menu-danger" data-action="delete">
-                <i class="bx bx-trash"></i> Delete Block
-            </button>
-        `;
-
-        menu.addEventListener('click', (e) => {
-            const item = e.target.closest('.section-menu-item');
-            if (!item) return;
-
-            const action = item.dataset.action;
-            if (action === 'toggle-notes') {
-                if (descArea) {
-                    const isHidden = descArea.style.display === 'none';
-                    descArea.style.display = isHidden ? 'block' : 'none';
-                    if (isHidden) {
-                        descArea.querySelector('.section-description-input')?.focus();
-                    }
-                }
-            }
-            if (action === 'rename') this.renameSection(sectionId);
-            if (action === 'dissolve') this.dissolveSection(sectionId);
-            if (action === 'delete') this.deleteSection(sectionId);
-
-            menu.remove();
-        });
-
-        // Position near the anchor
-        anchorEl.style.position = 'relative';
-        anchorEl.appendChild(menu);
-
-        // Close on outside click
-        setTimeout(() => {
-            const closeHandler = (e) => {
-                if (!menu.contains(e.target)) {
-                    menu.remove();
-                    document.removeEventListener('click', closeHandler);
-                }
-            };
-            document.addEventListener('click', closeHandler);
-        }, 0);
-    },
-
-    // ─── Data Collection ─────────────────────────────────────────
-
-    /**
-     * Collect sections data from the current DOM state.
-     * Walks section containers and reads exercise data from window.exerciseGroupsData.
-     * Returns an array matching the backend WorkoutSection format.
-     */
-    // Keep in sync with FormDataCollector.collectSections()
-    collectSections() {
-        const sections = [];
-
-        document.querySelectorAll('#exerciseGroups .workout-section').forEach(sectionEl => {
-            const sectionId = sectionEl.dataset.sectionId;
-            const sectionType = sectionEl.dataset.sectionType || 'standard';
-            // Support both inline input (Phase 2+) and span (legacy)
-            const nameInput = sectionEl.querySelector('.section-name-input');
-            const nameSpan = sectionEl.querySelector('.section-name');
-            const name = (sectionType !== 'standard')
-                ? (nameInput?.value?.trim() || nameSpan?.textContent?.trim() || null)
-                : null;
-            const description = sectionEl.querySelector('.section-description-input')?.value?.trim() || null;
-
-            const exercises = [];
-            sectionEl.querySelectorAll('.section-exercises .exercise-group-card').forEach(cardEl => {
-                const groupId = cardEl.dataset.groupId;
-                const data = window.exerciseGroupsData[groupId];
-                if (!data) return;
-
-                // Notes are collected separately via collectTemplateNotes()
-                if (data.group_type === 'note') return;
-
-                // Cardio groups — include group_type and cardio_config
-                if (data.group_type === 'cardio') {
-                    if (!data.cardio_config?.activity_type && !data.cardio_config?.duration_minutes) return;
-                    exercises.push({
-                        exercise_id: groupId,
-                        name: data.cardio_config?.activity_type || '',
-                        alternates: [],
-                        group_type: 'cardio',
-                        cardio_config: data.cardio_config,
-                        sets: '', reps: '', rest: '',
-                        default_weight: null,
-                        default_weight_unit: data.default_weight_unit || 'lbs'
-                    });
-                    return;
-                }
-
-                const primaryName = data.exercises?.a || '';
-                const alternates = [];
-                Object.keys(data.exercises || {}).sort().forEach(key => {
-                    if (key !== 'a' && data.exercises[key]) {
-                        alternates.push(data.exercises[key]);
-                    }
-                });
-
-                if (!primaryName && alternates.length === 0) return;
-
-                const entry = {
-                    exercise_id: groupId,
-                    name: primaryName,
-                    alternates: alternates,
-                    sets: data.sets || '3',
-                    reps: data.reps || '8-12',
-                    rest: data.rest || '60s',
-                    default_weight: data.default_weight || null,
-                    default_weight_unit: data.default_weight_unit || 'lbs'
-                };
-                if (data.interval_config) entry.interval_config = data.interval_config;
-                exercises.push(entry);
-            });
-
-            if (exercises.length > 0) {
-                sections.push({
-                    section_id: sectionId,
-                    type: sectionType,
-                    name: name,
-                    description: description,
-                    exercises: exercises
-                });
-            }
-        });
-
-        console.log('📦 Collected', sections.length, 'sections');
-        return sections;
-    },
+    // ─── Utility ─────────────────────────────────────────────────
 
     /**
      * Check if the builder is currently using sections-based layout.

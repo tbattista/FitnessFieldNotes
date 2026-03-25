@@ -1,0 +1,285 @@
+/* ============================================
+   EXERCISE DATABASE — TOOLBAR
+   Search, sort, filter, custom buttons,
+   category filter chips, pagination, print styles
+
+   Split from exercise-database.css
+   ============================================ */
+
+/* ============================================
+   EXERCISE TOOLBAR
+   Unified controls in one consistent row
+   Adapted from workout-database.css
+   ============================================ */
+
+.exercise-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Search input container */
+.exercise-toolbar-search {
+    flex: 1;
+    min-width: 140px;
+    max-width: 240px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.exercise-toolbar-search > i {
+    position: absolute;
+    left: 0.625rem;
+    color: var(--bs-secondary);
+    font-size: 1rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Search input - matches button styling */
+.exercise-toolbar-search input {
+    width: 100%;
+    height: 2rem;
+    padding: 0 2rem 0 2rem;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--bs-body-color);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.exercise-toolbar-search input::placeholder {
+    color: var(--bs-secondary);
+    opacity: 0.8;
+}
+
+.exercise-toolbar-search input:focus {
+    border-color: var(--bs-primary);
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15);
+}
+
+/* Clear button */
+.exercise-toolbar-clear {
+    position: absolute;
+    right: 0.25rem;
+    padding: 0.25rem;
+    color: var(--bs-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.exercise-toolbar-clear:hover {
+    color: var(--bs-body-color);
+}
+
+/* Shared button styling */
+.exercise-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    padding: 0 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+    border-radius: 0.375rem;
+    gap: 0.375rem;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+.exercise-toolbar-btn i {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* Primary button (Custom) */
+.exercise-toolbar-btn.btn-primary {
+    border: 1px solid var(--bs-primary);
+}
+
+/* Outline buttons (Sort, Filter) */
+.exercise-toolbar-btn.btn-outline-secondary {
+    border: 1px solid var(--bs-border-color);
+    background-color: var(--bs-body-bg);
+}
+
+.exercise-toolbar-btn.btn-outline-secondary:hover {
+    background-color: var(--bs-gray-100);
+    border-color: var(--bs-gray-400);
+}
+
+/* Filter badge */
+.exercise-toolbar-btn .filter-badge {
+    font-size: 0.6875rem;
+    padding: 0.125rem 0.375rem;
+    line-height: 1.2;
+}
+
+/* ============================================
+   EXERCISE TOOLBAR - RESPONSIVE
+   ============================================ */
+
+@media (max-width: 575.98px) {
+    .exercise-toolbar {
+        gap: 0.375rem;
+        width: 100%;
+    }
+
+    /* Search takes full width on mobile - row 1 */
+    .exercise-toolbar-search {
+        flex: 1 1 100%;
+        max-width: none;
+        order: -1;
+        margin-bottom: 0.25rem;
+    }
+
+    .exercise-toolbar-search input {
+        height: 2.25rem;
+    }
+
+    /* Buttons take equal width on mobile - row 2 */
+    .exercise-toolbar-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 2.25rem;
+        padding: 0 0.5rem;
+        justify-content: center;
+    }
+
+    /* Show text labels on mobile */
+    .exercise-toolbar-btn .sort-label,
+    .exercise-toolbar-btn .filter-label,
+    .exercise-toolbar-btn .custom-label,
+    .exercise-toolbar-btn .create-label {
+        display: inline;
+    }
+}
+
+/* Active state for toggle buttons */
+.exercise-toolbar-btn.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+}
+
+.exercise-toolbar-btn.active:hover {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    opacity: 0.9;
+}
+
+/* ============================================
+   CATEGORY FILTER CHIPS
+   Quick-filter chips below the toolbar
+   ============================================ */
+
+.category-chips {
+    display: flex;
+    gap: 0.375rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.category-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.category-chip {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    height: 1.75rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--bs-secondary);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    flex-shrink: 0;
+}
+
+.category-chip:hover {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+.category-chip.active {
+    color: #fff;
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.category-chip.active:hover {
+    opacity: 0.9;
+}
+
+/* ============================================
+   EXERCISE TOOLBAR - PRINT
+   ============================================ */
+
+@media print {
+    .exercise-toolbar,
+    .category-chips {
+        display: none;
+    }
+}
+
+/* ============================================
+   PAGINATION - NARROW PANEL OVERRIDES
+   Force stacked centered layout within the exercise list panel
+   ============================================ */
+
+#exerciseTableContainer .datatable-pagination {
+    padding: 0.75rem 0;
+}
+
+#exerciseTableContainer .datatable-pagination .row {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.5rem;
+}
+
+#exerciseTableContainer .datatable-pagination .col-sm-6 {
+    width: auto;
+    flex: none;
+}
+
+#exerciseTableContainer .datatable-pagination .pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.125rem;
+}
+
+#exerciseTableContainer .datatable-pagination .datatable-pagination-controls {
+    justify-content: center;
+}
+
+#exerciseTableContainer .datatable-pagination .page-link {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8125rem;
+    min-width: 2rem;
+    text-align: center;
+}
+
+#exerciseTableContainer .datatable-pagination .datatable-page-info {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+}

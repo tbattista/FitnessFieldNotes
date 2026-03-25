@@ -1,0 +1,185 @@
+/**
+ * Dashboard Header CSS
+ * Dashboard header greeting, quick action grid, icon buttons, primary CTA card
+ */
+
+/* ============================================
+   DASHBOARD HEADER - Quick Actions
+   ============================================ */
+
+.dashboard-header {
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-header .greeting-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--bs-heading-color);
+  margin: 0;
+}
+
+/* Quick Action Grid - 3 equal columns */
+.quick-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-left: -0.25rem;
+  margin-right: -0.25rem;
+}
+
+/* Individual Quick Action Button - Bootstrap button styling enhanced */
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1rem 0.75rem !important;
+  min-height: 88px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quick-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), 0.2);
+  text-decoration: none;
+}
+
+.quick-action-btn:active {
+  transform: scale(0.98);
+}
+
+.quick-action-btn i {
+  font-size: 1.75rem;
+  display: block;
+}
+
+.quick-action-btn span {
+  line-height: 1.2;
+  display: block;
+}
+
+/* Notification button in header */
+.dashboard-header .btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary);
+  border-radius: 50%;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-header .btn-icon:hover {
+  background: var(--bs-gray-100);
+  color: var(--bs-primary);
+}
+
+/* Responsive adjustments */
+@media (min-width: 576px) {
+  .dashboard-header .greeting-text {
+    font-size: 1.75rem;
+  }
+
+  .quick-action-btn {
+    min-height: 100px;
+    padding: 1.25rem 1rem !important;
+    font-size: 1rem;
+  }
+
+  .quick-action-btn i {
+    font-size: 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .quick-action-btn {
+    min-height: 110px;
+    font-size: 1.0625rem;
+  }
+
+  .quick-action-btn i {
+    font-size: 2.25rem;
+  }
+}
+
+/* ============================================
+   PRIMARY CTA
+   ============================================ */
+
+.primary-cta-card {
+  background: linear-gradient(135deg, var(--bs-primary) 0%, var(--bs-primary-rgb) 100%);
+  border: none;
+  color: white;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.primary-cta-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.primary-cta-card .card-body {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.primary-cta-card .cta-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.9;
+}
+
+.primary-cta-card .cta-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.primary-cta-card .cta-subtitle {
+  font-size: 0.9375rem;
+  margin-bottom: 1.25rem;
+  opacity: 0.9;
+  color: white;
+}
+
+.primary-cta-card .btn-cta {
+  background: white;
+  color: var(--bs-primary);
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  border: none;
+  font-size: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary-cta-card .btn-cta:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: white;
+  color: var(--bs-primary);
+}
+
+.primary-cta-card .btn-cta:active {
+  transform: scale(0.98);
+}

@@ -60,6 +60,8 @@
     
     <!-- Unified Offcanvas CSS -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-specialized.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-dark.css" />
     <link rel="stylesheet" href="/static/assets/css/components/desktop-offcanvas.css?v=20260217" />
 
     <!-- Quick Notes Popover CSS -->
@@ -598,6 +600,7 @@
     <script src="/static/assets/js/main.js?v=20260216"></script>
     
     <!-- Bottom Action Bar (load after main.js) -->
+    <script src="/static/assets/js/config/morphing-search.js?v=refactor"></script>
     <script src="/static/assets/js/config/bottom-action-bar-config.js"></script>
     <script src="/static/assets/js/services/bottom-action-bar-service.js"></script>
 
@@ -663,12 +666,20 @@
     <script src="/static/assets/js/dashboard/ui-helpers.js?v=20251020-04"></script>
 
     <!-- Desktop Builder Modules (load after card-renderer, exercise-autocomplete, before managers) -->
-    <script src="/static/assets/js/modules/desktop-card-renderer.js?v=20260226-01"></script>
+    <script src="/static/assets/js/modules/desktop-card-data.js?v=refactor"></script>
+    <script src="/static/assets/js/modules/desktop-inline-editor.js?v=refactor"></script>
+    <script src="/static/assets/js/modules/desktop-card-renderer.js?v=refactor"></script>
     <script src="/static/assets/js/modules/desktop-sidebar.js?v=20260221-02"></script>
     <script src="/static/assets/js/modules/desktop-view-adapter.js?v=20260222-04"></script>
 
-    <!-- Exercise group management -->
-    <script src="/static/assets/js/dashboard/section-manager.js?v=20260222-04"></script>
+    <!-- Section sub-modules (must load before section-manager.js) -->
+    <script src="/static/assets/js/dashboard/section-renderer.js?v=20260325-01"></script>
+    <script src="/static/assets/js/dashboard/section-data-collector.js?v=20260325-01"></script>
+    <script src="/static/assets/js/dashboard/section-move-operations.js?v=20260325-01"></script>
+    <script src="/static/assets/js/dashboard/section-sortable.js?v=20260325-01"></script>
+
+    <!-- Exercise group management (orchestrator) -->
+    <script src="/static/assets/js/dashboard/section-manager.js?v=20260325-01"></script>
     <script src="/static/assets/js/dashboard/exercise-group-manager.js?v=20260218-01"></script>
 
     <!-- Form data collection -->
@@ -709,6 +720,7 @@
 
     <!-- Analytics & Share Modal -->
     <script src="/static/assets/js/services/analytics-service.js"></script>
+    <script src="/static/assets/js/components/share-modal-export.js"></script>
     <script src="/static/assets/js/components/share-modal.js"></script>
 
     <!-- Initialize Workouts Page with Component System -->

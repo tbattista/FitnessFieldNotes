@@ -44,13 +44,18 @@
 @import url('components/sticky-footer.css');
 @import url('components/feedback-button.css');
 @import url('components/unified-offcanvas.css');
+@import url('components/unified-offcanvas-specialized.css');
+@import url('components/unified-offcanvas-dark.css');
 
 /* ============================================
    SHARED CONSOLIDATED STYLES (Phase 1)
    ============================================ */
 @import url('components/buttons.css');
 @import url('components/forms.css');
-@import url('components/dark-mode.css');
+@import url('components/dark-mode-base.css');
+@import url('components/dark-mode-components.css');
+@import url('components/dark-mode-navigation.css');
+@import url('components/dark-mode-editors.css');
 
 /* ============================================
    WORKOUT BUILDER COMPONENTS (Phase 2)

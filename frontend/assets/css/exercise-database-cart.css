@@ -1,0 +1,126 @@
+/* ============================================
+   EXERCISE DATABASE — CART
+   Desktop panel content + mobile sticky bar
+
+   Split from exercise-database.css
+   ============================================ */
+
+/* ============================================
+   EXERCISE CART — DESKTOP PANEL CONTENT
+   Renders inside .exercise-cart-panel (3rd column)
+   ============================================ */
+
+.exercise-cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.exercise-cart-count {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.exercise-cart-clear {
+    font-size: 0.75rem;
+    text-decoration: none;
+    padding: 0;
+}
+
+.exercise-cart-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+}
+
+.exercise-cart-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background-color: rgba(var(--bs-primary-rgb), 0.06);
+    border: 1px solid rgba(var(--bs-primary-rgb), 0.12);
+    color: var(--bs-body-color);
+    border-radius: 0.375rem;
+}
+
+.exercise-cart-chip-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.exercise-cart-chip-remove {
+    background: none;
+    border: none;
+    color: var(--bs-secondary-color);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.125rem;
+    cursor: pointer;
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+
+.exercise-cart-chip-remove:hover {
+    opacity: 1;
+    color: var(--bs-danger);
+}
+
+/* ============================================
+   EXERCISE CART — MOBILE STICKY BAR
+   Compact bar at bottom of viewport (<992px)
+   ============================================ */
+
+.exercise-cart-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bs-body-bg);
+    border-top: 1px solid var(--bs-border-color);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+    padding: 0.5rem 1rem;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: cartBarSlideUp 0.2s ease-out;
+}
+
+@keyframes cartBarSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.exercise-cart-bar-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.exercise-cart-bar-info i {
+    font-size: 1.25rem;
+    color: var(--bs-primary);
+}
+
+.exercise-cart-bar-info span {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.exercise-cart-bar .btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}

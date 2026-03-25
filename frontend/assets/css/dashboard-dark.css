@@ -1,0 +1,61 @@
+/**
+ * Dashboard Dark Mode CSS
+ * All dark mode overrides for dashboard components
+ */
+
+/* ============================================
+   DARK MODE ADJUSTMENTS
+   ============================================ */
+
+/* Header */
+[data-bs-theme="dark"] .dashboard-header .btn-icon:hover {
+  background: var(--bs-gray-700);
+}
+
+/* Primary CTA */
+[data-bs-theme="dark"] .primary-cta-card {
+  background: linear-gradient(135deg, var(--bs-primary) 0%, #4169E1 100%);
+}
+
+/* Stats */
+[data-bs-theme="dark"] .stat-card {
+  background: var(--bs-gray-800);
+  border-color: var(--bs-gray-700);
+}
+
+/* Weekly Progress */
+[data-bs-theme="dark"] .weekly-progress-card {
+  background: linear-gradient(135deg, var(--bs-gray-800) 0%, var(--bs-gray-900) 100%);
+  border-color: var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .weekly-progress-bar {
+  background-color: var(--bs-gray-700);
+}
+
+/* Loading Skeleton */
+[data-bs-theme="dark"] .loading-skeleton {
+  background: linear-gradient(90deg, var(--bs-gray-800) 25%, var(--bs-gray-700) 50%, var(--bs-gray-800) 75%);
+  background-size: 200% 100%;
+}
+
+/* Exercise History Table */
+[data-bs-theme="dark"] .exercise-history-table .sticky-col {
+  background: var(--bs-card-bg);
+}
+
+[data-bs-theme="dark"] .exercise-history-table thead .sticky-col {
+  background: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .exercise-history-table tbody tr {
+  border-bottom: 1px dashed var(--bs-gray-700);
+}
+
+[data-bs-theme="dark"] .exercise-history-table tbody tr:hover {
+  background-color: transparent;
+}
+
+[data-bs-theme="dark"] .exercise-history-table tbody tr:hover .sticky-col {
+  background-color: var(--bs-card-bg);
+}

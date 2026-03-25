@@ -2,13 +2,14 @@
  * Desktop Card Renderer Module
  * Renders activity rows (exercise, note, cardio) as table rows with inline editing
  * Works alongside (not replacing) the mobile CardRenderer
- * @version 2.0.0 — Unified Activity Card system
+ * @version 3.0.0 — Split into DesktopCardData, DesktopInlineEditor, DesktopCardRenderer
  */
 
 class DesktopCardRenderer {
     constructor() {
         this.activeEdit = null;
         this.autocompleteInstances = new Map();
+        this._inlineEditor = new window.DesktopInlineEditor(this);
     }
 
     // =========================================
@@ -394,159 +395,6 @@ class DesktopCardRenderer {
     }
 
     // =========================================
-    // Type Conversion
-    // =========================================
-
-    /**
-     * Convert a card from one type to another.
-     * Re-renders the row in-place.
-     * @param {string} groupId - The group/note ID
-     * @param {string} fromType - Current type: 'exercise' | 'note' | 'cardio'
-     * @param {string} toType - Target type
-     */
-    convertCardType(groupId, fromType, toType) {
-        if (fromType === toType) return;
-
-        const row = document.querySelector(`.desktop-activity-row[data-group-id="${groupId}"]`);
-        if (!row) return;
-
-        const data = window.exerciseGroupsData[groupId];
-        if (!data) return;
-
-        let newHtml = '';
-
-        if (fromType === 'exercise' && toType === 'cardio') {
-            const doConvertToCardio = () => {
-                const name = data.exercises.a || '';
-                let activityType = '';
-                if (name && window.ActivityTypeRegistry) {
-                    const allTypes = window.ActivityTypeRegistry.getAll();
-                    const match = allTypes.find(t => t.name.toLowerCase() === name.toLowerCase() || t.id === name.toLowerCase());
-                    if (match) activityType = match.id;
-                }
-
-                data.group_type = 'cardio';
-                data.exercises = { a: '' };
-                data.sets = ''; data.reps = ''; data.rest = '';
-                data.default_weight = ''; data.default_weight_unit = 'lbs';
-                data.note_content = undefined;
-                data.cardio_config = {
-                    activity_type: activityType || name,
-                    duration_minutes: null, distance: null,
-                    distance_unit: 'mi', target_pace: '',
-                    activity_details: {}, notes: ''
-                };
-                const html = this.createCardioRow(groupId, data);
-                row.outerHTML = html;
-                if (window.markEditorDirty) window.markEditorDirty();
-                if (window.applyBlockGrouping) window.applyBlockGrouping();
-            };
-
-            if (data.exercises.a) {
-                ffnModalManager.confirm('Convert to Activity', 'Converting to Activity will replace sets, reps, rest, and weight with activity fields. Continue?', doConvertToCardio, { confirmText: 'Convert', confirmClass: 'btn-warning', size: 'sm' });
-                return;
-            }
-            doConvertToCardio();
-            return;
-
-        } else if (fromType === 'exercise' && toType === 'note') {
-            const doConvertExToNote = () => {
-                data.group_type = 'note';
-                data.note_content = data.exercises.a || '';
-                data.exercises = { a: '' };
-                data.sets = ''; data.reps = ''; data.rest = '';
-                data.default_weight = ''; data.default_weight_unit = 'lbs';
-                const html = this.createNoteRow(groupId, data);
-                row.outerHTML = html;
-                if (window.markEditorDirty) window.markEditorDirty();
-                if (window.applyBlockGrouping) window.applyBlockGrouping();
-            };
-
-            if (data.exercises.a) {
-                ffnModalManager.confirm('Convert to Note', 'Converting to Note will remove all exercise data. Continue?', doConvertExToNote, { confirmText: 'Convert', confirmClass: 'btn-warning', size: 'sm' });
-                return;
-            }
-            doConvertExToNote();
-            return;
-
-        } else if (fromType === 'cardio' && toType === 'exercise') {
-            const activityName = data.cardio_config?.activity_type || '';
-            let exerciseName = activityName;
-            if (activityName && window.ActivityTypeRegistry) {
-                const type = window.ActivityTypeRegistry.getById(activityName);
-                if (type && type.name !== activityName) exerciseName = type.name;
-            }
-
-            data.group_type = 'standard';
-            data.exercises = { a: exerciseName, b: '', c: '' };
-            data.sets = '3'; data.reps = '8-12'; data.rest = '60s';
-            data.default_weight = ''; data.default_weight_unit = 'lbs';
-            data.cardio_config = null;
-            data.note_content = undefined;
-            newHtml = this.createExerciseGroupRow(groupId, data);
-
-        } else if (fromType === 'cardio' && toType === 'note') {
-            ffnModalManager.confirm('Convert to Note', 'Converting to Note will remove all activity data. Continue?', () => {
-                const activityName = data.cardio_config?.activity_type || '';
-                let content = activityName;
-                if (activityName && window.ActivityTypeRegistry) {
-                    content = window.ActivityTypeRegistry.getName(activityName) || activityName;
-                }
-
-                data.group_type = 'note';
-                data.note_content = content;
-                data.exercises = { a: '' };
-                data.sets = ''; data.reps = ''; data.rest = '';
-                data.cardio_config = null;
-                const html = this.createNoteRow(groupId, data);
-                row.outerHTML = html;
-                if (window.markEditorDirty) window.markEditorDirty();
-                if (window.applyBlockGrouping) window.applyBlockGrouping();
-            }, { confirmText: 'Convert', confirmClass: 'btn-warning', size: 'sm' });
-            return;
-
-        } else if (fromType === 'note' && toType === 'exercise') {
-            const content = data.note_content || '';
-
-            data.group_type = 'standard';
-            data.exercises = { a: content, b: '', c: '' };
-            data.sets = '3'; data.reps = '8-12'; data.rest = '60s';
-            data.default_weight = ''; data.default_weight_unit = 'lbs';
-            data.note_content = undefined;
-            newHtml = this.createExerciseGroupRow(groupId, data);
-
-        } else if (fromType === 'note' && toType === 'cardio') {
-            const content = data.note_content || '';
-
-            let activityType = '';
-            if (content && window.ActivityTypeRegistry) {
-                const allTypes = window.ActivityTypeRegistry.getAll();
-                const match = allTypes.find(t => t.name.toLowerCase() === content.toLowerCase());
-                if (match) activityType = match.id;
-            }
-
-            data.group_type = 'cardio';
-            data.exercises = { a: '' };
-            data.sets = ''; data.reps = ''; data.rest = '';
-            data.note_content = undefined;
-            data.cardio_config = {
-                activity_type: activityType || content,
-                duration_minutes: null, distance: null,
-                distance_unit: 'mi', target_pace: '',
-                activity_details: {}, notes: ''
-            };
-            newHtml = this.createCardioRow(groupId, data);
-        }
-
-        if (newHtml) {
-            row.insertAdjacentHTML('afterend', newHtml);
-            row.remove();
-            if (window.markEditorDirty) window.markEditorDirty();
-            if (window.applyBlockGrouping) window.applyBlockGrouping();
-        }
-    }
-
-    // =========================================
     // Shared Utilities
     // =========================================
 
@@ -560,464 +408,47 @@ class DesktopCardRenderer {
     }
 
     // =========================================
-    // Inline Editing
+    // Delegated methods (backward compatibility)
     // =========================================
 
     initInlineEditing(container) {
-        if (!container) return;
-
-        // Click handler for inline editing
-        container.addEventListener('click', (e) => {
-            const editable = e.target.closest('.inline-editable');
-            if (!editable || editable.classList.contains('editing')) return;
-            if (e.target.closest('.exercise-autocomplete-dropdown')) return;
-            this.startInlineEdit(editable);
-        });
-
-        // Dropdown menu action handler (delegated)
-        container.addEventListener('click', (e) => {
-            const actionEl = e.target.closest('[data-action]');
-            if (!actionEl) return;
-            e.preventDefault();
-
-            const action = actionEl.dataset.action;
-            const groupId = actionEl.dataset.groupId;
-
-            switch (action) {
-                case 'row-edit': {
-                    const row = actionEl.closest('.desktop-activity-row');
-                    const cardType = row?.dataset.cardType;
-                    if (cardType === 'note') {
-                        if (window.openNoteEditor) window.openNoteEditor(groupId);
-                        else if (window.handleEditTemplateNote) window.handleEditTemplateNote(groupId);
-                    } else if (cardType === 'cardio') {
-                        if (window.openCardioEditor) window.openCardioEditor(groupId);
-                    } else {
-                        if (window.openExerciseGroupEditor) window.openExerciseGroupEditor(groupId);
-                    }
-                    break;
-                }
-                case 'full-edit':
-                    if (window.openExerciseGroupEditor) window.openExerciseGroupEditor(groupId);
-                    break;
-                case 'full-edit-cardio':
-                    if (window.openCardioEditor) {
-                        window.openCardioEditor(groupId);
-                    } else {
-                        console.log('Cardio full-edit offcanvas not yet implemented');
-                    }
-                    break;
-                case 'edit-note':
-                    if (window.openNoteEditor) {
-                        window.openNoteEditor(groupId);
-                    } else if (window.handleEditTemplateNote) {
-                        window.handleEditTemplateNote(groupId);
-                    }
-                    break;
-                case 'add-alternate':
-                    this.handleAddAlternate(groupId);
-                    break;
-                case 'delete-group':
-                    if (window.deleteExerciseGroupCard) window.deleteExerciseGroupCard(groupId);
-                    break;
-                case 'activity-display-settings':
-                    if (window.openActivityDisplaySettings) window.openActivityDisplaySettings();
-                    break;
-                case 'convert-to-exercise': {
-                    const row = actionEl.closest('.desktop-activity-row');
-                    const fromType = row?.dataset.cardType;
-                    if (fromType) this.convertCardType(groupId, fromType, 'exercise');
-                    break;
-                }
-                case 'convert-to-note': {
-                    const row = actionEl.closest('.desktop-activity-row');
-                    const fromType = row?.dataset.cardType;
-                    if (fromType) this.convertCardType(groupId, fromType, 'note');
-                    break;
-                }
-                case 'convert-to-cardio': {
-                    const row = actionEl.closest('.desktop-activity-row');
-                    const fromType = row?.dataset.cardType;
-                    if (fromType) this.convertCardType(groupId, fromType, 'cardio');
-                    break;
-                }
-            }
-        });
+        this._inlineEditor.initInlineEditing(container);
     }
 
     startInlineEdit(element) {
-        if (this.activeEdit && this.activeEdit !== element) {
-            this.finishInlineEdit(this.activeEdit, false);
-        }
-
-        const field = element.dataset.field;
-        const groupId = element.dataset.groupId;
-        const displayValue = element.querySelector('.display-value');
-        if (!displayValue) return;
-
-        const currentValue = this.getFieldValue(groupId, field);
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = currentValue;
-        input.className = 'inline-edit-input';
-
-        if (field === 'exercise-a') {
-            input.placeholder = 'Search exercises...';
-        } else if (field === 'activity-name') {
-            input.placeholder = 'Activity type...';
-        } else {
-            input.placeholder = this.getPlaceholder(field);
-        }
-
-        // Hide display elements, show input
-        displayValue.style.display = 'none';
-        const icon = element.querySelector('.cardio-type-icon');
-        if (icon) icon.style.display = 'none';
-        element.classList.add('editing');
-        element.appendChild(input);
-        input.focus();
-        input.select();
-
-        this.activeEdit = element;
-
-        const handleBlur = () => {
-            setTimeout(() => {
-                if (element.classList.contains('editing')) {
-                    this.finishInlineEdit(element, true);
-                }
-            }, 200);
-        };
-        input.addEventListener('blur', handleBlur);
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); this.finishInlineEdit(element, true); }
-            if (e.key === 'Escape') { e.preventDefault(); this.finishInlineEdit(element, false); }
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                this.finishInlineEdit(element, true);
-                this.tabToNextField(element, e.shiftKey);
-            }
-        });
-
-        // Autocomplete for exercise name
-        if (field === 'exercise-a' && window.ExerciseAutocomplete) {
-            setTimeout(() => {
-                try {
-                    const autocomplete = new ExerciseAutocomplete(input, {
-                        minChars: 1, maxResults: 8, allowAutoCreate: true,
-                        onSelect: (exercise) => {
-                            input.value = exercise.name;
-                            this.finishInlineEdit(element, true);
-                        }
-                    });
-                    this.autocompleteInstances.set(groupId + '-' + field, autocomplete);
-                } catch (err) {
-                    console.warn('Desktop: Could not init autocomplete', err);
-                }
-            }, 50);
-        }
-
-        // Autocomplete for cardio activity name
-        if (field === 'activity-name' && window.ActivityTypeRegistry) {
-            setTimeout(() => {
-                this._initActivityAutocomplete(input, element, groupId);
-            }, 50);
-        }
-    }
-
-    /**
-     * Simple autocomplete dropdown for activity types
-     */
-    _initActivityAutocomplete(input, element, groupId) {
-        const allTypes = window.ActivityTypeRegistry.getAll();
-
-        const dropdown = document.createElement('div');
-        dropdown.className = 'activity-autocomplete-dropdown';
-        element.appendChild(dropdown);
-
-        const showResults = () => {
-            const query = input.value.toLowerCase().trim();
-            const matches = query
-                ? allTypes.filter(t => t.name.toLowerCase().includes(query) || t.id.includes(query)).slice(0, 8)
-                : allTypes.slice(0, 8);
-
-            dropdown.innerHTML = matches.map(t =>
-                `<div class="activity-autocomplete-item" data-activity-id="${t.id}">
-                    <i class="bx ${t.icon}"></i> ${t.name}
-                </div>`
-            ).join('');
-            dropdown.style.display = matches.length ? 'block' : 'none';
-        };
-
-        input.addEventListener('input', showResults);
-        input.addEventListener('focus', showResults);
-
-        dropdown.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // Prevent blur
-            const item = e.target.closest('.activity-autocomplete-item');
-            if (item) {
-                input.value = item.dataset.activityId;
-                dropdown.style.display = 'none';
-                this.finishInlineEdit(element, true);
-            }
-        });
-
-        this.autocompleteInstances.set(groupId + '-activity-name', { destroy: () => dropdown.remove() });
-        showResults();
+        this._inlineEditor.startInlineEdit(element);
     }
 
     finishInlineEdit(element, save) {
-        if (!element.classList.contains('editing')) return;
-
-        const input = element.querySelector('.inline-edit-input');
-        const displayValue = element.querySelector('.display-value');
-        const field = element.dataset.field;
-        const groupId = element.dataset.groupId;
-
-        if (input && save) {
-            const newValue = input.value.trim();
-            this.setFieldValue(groupId, field, newValue);
-
-            if (field === 'exercise-a') {
-                displayValue.textContent = newValue || 'Click to add exercise';
-                displayValue.classList.toggle('empty-exercise', !newValue);
-            } else if (field === 'activity-name') {
-                // Resolve display name from registry
-                let displayName = newValue;
-                let iconClass = 'bx-heart-circle';
-                if (newValue && window.ActivityTypeRegistry) {
-                    const type = window.ActivityTypeRegistry.getById(newValue);
-                    if (type) {
-                        displayName = type.name;
-                        iconClass = type.icon;
-                    }
-                }
-                displayValue.textContent = displayName || 'Click to set activity';
-                displayValue.classList.toggle('empty-exercise', !displayName);
-                // Update icon
-                const icon = element.querySelector('.cardio-type-icon');
-                if (icon) icon.className = `bx ${iconClass} cardio-type-icon`;
-            } else if (field === 'weight') {
-                const data = window.exerciseGroupsData[groupId];
-                const weightDisplay = data.default_weight
-                    ? `${data.default_weight}${data.default_weight_unit && data.default_weight_unit !== 'other' ? ' ' + data.default_weight_unit : ''}`
-                    : '';
-                displayValue.textContent = weightDisplay || '-';
-                displayValue.classList.toggle('empty-value', !weightDisplay);
-            } else {
-                // Use ActivityDisplayConfig formatter for cardio fields, plain fallback for others
-                const ADC = window.ActivityDisplayConfig;
-                const def = ADC ? ADC.getFieldDef(field) : null;
-                if (def) {
-                    const data = window.exerciseGroupsData[groupId];
-                    const cfg = data?.cardio_config || {};
-                    const formatted = def.format(cfg);
-                    displayValue.textContent = formatted || '-';
-                    displayValue.classList.toggle('empty-value', !formatted);
-                } else {
-                    displayValue.textContent = newValue || '-';
-                    displayValue.classList.toggle('empty-value', !newValue);
-                }
-            }
-
-            if (window.markEditorDirty) window.markEditorDirty();
-        }
-
-        // Clean up
-        if (input) input.remove();
-        if (displayValue) displayValue.style.display = '';
-        const icon = element.querySelector('.cardio-type-icon');
-        if (icon) icon.style.display = '';
-        element.classList.remove('editing');
-
-        // Remove autocomplete dropdown
-        const acDropdown = element.querySelector('.activity-autocomplete-dropdown');
-        if (acDropdown) acDropdown.remove();
-
-        // Clean up autocomplete instance
-        const acKey = groupId + '-' + field;
-        const autocomplete = this.autocompleteInstances.get(acKey);
-        if (autocomplete && autocomplete.destroy) autocomplete.destroy();
-        this.autocompleteInstances.delete(acKey);
-        // Legacy key cleanup
-        if (field === 'exercise-a') {
-            const legacyAc = this.autocompleteInstances.get(groupId);
-            if (legacyAc && legacyAc.destroy) legacyAc.destroy();
-            this.autocompleteInstances.delete(groupId);
-        }
-
-        if (this.activeEdit === element) this.activeEdit = null;
+        this._inlineEditor.finishInlineEdit(element, save);
     }
 
     tabToNextField(currentElement, reverse) {
-        const row = currentElement.closest('.desktop-exercise-row');
-        if (!row) return;
-
-        const editables = Array.from(row.querySelectorAll('.inline-editable'));
-        const currentIndex = editables.indexOf(currentElement);
-        const nextIndex = reverse ? currentIndex - 1 : currentIndex + 1;
-
-        if (nextIndex >= 0 && nextIndex < editables.length) {
-            this.startInlineEdit(editables[nextIndex]);
-        } else if (!reverse) {
-            const nextRow = row.nextElementSibling;
-            if (nextRow && nextRow.classList.contains('desktop-exercise-row')) {
-                const firstEditable = nextRow.querySelector('.inline-editable');
-                if (firstEditable) this.startInlineEdit(firstEditable);
-            }
-        }
+        this._inlineEditor.tabToNextField(currentElement, reverse);
     }
 
-    // =========================================
-    // Field Value Get/Set
-    // =========================================
-
     getFieldValue(groupId, field) {
-        const data = window.exerciseGroupsData[groupId];
-        if (!data) return '';
-
-        switch (field) {
-            case 'exercise-a': return data.exercises.a || '';
-            case 'exercise-b': return data.exercises.b || '';
-            case 'exercise-c': return data.exercises.c || '';
-            case 'protocol': {
-                const s = data.sets || '';
-                const r = data.reps || '';
-                if (s && r) return `${s}×${r}`;
-                return s || r || '';
-            }
-            case 'rest': return data.rest || '';
-            case 'weight': return data.default_weight || '';
-            // Cardio fields
-            case 'activity-name': return data.cardio_config?.activity_type || '';
-            case 'duration': return data.cardio_config?.duration_minutes ? String(data.cardio_config.duration_minutes) : '';
-            case 'distance': return data.cardio_config?.distance ? String(data.cardio_config.distance) : '';
-            case 'pace': return data.cardio_config?.target_pace || '';
-            case 'rpe': return data.cardio_config?.target_rpe ? String(data.cardio_config.target_rpe) : '';
-            case 'heart_rate': return data.cardio_config?.target_heart_rate ? String(data.cardio_config.target_heart_rate) : '';
-            case 'calories': return data.cardio_config?.target_calories ? String(data.cardio_config.target_calories) : '';
-            case 'elevation': return data.cardio_config?.elevation_gain ? String(data.cardio_config.elevation_gain) : '';
-            case 'cadence': return data.cardio_config?.activity_details?.cadence ? String(data.cardio_config.activity_details.cadence) : '';
-            case 'stroke_rate': return data.cardio_config?.activity_details?.stroke_rate ? String(data.cardio_config.activity_details.stroke_rate) : '';
-            case 'laps': return data.cardio_config?.activity_details?.laps ? String(data.cardio_config.activity_details.laps) : '';
-            case 'incline': return data.cardio_config?.activity_details?.incline ? String(data.cardio_config.activity_details.incline) : '';
-            case 'notes': return data.cardio_config?.notes || '';
-            default: return '';
-        }
+        return window.DesktopCardData.getFieldValue(groupId, field);
     }
 
     setFieldValue(groupId, field, value) {
-        const data = window.exerciseGroupsData[groupId];
-        if (!data) return;
-
-        switch (field) {
-            case 'exercise-a': data.exercises.a = value; break;
-            case 'exercise-b': data.exercises.b = value; break;
-            case 'exercise-c': data.exercises.c = value; break;
-            case 'protocol': {
-                const xPattern = /(\d+)\s*[x×]\s*(.+)/i;
-                const setsPattern = /(\d+)\s*set/i;
-                const xMatch = value.match(xPattern);
-                if (xMatch) {
-                    data.sets = xMatch[1];
-                    data.reps = xMatch[2];
-                } else {
-                    const setsMatch = value.match(setsPattern);
-                    if (setsMatch) {
-                        data.sets = setsMatch[1];
-                        data.reps = 'varies';
-                    } else {
-                        data.sets = '1';
-                        data.reps = value;
-                    }
-                }
-                break;
-            }
-            case 'rest': data.rest = value; break;
-            case 'weight':
-                data.default_weight = value;
-                if (value && !data.default_weight_unit) data.default_weight_unit = 'lbs';
-                break;
-            // Cardio fields
-            case 'activity-name':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.activity_type = value;
-                break;
-            case 'duration':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.duration_minutes = value ? parseInt(value, 10) || null : null;
-                break;
-            case 'distance':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.distance = value ? parseFloat(value) || null : null;
-                break;
-            case 'pace':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.target_pace = value;
-                break;
-            case 'rpe':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.target_rpe = value ? parseInt(value, 10) || null : null;
-                break;
-            case 'heart_rate':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.target_heart_rate = value ? parseInt(value, 10) || null : null;
-                break;
-            case 'calories':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.target_calories = value ? parseInt(value, 10) || null : null;
-                break;
-            case 'elevation':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.elevation_gain = value ? parseFloat(value) || null : null;
-                break;
-            case 'cadence':
-                if (!data.cardio_config) data.cardio_config = {};
-                if (!data.cardio_config.activity_details) data.cardio_config.activity_details = {};
-                data.cardio_config.activity_details.cadence = value ? parseInt(value, 10) || null : null;
-                break;
-            case 'stroke_rate':
-                if (!data.cardio_config) data.cardio_config = {};
-                if (!data.cardio_config.activity_details) data.cardio_config.activity_details = {};
-                data.cardio_config.activity_details.stroke_rate = value ? parseInt(value, 10) || null : null;
-                break;
-            case 'laps':
-                if (!data.cardio_config) data.cardio_config = {};
-                if (!data.cardio_config.activity_details) data.cardio_config.activity_details = {};
-                data.cardio_config.activity_details.laps = value ? parseInt(value, 10) || null : null;
-                break;
-            case 'incline':
-                if (!data.cardio_config) data.cardio_config = {};
-                if (!data.cardio_config.activity_details) data.cardio_config.activity_details = {};
-                data.cardio_config.activity_details.incline = value ? parseFloat(value) || null : null;
-                break;
-            case 'notes':
-                if (!data.cardio_config) data.cardio_config = {};
-                data.cardio_config.notes = value;
-                break;
-        }
+        window.DesktopCardData.setFieldValue(groupId, field, value);
     }
 
     getPlaceholder(field) {
-        // Check ActivityDisplayConfig first (covers all cardio fields)
-        const def = window.ActivityDisplayConfig?.getFieldDef(field);
-        if (def) return def.placeholder;
+        return window.DesktopCardData.getPlaceholder(field);
+    }
 
-        switch (field) {
-            case 'protocol': return '3×10';
-            case 'rest': return '60s';
-            case 'weight': return 'lbs';
-            default: return '';
-        }
+    convertCardType(groupId, fromType, toType) {
+        window.DesktopCardData.convertCardType(groupId, fromType, toType);
     }
 
     handleAddAlternate(groupId) {
-        if (window.openExerciseGroupEditor) window.openExerciseGroupEditor(groupId);
+        this._inlineEditor.handleAddAlternate(groupId);
     }
 
     // =========================================
-    // Block Grouping (unchanged)
+    // Block Grouping
     // =========================================
 
     applyBlockGrouping() {
@@ -1093,4 +524,4 @@ class DesktopCardRenderer {
 // Initialize global instance
 window.desktopCardRenderer = new DesktopCardRenderer();
 
-console.log('📦 Desktop Card Renderer module loaded (v2.0 — Activity Card system)');
+console.log('📦 Desktop Card Renderer module loaded (v3.0 — Split modules)');

@@ -1,0 +1,177 @@
+/**
+ * Dashboard Table CSS
+ * Exercise history table, sticky columns, weight display, progress colors
+ */
+
+/* ============================================
+   EXERCISE HISTORY TABLE - SNEAT STYLE
+   ============================================ */
+
+/* Table Wrapper for Horizontal Scroll */
+.exercise-history-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 0;
+}
+
+/* Base Table Styling */
+.exercise-history-table {
+  width: 100%;
+  min-width: 500px; /* Ensures scroll on mobile */
+  margin-bottom: 0;
+}
+
+.exercise-history-table th,
+.exercise-history-table td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Sticky First Column - Exercise Names */
+.exercise-history-table .sticky-col {
+  position: sticky;
+  left: 0;
+  background: var(--bs-card-bg);
+  z-index: 2;
+  border-right: 2px solid var(--bs-border-color);
+}
+
+.exercise-history-table thead .sticky-col {
+  background: var(--bs-gray-100);
+  z-index: 3;
+}
+
+/* Exercise Column Width */
+.exercise-history-table .exercise-col {
+  min-width: 140px;
+  max-width: 180px;
+  padding-left: 1rem;
+  padding-right: 0.75rem;
+}
+
+/* Session Columns */
+.exercise-history-table .session-col {
+  min-width: 90px;
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+}
+
+/* Weight Display - Typography-first */
+.exercise-history-table .weight-display {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--bs-body-color);
+}
+
+/* Progress state colors applied to text only */
+.exercise-history-table td.increased .weight-display {
+  color: var(--bs-success);
+}
+
+.exercise-history-table td.decreased .weight-display {
+  color: var(--bs-danger);
+}
+
+.exercise-history-table .delta {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  margin-top: 0.125rem;
+  color: var(--bs-secondary);
+}
+
+.exercise-history-table td.increased .delta {
+  color: var(--bs-success);
+}
+
+.exercise-history-table td.decreased .delta {
+  color: var(--bs-danger);
+}
+
+/* Progress State - NO cell backgrounds (clean design) */
+.exercise-history-table td.increased {
+  /* No background - color on text only */
+}
+
+.exercise-history-table td.decreased {
+  /* No background - color on text only */
+}
+
+.exercise-history-table td.same {
+  /* No background */
+}
+
+.exercise-history-table td.skipped {
+  /* No background */
+  color: var(--bs-secondary);
+  font-style: italic;
+}
+
+.exercise-history-table td.not-present {
+  /* No background */
+  color: var(--bs-gray-400);
+}
+
+/* Session Header Styling */
+.exercise-history-table thead th {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  padding: 0.75rem 0.5rem;
+}
+
+.exercise-history-table thead th small {
+  font-weight: 400;
+  font-size: 0.6875rem;
+  display: block;
+  margin-top: 0.125rem;
+}
+
+/* Clean row separators - dashed instead of solid */
+.exercise-history-table tbody tr {
+  border-bottom: 1px dashed var(--bs-gray-200);
+}
+
+.exercise-history-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Remove hover background - keep clean */
+.exercise-history-table tbody tr:hover {
+  background-color: transparent;
+}
+
+.exercise-history-table tbody tr:hover .sticky-col {
+  background-color: var(--bs-card-bg);
+}
+
+/* Responsive: Show 3 sessions on mobile, 5 on tablet+ */
+@media (max-width: 575.98px) {
+  .exercise-history-table {
+    min-width: 400px;
+  }
+
+  .exercise-history-table .session-col {
+    min-width: 75px;
+  }
+
+  .exercise-history-table .exercise-col {
+    min-width: 120px;
+    max-width: 140px;
+    font-size: 0.875rem;
+  }
+
+  .exercise-history-table .weight-display {
+    font-size: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .exercise-history-table {
+    min-width: 600px;
+  }
+
+  .exercise-history-table .session-col {
+    min-width: 100px;
+  }
+}

@@ -1,0 +1,218 @@
+/**
+ * Dashboard Cards CSS
+ * Horizontal scroll containers, dashboard workout cards, recent session cards, section headers
+ */
+
+/* ============================================
+   HORIZONTAL SCROLL CONTAINERS
+   ============================================ */
+
+.horizontal-scroll-container {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  scroll-snap-type: x proximity;
+  scroll-behavior: smooth;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+.horizontal-scroll-container > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Fade effect at edges - optional */
+.horizontal-scroll-wrapper {
+  position: relative;
+}
+
+.horizontal-scroll-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, var(--bs-body-bg));
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ============================================
+   DASHBOARD WORKOUT CARDS
+   ============================================ */
+
+.dashboard-workout-card {
+  min-width: 280px;
+  max-width: 280px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  border: 1px solid var(--bs-border-color);
+}
+
+.dashboard-workout-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.dashboard-workout-card:active {
+  transform: scale(0.98);
+}
+
+.dashboard-workout-card .card-body {
+  padding: 1rem;
+}
+
+.dashboard-workout-card .workout-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 1.25rem;
+}
+
+.dashboard-workout-card .workout-name {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-workout-card .workout-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-workout-card .workout-last-completed {
+  font-size: 0.75rem;
+  color: var(--bs-secondary);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.dashboard-workout-card .btn-start {
+  width: 100%;
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   RECENT SESSION CARDS
+   ============================================ */
+
+.recent-session-card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  border: 1px solid var(--bs-border-color);
+  margin-bottom: 0.75rem;
+}
+
+.recent-session-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateX(2px);
+}
+
+.recent-session-card .card-body {
+  padding: 1rem;
+}
+
+.recent-session-card .session-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.recent-session-card .session-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.recent-session-card .session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-session-card .session-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-bottom: 0.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-session-card .session-meta {
+  font-size: 0.8125rem;
+  color: var(--bs-secondary);
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.recent-session-card .session-badge {
+  flex-shrink: 0;
+}
+
+/* ============================================
+   SECTION HEADERS
+   ============================================ */
+
+.dashboard-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dashboard-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dashboard-section-title i {
+  font-size: 1.25rem;
+}
+
+.dashboard-section-link {
+  font-size: 0.875rem;
+  text-decoration: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--bs-primary);
+}
+
+.dashboard-section-link:hover {
+  text-decoration: underline;
+}

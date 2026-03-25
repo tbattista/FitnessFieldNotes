@@ -1,0 +1,175 @@
+/**
+ * Ghost Gym - Dark Mode Component Styles
+ * Exercise groups, workout cards, modals, alerts, loading/empty states,
+ * badges/tags, program workout chips, autosave indicator
+ * Split from dark-mode.css
+ * @version 1.0.0
+ * @date 2026-03-25
+ */
+
+/* ============================================
+   DARK MODE EXERCISE GROUPS
+   ============================================ */
+
+[data-bs-theme="dark"] .exercise-group,
+[data-bs-theme="dark"] .program-workouts .workout-item {
+    background: var(--gs-gray-100);
+    border-color: var(--gs-gray-200);
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .exercise-group-title {
+    color: var(--gs-gray-800);
+}
+
+/* ============================================
+   DARK MODE WORKOUT CARDS
+   ============================================ */
+
+[data-bs-theme="dark"] .workout-card {
+    background: var(--gs-gray-50);
+    border-color: var(--gs-gray-200);
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .workout-card:hover {
+    border-color: var(--gs-primary);
+    box-shadow: 0 4px 12px rgba(201, 124, 93, 0.3);  /* Soft Clay */
+}
+
+[data-bs-theme="dark"] .workout-card-title {
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .workout-card-description,
+[data-bs-theme="dark"] .workout-card-stats,
+[data-bs-theme="dark"] .program-meta,
+[data-bs-theme="dark"] .program-stat {
+    color: var(--gs-gray-400);
+}
+
+/* Workout List Cards */
+[data-bs-theme="dark"] .workout-list-card {
+    background: var(--gs-gray-50);
+    color: var(--gs-gray-800);
+    border-color: var(--gs-gray-200);
+}
+
+[data-bs-theme="dark"] .workout-list-card:hover {
+    border-color: var(--gs-primary);
+    box-shadow: 0 4px 12px rgba(201, 124, 93, 0.3);  /* Soft Clay */
+}
+
+/* ============================================
+   DARK MODE MODALS
+   ============================================ */
+
+[data-bs-theme="dark"] .modal-content {
+    background: var(--gs-gray-50);
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .modal-header {
+    background: linear-gradient(135deg, var(--gs-gray-50), var(--gs-gray-100));
+    border-bottom-color: var(--gs-gray-200);
+}
+
+[data-bs-theme="dark"] .modal-title {
+    color: var(--gs-gray-800);
+}
+
+/* ============================================
+   DARK MODE ALERTS
+   ============================================ */
+
+[data-bs-theme="dark"] .alert-success {
+    background: linear-gradient(135deg, rgba(var(--gs-success-rgb), 0.2), rgba(var(--gs-success-rgb), 0.1));
+    color: var(--gs-success-light);
+}
+
+[data-bs-theme="dark"] .alert-danger {
+    background: linear-gradient(135deg, rgba(var(--gs-danger-rgb), 0.2), rgba(var(--gs-danger-rgb), 0.1));
+    color: var(--gs-alert-danger-text);
+}
+
+[data-bs-theme="dark"] .alert-warning {
+    background: linear-gradient(135deg, rgba(var(--gs-warning-rgb), 0.2), rgba(var(--gs-warning-rgb), 0.1));
+    color: var(--gs-alert-warning-text);
+}
+
+[data-bs-theme="dark"] .alert-info {
+    background: linear-gradient(135deg, rgba(var(--gs-accent-rgb), 0.2), rgba(var(--gs-accent-rgb), 0.1));
+    color: var(--gs-alert-info-text);
+}
+
+/* ============================================
+   DARK MODE LOADING STATES
+   ============================================ */
+
+[data-bs-theme="dark"] .loading-overlay {
+    background: rgba(30, 41, 59, 0.9);
+}
+
+/* ============================================
+   DARK MODE EMPTY STATES
+   ============================================ */
+
+[data-bs-theme="dark"] #emptyStatePanel {
+    background: linear-gradient(135deg, var(--gs-gray-50), var(--gs-gray-100));
+    border-color: var(--gs-gray-200);
+}
+
+/* ============================================
+   DARK MODE PROGRAM WORKOUT CHIPS
+   ============================================ */
+
+[data-bs-theme="dark"] .program-workout-chip {
+    background: var(--gs-gray-100);
+    border-color: var(--gs-gray-200);
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .program-workout-chip:hover {
+    background: var(--gs-gray-200);
+    border-color: var(--gs-primary);
+}
+
+/* ============================================
+   DARK MODE BADGES & TAGS
+   ============================================ */
+
+[data-bs-theme="dark"] .workout-tag,
+[data-bs-theme="dark"] .workout-card-tag {
+    background: rgba(100, 116, 139, 0.2);  /* Slate secondary */
+    color: var(--gs-gray-400);
+}
+
+[data-bs-theme="dark"] .badge {
+    background: var(--gs-gray-100);
+    color: var(--gs-gray-800);
+}
+
+[data-bs-theme="dark"] .badge.bg-label-info {
+    background: rgba(var(--gs-accent-rgb), 0.2);
+    color: var(--gs-alert-info-text);
+}
+
+/* ============================================
+   DARK MODE AUTOSAVE INDICATOR
+   ============================================ */
+
+[data-bs-theme="dark"] .autosave-indicator.saving {
+    background: rgba(var(--gs-accent-rgb), 0.2);
+}
+
+[data-bs-theme="dark"] .autosave-indicator.saved {
+    background: rgba(var(--gs-success-rgb), 0.2);
+}
+
+[data-bs-theme="dark"] .autosave-indicator.unsaved {
+    background: rgba(var(--gs-warning-rgb), 0.2);
+}
+
+[data-bs-theme="dark"] .autosave-indicator.error {
+    background: rgba(var(--gs-danger-rgb), 0.2);
+}
