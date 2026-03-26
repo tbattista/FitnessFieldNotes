@@ -493,20 +493,20 @@
      */
     async function handleSetActiveProgram(program, setActive) {
         try {
-            const token = await window.dataManager?.getAuthToken();
             if (setActive) {
-                await fetch('/api/user/active-program', {
+                const response = await window.dataManager.authenticatedFetch('/api/user/active-program', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ program_id: program.id })
                 });
+                if (!response.ok) throw new Error(`Server returned ${response.status}`);
                 localStorage.setItem('ffn_active_program_id', program.id);
                 if (window.showAlert) window.showAlert(`"${program.name}" set as active program`, 'success');
             } else {
-                await fetch('/api/user/active-program', {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const response = await window.dataManager.authenticatedFetch('/api/user/active-program', {
+                    method: 'DELETE'
                 });
+                if (!response.ok) throw new Error(`Server returned ${response.status}`);
                 localStorage.removeItem('ffn_active_program_id');
                 if (window.showAlert) window.showAlert('Active program removed', 'info');
             }
