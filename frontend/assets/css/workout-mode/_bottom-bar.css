@@ -264,14 +264,26 @@
 
 /* ============================================
    OVERSCROLL FIX
-   Prevent bounce effect on mobile when scrolling to bottom
+   Prevent bounce/rubber-band effect on mobile (especially iOS)
    ============================================ */
 
-html,
-body,
+html {
+    overscroll-behavior: none !important;
+    overflow: auto;
+    height: 100%;
+}
+
+body {
+    overscroll-behavior: none !important;
+    overflow: auto;
+    height: 100%;
+    /* iOS-specific: prevent pull-to-refresh and bounce */
+    -webkit-overflow-scrolling: auto;
+}
+
 .layout-wrapper,
 .content-wrapper {
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: none;
 }
 
 /* ============================================

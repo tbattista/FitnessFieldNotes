@@ -118,23 +118,19 @@ class WorkoutTimerManager {
      * Initialize global rest timer (from bottom action bar)
      */
     initializeGlobalTimer() {
-        // Wait for global rest timer to be available from bottom action bar service
+        // Create the instance if it doesn't exist yet
+        if (!window.globalRestTimer && window.GlobalRestTimer) {
+            window.globalRestTimer = new window.GlobalRestTimer();
+            console.log('🕐 Created GlobalRestTimer instance');
+        }
+
         if (window.globalRestTimer) {
             this.globalRestTimer = window.globalRestTimer;
+            this.globalRestTimer.initialize();
             console.log('✅ Global rest timer connected to timer manager');
-            
             return true;
         } else {
-            // Try again after a short delay
-            setTimeout(() => {
-                if (window.globalRestTimer) {
-                    this.globalRestTimer = window.globalRestTimer;
-                    console.log('✅ Global rest timer connected to timer manager (delayed)');
-                } else {
-                    console.warn('⚠️ Global rest timer still not available after delay');
-                }
-            }, 500);
-            
+            console.warn('⚠️ GlobalRestTimer class not available');
             return false;
         }
     }
