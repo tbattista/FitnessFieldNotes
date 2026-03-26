@@ -121,4 +121,31 @@ test.describe('Workout Mode UI Fixes (source verification)', () => {
     expect(controllerJs).toContain("window.location.href = 'workout-database.html'");
   });
 
+  test('syncWithCard updates remainingSeconds in ready state', () => {
+    // syncWithCard should update remainingSeconds when not counting/paused
+    expect(globalRestTimerJs).toContain('this.remainingSeconds = restSeconds');
+  });
+
+  test('showFloatingControls renders timer when bottom bar becomes visible', () => {
+    const lifecycleJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/services/workout-lifecycle-manager.js'), 'utf-8'
+    );
+    expect(lifecycleJs).toContain('globalRestTimer.updateVisibility()');
+    expect(lifecycleJs).toContain('globalRestTimer.render()');
+  });
+
+  test('syncTimerWithCard converts rest to string before parsing', () => {
+    const cardManagerJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/components/exercise-card-manager.js'), 'utf-8'
+    );
+    expect(cardManagerJs).toContain('String(exerciseGroup.rest)');
+  });
+
+  test('parseRestTime handles number inputs directly', () => {
+    const workoutUtilsJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/utils/workout-utils.js'), 'utf-8'
+    );
+    expect(workoutUtilsJs).toContain("typeof restStr === 'number'");
+  });
+
 });

@@ -702,6 +702,13 @@ class WorkoutLifecycleManager {
             if (bottomBar) bottomBar.style.display = '';
             if (timerDisplay) timerDisplay.style.display = '';
             if (inlineAddBtns) inlineAddBtns.style.display = 'none';
+            // Render rest timer now that bottom bar is visible
+            if (window.globalRestTimer) {
+                window.globalRestTimer.updateVisibility();
+                if (window.globalRestTimer.enabled) {
+                    window.globalRestTimer.render();
+                }
+            }
         } else {
             if (bottomBar) bottomBar.style.display = 'none';
             if (timerDisplay) timerDisplay.style.display = 'none';

@@ -233,9 +233,11 @@ class ExerciseCardManager {
         const exerciseGroup = this.getExerciseGroup(exerciseIndex);
         
         if (exerciseGroup) {
-            const restSeconds = WorkoutUtils.parseRestTime(exerciseGroup.rest || '60s');
+            // Ensure rest is a string for parseRestTime (API/session can return numbers)
+            const restValue = exerciseGroup.rest != null ? String(exerciseGroup.rest) : '60s';
+            const restSeconds = WorkoutUtils.parseRestTime(restValue);
             this.timerManager.syncWithExpandedCard(exerciseIndex, restSeconds);
-            console.log(`🔄 Timer synced with exercise ${exerciseIndex}: ${restSeconds}s`);
+            console.log(`🔄 Timer synced with exercise ${exerciseIndex}: ${restSeconds}s (raw: ${exerciseGroup.rest})`);
         }
     }
     

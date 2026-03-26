@@ -65,12 +65,15 @@ class GlobalRestTimer extends RestTimer {
         this.currentExerciseIndex = exerciseIndex;
         this.totalSeconds = restSeconds;
 
-        // Reset timer if it was running for a different exercise
         if (this.state === 'counting' || this.state === 'paused') {
+            // Reset timer if it was running for a different exercise
             this.reset();
+        } else {
+            // In ready/done state, update remainingSeconds so display reflects new time
+            this.remainingSeconds = restSeconds;
         }
 
-        // Only render if enabled
+        // Always render if enabled so the display updates
         if (this.enabled) {
             this.render();
         }

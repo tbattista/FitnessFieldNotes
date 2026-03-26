@@ -35,6 +35,10 @@ const WorkoutUtils = {
      * @returns {number} Rest time in seconds (defaults to 60 for invalid input)
      */
     parseRestTime(restStr) {
+        // Handle number inputs directly (e.g., 60 from API/session data)
+        if (typeof restStr === 'number' && !isNaN(restStr)) {
+            return Math.max(1, Math.round(restStr));
+        }
         if (!restStr || typeof restStr !== 'string') {
             console.warn('⚠️ Invalid rest time input, using default 60s');
             return 60;
