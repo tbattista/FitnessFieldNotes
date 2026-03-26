@@ -101,29 +101,23 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 16px 8px;
+    padding: 8px 16px;
+    min-height: 44px;
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* Ready state: Start button + editable time */
-.wm-timer-start-btn {
-    flex: 0 0 auto;
-    font-weight: 600;
-    font-size: 0.8rem;
-    border-radius: 8px;
-    padding: 5px 12px;
-}
-
+/* Time display (left side) — shared style for ready + countdown */
 .wm-timer-time-display {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--bs-secondary-color);
     cursor: pointer;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-variant-numeric: tabular-nums;
     display: flex;
     align-items: center;
-    margin-left: auto;
+    flex: 1;
 }
 
 .wm-timer-time-display:hover {
@@ -131,7 +125,16 @@
     text-decoration: underline;
 }
 
-/* Countdown display */
+/* Start button (right side) */
+.wm-timer-start-btn {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    padding: 6px 14px;
+}
+
+/* Countdown display (left side, replaces time-display when counting) */
 .wm-timer-countdown {
     display: flex;
     align-items: baseline;
@@ -140,11 +143,10 @@
 }
 
 .wm-timer-countdown-time {
-    font-size: 1.5rem;
+    font-size: 0.95rem;
     font-weight: 700;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-variant-numeric: tabular-nums;
-    line-height: 1;
 }
 
 .wm-timer-countdown-label {

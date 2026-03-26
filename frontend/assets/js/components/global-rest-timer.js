@@ -122,18 +122,18 @@ class GlobalRestTimer extends RestTimer {
     }
 
     /**
-     * Render ready state - shows start button with editable time
+     * Render ready state - time display on left, start button on right
      */
     renderReadyState(container) {
         const timeDisplay = this.formatTime(this.totalSeconds);
 
         container.innerHTML = `
-            <button class="btn btn-sm btn-outline-success wm-timer-start-btn" onclick="window.globalRestTimer.start()">
-                <i class="bx bx-play me-1"></i>Start Rest
-            </button>
             <span class="wm-timer-time-display" onclick="event.stopPropagation(); window.globalRestTimer.showTimeEdit();" title="Tap to edit rest time">
                 <i class="bx bx-time-five me-1"></i>${timeDisplay}
             </span>
+            <button class="btn btn-sm btn-outline-success wm-timer-start-btn" onclick="window.globalRestTimer.start()">
+                <i class="bx bx-play me-1"></i>Start Rest
+            </button>
         `;
     }
 
