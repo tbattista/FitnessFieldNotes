@@ -139,6 +139,12 @@
     white-space: nowrap;
 }
 
+.global-rest-timer-button.ready {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .global-rest-timer-floating.ready .global-timer-btn {
     background: var(--bs-success);
     color: white;
@@ -317,6 +323,79 @@
     font-size: 12px;
 }
 
+/* ============================================
+   GLOBAL TIMER - INLINE TIME EDIT
+   ============================================ */
+
+.global-timer-edit-time {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    opacity: 0.6;
+    cursor: pointer;
+    margin-left: 6px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+.global-timer-edit-time:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.global-timer-edit-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: var(--floating-fab-height);
+    padding: 0 8px;
+    background: var(--bs-body-bg);
+    border: 2px solid var(--bs-primary);
+    border-radius: var(--floating-fab-border-radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.global-timer-edit-input {
+    width: 56px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+.global-timer-edit-input:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+}
+
+.global-timer-edit-unit {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    font-weight: 500;
+}
+
+.global-timer-edit-save,
+.global-timer-edit-cancel {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.global-rest-timer-floating.editing {
+    width: auto;
+    min-width: auto;
+    max-width: none;
+}
+
 @keyframes timer-complete-pulse {
     0%, 100% {
         transform: scale(1);
@@ -337,25 +416,12 @@
 }
 
 /* ============================================
-   INLINE ADD BUTTONS (below exercise cards)
-   ============================================ */
-
-.workout-mode-add-buttons {
-    margin-top: 0.5rem;
-    padding-bottom: 1rem;
-}
-
-/* ============================================
    CONTENT PADDING
    Bottom bar (56px) + gap + breathing room
    ============================================ */
 
 #exerciseCardsContainer {
     padding-bottom: 20px;
-}
-
-.workout-mode-add-buttons {
-    padding-bottom: 80px;
 }
 
 #workoutLandingPage {

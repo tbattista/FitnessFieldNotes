@@ -130,17 +130,66 @@ class GlobalRestTimer extends RestTimer {
     }
 
     /**
-     * Render ready state - shows "Rest {time}" button
+     * Render ready state - shows "Rest {time}" button with editable time
      */
     renderReadyState(container, isMobile) {
         container.classList.add('ready');
-            
+        const timeDisplay = this.formatTime(this.totalSeconds);
+
         container.innerHTML = `
             <button class="btn btn-primary global-timer-btn" onclick="window.globalRestTimer.start()">
                 <i class="bx bx-time-five me-1"></i>
                 <span>Rest</span>
             </button>
+            <span class="global-timer-edit-time" onclick="event.stopPropagation(); window.globalRestTimer.showTimeEdit();" title="Tap to edit rest time">${timeDisplay}</span>
         `;
+    }
+
+    /**
+     * Show inline time editor
+     */
+    showTimeEdit() {
+        const container = document.getElementById('globalRestTimerButton');
+        if (!container) return;
+
+        const currentSeconds = this.totalSeconds;
+        const editHtml = `
+            <div class="global-timer-edit-container">
+                <input type="number" class="global-timer-edit-input" id="globalTimerEditInput"
+                       value="${currentSeconds}" min="5" max="600" step="5"
+                       onclick="event.stopPropagation();"
+                       onkeydown="if(event.key==='Enter') window.globalRestTimer.applyTimeEdit();">
+                <span class="global-timer-edit-unit">sec</span>
+                <button class="btn btn-sm btn-success global-timer-edit-save" onclick="window.globalRestTimer.applyTimeEdit();">
+                    <i class="bx bx-check"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary global-timer-edit-cancel" onclick="window.globalRestTimer.render();">
+                    <i class="bx bx-x"></i>
+                </button>
+            </div>
+        `;
+
+        container.innerHTML = editHtml;
+        container.className = 'global-rest-timer-button editing';
+
+        const input = document.getElementById('globalTimerEditInput');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }
+
+    /**
+     * Apply edited time value
+     */
+    applyTimeEdit() {
+        const input = document.getElementById('globalTimerEditInput');
+        if (!input) return;
+
+        const newSeconds = Math.max(5, Math.min(600, parseInt(input.value) || 60));
+        this.totalSeconds = newSeconds;
+        this.remainingSeconds = newSeconds;
+        this.render();
     }
 
     /**
