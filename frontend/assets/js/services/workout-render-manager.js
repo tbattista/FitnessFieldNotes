@@ -93,11 +93,6 @@ class WorkoutRenderManager {
 
         container.innerHTML = html;
 
-        // Show inline add buttons (always visible in build mode, otherwise when exercises exist)
-        const addButtons = document.getElementById('workoutModeAddButtons');
-        if (addButtons) {
-            addButtons.style.display = (allItems.length > 0 || isBuildMode) ? 'block' : 'none';
-        }
 
         // Apply visual block grouping for sectioned workouts
         if (this._lastSectionMeta) {
@@ -119,9 +114,6 @@ class WorkoutRenderManager {
         // Initialize timers
         this.timerManager.initializeGlobalTimer();
         this.timerManager.initializeCardTimers();
-
-        // Initialize inline rest timers
-        this._initializeInlineTimers();
 
         // Initialize logbook field controllers
         this._initializeLogbookControllers();

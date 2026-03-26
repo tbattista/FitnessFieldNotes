@@ -76,7 +76,7 @@ class ExerciseCardRenderer {
             <div class="workout-card ${stateClasses.join(' ')}"
                  data-exercise-index="${index}"
                  data-exercise-name="${this._escapeHtml(mainExercise)}"
-                 onclick="if(!event.target.closest('.workout-more-btn, .workout-edit-btn, .workout-menu, .inline-rest-timer')) { this.classList.toggle('expanded'); if(this.classList.contains('expanded')) setTimeout(() => this.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }">
+                 onclick="if(!event.target.closest('.workout-more-btn, .workout-edit-btn, .workout-menu')) { if(window.workoutModeController?.cardManager) { window.workoutModeController.cardManager.toggle(${index}); } else { this.classList.toggle('expanded'); if(this.classList.contains('expanded')) setTimeout(() => this.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); } }">
                 <!-- Collapsed Header -->
                 <div class="workout-card-header">
                     <!-- Row 1: Exercise Name (full width, no wrap) -->
@@ -153,9 +153,9 @@ class ExerciseCardRenderer {
                             </button>
                         </div>
 
-                        <!-- Notes + Rest Timer Section (combined layout) -->
+                        <!-- Notes Section -->
                         <div class="workout-section workout-notes-timer-section workout-unified-notes">
-                            <!-- Notes Content (Full Width - Above Buttons) -->
+                            <!-- Notes Content (Full Width - Above Button) -->
                             <div class="workout-notes-content" style="display: none;">
                                 <textarea class="workout-notes-input"
                                           placeholder="Add a note about this exercise..."
@@ -163,13 +163,10 @@ class ExerciseCardRenderer {
                                           data-exercise-name="${this._escapeHtml(mainExercise)}"
                                           onclick="event.stopPropagation();">${notes || ''}</textarea>
                             </div>
-                            <!-- Buttons Row (1/3 Note + 2/3 Timer) -->
+                            <!-- Notes Button Row -->
                             <div class="workout-notes-timer-row">
-                                <div class="workout-notes-col">
+                                <div class="workout-notes-col w-100">
                                     ${this._renderNoteButton(mainExercise, notes)}
-                                </div>
-                                <div class="workout-timer-col">
-                                    ${this._renderInlineRestTimer(restSeconds, index)}
                                 </div>
                             </div>
                         </div>

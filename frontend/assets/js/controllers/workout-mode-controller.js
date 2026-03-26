@@ -400,20 +400,17 @@ class WorkoutModeController {
         }
     }
 
-    /** Reset page to fresh state - clear session, re-render */
+    /** Reset page to fresh state - clear session and redirect to workout database */
     resetToFreshState() {
         console.log('🔄 Resetting page to fresh state...');
         this.sessionService.clearPersistedSession();
         if (this.timerManager) this.timerManager.stopSessionTimer();
-        if (this.uiStateManager) this.uiStateManager.updateSessionState(false, null);
-        if (this.lifecycleManager) this.lifecycleManager.showFloatingControls(false);
-        this.renderWorkout();
-        if (window.toastNotifications) {
-            window.toastNotifications.info('Workout cancelled. Ready to start fresh!', 'Cancelled');
-        } else if (window.showAlert) {
-            window.showAlert('Workout cancelled.', 'info');
-        }
-        console.log('✅ Page reset to fresh state');
+        // Redirect to workout database with pending toast
+        sessionStorage.setItem('ffn_pending_toast', JSON.stringify({
+            message: 'Workout cancelled.',
+            type: 'info'
+        }));
+        window.location.href = 'workout-database.html';
     }
 
     /** Sound enabled property (proxied to settings manager) */

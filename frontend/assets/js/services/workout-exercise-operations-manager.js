@@ -424,6 +424,25 @@ class WorkoutExerciseOperationsManager {
                     const newExerciseName = groupData.exercises.a;
                     const isSessionActive = this.sessionService.isSessionActive();
 
+                    // During active session with no explicit index, insert after last completed exercise
+                    let effectiveInsertIndex = insertAtIndex;
+                    if (effectiveInsertIndex === null && isSessionActive) {
+                        const allNames = this.onGetAllExerciseNames();
+                        const session = this.sessionService.getCurrentSession();
+                        if (allNames.length > 0 && session?.exercises) {
+                            let lastCompletedIdx = -1;
+                            for (let i = 0; i < allNames.length; i++) {
+                                if (session.exercises[allNames[i]]?.is_completed) {
+                                    lastCompletedIdx = i;
+                                }
+                            }
+                            // Only insert at position if at least one exercise is completed
+                            if (lastCompletedIdx >= 0) {
+                                effectiveInsertIndex = lastCompletedIdx + 1;
+                            }
+                        }
+                    }
+
                     // Add exercise as a new group to the workout template
                     this._addExerciseGroupToWorkout({
                         name: newExerciseName,
@@ -432,7 +451,7 @@ class WorkoutExerciseOperationsManager {
                         rest: groupData.rest || '60s',
                         weight: groupData.default_weight || '',
                         weight_unit: groupData.default_weight_unit || 'lbs'
-                    }, insertAtIndex);
+                    }, effectiveInsertIndex);
 
                     // For pre-workout mode with insertAtIndex, update the exercise order
                     if (!isSessionActive && insertAtIndex !== null) {
@@ -464,9 +483,9 @@ class WorkoutExerciseOperationsManager {
                     console.warn('⚠️ Delete not applicable in single mode');
                 },
                 // onSearchClick callback
-                (slotKey, populateCallback) => {
-                    // Open Exercise Search offcanvas
-                    this.showExerciseSearchOffcanvas(populateCallback);
+                (slotKey, populateCallback, initialQuery) => {
+                    // Open Exercise Search offcanvas with pre-populated search term
+                    this.showExerciseSearchOffcanvas(populateCallback, initialQuery);
                 }
             );
         } catch (error) {
@@ -704,14 +723,15 @@ class WorkoutExerciseOperationsManager {
      * Opens the standalone exercise search interface
      * @param {Function} populateCallback - Callback to populate the Add Exercise form with selected exercise
      */
-    showExerciseSearchOffcanvas(populateCallback) {
+    showExerciseSearchOffcanvas(populateCallback, initialQuery = '') {
         try {
             window.UnifiedOffcanvasFactory.createExerciseSearchOffcanvas(
                 {
                     title: 'Search Exercise Library',
                     showFilters: true,
                     buttonText: 'Select',
-                    buttonIcon: 'bx-check'
+                    buttonIcon: 'bx-check',
+                    initialQuery
                 },
                 (selectedExercise) => {
                     // Exercise selected from search

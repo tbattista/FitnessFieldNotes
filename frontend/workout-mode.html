@@ -244,12 +244,6 @@
                   <!-- Cards will be rendered here by JavaScript -->
                 </div>
 
-                <!-- Inline Add Buttons (below exercise cards, matching builder pattern) -->
-                <div class="workout-mode-add-buttons" id="workoutModeAddButtons" style="display: none;">
-                  <button type="button" class="btn btn-outline-primary w-100 mb-2" id="inlineAddExerciseBtn" data-action="add-exercise">
-                    <i class="bx bx-plus me-1"></i>Add Exercise
-                  </button>
-                </div>
               </div>
 
             </div>
@@ -267,6 +261,11 @@
 
       <!-- Session Bottom Bar -->
       <div class="workout-mode-bottom-bar" id="workoutModeBottomBar" style="display: none;">
+        <!-- Rest Timer (expands bar upward when visible) -->
+        <div class="wm-rest-timer-section" id="globalRestTimerButton" style="display: none;">
+          <!-- Populated by GlobalRestTimer -->
+        </div>
+        <!-- Action Buttons -->
         <div class="wm-bottom-bar-inner">
           <div class="dropup flex-fill">
             <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="dropdown" aria-expanded="false">
@@ -278,17 +277,14 @@
               <li><a class="dropdown-item" href="#" data-action="add-activity"><i class="bx bx-run me-2"></i>Activity</a></li>
             </ul>
           </div>
-          <button type="button" class="btn btn-outline-secondary" data-action="options">
-            <i class="bx bx-dots-horizontal-rounded me-1"></i>More
-          </button>
           <button type="button" class="btn" style="background-color: #c4764e; color: #fff;" data-action="end">
             <i class="bx bx-check me-1"></i>Finish
           </button>
+          <button type="button" class="btn btn-outline-secondary" data-action="options">
+            <i class="bx bx-dots-horizontal-rounded me-1"></i>More
+          </button>
         </div>
       </div>
-
-      <!-- Global Rest Timer (floats above bottom bar) -->
-      <div class="global-rest-timer-floating" id="globalRestTimerButton"></div>
 
     </div>
     <!-- / Layout wrapper -->
