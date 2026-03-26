@@ -597,6 +597,14 @@
     // --- Initialize & Expose ---
     document.addEventListener('DOMContentLoaded', initHomePage);
 
+    // Re-render What's Next card when active program sync completes (race condition fix)
+    window.addEventListener('activeProgramSynced', async function() {
+        try {
+            const workouts = homeWorkouts.length ? homeWorkouts : await loadWorkouts();
+            await renderWhatsNextCard(workouts);
+        } catch (e) { /* ignore */ }
+    });
+
     // Expose on window for cross-module access and onclick handlers
     window.initHomePage = initHomePage;
     window.loadHomeSections = loadHomeSections;

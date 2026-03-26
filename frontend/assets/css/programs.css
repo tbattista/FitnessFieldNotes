@@ -298,6 +298,7 @@
 .program-card.active-program {
     border-color: var(--bs-primary);
     border-width: 2px;
+    box-shadow: 0 0 0 1px var(--bs-primary), 0 2px 8px rgba(var(--bs-primary-rgb), 0.15);
 }
 
 /* Selected state in delete mode */
