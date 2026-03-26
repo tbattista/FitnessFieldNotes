@@ -55,6 +55,7 @@
     right: 0;
     background: var(--bs-body-bg);
     border-top: 1px solid var(--bs-border-color);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
     z-index: 1050;
 }
 
@@ -93,15 +94,14 @@
 }
 
 /* ============================================
-   REST TIMER ROW (inside bottom bar, above buttons)
+   REST TIMER SECTION (expands bottom bar upward)
    ============================================ */
 
-.wm-rest-timer-row {
+.wm-rest-timer-section {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--bs-border-color);
+    padding: 10px 16px 8px;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -140,10 +140,11 @@
 }
 
 .wm-timer-countdown-time {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 700;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-variant-numeric: tabular-nums;
+    line-height: 1;
 }
 
 .wm-timer-countdown-label {
@@ -230,7 +231,7 @@
 }
 
 /* Pulse animation on timer complete */
-.wm-rest-timer-row.timer-complete-pulse {
+.wm-rest-timer-section.timer-complete-pulse {
     animation: timer-row-pulse 2s ease-in-out;
 }
 
@@ -282,7 +283,7 @@ html, body {
    DARK MODE
    ============================================ */
 
-[data-bs-theme="dark"] .wm-rest-timer-row {
+[data-bs-theme="dark"] .wm-rest-timer-section {
     border-bottom-color: var(--bs-border-color);
 }
 
@@ -290,7 +291,7 @@ html, body {
    ACCESSIBILITY
    ============================================ */
 
-.wm-rest-timer-row:focus-within {
+.wm-rest-timer-section:focus-within {
     outline: 2px solid var(--bs-primary);
     outline-offset: -2px;
 }
@@ -301,13 +302,13 @@ html, body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .wm-rest-timer-row,
+    .wm-rest-timer-section,
     .wm-timer-start-btn,
     .wm-timer-action-btn {
         transition: none;
     }
 
-    .wm-rest-timer-row.timer-complete-pulse {
+    .wm-rest-timer-section.timer-complete-pulse {
         animation: none;
     }
 }

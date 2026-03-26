@@ -55,8 +55,8 @@ test.describe('Workout Mode UI Fixes (source verification)', () => {
     // Timer row should appear after the bottom bar opening tag
     expect(timerRowPos).toBeGreaterThan(bottomBarStart);
 
-    // Timer row should have wm-rest-timer-row class
-    expect(workoutModeHtml).toContain('wm-rest-timer-row');
+    // Timer row should have wm-rest-timer-section class
+    expect(workoutModeHtml).toContain('wm-rest-timer-section');
   });
 
   test('GlobalRestTimer class is exported on window', () => {
