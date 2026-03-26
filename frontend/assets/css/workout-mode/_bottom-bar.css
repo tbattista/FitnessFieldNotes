@@ -263,27 +263,19 @@
 }
 
 /* ============================================
-   OVERSCROLL FIX
-   Prevent bounce/rubber-band effect on mobile (especially iOS)
+   APP-LIKE SCROLL BEHAVIOR
+   Enable native elastic bounce for app-like feel on mobile.
+   Only prevent overscroll on the fixed bottom bar itself.
    ============================================ */
 
-html {
-    overscroll-behavior: none !important;
-    overflow: auto;
+html, body {
     height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-body {
-    overscroll-behavior: none !important;
-    overflow: auto;
-    height: 100%;
-    /* iOS-specific: prevent pull-to-refresh and bounce */
-    -webkit-overflow-scrolling: auto;
-}
-
-.layout-wrapper,
-.content-wrapper {
-    overscroll-behavior-y: none;
+.workout-mode-bottom-bar {
+    overscroll-behavior: none;
 }
 
 /* ============================================

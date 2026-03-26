@@ -69,13 +69,11 @@ test.describe('Workout Mode UI Fixes (source verification)', () => {
     expect(timerManagerJs).toContain('window.globalRestTimer = new window.GlobalRestTimer()');
   });
 
-  test('overscroll-behavior is set to none on html and body in CSS', () => {
-    // Check that both html and body have overscroll-behavior: none
-    expect(bottomBarCss).toContain('overscroll-behavior: none !important');
-    // Should appear at least twice (html + body)
-    const matches = bottomBarCss.match(/overscroll-behavior:\s*none\s*!important/g);
-    expect(matches).not.toBeNull();
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+  test('bottom bar prevents overscroll while page allows native bounce', () => {
+    // Bottom bar itself should prevent overscroll
+    expect(bottomBarCss).toContain('overscroll-behavior: none');
+    // Page should enable native momentum scrolling for app-like bounce
+    expect(bottomBarCss).toContain('-webkit-overflow-scrolling: touch');
   });
 
   test('exercise cards container has sufficient bottom padding in CSS', () => {
@@ -98,8 +96,8 @@ test.describe('Workout Mode UI Fixes (source verification)', () => {
     expect(exerciseOpsManagerJs).toMatch(/showExerciseSearchOffcanvas\s*\([^)]*initialQuery/);
   });
 
-  test('iOS momentum scroll is disabled', () => {
-    expect(bottomBarCss).toContain('-webkit-overflow-scrolling: auto');
+  test('iOS momentum scroll is enabled for app-like bounce', () => {
+    expect(bottomBarCss).toContain('-webkit-overflow-scrolling: touch');
   });
 
 });
