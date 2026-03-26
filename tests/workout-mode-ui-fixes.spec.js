@@ -100,4 +100,25 @@ test.describe('Workout Mode UI Fixes (source verification)', () => {
     expect(bottomBarCss).toContain('-webkit-overflow-scrolling: touch');
   });
 
+  test('bottom bar button order is Add, Finish, More', () => {
+    const addPos = workoutModeHtml.indexOf('data-action="add-exercise"');
+    const finishPos = workoutModeHtml.indexOf('data-action="end"');
+    const morePos = workoutModeHtml.indexOf('data-action="options"');
+    expect(addPos).toBeGreaterThan(-1);
+    expect(finishPos).toBeGreaterThan(-1);
+    expect(morePos).toBeGreaterThan(-1);
+    // Order: Add < Finish < More
+    expect(finishPos).toBeGreaterThan(addPos);
+    expect(morePos).toBeGreaterThan(finishPos);
+  });
+
+  test('cancel workout redirects to workout-database with pending toast', () => {
+    const controllerJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/controllers/workout-mode-controller.js'), 'utf-8'
+    );
+    // Should set ffn_pending_toast in sessionStorage
+    expect(controllerJs).toContain('ffn_pending_toast');
+    expect(controllerJs).toContain("window.location.href = 'workout-database.html'");
+  });
+
 });
