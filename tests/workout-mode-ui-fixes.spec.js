@@ -148,4 +148,50 @@ test.describe('Workout Mode UI Fixes (source verification)', () => {
     expect(workoutUtilsJs).toContain("typeof restStr === 'number'");
   });
 
+  test('expandFirstExerciseCard delegates to cardManager.expandFirst', () => {
+    const controllerJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/controllers/workout-mode-controller.js'), 'utf-8'
+    );
+    // Should delegate to cardManager instead of using wrong CSS class
+    expect(controllerJs).toContain('this.cardManager');
+    expect(controllerJs).toContain('cardManager.expandFirst()');
+    // Should NOT contain the old wrong selector
+    expect(controllerJs).not.toContain(".exercise-card[data-exercise-index");
+  });
+
+  test('expandFirst finds first exercise card by data-exercise-name attribute', () => {
+    const cardManagerJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/components/exercise-card-manager.js'), 'utf-8'
+    );
+    // Should use data-exercise-name to find the first actual exercise card (not notes)
+    expect(cardManagerJs).toContain(".workout-card[data-exercise-name]");
+  });
+
+  test('syncTimerWithCard uses name-based lookup for correct exercise group', () => {
+    const cardManagerJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/components/exercise-card-manager.js'), 'utf-8'
+    );
+    // Should get exercise name from DOM card
+    expect(cardManagerJs).toContain("getAttribute('data-exercise-name')");
+    // Should use name-based lookup
+    expect(cardManagerJs).toContain('getExerciseGroupByName(exerciseName)');
+  });
+
+  test('getExerciseGroupByName method exists and finds by exercises.a', () => {
+    const cardManagerJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/components/exercise-card-manager.js'), 'utf-8'
+    );
+    expect(cardManagerJs).toContain('getExerciseGroupByName(exerciseName)');
+    expect(cardManagerJs).toMatch(/exercises\?\.a\s*===\s*exerciseName/);
+  });
+
+  test('_mergeSessionData helper extracts shared merge logic', () => {
+    const cardManagerJs = fs.readFileSync(
+      path.join(ROOT, 'frontend/assets/js/components/exercise-card-manager.js'), 'utf-8'
+    );
+    // Both getExerciseGroup and getExerciseGroupByName should use the helper
+    expect(cardManagerJs).toContain('_mergeSessionData(exerciseGroup, exerciseName)');
+    expect(cardManagerJs).toContain('_mergeSessionData({ ...group }, exerciseName)');
+  });
+
 });

@@ -106,13 +106,14 @@ class ExerciseCardManager {
     }
     
     /**
-     * Expand the first exercise card
+     * Expand the first exercise card (skips notes/non-exercise items)
      */
     expandFirst() {
-        const firstCard = document.querySelector('.workout-card[data-exercise-index="0"]');
+        const firstCard = document.querySelector('.workout-card[data-exercise-name]');
         if (firstCard && !firstCard.classList.contains('expanded')) {
-            console.log('✨ Auto-expanding first exercise card');
-            this.toggle(0);
+            const index = parseInt(firstCard.getAttribute('data-exercise-index'));
+            console.log('✨ Auto-expanding first exercise card at index', index);
+            this.toggle(index);
         }
     }
     
@@ -152,53 +153,66 @@ class ExerciseCardManager {
      * @returns {Object|null} Exercise group data or null
      */
     getExerciseGroup(index) {
-        let exerciseGroup = null;
-        let exerciseName = null;
-        
-        // Check regular exercise groups first
-        if (this.workout.exercise_groups && index < this.workout.exercise_groups.length) {
-            exerciseGroup = { ...this.workout.exercise_groups[index] };
-            exerciseName = exerciseGroup.exercises?.a;
-        }
-        
-        if (!exerciseGroup) {
+        if (!this.workout.exercise_groups || index >= this.workout.exercise_groups.length) {
             return null;
         }
-        
-        // 🔧 FIX: Merge session data to get updated rest time, sets, reps, weight
-        // This ensures timer sync and card display use user-edited values
-        if (exerciseName && this.sessionService) {
-            // Check for active session data first
-            if (this.sessionService.isSessionActive()) {
-                const sessionData = this.sessionService.getExerciseWeight(exerciseName);
-                if (sessionData) {
-                    console.log(`🔄 Merging session data for ${exerciseName}:`, sessionData);
-                    exerciseGroup = {
-                        ...exerciseGroup,
-                        rest: sessionData.rest || exerciseGroup.rest,
-                        sets: sessionData.target_sets || exerciseGroup.sets,
-                        reps: sessionData.target_reps || exerciseGroup.reps,
-                        default_weight: sessionData.weight || exerciseGroup.default_weight,
-                        default_weight_unit: sessionData.weight_unit || exerciseGroup.default_weight_unit
-                    };
-                }
-            } else {
-                // Check for pre-session edits (before workout started)
-                const preSessionEdit = this.sessionService.getPreSessionEdits(exerciseName);
-                if (preSessionEdit) {
-                    console.log(`🔄 Merging pre-session edit for ${exerciseName}:`, preSessionEdit);
-                    exerciseGroup = {
-                        ...exerciseGroup,
-                        rest: preSessionEdit.rest || exerciseGroup.rest,
-                        sets: preSessionEdit.target_sets || exerciseGroup.sets,
-                        reps: preSessionEdit.target_reps || exerciseGroup.reps,
-                        default_weight: preSessionEdit.weight || exerciseGroup.default_weight,
-                        default_weight_unit: preSessionEdit.weight_unit || exerciseGroup.default_weight_unit
-                    };
-                }
+
+        const exerciseGroup = { ...this.workout.exercise_groups[index] };
+        const exerciseName = exerciseGroup.exercises?.a;
+
+        return this._mergeSessionData(exerciseGroup, exerciseName);
+    }
+
+    /**
+     * Get exercise group data by exercise name (reliable when visual index != array index)
+     * @param {string} exerciseName - Exercise name to look up
+     * @returns {Object|null} Exercise group data with merged session edits, or null
+     */
+    getExerciseGroupByName(exerciseName) {
+        if (!exerciseName || !this.workout?.exercise_groups) return null;
+
+        const group = this.workout.exercise_groups.find(g => g.exercises?.a === exerciseName);
+        if (!group) return null;
+
+        return this._mergeSessionData({ ...group }, exerciseName);
+    }
+
+    /**
+     * Merge session or pre-session edit data into an exercise group
+     * @param {Object} exerciseGroup - Cloned exercise group to merge into
+     * @param {string} exerciseName - Exercise name for session lookup
+     * @returns {Object} Exercise group with merged session data
+     * @private
+     */
+    _mergeSessionData(exerciseGroup, exerciseName) {
+        if (!exerciseName || !this.sessionService) return exerciseGroup;
+
+        if (this.sessionService.isSessionActive()) {
+            const sessionData = this.sessionService.getExerciseWeight(exerciseName);
+            if (sessionData) {
+                return {
+                    ...exerciseGroup,
+                    rest: sessionData.rest || exerciseGroup.rest,
+                    sets: sessionData.target_sets || exerciseGroup.sets,
+                    reps: sessionData.target_reps || exerciseGroup.reps,
+                    default_weight: sessionData.weight || exerciseGroup.default_weight,
+                    default_weight_unit: sessionData.weight_unit || exerciseGroup.default_weight_unit
+                };
+            }
+        } else {
+            const preSessionEdit = this.sessionService.getPreSessionEdits(exerciseName);
+            if (preSessionEdit) {
+                return {
+                    ...exerciseGroup,
+                    rest: preSessionEdit.rest || exerciseGroup.rest,
+                    sets: preSessionEdit.target_sets || exerciseGroup.sets,
+                    reps: preSessionEdit.target_reps || exerciseGroup.reps,
+                    default_weight: preSessionEdit.weight || exerciseGroup.default_weight,
+                    default_weight_unit: preSessionEdit.weight_unit || exerciseGroup.default_weight_unit
+                };
             }
         }
-        
+
         return exerciseGroup;
     }
     
@@ -229,11 +243,16 @@ class ExerciseCardManager {
      */
     syncTimerWithCard(exerciseIndex) {
         if (!this.timerManager || !this.workout) return;
-        
-        const exerciseGroup = this.getExerciseGroup(exerciseIndex);
-        
+
+        // Use exercise name from DOM for reliable lookup (visual index != exercise_groups index)
+        const card = document.querySelector(`.workout-card[data-exercise-index="${exerciseIndex}"]`);
+        const exerciseName = card?.getAttribute('data-exercise-name');
+
+        const exerciseGroup = exerciseName
+            ? this.getExerciseGroupByName(exerciseName)
+            : this.getExerciseGroup(exerciseIndex);
+
         if (exerciseGroup) {
-            // Ensure rest is a string for parseRestTime (API/session can return numbers)
             const restValue = exerciseGroup.rest != null ? String(exerciseGroup.rest) : '60s';
             const restSeconds = WorkoutUtils.parseRestTime(restValue);
             this.timerManager.syncWithExpandedCard(exerciseIndex, restSeconds);

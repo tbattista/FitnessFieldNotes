@@ -347,11 +347,7 @@ class WorkoutModeController {
 
     /** Auto-expand first exercise card when workout starts */
     expandFirstExerciseCard() {
-        const firstCard = document.querySelector('.exercise-card[data-exercise-index="0"]');
-        if (firstCard && !firstCard.classList.contains('expanded')) {
-            console.log('✨ Auto-expanding first exercise card');
-            this.toggleExerciseCard(0);
-        }
+        if (this.cardManager) this.cardManager.expandFirst();
     }
 
     /** Handle auth state change - update tooltip only */
