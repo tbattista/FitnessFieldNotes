@@ -132,6 +132,10 @@ class AuthService {
                     localStorage.removeItem('ffn_active_program_id');
                 }
                 console.log('📌 Active program synced:', data.program_id || 'none');
+                // Notify any listening pages so they can update UI
+                window.dispatchEvent(new CustomEvent('activeProgramSynced', {
+                    detail: { programId: data.program_id || null }
+                }));
             }
         } catch (error) {
             console.warn('⚠️ Could not sync active program:', error.message);

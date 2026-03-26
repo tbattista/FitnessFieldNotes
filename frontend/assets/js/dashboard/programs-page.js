@@ -795,6 +795,13 @@
         }
     });
 
+    // Re-render grid when active program sync completes (fixes race condition on page load)
+    window.addEventListener('activeProgramSynced', function() {
+        if (window._programsPageInitialized && programGrid) {
+            programGrid.renderCards();
+        }
+    });
+
     console.log('Programs Page Controller loaded');
 
 })();
