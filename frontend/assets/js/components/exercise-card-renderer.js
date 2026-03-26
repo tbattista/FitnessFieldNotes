@@ -76,7 +76,7 @@ class ExerciseCardRenderer {
             <div class="workout-card ${stateClasses.join(' ')}"
                  data-exercise-index="${index}"
                  data-exercise-name="${this._escapeHtml(mainExercise)}"
-                 onclick="if(!event.target.closest('.workout-more-btn, .workout-edit-btn, .workout-menu')) { this.classList.toggle('expanded'); if(this.classList.contains('expanded')) setTimeout(() => this.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }">
+                 onclick="if(!event.target.closest('.workout-more-btn, .workout-edit-btn, .workout-menu')) { if(window.workoutModeController?.cardManager) { window.workoutModeController.cardManager.toggle(${index}); } else { this.classList.toggle('expanded'); if(this.classList.contains('expanded')) setTimeout(() => this.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); } }">
                 <!-- Collapsed Header -->
                 <div class="workout-card-header">
                     <!-- Row 1: Exercise Name (full width, no wrap) -->
