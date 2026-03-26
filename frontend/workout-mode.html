@@ -261,6 +261,10 @@
 
       <!-- Session Bottom Bar -->
       <div class="workout-mode-bottom-bar" id="workoutModeBottomBar" style="display: none;">
+        <!-- Rest Timer Row (above buttons, expands bar upward) -->
+        <div class="wm-rest-timer-row" id="globalRestTimerButton" style="display: none;">
+          <!-- Populated by GlobalRestTimer -->
+        </div>
         <div class="wm-bottom-bar-inner">
           <div class="dropup flex-fill">
             <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="dropdown" aria-expanded="false">
@@ -280,9 +284,6 @@
           </button>
         </div>
       </div>
-
-      <!-- Global Rest Timer (floats above bottom bar) -->
-      <div class="global-rest-timer-floating" id="globalRestTimerButton"></div>
 
     </div>
     <!-- / Layout wrapper -->

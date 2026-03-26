@@ -1,10 +1,9 @@
 /**
- * Workout Mode - Bottom Bar, Header Timer & Inline Add Buttons
- * Session bottom bar with Add Exercise + Finish, compact header timer,
- * global rest timer floating above bottom bar.
+ * Workout Mode - Bottom Bar, Header Timer & Rest Timer
+ * Session bottom bar with rest timer row above action buttons.
  *
- * @version 6.0.0 - Auto-Start Redesign
- * @date 2026-03-19
+ * @version 7.0.0 - Timer in bottom bar
+ * @date 2026-03-26
  */
 
 /* ============================================
@@ -46,7 +45,7 @@
 
 /* ============================================
    SESSION BOTTOM BAR
-   Fixed bottom, Add Exercise (left) + Finish (right)
+   Fixed bottom, contains rest timer + action buttons
    ============================================ */
 
 .workout-mode-bottom-bar {
@@ -56,7 +55,6 @@
     right: 0;
     background: var(--bs-body-bg);
     border-top: 1px solid var(--bs-border-color);
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
     z-index: 1050;
 }
 
@@ -67,19 +65,11 @@
     gap: 12px;
     max-width: 1200px;
     margin: 0 auto;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
 .wm-bottom-bar-inner .btn {
     flex: 1;
-}
-
-.wm-bottom-bar-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.wm-bottom-bar-inner .btn {
     font-weight: 600;
     padding: 8px 14px;
     border-radius: 10px;
@@ -91,275 +81,124 @@
     padding: 8px 20px;
 }
 
+.wm-bottom-bar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 [data-bs-theme="dark"] .workout-mode-bottom-bar {
     border-top-color: var(--bs-border-color);
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================
-   GLOBAL REST TIMER (floats above bottom bar)
+   REST TIMER ROW (inside bottom bar, above buttons)
    ============================================ */
 
-.global-rest-timer-floating {
-    position: fixed;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    right: 16px;
-    z-index: 1051;
-    pointer-events: auto;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    width: var(--floating-timer-width);
-    min-width: var(--floating-timer-width);
-    max-width: var(--floating-timer-width);
-    height: var(--floating-fab-height);
-    align-self: center;
-}
-
-/* ============================================
-   GLOBAL REST TIMER STATES
-   (Morphing button: ready → counting → paused → done)
-   ============================================ */
-
-.global-timer-btn {
-    width: var(--floating-timer-width);
-    height: var(--floating-fab-height);
-    min-width: var(--floating-timer-width);
-    max-width: var(--floating-timer-width);
-    padding: 0 var(--floating-fab-padding-x);
-    border-radius: var(--floating-fab-border-radius);
-    border: none;
+.wm-rest-timer-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: var(--floating-fab-gap);
-    font-size: var(--floating-fab-font-size);
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--bs-border-color);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Ready state: Start button + editable time */
+.wm-timer-start-btn {
+    flex: 0 0 auto;
     font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    white-space: nowrap;
-}
-
-.global-rest-timer-button.ready {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.global-rest-timer-floating.ready .global-timer-btn {
-    background: var(--bs-success);
-    color: white;
-}
-
-.global-rest-timer-floating.ready .global-timer-btn:hover {
-    background: var(--gs-action-success-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(var(--gs-success-rgb), 0.4);
-}
-
-.global-timer-countdown {
-    height: var(--floating-fab-height);
-    width: var(--floating-timer-width);
-    min-width: var(--floating-timer-width);
-    max-width: var(--floating-timer-width);
-    padding: 0 var(--floating-fab-padding-x);
-    background: var(--bs-body-bg);
-    border: 2px solid var(--bs-primary);
-    border-radius: var(--floating-fab-border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--floating-fab-gap);
-    font-size: var(--floating-fab-font-size);
-    font-weight: 600;
-    color: var(--bs-body-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.global-timer-time {
-    font-size: var(--floating-fab-font-size);
-    font-weight: 700;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-}
-
-.global-timer-pause-btn {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    padding: 0;
+    font-size: 0.8rem;
     border-radius: 8px;
-    border: none;
-    background: var(--bs-secondary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 5px 12px;
+}
+
+.wm-timer-time-display {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
     cursor: pointer;
-    transition: background-color 0.2s ease, filter 0.2s ease, transform 0.2s ease;
-}
-
-.global-timer-pause-btn:hover {
-    background: var(--bs-secondary);
-    filter: brightness(0.9);
-    transform: scale(1.05);
-}
-
-.global-timer-paused {
-    height: var(--floating-fab-height);
-    width: var(--floating-timer-paused-width);
-    min-width: var(--floating-timer-paused-width);
-    max-width: var(--floating-timer-paused-width);
-    padding: 0 var(--floating-fab-padding-x);
-    background: var(--bs-warning);
-    border: 2px solid var(--bs-warning);
-    border-radius: var(--floating-fab-border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--floating-fab-gap);
-    font-size: var(--floating-fab-font-size);
-    font-weight: 600;
-    color: white;
-    box-shadow: 0 2px 8px rgba(var(--bs-warning-rgb), 0.3);
-    transition: width 0.2s ease, box-shadow 0.2s ease;
-}
-
-.global-timer-paused .global-timer-time {
-    color: white;
-}
-
-.global-timer-controls {
-    display: flex;
-    gap: 6px;
-}
-
-.global-timer-controls button {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    padding: 0;
-    border-radius: 6px;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    font-size: 14px;
-}
-
-.global-timer-controls button:first-child {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-}
-
-.global-timer-controls button:first-child:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.global-timer-controls button:last-child {
-    background: rgba(var(--gs-success-rgb), 0.8);
-    color: white;
-}
-
-.global-timer-controls button:last-child:hover {
-    background: rgba(var(--gs-success-rgb), 1);
-}
-
-.global-rest-timer-floating.done .global-timer-btn {
-    background: var(--bs-success);
-    color: white;
-    animation: timer-complete-pulse 2s ease-in-out;
-}
-
-.global-timer-countdown-mobile {
-    height: var(--floating-fab-height);
-    width: var(--floating-timer-width);
-    min-width: var(--floating-timer-width);
-    max-width: var(--floating-timer-width);
-    padding: 0 var(--floating-fab-padding-x);
-    background: var(--bs-body-bg);
-    border: 2px solid var(--bs-primary);
-    border-radius: var(--floating-fab-border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--floating-fab-gap);
-    font-size: var(--floating-fab-font-size);
-    font-weight: 600;
-    color: var(--bs-body-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.global-timer-paused-mobile {
-    height: var(--floating-fab-height);
-    width: var(--floating-timer-paused-width);
-    min-width: var(--floating-timer-paused-width);
-    max-width: var(--floating-timer-paused-width);
-    padding: 0 var(--floating-fab-padding-x);
-    background: var(--bs-warning);
-    border: 2px solid var(--bs-warning);
-    border-radius: var(--floating-fab-border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--floating-fab-gap);
-    font-size: var(--floating-fab-font-size);
-    font-weight: 600;
-    color: white;
-    box-shadow: 0 2px 8px rgba(var(--bs-warning-rgb), 0.3);
-    transition: width 0.2s ease, box-shadow 0.2s ease;
-}
-
-.global-timer-paused-mobile .global-timer-controls {
-    gap: 4px;
-}
-
-.global-timer-paused-mobile .global-timer-controls button {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    font-size: 12px;
-}
-
-/* ============================================
-   GLOBAL TIMER - INLINE TIME EDIT
-   ============================================ */
-
-.global-timer-edit-time {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--bs-body-color);
-    opacity: 0.6;
-    cursor: pointer;
-    margin-left: 6px;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
 }
 
-.global-timer-edit-time:hover {
-    opacity: 1;
+.wm-timer-time-display:hover {
+    color: var(--bs-primary);
     text-decoration: underline;
 }
 
-.global-timer-edit-container {
+/* Countdown display */
+.wm-timer-countdown {
     display: flex;
-    align-items: center;
-    gap: 4px;
-    height: var(--floating-fab-height);
-    padding: 0 8px;
-    background: var(--bs-body-bg);
-    border: 2px solid var(--bs-primary);
-    border-radius: var(--floating-fab-border-radius);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    align-items: baseline;
+    gap: 6px;
+    flex: 1;
 }
 
-.global-timer-edit-input {
-    width: 56px;
+.wm-timer-countdown-time {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.wm-timer-countdown-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Color variants */
+.wm-timer-countdown--primary .wm-timer-countdown-time {
+    color: var(--bs-primary);
+}
+
+.wm-timer-countdown--warning .wm-timer-countdown-time {
+    color: var(--bs-warning);
+}
+
+.wm-timer-countdown--danger .wm-timer-countdown-time {
+    color: var(--bs-danger);
+}
+
+.wm-timer-countdown--success .wm-timer-countdown-time {
+    color: var(--bs-success);
+}
+
+/* Action buttons (pause, reset, resume) */
+.wm-timer-action-btn {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+/* Inline time editor */
+.wm-timer-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.wm-timer-edit-input {
+    width: 64px;
     border: 1px solid var(--bs-border-color);
-    border-radius: 6px;
-    padding: 2px 6px;
-    font-size: 0.85rem;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.9rem;
     font-weight: 600;
     text-align: center;
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
@@ -367,92 +206,89 @@
     color: var(--bs-body-color);
 }
 
-.global-timer-edit-input:focus {
+.wm-timer-edit-input:focus {
     outline: none;
     border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.15);
 }
 
-.global-timer-edit-unit {
-    font-size: 0.75rem;
+.wm-timer-edit-unit {
+    font-size: 0.8rem;
     color: var(--bs-secondary-color);
     font-weight: 500;
 }
 
-.global-timer-edit-save,
-.global-timer-edit-cancel {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
+.wm-timer-edit-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 8px;
 }
 
-.global-rest-timer-floating.editing {
-    width: auto;
-    min-width: auto;
-    max-width: none;
+/* Pulse animation on timer complete */
+.wm-rest-timer-row.timer-complete-pulse {
+    animation: timer-row-pulse 2s ease-in-out;
 }
 
-@keyframes timer-complete-pulse {
+@keyframes timer-row-pulse {
     0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 2px 8px rgba(var(--gs-success-rgb), 0.3);
+        background: transparent;
     }
     25% {
-        transform: scale(1.05);
-        box-shadow: 0 4px 16px rgba(var(--gs-success-rgb), 0.5);
+        background: rgba(var(--gs-success-rgb), 0.08);
     }
     50% {
-        transform: scale(1.08);
-        box-shadow: 0 6px 20px rgba(var(--gs-success-rgb), 0.6);
+        background: rgba(var(--gs-success-rgb), 0.15);
     }
     75% {
-        transform: scale(1.05);
-        box-shadow: 0 4px 16px rgba(var(--gs-success-rgb), 0.5);
+        background: rgba(var(--gs-success-rgb), 0.08);
     }
 }
 
 /* ============================================
    CONTENT PADDING
-   Bottom bar (56px) + gap + breathing room
+   Accounts for bottom bar height (~56px buttons + timer row + safe area)
    ============================================ */
 
 #exerciseCardsContainer {
-    padding-bottom: 20px;
+    padding-bottom: 120px;
 }
 
 #workoutLandingPage {
-    padding-bottom: 100px;
+    padding-bottom: 120px;
+}
+
+/* ============================================
+   OVERSCROLL FIX
+   Prevent bounce effect on mobile when scrolling to bottom
+   ============================================ */
+
+html,
+body,
+.layout-wrapper,
+.content-wrapper {
+    overscroll-behavior-y: contain;
 }
 
 /* ============================================
    DARK MODE
    ============================================ */
 
-[data-bs-theme="dark"] .global-timer-countdown,
-[data-bs-theme="dark"] .global-timer-countdown-mobile {
-    background: var(--bs-body-bg);
-    border-color: var(--bs-primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-[data-bs-theme="dark"] .global-timer-paused,
-[data-bs-theme="dark"] .global-timer-paused-mobile {
-    background: var(--bs-warning);
-    border-color: var(--bs-warning);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+[data-bs-theme="dark"] .wm-rest-timer-row {
+    border-bottom-color: var(--bs-border-color);
 }
 
 /* ============================================
    ACCESSIBILITY
    ============================================ */
 
-.global-rest-timer-floating:focus-within {
+.wm-rest-timer-row:focus-within {
     outline: 2px solid var(--bs-primary);
-    outline-offset: 2px;
+    outline-offset: -2px;
 }
 
 .workout-mode-bottom-bar .btn:focus-visible {
@@ -461,16 +297,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .global-rest-timer-floating,
-    .global-timer-btn,
-    .global-timer-countdown,
-    .global-timer-countdown-mobile,
-    .global-timer-paused,
-    .global-timer-paused-mobile {
+    .wm-rest-timer-row,
+    .wm-timer-start-btn,
+    .wm-timer-action-btn {
         transition: none;
     }
 
-    .global-rest-timer-floating.done .global-timer-btn {
+    .wm-rest-timer-row.timer-complete-pulse {
         animation: none;
     }
 }
@@ -480,8 +313,7 @@
    ============================================ */
 
 @media print {
-    .workout-mode-bottom-bar,
-    .global-rest-timer-floating {
+    .workout-mode-bottom-bar {
         display: none;
     }
 }
