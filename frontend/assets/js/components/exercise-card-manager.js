@@ -29,7 +29,7 @@ class ExerciseCardManager {
      * @param {number} index - Exercise index
      */
     toggle(index) {
-        const card = document.querySelector(`.exercise-card[data-exercise-index="${index}"]`);
+        const card = document.querySelector(`.workout-card[data-exercise-index="${index}"]`);
         if (!card) return;
         
         const isExpanded = card.classList.contains('expanded');
@@ -43,7 +43,7 @@ class ExerciseCardManager {
             }
         } else {
             // Collapse all other cards and clear their timers
-            document.querySelectorAll('.exercise-card.expanded').forEach(otherCard => {
+            document.querySelectorAll('.workout-card.expanded').forEach(otherCard => {
                 const otherName = otherCard.getAttribute('data-exercise-name');
                 this.collapse(otherCard);
                 // Clear timer for collapsed cards
@@ -69,7 +69,7 @@ class ExerciseCardManager {
      */
     expand(card) {
         // Show body immediately so CSS transitions can take effect
-        const body = card.querySelector('.exercise-card-body');
+        const body = card.querySelector('.workout-card-body');
         if (body) {
             body.style.display = 'block';
             // Force reflow to ensure initial state is set before transition
@@ -94,7 +94,7 @@ class ExerciseCardManager {
         card.classList.remove('expanded');
         
         // OPTIMIZED: Wait for faster transitions to complete before hiding
-        const body = card.querySelector('.exercise-card-body');
+        const body = card.querySelector('.workout-card-body');
         if (body) {
             setTimeout(() => {
                 // Only hide if card is still collapsed (user didn't re-expand)
@@ -109,7 +109,7 @@ class ExerciseCardManager {
      * Expand the first exercise card
      */
     expandFirst() {
-        const firstCard = document.querySelector('.exercise-card[data-exercise-index="0"]');
+        const firstCard = document.querySelector('.workout-card[data-exercise-index="0"]');
         if (firstCard && !firstCard.classList.contains('expanded')) {
             console.log('✨ Auto-expanding first exercise card');
             this.toggle(0);
@@ -123,7 +123,7 @@ class ExerciseCardManager {
      * @param {number} currentIndex - Current exercise index
      */
     goToNext(currentIndex) {
-        const allCards = document.querySelectorAll('.exercise-card');
+        const allCards = document.querySelectorAll('.workout-card');
         const nextIndex = currentIndex + 1;
         
         if (nextIndex < allCards.length) {
@@ -207,7 +207,7 @@ class ExerciseCardManager {
      * @returns {HTMLElement|null} Expanded card element or null
      */
     getCurrentlyExpanded() {
-        return document.querySelector('.exercise-card.expanded');
+        return document.querySelector('.workout-card.expanded');
     }
     
     /**
