@@ -154,12 +154,11 @@ class WorkoutGrid {
         this.currentPage = page;
 
         if (this.config.onPageChange) {
-            // For server-side pagination, the callback will reload data
             this.config.onPageChange(page);
-        } else {
-            // Client-side pagination - re-render locally
-            this.render();
         }
+
+        // Always re-render to show the new page
+        this.render();
     }
     
     /**
