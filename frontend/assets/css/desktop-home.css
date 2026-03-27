@@ -24,6 +24,11 @@
     display: none !important;
 }
 
+/* Hide floating FAB on desktop home — replaced by inline top-bar button */
+.desktop-view .global-log-fab {
+    display: none !important;
+}
+
 /* ============================================
    DESKTOP TOP BAR
    ============================================ */
