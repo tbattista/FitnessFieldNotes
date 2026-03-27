@@ -205,9 +205,19 @@ function renderExerciseVariant(variant, showHeader) {
       const date = formatExerciseDate(entry.date);
       const fadeClass = i === 0 ? '' : 'history-row-faded';
 
+      // Show increase icon when weight is higher than the next (chronologically earlier) entry
+      let increaseIcon = '';
+      if (i < entries.length - 1) {
+        const prevWeight = parseFloat(entries[i + 1].weight);
+        const currWeight = parseFloat(entry.weight);
+        if (!isNaN(currWeight) && !isNaN(prevWeight) && currWeight > prevWeight) {
+          increaseIcon = '<i class="bx bx-up-arrow-alt weight-increase-icon"></i>';
+        }
+      }
+
       html += `
         <div class="variant-entry ${fadeClass}">
-          <span class="variant-entry-weight">${weight} ${unit} x ${reps}</span>
+          <span class="variant-entry-weight">${weight} ${unit} x ${reps}${increaseIcon}</span>
           <span class="variant-entry-date">&middot; ${date}</span>
         </div>
       `;

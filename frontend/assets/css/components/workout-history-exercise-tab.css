@@ -219,6 +219,13 @@
   color: var(--bs-secondary-color);
 }
 
+.weight-increase-icon {
+  color: #28a745;
+  font-size: 1rem;
+  vertical-align: middle;
+  margin-left: 0.125rem;
+}
+
 /* Reuse existing fade pattern for older entries */
 .variant-entry.history-row-faded {
   opacity: 0.65;
