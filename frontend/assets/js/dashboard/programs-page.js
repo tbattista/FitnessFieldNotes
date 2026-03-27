@@ -493,23 +493,32 @@
      */
     async function handleSetActiveProgram(program, setActive) {
         try {
+            // For authenticated users, sync with backend API
+            if (window.dataManager?.isAuthenticated) {
+                if (setActive) {
+                    const response = await window.dataManager.authenticatedFetch('/api/user/active-program', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ program_id: program.id })
+                    });
+                    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                } else {
+                    const response = await window.dataManager.authenticatedFetch('/api/user/active-program', {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                }
+            }
+
+            // Update localStorage (works for both authenticated and anonymous users)
             if (setActive) {
-                const response = await window.dataManager.authenticatedFetch('/api/user/active-program', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ program_id: program.id })
-                });
-                if (!response.ok) throw new Error(`Server returned ${response.status}`);
                 localStorage.setItem('ffn_active_program_id', program.id);
                 if (window.showAlert) window.showAlert(`"${program.name}" set as active program`, 'success');
             } else {
-                const response = await window.dataManager.authenticatedFetch('/api/user/active-program', {
-                    method: 'DELETE'
-                });
-                if (!response.ok) throw new Error(`Server returned ${response.status}`);
                 localStorage.removeItem('ffn_active_program_id');
                 if (window.showAlert) window.showAlert('Active program removed', 'info');
             }
+
             // Re-render grid to update badges
             if (programGrid) programGrid.renderCards();
         } catch (err) {
