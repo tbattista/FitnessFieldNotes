@@ -33,9 +33,9 @@
     display: none;
 }
 
-/* Exercise cards with white fill and subtle separation */
+/* Exercise cards with subtle separation */
 #exerciseTableContainer .card {
-    background-color: #fff;
+    background-color: var(--bs-paper-bg, #fff);
     border: none;
     border-bottom: 1px solid var(--bs-border-color);
     border-radius: 0;
@@ -350,7 +350,7 @@
     max-width: 100%;
     max-height: 400px;
     border-radius: 8px;
-    background: #f0f0f0;
+    background: var(--bs-tertiary-bg, #f0f0f0);
 }
 
 /* Favorite button in panel header */

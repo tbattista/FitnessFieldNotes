@@ -98,10 +98,10 @@
     --workout-accent-12: rgba(var(--gs-primary-rgb), 0.12);
     --workout-accent-15: rgba(var(--gs-primary-rgb), 0.15);
 
-    /* Dark mode specific backgrounds - reference design-system.css */
-    --workout-dark-bg: var(--gs-gray-800);
-    --workout-dark-border-subtle: var(--gs-gray-700);
-    --workout-dark-border: var(--gs-gray-600);
+    /* Dark mode specific backgrounds - use low-number grays (dark in dark mode) */
+    --workout-dark-bg: var(--gs-gray-100);
+    --workout-dark-border-subtle: var(--gs-gray-200);
+    --workout-dark-border: var(--gs-gray-300);
 
     /* Weight progression - reference design-system.css */
     --workout-weight-increased: var(--gs-weight-increased);

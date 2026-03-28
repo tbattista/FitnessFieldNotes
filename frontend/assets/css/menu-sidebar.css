@@ -256,7 +256,7 @@ body.menu-open {
     .layout-menu {
         border-right: 1px solid var(--bs-border-color);
         box-shadow: none;
-        background: #ffffff;
+        background: var(--bs-paper-bg, #ffffff);
     }
 
     /* App brand / logo area */
@@ -348,12 +348,12 @@ body.menu-open {
 
     /* --- Dark mode overrides --- */
     [data-bs-theme="dark"] .layout-menu {
-        background: var(--gs-gray-900);
-        border-right-color: var(--gs-gray-700);
+        background: var(--gs-gray-50);
+        border-right-color: var(--gs-gray-200);
     }
 
     [data-bs-theme="dark"] .layout-menu .app-brand {
-        border-bottom-color: var(--gs-gray-700);
+        border-bottom-color: var(--gs-gray-200);
     }
 
     [data-bs-theme="dark"] .layout-menu .menu-header {

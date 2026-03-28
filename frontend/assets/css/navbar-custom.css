@@ -16,7 +16,7 @@
     z-index: 1060;
     position: sticky;
     top: 0;
-    background-color: #ffffff;
+    background-color: var(--bs-paper-bg, #ffffff);
     transition: background-color 0.2s ease;
     width: 100%;
     max-width: 100%;
@@ -351,10 +351,10 @@
    DARK MODE ADJUSTMENTS
    ============================================ */
 
-[data-bs-theme="dark"] .layout-navbar {
-    background-color: var(--gs-gray-900);
+[data-bs-theme="dark"] .layout-navbar[class] {
+    background-color: var(--gs-gray-50);
     box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.3);
-    border-bottom-color: var(--gs-gray-700);
+    border-bottom-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .layout-menu-toggle:hover,

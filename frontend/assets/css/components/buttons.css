@@ -349,7 +349,7 @@ button:focus-visible,
 
 [data-bs-theme="dark"] .quick-actions-card .btn-outline-info:hover {
     background-color: var(--gs-accent) !important;
-    color: var(--gs-gray-50) !important;
+    color: var(--gs-gray-800) !important;
 }
 
 /* Dark mode primary button overrides */

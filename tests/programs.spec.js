@@ -85,4 +85,34 @@ test.describe('Programs', () => {
     const countEl = page.locator('#totalProgramsCount');
     await expect(countEl).toBeAttached();
   });
+
+  test('programs page has alertContainer for toast notifications', async ({ page }) => {
+    await page.goto(`${BASE}/programs.html`);
+    await waitForAppReady(page);
+
+    const alertContainer = page.locator('#alertContainer');
+    await expect(alertContainer).toBeAttached();
+  });
+
+  test('set active program dropdown item exists on program cards', async ({ page }) => {
+    await page.goto(`${BASE}/programs.html`);
+    await waitForAppReady(page);
+
+    // Wait for grid to render
+    await page.waitForTimeout(1000);
+
+    // Check if any program cards exist
+    const cards = page.locator('.program-card');
+    const cardCount = await cards.count();
+
+    if (cardCount > 0) {
+      // Open the first card's dropdown menu
+      const firstDropdownBtn = cards.first().locator('[data-bs-toggle="dropdown"]');
+      await firstDropdownBtn.click();
+
+      // Verify the toggle-active action exists in the dropdown
+      const toggleActiveItem = page.locator('[data-action="toggle-active"]');
+      await expect(toggleActiveItem).toBeVisible({ timeout: 2000 });
+    }
+  });
 });
