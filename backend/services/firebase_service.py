@@ -57,6 +57,10 @@ class FirebaseService:
     def is_available(self) -> bool:
         """Check if Firebase service is available"""
         return self._available and self.db is not None
+
+    def get_firestore(self):
+        """Get the Firestore client"""
+        return self.db
     
     async def create_user_profile(self, user_id: str, profile_data: Dict[str, Any]) -> bool:
         """Create user profile in Firestore"""
