@@ -493,9 +493,8 @@
      */
     async function handleSetActiveProgram(program, setActive) {
         try {
-            const isAuthenticated = window.dataManager && window.dataManager.isUserAuthenticated();
-
-            if (isAuthenticated) {
+            // For authenticated users, sync with backend API
+            if (window.dataManager?.isAuthenticated) {
                 if (setActive) {
                     const response = await window.dataManager.authenticatedFetch('/api/user/active-program', {
                         method: 'PUT',
@@ -511,7 +510,7 @@
                 }
             }
 
-            // Update localStorage (used by program-grid for badge rendering)
+            // Update localStorage (works for both authenticated and anonymous users)
             if (setActive) {
                 localStorage.setItem('ffn_active_program_id', program.id);
                 if (window.showAlert) window.showAlert(`"${program.name}" set as active program`, 'success');

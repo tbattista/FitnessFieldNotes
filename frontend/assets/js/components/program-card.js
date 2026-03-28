@@ -319,8 +319,16 @@ class ProgramCard {
         const dropdownItems = this.element.querySelectorAll('.dropdown-item[data-action]');
         dropdownItems.forEach(item => {
             item.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const action = item.dataset.action;
+
+                // Close the Bootstrap dropdown immediately
+                const dropdownToggle = this.element.querySelector('[data-bs-toggle="dropdown"]');
+                if (dropdownToggle) {
+                    const bsDropdown = bootstrap.Dropdown.getInstance(dropdownToggle);
+                    if (bsDropdown) bsDropdown.hide();
+                }
 
                 switch (action) {
                     case 'edit':
