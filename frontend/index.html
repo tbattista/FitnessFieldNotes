@@ -116,6 +116,7 @@
 
     <!-- Activity Block Chart CSS -->
     <link rel="stylesheet" href="/static/assets/css/components/activity-block-chart.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/program-progress.css?v=1.0.0" />
 
     <!-- Desktop Home CSS -->
     <link rel="stylesheet" href="/static/assets/css/desktop-home.css?v=20260216-02" />
@@ -593,6 +594,22 @@
                   <!-- What's Next Card -->
                   <div id="whatsNextCard" class="mb-4"></div>
 
+                  <!-- Program Trackers (hidden if no tracker-enabled programs) -->
+                  <div id="programTrackerSection" class="mb-4" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <span class="d-flex align-items-center gap-2">
+                        <i class="bx bx-target-lock"></i>
+                        <span class="fw-semibold">Program Trackers</span>
+                      </span>
+                      <a href="programs.html" class="small text-primary text-decoration-none">View Programs</a>
+                    </div>
+                    <div class="card program-tracker-card">
+                      <div class="card-body">
+                        <div id="programTrackerContent"></div>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Favorites (hidden if empty) -->
                   <div id="favoritesSection" class="mb-4" style="display: none;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -713,6 +730,22 @@
                         <!-- What's Next Card -->
                         <div id="desktopWhatsNextCard" class="mb-4"></div>
 
+                        <!-- Program Trackers (Desktop) -->
+                        <div id="desktopProgramTrackerSection" class="mb-4" style="display: none;">
+                          <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="d-flex align-items-center gap-2">
+                              <i class="bx bx-target-lock"></i>
+                              <span class="fw-semibold">Program Trackers</span>
+                            </span>
+                            <a href="programs.html" class="small text-primary text-decoration-none">View Programs</a>
+                          </div>
+                          <div class="card program-tracker-card">
+                            <div class="card-body">
+                              <div id="desktopProgramTrackerContent"></div>
+                            </div>
+                          </div>
+                        </div>
+
                         <!-- Weekly Progress Card -->
                         <div id="desktopWeeklyProgressCard" class="card desktop-weekly-card mb-4">
                           <div class="card-header py-3 px-4">
@@ -822,7 +855,9 @@
           ['recentActivityContent', 'desktopRecentActivityContent'],
           ['weeklyProgressCard', 'desktopWeeklyProgressCard'],
           ['favoritesSection', 'desktopFavoritesCard'],
-          ['recentActivitySection', 'desktopRecentActivityCard']
+          ['recentActivitySection', 'desktopRecentActivityCard'],
+          ['programTrackerSection', 'desktopProgramTrackerSection'],
+          ['programTrackerContent', 'desktopProgramTrackerContent']
         ];
         _swaps.forEach(function(pair) {
           var mobileEl = document.getElementById(pair[0]);
@@ -887,6 +922,7 @@
 
     <!-- Activity Block Chart Component -->
     <script src="/static/assets/js/components/activity-block-chart.js"></script>
+    <script src="/static/assets/js/components/program-progress.js?v=1.0.0"></script>
 
     <!-- Quick Log (Universal Logger) dependencies -->
     <script src="/static/assets/js/services/activity-type-registry.js?v=1.0.0"></script>

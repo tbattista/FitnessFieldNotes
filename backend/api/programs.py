@@ -10,7 +10,8 @@ import logging
 from ..models import (
     Program, CreateProgramRequest, UpdateProgramRequest,
     ProgramListResponse, ProgramWithWorkoutsResponse,
-    AddWorkoutToProgramRequest, GenerateProgramDocumentRequest
+    AddWorkoutToProgramRequest, GenerateProgramDocumentRequest,
+    ProgramProgressResponse
 )
 from ..services.data_service import DataService
 from ..services.firestore_data_service import firestore_data_service
@@ -510,6 +511,41 @@ async def update_program_firebase(
     except Exception as e:
         logger.error(f"Error updating program: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating program: {str(e)}")
+
+
+@firebase_router.get("/{program_id}/progress", response_model=ProgramProgressResponse)
+async def get_program_progress_firebase(
+    program_id: str,
+    current_user: Optional[dict] = Depends(get_current_user_optional)
+):
+    """Get progress stats for a program (sessions completed, streaks, activity)"""
+    try:
+        user_id = extract_user_id(current_user)
+
+        if not user_id or not firebase_service.is_available():
+            raise HTTPException(status_code=401, detail="Authentication required for program progress")
+
+        # Get the program to know its workouts
+        program = await firestore_data_service.get_program(user_id, program_id)
+        if not program:
+            raise HTTPException(status_code=404, detail="Program not found")
+
+        program_workout_ids = [pw.workout_id for pw in (program.workouts or [])]
+
+        progress = await firestore_data_service.get_program_progress(
+            user_id=user_id,
+            program_id=program_id,
+            program_name=program.name,
+            program_workout_ids=program_workout_ids
+        )
+
+        return ProgramProgressResponse(**progress)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting program progress: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting program progress: {str(e)}")
 
 
 @firebase_router.delete("/{program_id}")

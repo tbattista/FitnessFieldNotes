@@ -123,7 +123,8 @@
                         }
                     });
                 },
-                onSetActive: (program, setActive) => handleSetActiveProgram(program, setActive)
+                onSetActive: (program, setActive) => handleSetActiveProgram(program, setActive),
+                onToggleTracker: (program, enable) => handleToggleTracker(program, enable)
             },
             onPageChange: (page) => {
                 console.log('Page changed to:', page);
@@ -269,6 +270,15 @@
         const saveProgramBtn = document.getElementById('saveProgramBtn');
         if (saveProgramBtn) {
             saveProgramBtn.addEventListener('click', () => handleSaveProgramModal());
+        }
+
+        // Tracker toggle (show/hide goal selector)
+        const trackerToggle = document.getElementById('programTrackerEnabled');
+        const trackerGoalGroup = document.getElementById('trackerGoalGroup');
+        if (trackerToggle && trackerGoalGroup) {
+            trackerToggle.addEventListener('change', () => {
+                trackerGoalGroup.style.display = trackerToggle.checked ? '' : 'none';
+            });
         }
     }
 
@@ -528,6 +538,35 @@
     }
 
     /**
+     * Handle toggle tracker enabled on a program
+     */
+    async function handleToggleTracker(program, enable) {
+        try {
+            const updatedProgram = await window.dataManager.updateProgram(program.id, {
+                tracker_enabled: enable,
+                tracker_goal: enable ? (program.tracker_goal || '3/week') : program.tracker_goal
+            });
+
+            // Update local state
+            const index = state.all.findIndex(p => p.id === program.id);
+            if (index >= 0) {
+                state.all[index] = updatedProgram;
+            }
+
+            if (enable) {
+                if (window.showAlert) window.showAlert(`Tracker enabled for "${program.name}"`, 'success');
+            } else {
+                if (window.showAlert) window.showAlert(`Tracker disabled for "${program.name}"`, 'info');
+            }
+
+            applyFiltersAndRender();
+        } catch (err) {
+            console.error('Error toggling tracker:', err);
+            if (window.showAlert) window.showAlert('Failed to update tracker setting', 'danger');
+        }
+    }
+
+    /**
      * Start first workout in program
      */
     function startFirstWorkout(program) {
@@ -665,6 +704,20 @@
         document.getElementById('programTags').value = (program.tags || []).join(', ');
         document.getElementById('programModalTitle').textContent = 'Edit Program';
 
+        // Populate tracker fields
+        const trackerToggle = document.getElementById('programTrackerEnabled');
+        const trackerGoal = document.getElementById('programTrackerGoal');
+        const trackerGoalGroup = document.getElementById('trackerGoalGroup');
+        if (trackerToggle) {
+            trackerToggle.checked = program.tracker_enabled || false;
+        }
+        if (trackerGoal) {
+            trackerGoal.value = program.tracker_goal || '';
+        }
+        if (trackerGoalGroup) {
+            trackerGoalGroup.style.display = program.tracker_enabled ? '' : 'none';
+        }
+
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('programModal'));
         modal.show();
@@ -689,6 +742,15 @@
         document.getElementById('programDifficulty').value = 'intermediate';
         document.getElementById('programTags').value = '';
         document.getElementById('programModalTitle').textContent = 'Create Program';
+
+        // Clear tracker fields
+        const trackerToggle = document.getElementById('programTrackerEnabled');
+        const trackerGoal = document.getElementById('programTrackerGoal');
+        const trackerGoalGroup = document.getElementById('trackerGoalGroup');
+        if (trackerToggle) trackerToggle.checked = false;
+        if (trackerGoal) trackerGoal.value = '';
+        if (trackerGoalGroup) trackerGoalGroup.style.display = 'none';
+
         // Clear any stored editing program ID
         state.editingProgramId = null;
     }
@@ -704,7 +766,9 @@
                 description: document.getElementById('programDescription')?.value?.trim() || '',
                 duration_weeks: parseInt(document.getElementById('programDuration')?.value) || null,
                 difficulty_level: document.getElementById('programDifficulty')?.value || 'intermediate',
-                tags: document.getElementById('programTags')?.value?.split(',').map(tag => tag.trim()).filter(tag => tag) || []
+                tags: document.getElementById('programTags')?.value?.split(',').map(tag => tag.trim()).filter(tag => tag) || [],
+                tracker_enabled: document.getElementById('programTrackerEnabled')?.checked || false,
+                tracker_goal: document.getElementById('programTrackerGoal')?.value || null
             };
 
             // Validate required fields

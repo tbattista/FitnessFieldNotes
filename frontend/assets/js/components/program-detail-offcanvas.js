@@ -153,6 +153,9 @@ class ProgramDetailOffcanvas {
 
         // Show content
         this.showContent();
+
+        // Load progress data asynchronously
+        this._loadProgressSection(program);
     }
 
     /**
@@ -234,10 +237,42 @@ class ProgramDetailOffcanvas {
 
         html += '</div>';
 
+        // Progress Section (loaded async after render)
+        html += `<div id="programDetailProgress" class="mb-4"></div>`;
+
         // Workouts Section
         html += this._renderWorkoutsSection(program);
 
         return html;
+    }
+
+    /**
+     * Load and render program progress section
+     */
+    async _loadProgressSection(program) {
+        const container = document.getElementById('programDetailProgress');
+        if (!container || !window.ProgramProgress) return;
+
+        // Only show progress for authenticated users
+        if (!window.authService?.isUserAuthenticated()) return;
+
+        // Build workout name map
+        const workoutDetailsMap = {};
+        (program.workouts || []).forEach(pw => {
+            const fullWorkout = this.config.workouts.find(w => w.id === pw.workout_id);
+            if (fullWorkout) {
+                workoutDetailsMap[pw.workout_id] = fullWorkout.name;
+            }
+        });
+
+        const progressComponent = new window.ProgramProgress('programDetailProgress', {
+            compact: false,
+            showChecklist: true,
+            showTracker: true,
+            trackerDays: 45
+        });
+
+        await progressComponent.loadProgress(program, workoutDetailsMap);
     }
 
     /**
