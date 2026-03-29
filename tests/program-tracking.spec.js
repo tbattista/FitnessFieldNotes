@@ -78,6 +78,26 @@ test.describe('Program Tracking Feature', () => {
     await expect(trackerSection.first()).toBeAttached();
   });
 
+  test('program card dropdown has Enable Tracker option', async ({ page }) => {
+    await page.goto(`${BASE}/programs.html`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
+
+    // Check if any program cards exist; if so, verify dropdown has tracker option
+    const cards = page.locator('.program-card');
+    const cardCount = await cards.count();
+    if (cardCount > 0) {
+      // Open the dropdown on the first card
+      const firstCard = cards.first();
+      const dropdownBtn = firstCard.locator('[data-bs-toggle="dropdown"]');
+      await dropdownBtn.click();
+
+      // Should have an Enable Tracker option
+      const trackerOption = firstCard.locator('[data-action="toggle-tracker"]');
+      await expect(trackerOption).toBeAttached();
+    }
+  });
+
   test('API progress endpoint returns auth error for unauthenticated requests', async ({ page }) => {
     const response = await page.request.get(`${BASE}/api/v3/firebase/programs/test-id/progress`);
     // Should get 401 (unauthenticated) - not 404 (route not found) or 405

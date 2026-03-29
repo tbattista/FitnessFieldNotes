@@ -102,6 +102,17 @@ class ProgramCard {
                 </li>`;
         }
 
+        // Tracker toggle (always shown if callback exists)
+        if (this.config.onToggleTracker) {
+            const isTracker = this.program.tracker_enabled;
+            menuItems += `
+                <li>
+                    <a class="dropdown-item" href="javascript:void(0);" data-action="toggle-tracker">
+                        <i class="bx ${isTracker ? 'bx-check-circle' : 'bx-target-lock'} me-2"></i>${isTracker ? 'Disable Tracker' : 'Enable Tracker'}
+                    </a>
+                </li>`;
+        }
+
         if (dropdownActions.includes('edit')) {
             menuItems += `
                 <li>
@@ -197,10 +208,14 @@ class ProgramCard {
             ? '<span class="badge bg-primary badge-sm ms-1"><i class="bx bxs-pin me-1" style="font-size:0.65rem"></i>Active</span>'
             : '';
 
+        const trackerBadge = this.program.tracker_enabled
+            ? '<span class="badge bg-success badge-sm ms-1"><i class="bx bx-target-lock me-1" style="font-size:0.65rem"></i>Tracker</span>'
+            : '';
+
         return `
             <div class="mb-2" style="padding-right: 2rem; ${this.config.deleteMode ? 'padding-left: 2rem;' : ''}">
                 <h6 class="card-title mb-1 text-truncate" title="${this._escapeHtml(name)}">
-                    ${this._escapeHtml(name)}${activeBadge}
+                    ${this._escapeHtml(name)}${activeBadge}${trackerBadge}
                 </h6>
                 <div class="d-flex gap-1 flex-wrap">
                     ${difficultyBadge}
@@ -355,6 +370,11 @@ class ProgramCard {
                     case 'toggle-active':
                         if (this.config.onSetActive) {
                             this.config.onSetActive(this.program, !this.config.isActiveProgram);
+                        }
+                        break;
+                    case 'toggle-tracker':
+                        if (this.config.onToggleTracker) {
+                            this.config.onToggleTracker(this.program, !this.program.tracker_enabled);
                         }
                         break;
                 }

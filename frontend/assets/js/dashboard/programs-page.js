@@ -123,7 +123,8 @@
                         }
                     });
                 },
-                onSetActive: (program, setActive) => handleSetActiveProgram(program, setActive)
+                onSetActive: (program, setActive) => handleSetActiveProgram(program, setActive),
+                onToggleTracker: (program, enable) => handleToggleTracker(program, enable)
             },
             onPageChange: (page) => {
                 console.log('Page changed to:', page);
@@ -533,6 +534,35 @@
         } catch (err) {
             console.error('Error setting active program:', err);
             if (window.showAlert) window.showAlert('Failed to update active program', 'danger');
+        }
+    }
+
+    /**
+     * Handle toggle tracker enabled on a program
+     */
+    async function handleToggleTracker(program, enable) {
+        try {
+            const updatedProgram = await window.dataManager.updateProgram(program.id, {
+                tracker_enabled: enable,
+                tracker_goal: enable ? (program.tracker_goal || '3/week') : program.tracker_goal
+            });
+
+            // Update local state
+            const index = state.all.findIndex(p => p.id === program.id);
+            if (index >= 0) {
+                state.all[index] = updatedProgram;
+            }
+
+            if (enable) {
+                if (window.showAlert) window.showAlert(`Tracker enabled for "${program.name}"`, 'success');
+            } else {
+                if (window.showAlert) window.showAlert(`Tracker disabled for "${program.name}"`, 'info');
+            }
+
+            applyFiltersAndRender();
+        } catch (err) {
+            console.error('Error toggling tracker:', err);
+            if (window.showAlert) window.showAlert('Failed to update tracker setting', 'danger');
         }
     }
 
