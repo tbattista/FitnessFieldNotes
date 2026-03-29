@@ -130,7 +130,7 @@ class SessionLifecycleApiService {
                 body: JSON.stringify({
                     workout_id: workoutId,
                     workout_name: workoutName,
-                    started_at: new Date().toISOString(),
+                    started_at: this._getImportedStartTime() || new Date().toISOString(),
                     session_mode: sessionMode,
                     ...(programId ? { program_id: programId } : {})
                 })
@@ -607,6 +607,33 @@ class SessionLifecycleApiService {
             return null;
         } catch (error) {
             console.warn('Could not detect program for session:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Check if there's an AI-imported session date/time in sessionStorage.
+     * Returns ISO string if found and valid, null otherwise.
+     * Clears the stored value after reading (one-time use).
+     */
+    _getImportedStartTime() {
+        try {
+            const stored = sessionStorage.getItem('ffn_imported_session_datetime');
+            if (!stored) return null;
+
+            sessionStorage.removeItem('ffn_imported_session_datetime');
+            const meta = JSON.parse(stored);
+
+            if (meta.session_date) {
+                const timeStr = meta.session_time || '12:00';
+                const dt = new Date(`${meta.session_date}T${timeStr}`);
+                if (!isNaN(dt)) {
+                    console.log('📅 Using AI-extracted session start time:', dt.toISOString());
+                    return dt.toISOString();
+                }
+            }
+            return null;
+        } catch (e) {
             return null;
         }
     }

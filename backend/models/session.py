@@ -317,6 +317,24 @@ class CreateAndCompleteSessionRequest(BaseModel):
         return v
 
 
+class EditSessionRequest(BaseModel):
+    """Request to edit a completed workout session's metadata and exercises"""
+
+    started_at: Optional[datetime] = Field(None, description="Updated start time")
+    completed_at: Optional[datetime] = Field(None, description="Updated completion time")
+    duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Updated duration in minutes")
+    workout_name: Optional[str] = Field(None, max_length=100, description="Updated workout name")
+    notes: Optional[str] = Field(None, max_length=500, description="Updated session notes")
+    exercises_performed: Optional[List[ExercisePerformance]] = Field(
+        None,
+        description="Updated list of exercises performed"
+    )
+    session_notes: Optional[List[SessionNote]] = Field(
+        None,
+        description="Updated inline notes"
+    )
+
+
 class ProgramProgressResponse(BaseModel):
     """Response model for program progress/stats"""
 

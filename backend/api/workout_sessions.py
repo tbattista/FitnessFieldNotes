@@ -14,6 +14,7 @@ from ..models import (
     UpdateSessionRequest,
     CompleteSessionRequest,
     CreateAndCompleteSessionRequest,
+    EditSessionRequest,
     SessionListResponse,
     ExerciseHistory,
     ExerciseHistoryResponse
@@ -206,6 +207,52 @@ async def update_session(
     except Exception as e:
         logger.error(f"Error updating workout session: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating session: {str(e)}")
+
+
+@router.patch("/{session_id}", response_model=WorkoutSession)
+async def edit_session(
+    session_id: str,
+    edit_request: EditSessionRequest,
+    current_user: Optional[dict] = Depends(get_current_user_optional)
+):
+    """
+    Edit a completed workout session's metadata and exercises.
+
+    Allows editing: date/time, duration, workout name, notes, and exercises.
+
+    **Premium Feature**: Requires authentication
+    """
+    try:
+        user_id = extract_user_id(current_user)
+
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required"
+            )
+
+        logger.info(f"Editing workout session {session_id} for user {user_id}")
+
+        session = await firestore_data_service.edit_completed_session(
+            user_id,
+            session_id,
+            edit_request
+        )
+
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail="Workout session not found"
+            )
+
+        logger.info(f"✅ Workout session edited: {session_id}")
+        return session
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error editing workout session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error editing session: {str(e)}")
 
 
 @router.post("/{session_id}/complete", response_model=WorkoutSession)
