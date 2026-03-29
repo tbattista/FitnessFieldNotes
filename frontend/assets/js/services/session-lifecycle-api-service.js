@@ -75,6 +75,12 @@ class SessionLifecycleApiService {
             const sessionMode = 'timed';
             console.log(`🏋️ Starting workout session:`, workoutName);
 
+            // Auto-detect program_id from active program
+            const programId = await this._detectProgramId(workoutId);
+            if (programId) {
+                console.log(`📋 Auto-linking session to program: ${programId}`);
+            }
+
             // Local-only session for anonymous users
             if (!window.authService?.isUserAuthenticated()) {
                 console.log('👤 Creating local-only session (anonymous user)');
@@ -85,6 +91,7 @@ class SessionLifecycleApiService {
                     startedAt: new Date(),
                     status: 'in_progress',
                     sessionMode: sessionMode,
+                    programId: programId,
                     exercises: {}
                 };
 
@@ -124,7 +131,8 @@ class SessionLifecycleApiService {
                     workout_id: workoutId,
                     workout_name: workoutName,
                     started_at: new Date().toISOString(),
-                    session_mode: sessionMode
+                    session_mode: sessionMode,
+                    ...(programId ? { program_id: programId } : {})
                 })
             });
 
@@ -143,6 +151,7 @@ class SessionLifecycleApiService {
                 startedAt: new Date(session.started_at),
                 status: 'in_progress',
                 sessionMode: sessionMode,
+                programId: programId,
                 exercises: {}
             };
 
@@ -403,6 +412,10 @@ class SessionLifecycleApiService {
             }))
         };
 
+        if (currentSession.programId) {
+            requestBody.program_id = currentSession.programId;
+        }
+
         if (preSessionOrder && preSessionOrder.length > 0) {
             requestBody.exercise_order = preSessionOrder;
         }
@@ -552,6 +565,36 @@ class SessionLifecycleApiService {
      */
     _sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Detect if the workout belongs to the active program and return its program_id.
+     * @param {string} workoutId - The workout being started
+     * @returns {Promise<string|null>} program_id if workout belongs to active program, null otherwise
+     * @private
+     */
+    async _detectProgramId(workoutId) {
+        try {
+            const activeProgramId = localStorage.getItem('ffn_active_program_id');
+            if (!activeProgramId) return null;
+
+            // Try to get the active program's workout list from dataManager
+            if (window.dataManager?.getPrograms) {
+                const programs = await window.dataManager.getPrograms({ pageSize: 100 });
+                const activeProgram = (programs || []).find(p => p.id === activeProgramId);
+                if (activeProgram && activeProgram.workouts) {
+                    const workoutIds = activeProgram.workouts.map(w => w.workout_id);
+                    if (workoutIds.includes(workoutId)) {
+                        return activeProgramId;
+                    }
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.warn('Could not detect program for session:', error);
+            return null;
+        }
     }
 }
 

@@ -61,6 +61,8 @@
 
     <!-- Program Detail CSS -->
     <link rel="stylesheet" href="/static/assets/css/components/program-detail.css?v=1.0.0" />
+    <link rel="stylesheet" href="/static/assets/css/components/program-progress.css?v=1.0.0" />
+    <link rel="stylesheet" href="/static/assets/css/components/activity-block-chart.css" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -303,6 +305,29 @@
                             <label for="programTags" class="form-label">Tags (comma-separated)</label>
                             <input type="text" class="form-control" id="programTags" placeholder="e.g., strength, hypertrophy, split">
                         </div>
+
+                        <!-- Tracker Settings -->
+                        <hr>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="programTrackerEnabled">
+                                <label class="form-check-label" for="programTrackerEnabled">
+                                    <i class="bx bx-target-lock me-1"></i>Enable Daily Tracker
+                                </label>
+                            </div>
+                            <small class="text-muted">Track daily activity with a visual heatmap on your dashboard</small>
+                        </div>
+                        <div class="mb-3" id="trackerGoalGroup" style="display: none;">
+                            <label for="programTrackerGoal" class="form-label">Frequency Goal</label>
+                            <select class="form-select" id="programTrackerGoal">
+                                <option value="">No specific goal</option>
+                                <option value="1/day">Every day (1/day)</option>
+                                <option value="3/week">3x per week</option>
+                                <option value="4/week">4x per week</option>
+                                <option value="5/week">5x per week</option>
+                                <option value="6/week">6x per week</option>
+                            </select>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -471,7 +496,11 @@
     <!-- SortableJS for drag-to-reorder functionality -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.1/Sortable.min.js"></script>
 
+    <!-- Activity Block Chart (reused by program tracker) -->
+    <script src="/static/assets/js/components/activity-block-chart.js"></script>
+
     <!-- Program Components (new mobile-first design) -->
+    <script src="/static/assets/js/components/program-progress.js?v=1.0.0"></script>
     <script src="/static/assets/js/components/program-grid.js?v=1.0.0"></script>
     <script src="/static/assets/js/components/program-detail-offcanvas.js?v=1.0.0"></script>
     <script src="/static/assets/js/components/workout-picker-offcanvas.js?v=1.0.0"></script>

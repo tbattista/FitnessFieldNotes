@@ -1,0 +1,36 @@
+/* Program Progress Component Styles */
+
+.program-progress-compact {
+    padding: 0.25rem 0;
+}
+
+.program-progress-full .row .fw-bold {
+    color: var(--bs-heading-color, #566a7f);
+}
+
+.program-progress-full .list-unstyled li {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.program-progress-full .list-unstyled li:last-child {
+    border-bottom: none;
+}
+
+/* Dashboard program tracker card */
+.program-tracker-card {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.program-tracker-card .card-body {
+    padding: 1rem;
+}
+
+/* Dark mode support */
+[data-bs-theme="dark"] .program-progress-full .list-unstyled li {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .program-progress-full .row .fw-bold {
+    color: var(--bs-heading-color, #cfd3ec);
+}

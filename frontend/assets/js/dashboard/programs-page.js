@@ -270,6 +270,15 @@
         if (saveProgramBtn) {
             saveProgramBtn.addEventListener('click', () => handleSaveProgramModal());
         }
+
+        // Tracker toggle (show/hide goal selector)
+        const trackerToggle = document.getElementById('programTrackerEnabled');
+        const trackerGoalGroup = document.getElementById('trackerGoalGroup');
+        if (trackerToggle && trackerGoalGroup) {
+            trackerToggle.addEventListener('change', () => {
+                trackerGoalGroup.style.display = trackerToggle.checked ? '' : 'none';
+            });
+        }
     }
 
     /**
@@ -665,6 +674,20 @@
         document.getElementById('programTags').value = (program.tags || []).join(', ');
         document.getElementById('programModalTitle').textContent = 'Edit Program';
 
+        // Populate tracker fields
+        const trackerToggle = document.getElementById('programTrackerEnabled');
+        const trackerGoal = document.getElementById('programTrackerGoal');
+        const trackerGoalGroup = document.getElementById('trackerGoalGroup');
+        if (trackerToggle) {
+            trackerToggle.checked = program.tracker_enabled || false;
+        }
+        if (trackerGoal) {
+            trackerGoal.value = program.tracker_goal || '';
+        }
+        if (trackerGoalGroup) {
+            trackerGoalGroup.style.display = program.tracker_enabled ? '' : 'none';
+        }
+
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('programModal'));
         modal.show();
@@ -689,6 +712,15 @@
         document.getElementById('programDifficulty').value = 'intermediate';
         document.getElementById('programTags').value = '';
         document.getElementById('programModalTitle').textContent = 'Create Program';
+
+        // Clear tracker fields
+        const trackerToggle = document.getElementById('programTrackerEnabled');
+        const trackerGoal = document.getElementById('programTrackerGoal');
+        const trackerGoalGroup = document.getElementById('trackerGoalGroup');
+        if (trackerToggle) trackerToggle.checked = false;
+        if (trackerGoal) trackerGoal.value = '';
+        if (trackerGoalGroup) trackerGoalGroup.style.display = 'none';
+
         // Clear any stored editing program ID
         state.editingProgramId = null;
     }
@@ -704,7 +736,9 @@
                 description: document.getElementById('programDescription')?.value?.trim() || '',
                 duration_weeks: parseInt(document.getElementById('programDuration')?.value) || null,
                 difficulty_level: document.getElementById('programDifficulty')?.value || 'intermediate',
-                tags: document.getElementById('programTags')?.value?.split(',').map(tag => tag.trim()).filter(tag => tag) || []
+                tags: document.getElementById('programTags')?.value?.split(',').map(tag => tag.trim()).filter(tag => tag) || [],
+                tracker_enabled: document.getElementById('programTrackerEnabled')?.checked || false,
+                tracker_goal: document.getElementById('programTrackerGoal')?.value || null
             };
 
             // Validate required fields

@@ -12,7 +12,7 @@ from .program import *
 from .exercise import *
 from .favorites import *
 from .personal_records import *
-from .session import *
+from .session import *  # includes ProgramProgressResponse
 from .cardio import *
 from .sharing import *
 from .importing import *

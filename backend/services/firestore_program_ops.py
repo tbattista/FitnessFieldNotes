@@ -32,7 +32,9 @@ class FirestoreProgramOps:
                 description=program_request.description,
                 duration_weeks=program_request.duration_weeks,
                 difficulty_level=program_request.difficulty_level,
-                tags=program_request.tags
+                tags=program_request.tags,
+                tracker_enabled=getattr(program_request, 'tracker_enabled', False),
+                tracker_goal=getattr(program_request, 'tracker_goal', None)
             )
 
             # Save to Firestore

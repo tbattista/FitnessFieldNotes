@@ -85,6 +85,25 @@ class Program(BaseModel):
         description="When the program was last modified"
     )
 
+    # Tracker Feature
+    tracker_enabled: bool = Field(
+        default=False,
+        description="Enable habit-style visual tracker for this program"
+    )
+    tracker_goal: Optional[str] = Field(
+        default=None,
+        description="Frequency goal for tracker, e.g. '1/day', '3/week', '5/week'",
+        example="3/week"
+    )
+    started_at: Optional[datetime] = Field(
+        default=None,
+        description="When the user started this program"
+    )
+    is_active: bool = Field(
+        default=False,
+        description="Whether this is the currently active/pinned program"
+    )
+
 
 class CreateProgramRequest(BaseModel):
     """Request model for creating a new program"""
@@ -94,6 +113,8 @@ class CreateProgramRequest(BaseModel):
     duration_weeks: Optional[int] = Field(None, ge=1, le=52)
     difficulty_level: Optional[str] = Field(default="intermediate")
     tags: List[str] = Field(default_factory=list, max_items=10)
+    tracker_enabled: bool = Field(default=False, description="Enable habit-style tracker")
+    tracker_goal: Optional[str] = Field(default=None, description="Frequency goal e.g. '3/week'")
 
 class UpdateProgramRequest(BaseModel):
     """Request model for updating a program"""
@@ -104,6 +125,10 @@ class UpdateProgramRequest(BaseModel):
     duration_weeks: Optional[int] = Field(None, ge=1, le=52)
     difficulty_level: Optional[str] = Field(None)
     tags: Optional[List[str]] = Field(None, max_items=10)
+    tracker_enabled: Optional[bool] = Field(None, description="Enable habit-style tracker")
+    tracker_goal: Optional[str] = Field(None, description="Frequency goal e.g. '3/week'")
+    is_active: Optional[bool] = Field(None, description="Set as active/pinned program")
+    started_at: Optional[datetime] = Field(None, description="When user started the program")
 
 class AddWorkoutToProgramRequest(BaseModel):
     """Request model for adding a workout to a program"""

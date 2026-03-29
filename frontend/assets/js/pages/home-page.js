@@ -148,6 +148,7 @@
                 renderActivityChart(sessions);
                 renderRecentActivity(sessions);
                 renderFavoritesSection(workouts);
+                renderProgramTracker();
             }
         } catch (error) {
             console.error('Error loading home sections:', error);
@@ -192,11 +193,41 @@
                     // Find next workout: first one not completed in last 7 days
                     const nextWorkout = activeProgram.workouts[0]; // Simple: show first workout
                     const workoutName = nextWorkout.custom_name || nextWorkout.workout_id;
+
+                    // Try to load progress for the mini stats
+                    let progressHtml = '';
+                    try {
+                        if (window.authService?.isUserAuthenticated()) {
+                            const token = await window.authService.getIdToken();
+                            if (token) {
+                                const url = window.config.api.getUrl(`/api/v3/firebase/programs/${activeProgramId}/progress`);
+                                const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                                if (resp.ok) {
+                                    const progress = await resp.json();
+                                    const pct = Math.round(progress.completion_percentage || 0);
+                                    const streak = progress.current_streak || 0;
+                                    progressHtml = `
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <div class="progress flex-grow-1" style="height: 5px;">
+                                                <div class="progress-bar bg-${pct >= 100 ? 'success' : 'primary'}" style="width: ${pct}%"></div>
+                                            </div>
+                                            <small class="text-muted">${progress.total_sessions} sessions</small>
+                                            ${streak > 0 ? `<span class="badge bg-label-warning" style="font-size: 0.65rem;"><i class="bx bx-flame"></i>${streak}d</span>` : ''}
+                                        </div>
+                                    `;
+                                }
+                            }
+                        }
+                    } catch (progressErr) {
+                        // Silently fail - progress is optional enhancement
+                    }
+
                     container.innerHTML = `
                         <div class="card whats-next-card">
                             <div class="card-body py-3 px-3">
                                 <small class="text-muted text-uppercase fw-semibold">Your Program</small>
                                 <h6 class="fw-bold mt-1 mb-1">${escapeHtml(activeProgram.name)}</h6>
+                                ${progressHtml}
                                 <p class="text-muted small mb-2">Next: ${escapeHtml(workoutName)}</p>
                                 <a href="workout-mode.html?id=${nextWorkout.workout_id}" class="btn btn-primary btn-sm">
                                     <i class="bx bx-play me-1"></i>Start Workout
@@ -452,6 +483,57 @@
             workoutDetailOffcanvas.show(workout);
         } else {
             console.warn('Could not show workout detail:', workoutId);
+        }
+    }
+
+    // --- Program Tracker ---
+    async function renderProgramTracker() {
+        const section = document.getElementById('programTrackerSection');
+        const container = document.getElementById('programTrackerContent');
+        if (!section || !container) return;
+
+        try {
+            const activeProgramId = localStorage.getItem('ffn_active_program_id');
+            if (!activeProgramId) {
+                section.style.display = 'none';
+                return;
+            }
+
+            // Load active program
+            const programs = await window.dataManager?.getPrograms?.({ pageSize: 100 });
+            const activeProgram = (programs || []).find(p => p.id === activeProgramId);
+
+            if (!activeProgram || !activeProgram.tracker_enabled) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = '';
+
+            if (!window.ProgramProgress) {
+                container.innerHTML = '<small class="text-muted">Tracker loading...</small>';
+                return;
+            }
+
+            // Build workout name map
+            const workoutDetailsMap = {};
+            (activeProgram.workouts || []).forEach(pw => {
+                const w = homeWorkouts.find(hw => hw.id === pw.workout_id);
+                if (w) workoutDetailsMap[pw.workout_id] = w.name;
+            });
+
+            const progressComponent = new window.ProgramProgress('programTrackerContent', {
+                compact: true,
+                showChecklist: false,
+                showTracker: true,
+                trackerDays: 45
+            });
+
+            await progressComponent.loadProgress(activeProgram, workoutDetailsMap);
+
+        } catch (error) {
+            console.warn('Could not render program tracker:', error);
+            section.style.display = 'none';
         }
     }
 

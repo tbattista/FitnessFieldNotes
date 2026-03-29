@@ -135,6 +135,9 @@ class WorkoutSession(BaseModel):
             raise ValueError("Exercise order must contain unique exercise names")
         return v
 
+    # Program Tracking
+    program_id: Optional[str] = Field(None, description="ID of the program this session belongs to (auto-linked from active program)")
+
     # Status
     status: str = Field(
         default="in_progress",
@@ -214,6 +217,7 @@ class CreateSessionRequest(BaseModel):
         default="timed",
         description="Session mode: 'timed' (real-time tracking) or 'quick_log' (retrospective logging)"
     )
+    program_id: Optional[str] = Field(None, description="ID of the program this session belongs to")
 
 class UpdateSessionRequest(BaseModel):
     """Request to update session progress (auto-save during workout)"""
@@ -285,6 +289,7 @@ class CreateAndCompleteSessionRequest(BaseModel):
         default="timed",
         description="Session mode: 'timed' or 'quick_log'"
     )
+    program_id: Optional[str] = Field(None, description="ID of the program this session belongs to")
     notes: Optional[str] = Field(None, max_length=500, description="Session notes")
     session_notes: List[SessionNote] = Field(
         default_factory=list,
@@ -310,6 +315,25 @@ class CreateAndCompleteSessionRequest(BaseModel):
         if len(v) != len(set(v)):
             raise ValueError("Exercise order must contain unique exercise names")
         return v
+
+
+class ProgramProgressResponse(BaseModel):
+    """Response model for program progress/stats"""
+
+    program_id: str = Field(..., description="Program ID")
+    program_name: str = Field(..., description="Program name")
+    total_sessions: int = Field(default=0, description="Total completed sessions linked to this program")
+    workouts_completed: Dict[str, int] = Field(default_factory=dict, description="Map of workout_id -> completion count")
+    unique_workouts_completed: int = Field(default=0, description="Number of unique workouts completed at least once")
+    total_workouts_in_program: int = Field(default=0, description="Total workouts in the program")
+    completion_percentage: float = Field(default=0.0, description="Percentage of unique workouts completed (0-100)")
+    total_duration_minutes: int = Field(default=0, description="Total time spent across all sessions")
+    first_session_date: Optional[str] = Field(None, description="Date of first session (ISO format)")
+    last_session_date: Optional[str] = Field(None, description="Date of most recent session (ISO format)")
+    current_streak: int = Field(default=0, description="Current consecutive days with a session")
+    best_streak: int = Field(default=0, description="Best consecutive days streak")
+    daily_activity: Dict[str, int] = Field(default_factory=dict, description="Map of date string -> session count")
+    weekly_summary: Dict[str, int] = Field(default_factory=dict, description="Map of ISO week -> session count")
 
 
 # Response Models for Workout Sessions

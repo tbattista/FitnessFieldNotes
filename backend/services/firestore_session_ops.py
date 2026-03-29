@@ -38,7 +38,8 @@ class FirestoreSessionOps:
                 workout_name=session_request.workout_name,
                 started_at=session_request.started_at,
                 status="in_progress",
-                session_mode=getattr(session_request, 'session_mode', 'timed')
+                session_mode=getattr(session_request, 'session_mode', 'timed'),
+                program_id=getattr(session_request, 'program_id', None)
             )
 
             # Save to Firestore
@@ -261,6 +262,7 @@ class FirestoreSessionOps:
                 completed_at=request.completed_at or datetime.now(),
                 status="completed",
                 session_mode=request.session_mode,
+                program_id=getattr(request, 'program_id', None),
                 exercises_performed=[
                     ex.model_dump() if hasattr(ex, 'model_dump') else ex
                     for ex in request.exercises_performed
@@ -653,3 +655,169 @@ class FirestoreSessionOps:
         except Exception as e:
             logger.error(f"Failed to auto-update personal records: {str(e)}")
             return False
+
+    # ========================================================================
+    # Program Progress Tracking
+    # ========================================================================
+
+    async def get_program_sessions(
+        self,
+        user_id: str,
+        program_id: str,
+        limit: int = 200
+    ) -> List[Any]:
+        """Get all completed sessions linked to a specific program"""
+        if not self.is_available():
+            return []
+
+        try:
+            from ..models import WorkoutSession
+
+            sessions_ref = (self.db.collection('users')
+                           .document(user_id)
+                           .collection('workout_sessions')
+                           .where('program_id', '==', program_id)
+                           .where('status', '==', 'completed')
+                           .order_by('completed_at', direction=firestore.Query.DESCENDING)
+                           .limit(limit))
+
+            docs = sessions_ref.stream()
+            sessions = []
+
+            for doc in docs:
+                try:
+                    session_data = doc.to_dict()
+                    session = WorkoutSession(**session_data)
+                    sessions.append(session)
+                except Exception as e:
+                    logger.warning(f"Failed to parse program session {doc.id}: {str(e)}")
+                    continue
+
+            logger.info(f"Retrieved {len(sessions)} program sessions for program {program_id}")
+            return sessions
+
+        except Exception as e:
+            logger.error(f"Failed to get program sessions: {str(e)}")
+            return []
+
+    async def get_program_progress(
+        self,
+        user_id: str,
+        program_id: str,
+        program_name: str,
+        program_workout_ids: List[str]
+    ) -> dict:
+        """Compute program progress stats from completed sessions"""
+        try:
+            sessions = await self.get_program_sessions(user_id, program_id)
+
+            # Build stats
+            workouts_completed: Dict[str, int] = {}
+            total_duration = 0
+            daily_activity: Dict[str, int] = {}
+            session_dates: List[datetime] = []
+
+            for session in sessions:
+                # Count per workout
+                wid = session.workout_id
+                workouts_completed[wid] = workouts_completed.get(wid, 0) + 1
+
+                # Duration
+                if session.duration_minutes:
+                    total_duration += session.duration_minutes
+
+                # Daily activity
+                completed = session.completed_at or session.started_at
+                if completed:
+                    if hasattr(completed, 'strftime'):
+                        date_key = completed.strftime('%Y-%m-%d')
+                    else:
+                        date_key = str(completed)[:10]
+                    daily_activity[date_key] = daily_activity.get(date_key, 0) + 1
+                    session_dates.append(completed)
+
+            # Sort dates for streak calculation
+            unique_dates = sorted(set(d.strftime('%Y-%m-%d') if hasattr(d, 'strftime') else str(d)[:10] for d in session_dates))
+
+            # Calculate streaks
+            current_streak = 0
+            best_streak = 0
+            if unique_dates:
+                from datetime import timedelta
+                today = datetime.now().strftime('%Y-%m-%d')
+                streak = 0
+                # Walk backwards from today
+                check_date = datetime.now().date()
+                for _ in range(365):
+                    date_str = check_date.strftime('%Y-%m-%d')
+                    if date_str in daily_activity:
+                        streak += 1
+                        check_date -= timedelta(days=1)
+                    else:
+                        break
+                current_streak = streak
+
+                # Best streak from all dates
+                streak = 1
+                for i in range(1, len(unique_dates)):
+                    prev = datetime.strptime(unique_dates[i-1], '%Y-%m-%d').date()
+                    curr = datetime.strptime(unique_dates[i], '%Y-%m-%d').date()
+                    if (curr - prev).days == 1:
+                        streak += 1
+                    else:
+                        best_streak = max(best_streak, streak)
+                        streak = 1
+                best_streak = max(best_streak, streak, current_streak)
+
+            # Weekly summary
+            weekly_summary: Dict[str, int] = {}
+            for date_str, count in daily_activity.items():
+                try:
+                    dt = datetime.strptime(date_str, '%Y-%m-%d')
+                    week_key = dt.strftime('%Y-W%W')
+                    weekly_summary[week_key] = weekly_summary.get(week_key, 0) + count
+                except ValueError:
+                    pass
+
+            unique_completed = len(workouts_completed)
+            total_in_program = len(program_workout_ids)
+            completion_pct = (unique_completed / total_in_program * 100) if total_in_program > 0 else 0
+
+            first_date = unique_dates[0] if unique_dates else None
+            last_date = unique_dates[-1] if unique_dates else None
+
+            return {
+                "program_id": program_id,
+                "program_name": program_name,
+                "total_sessions": len(sessions),
+                "workouts_completed": workouts_completed,
+                "unique_workouts_completed": unique_completed,
+                "total_workouts_in_program": total_in_program,
+                "completion_percentage": round(completion_pct, 1),
+                "total_duration_minutes": total_duration,
+                "first_session_date": first_date,
+                "last_session_date": last_date,
+                "current_streak": current_streak,
+                "best_streak": best_streak,
+                "daily_activity": daily_activity,
+                "weekly_summary": weekly_summary
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to compute program progress: {str(e)}")
+            return {
+                "program_id": program_id,
+                "program_name": program_name,
+                "total_sessions": 0,
+                "workouts_completed": {},
+                "unique_workouts_completed": 0,
+                "total_workouts_in_program": len(program_workout_ids),
+                "completion_percentage": 0,
+                "total_duration_minutes": 0,
+                "first_session_date": None,
+                "last_session_date": None,
+                "current_streak": 0,
+                "best_streak": 0,
+                "daily_activity": {},
+                "weekly_summary": {}
+            }
