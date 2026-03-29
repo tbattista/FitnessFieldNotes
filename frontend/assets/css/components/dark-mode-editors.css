@@ -40,8 +40,8 @@
    ============================================ */
 
 [data-bs-theme="dark"] .editor-actions > div {
-    background: var(--bs-gray-900);
-    border-color: var(--bs-gray-700);
+    background: var(--gs-gray-50);
+    border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .save-status {
@@ -86,16 +86,16 @@
    ============================================ */
 
 [data-bs-theme="dark"] .datatable-table thead th {
-    background-color: var(--bs-gray-800);
+    background-color: var(--gs-gray-100);
     color: var(--bs-gray-200);
 }
 
 [data-bs-theme="dark"] .datatable-table tbody tr:hover {
-    background-color: var(--bs-gray-800);
+    background-color: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .exercise-list .d-flex {
-    background-color: var(--bs-gray-800);
+    background-color: var(--gs-gray-100);
 }
 
 /* ============================================
@@ -115,7 +115,7 @@
    ============================================ */
 
 [data-bs-theme="dark"] .floating-timer-widget {
-    background: var(--bs-gray-900);
+    background: var(--gs-gray-50);
     border-color: var(--gs-primary);
     box-shadow: 0 8px 24px rgba(var(--bs-primary-rgb), 0.4);
 }
@@ -129,13 +129,13 @@
    ============================================ */
 
 [data-bs-theme="dark"] .workout-name-header {
-    background-color: var(--bs-gray-900);
-    border-bottom-color: var(--bs-gray-700);
+    background-color: var(--gs-gray-50);
+    border-bottom-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .session-controls {
-    background: var(--bs-gray-900);
-    border-color: var(--bs-gray-700);
+    background: var(--gs-gray-50);
+    border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .session-controls.active {
@@ -143,35 +143,35 @@
 }
 
 [data-bs-theme="dark"] .exercise-card {
-    background: var(--bs-gray-900);
-    border-color: var(--bs-gray-700);
+    background: var(--gs-gray-50);
+    border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .exercise-card:hover {
     border-color: var(--gs-primary);
-    background: var(--bs-gray-800);
+    background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .exercise-card-header {
-    background: var(--bs-gray-900);
-    border-color: var(--bs-gray-700);
+    background: var(--gs-gray-50);
+    border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .exercise-card:not(.expanded) .exercise-card-header:hover {
-    background: var(--bs-gray-800);
+    background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .exercise-card-body {
-    background: var(--bs-gray-900);
+    background: var(--gs-gray-50);
 }
 
 [data-bs-theme="dark"] .rest-timer-container {
-    background: var(--bs-gray-800);
+    background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .workout-mode-footer {
-    background: var(--bs-gray-900);
-    border-color: var(--bs-gray-700);
+    background: var(--gs-gray-50);
+    border-color: var(--gs-gray-200);
 }
 
 /* ============================================

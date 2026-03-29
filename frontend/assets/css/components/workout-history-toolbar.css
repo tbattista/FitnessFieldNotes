@@ -287,24 +287,24 @@
    ============================================ */
 
 [data-bs-theme="dark"] .session-toolbar-select {
-  background-color: var(--bs-gray-900);
-  border-color: var(--bs-gray-600);
-  color: var(--bs-gray-200);
+  background-color: var(--gs-gray-50);
+  border-color: var(--gs-gray-300);
+  color: var(--gs-gray-800);
 }
 
 [data-bs-theme="dark"] .session-toolbar-btn {
-  border-color: var(--bs-gray-600);
-  color: var(--bs-gray-300);
+  border-color: var(--gs-gray-300);
+  color: var(--gs-gray-500);
 }
 
 [data-bs-theme="dark"] .session-toolbar-btn:hover {
-  background-color: var(--bs-gray-700);
-  border-color: var(--bs-gray-500);
+  background-color: var(--gs-gray-200);
+  border-color: var(--gs-gray-400);
 }
 
 [data-bs-theme="dark"] .pagination-btn {
-  background: var(--bs-gray-800);
-  border-color: var(--bs-gray-700);
+  background: var(--gs-gray-100);
+  border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .pagination-btn:hover:not(:disabled) {
@@ -317,14 +317,14 @@
 }
 
 [data-bs-theme="dark"] .session-pagesize-select {
-  background-color: var(--bs-gray-900);
-  border-color: var(--bs-gray-600);
-  color: var(--bs-gray-200);
+  background-color: var(--gs-gray-50);
+  border-color: var(--gs-gray-300);
+  color: var(--gs-gray-800);
 }
 
 [data-bs-theme="dark"] .calendar-panel {
-  background-color: var(--bs-gray-900);
-  border-color: var(--bs-gray-700);
+  background-color: var(--gs-gray-50);
+  border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .date-filter-indicator {
@@ -333,9 +333,9 @@
 }
 
 [data-bs-theme="dark"] .workout-filter-chip {
-  background: var(--bs-gray-900);
-  border-color: var(--bs-gray-600);
-  color: var(--bs-gray-300);
+  background: var(--gs-gray-50);
+  border-color: var(--gs-gray-300);
+  color: var(--gs-gray-500);
 }
 
 [data-bs-theme="dark"] .workout-filter-chip:hover {
@@ -421,7 +421,7 @@
 
 /* Dark mode - offcanvas list */
 [data-bs-theme="dark"] .workout-filter-item {
-  border-bottom-color: var(--bs-gray-700);
+  border-bottom-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .workout-filter-item:hover {
@@ -429,8 +429,8 @@
 }
 
 [data-bs-theme="dark"] .workout-filter-item-count {
-  background: var(--bs-gray-800);
-  color: var(--bs-gray-400);
+  background: var(--gs-gray-100);
+  color: var(--gs-gray-400);
 }
 
 /* ============================================
@@ -523,7 +523,7 @@
 
 /* Selection action bar - dark mode */
 [data-bs-theme="dark"] .selection-action-bar {
-  background: var(--bs-gray-800);
+  background: var(--gs-gray-100);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 

@@ -254,7 +254,7 @@
 
 /* Dark mode */
 [data-bs-theme="dark"] .category-chip {
-    background-color: var(--bs-gray-900);
+    background-color: var(--bs-gray-50);
     border-color: var(--bs-gray-600);
     color: var(--bs-gray-400);
 }

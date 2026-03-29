@@ -685,7 +685,7 @@
    ============================================ */
 
 [data-bs-theme="dark"] .programs-toolbar-search input {
-    background-color: var(--bs-gray-900);
+    background-color: var(--bs-gray-50);
     border-color: var(--bs-gray-600);
     color: var(--bs-gray-200);
 }
@@ -700,13 +700,13 @@
 }
 
 [data-bs-theme="dark"] .programs-toolbar-btn.btn-outline-secondary {
-    background-color: var(--bs-gray-900);
+    background-color: var(--bs-gray-50);
     border-color: var(--bs-gray-600);
     color: var(--bs-gray-300);
 }
 
 [data-bs-theme="dark"] .programs-toolbar-btn.btn-outline-secondary:hover {
-    background-color: var(--bs-gray-700);
+    background-color: var(--bs-gray-200);
     border-color: var(--bs-gray-500);
 }
 
@@ -723,7 +723,7 @@
 }
 
 [data-bs-theme="dark"] .program-card .btn-text-secondary:hover {
-    background: var(--bs-gray-700);
+    background: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] #programsGrid .card.delete-mode,
@@ -748,7 +748,7 @@
 }
 
 [data-bs-theme="dark"] .selection-action-bar {
-    background: var(--bs-gray-800);
+    background: var(--gs-gray-100);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -909,7 +909,7 @@
 
 /* Dark Mode */
 [data-bs-theme="dark"] .workout-picker-item:hover {
-    background-color: var(--bs-gray-800);
+    background-color: var(--bs-gray-100);
 }
 
 [data-bs-theme="dark"] .workout-picker-item.selected {

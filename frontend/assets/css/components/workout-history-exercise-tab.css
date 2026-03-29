@@ -272,11 +272,11 @@
    ============================================ */
 
 [data-bs-theme="dark"] .exercise-group-variant-count {
-  background: var(--bs-gray-800);
+  background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .exercise-variant {
-  border-left-color: var(--bs-gray-700);
+  border-left-color: var(--gs-gray-200);
 }
 
 /* ============================================

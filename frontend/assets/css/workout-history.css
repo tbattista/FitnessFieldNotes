@@ -276,19 +276,19 @@
    ============================================ */
 
 [data-bs-theme="dark"] .history-header {
-  background-color: var(--bs-gray-900);
+  background-color: var(--gs-gray-50);
 }
 
 [data-bs-theme="dark"] .history-header:hover {
-  background-color: var(--bs-gray-800);
+  background-color: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .history-header[aria-expanded="true"] {
-  background-color: var(--bs-gray-800);
+  background-color: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .history-tabs-wrapper {
-  border-bottom-color: var(--gs-gray-700);
+  border-bottom-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .history-tabs .nav-link {

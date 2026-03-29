@@ -358,44 +358,44 @@
    ============================================ */
 
 [data-bs-theme="dark"] .session-group-card {
-  background: var(--bs-gray-900);
+  background: var(--gs-gray-50);
 }
 
 [data-bs-theme="dark"] .session-entry {
-  background: var(--bs-gray-900);
+  background: var(--gs-gray-50);
 }
 
 [data-bs-theme="dark"] .session-entry:hover {
-  background: var(--bs-gray-800);
+  background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .session-entry[aria-expanded="true"] {
-  background: var(--bs-gray-800);
+  background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .session-details-wrapper {
-  background: var(--bs-gray-800);
+  background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .session-details .table th {
-  background-color: var(--bs-gray-800);
+  background-color: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .session-menu-btn {
-  color: var(--bs-gray-500);
+  color: var(--gs-gray-400);
 }
 
 [data-bs-theme="dark"] .session-menu-btn:hover {
-  color: var(--bs-gray-300);
+  color: var(--gs-gray-800);
 }
 
 [data-bs-theme="dark"] .session-menu .dropdown-menu {
-  background-color: var(--bs-gray-800);
-  border-color: var(--bs-gray-700);
+  background-color: var(--gs-gray-100);
+  border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .session-menu .dropdown-item:hover {
-  background-color: var(--bs-gray-700);
+  background-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .exercise-original-value {

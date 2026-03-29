@@ -150,14 +150,14 @@
 /* Weight modal content dark mode */
 [data-bs-theme="dark"] .weight-modal-content .form-control,
 [data-bs-theme="dark"] .weight-modal-content .form-select {
-    background-color: var(--bs-gray-800);
-    border-color: var(--bs-gray-700);
+    background-color: var(--bs-gray-100);
+    border-color: var(--bs-gray-200);
     color: var(--bs-body-color);
 }
 
 [data-bs-theme="dark"] .weight-modal-content .form-control:focus,
 [data-bs-theme="dark"] .weight-modal-content .form-select:focus {
-    background-color: var(--bs-gray-800);
+    background-color: var(--bs-gray-100);
     border-color: var(--bs-primary);
 }
 
@@ -180,7 +180,7 @@
 }
 
 [data-bs-theme="dark"] .exercise-slot-display .bg-light {
-    background-color: var(--bs-gray-800) !important;
+    background-color: var(--bs-gray-100) !important;
 }
 
 [data-bs-theme="dark"] .exercise-slot-display .exercise-name {
@@ -204,8 +204,8 @@
    ============================================ */
 
 [data-bs-theme="dark"] .weight-input-container .weight-input {
-    background-color: var(--bs-gray-800);
-    border-color: var(--bs-gray-700);
+    background-color: var(--bs-gray-100);
+    border-color: var(--bs-gray-200);
 }
 
 /* ============================================
@@ -213,8 +213,8 @@
    ============================================ */
 
 [data-bs-theme="dark"] .reorder-item-inner {
-    background-color: var(--bs-gray-800);
-    border-color: var(--bs-gray-700) !important;
+    background-color: var(--gs-gray-100);
+    border-color: var(--gs-gray-200) !important;
     color: var(--bs-body-color);
 }
 
@@ -223,7 +223,7 @@
 }
 
 [data-bs-theme="dark"] .sortable-fallback {
-    background: var(--bs-gray-800) !important;
+    background: var(--gs-gray-100) !important;
 }
 
 [data-bs-theme="dark"] .sortable-ghost {
@@ -231,7 +231,7 @@
 }
 
 [data-bs-theme="dark"] .sortable-drag .reorder-item-inner {
-    background-color: var(--bs-gray-700) !important;
+    background-color: var(--gs-gray-200) !important;
 }
 
 /* ============================================
@@ -239,7 +239,7 @@
    ============================================ */
 
 [data-bs-theme="dark"] .session-complete-header {
-    border-bottom-color: var(--bs-gray-700);
+    border-bottom-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .session-complete-header h5 {
@@ -264,7 +264,7 @@
 }
 
 [data-bs-theme="dark"] .session-stat input:focus {
-    background: var(--bs-gray-800);
+    background: var(--gs-gray-100);
     border-color: var(--bs-primary);
 }
 

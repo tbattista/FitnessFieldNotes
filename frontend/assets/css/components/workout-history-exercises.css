@@ -354,15 +354,15 @@
 }
 
 [data-bs-theme="dark"] .exercise-session-count {
-  background: var(--bs-gray-800);
+  background: var(--gs-gray-100);
 }
 
 [data-bs-theme="dark"] .exercise-filter-btn {
-  border-color: var(--bs-gray-700);
+  border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .exercise-filter-btn:hover:not(:disabled) {
-  border-color: var(--bs-gray-600);
+  border-color: var(--gs-gray-300);
 }
 
 [data-bs-theme="dark"] .exercise-filter-btn.active {
@@ -370,11 +370,11 @@
 }
 
 [data-bs-theme="dark"] .exercise-sort-btn {
-  border-color: var(--bs-gray-700);
+  border-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .exercise-sort-btn:hover {
-  border-color: var(--bs-gray-600);
+  border-color: var(--gs-gray-300);
 }
 
 /* ============================================

@@ -38,7 +38,7 @@
 
 /* Toolbar search */
 [data-bs-theme="dark"] .exercise-toolbar-search input {
-    background-color: var(--bs-gray-900);
+    background-color: var(--bs-gray-50);
     border-color: var(--bs-gray-600);
     color: var(--bs-gray-200);
 }
@@ -54,19 +54,19 @@
 
 /* Toolbar buttons */
 [data-bs-theme="dark"] .exercise-toolbar-btn.btn-outline-secondary {
-    background-color: var(--bs-gray-900);
+    background-color: var(--bs-gray-50);
     border-color: var(--bs-gray-600);
     color: var(--bs-gray-300);
 }
 
 [data-bs-theme="dark"] .exercise-toolbar-btn.btn-outline-secondary:hover {
-    background-color: var(--bs-gray-700);
+    background-color: var(--bs-gray-200);
     border-color: var(--bs-gray-500);
 }
 
 /* Category chips */
 [data-bs-theme="dark"] .category-chip {
-    background-color: var(--bs-gray-900);
+    background-color: var(--bs-gray-50);
     border-color: var(--bs-gray-600);
     color: var(--bs-gray-400);
 }

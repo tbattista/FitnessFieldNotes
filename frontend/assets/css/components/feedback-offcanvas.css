@@ -576,14 +576,14 @@
 
 [data-bs-theme="dark"] .feedback-submit-content .form-control,
 [data-bs-theme="dark"] .feedback-submit-content .form-select {
-    background-color: var(--bs-gray-800);
+    background-color: var(--bs-gray-100);
     border-color: var(--bs-gray-600);
     color: var(--bs-body-color);
 }
 
 [data-bs-theme="dark"] .feedback-submit-content .form-control:focus,
 [data-bs-theme="dark"] .feedback-submit-content .form-select:focus {
-    background-color: var(--bs-gray-800);
+    background-color: var(--bs-gray-100);
     border-color: var(--bs-primary);
 }
 

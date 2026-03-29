@@ -196,13 +196,13 @@
    ============================================ */
 
 [data-bs-theme="dark"] .quick-notes-popover {
-    background: var(--bs-gray-900);
-    border-color: var(--bs-gray-700);
+    background: var(--gs-gray-50);
+    border-color: var(--gs-gray-200);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 [data-bs-theme="dark"] .quick-notes-header {
-    border-bottom-color: var(--bs-gray-700);
+    border-bottom-color: var(--gs-gray-200);
 }
 
 [data-bs-theme="dark"] .quick-notes-trigger {
@@ -210,7 +210,7 @@
 }
 
 [data-bs-theme="dark"] .quick-notes-text-section {
-    border-top-color: var(--bs-gray-700);
+    border-top-color: var(--gs-gray-200);
 }
 
 /* ============================================
