@@ -493,17 +493,11 @@
         if (!section || !container) return;
 
         try {
-            const activeProgramId = localStorage.getItem('ffn_active_program_id');
-            if (!activeProgramId) {
-                section.style.display = 'none';
-                return;
-            }
-
-            // Load active program
+            // Load ALL programs and filter to tracker-enabled ones
             const programs = await window.dataManager?.getPrograms?.({ pageSize: 100 });
-            const activeProgram = (programs || []).find(p => p.id === activeProgramId);
+            const trackerPrograms = (programs || []).filter(p => p.tracker_enabled);
 
-            if (!activeProgram || !activeProgram.tracker_enabled) {
+            if (trackerPrograms.length === 0) {
                 section.style.display = 'none';
                 return;
             }
@@ -515,21 +509,30 @@
                 return;
             }
 
-            // Build workout name map
-            const workoutDetailsMap = {};
-            (activeProgram.workouts || []).forEach(pw => {
-                const w = homeWorkouts.find(hw => hw.id === pw.workout_id);
-                if (w) workoutDetailsMap[pw.workout_id] = w.name;
-            });
+            // Render a compact tracker card for each tracker-enabled program
+            container.innerHTML = trackerPrograms.map((_, i) =>
+                `<div id="programTracker_${i}" class="${i > 0 ? 'mt-3 pt-3 border-top' : ''}"></div>`
+            ).join('');
 
-            const progressComponent = new window.ProgramProgress('programTrackerContent', {
-                compact: true,
-                showChecklist: false,
-                showTracker: true,
-                trackerDays: 45
-            });
+            for (let i = 0; i < trackerPrograms.length; i++) {
+                const program = trackerPrograms[i];
 
-            await progressComponent.loadProgress(activeProgram, workoutDetailsMap);
+                // Build workout name map
+                const workoutDetailsMap = {};
+                (program.workouts || []).forEach(pw => {
+                    const w = homeWorkouts.find(hw => hw.id === pw.workout_id);
+                    if (w) workoutDetailsMap[pw.workout_id] = w.name;
+                });
+
+                const progressComponent = new window.ProgramProgress(`programTracker_${i}`, {
+                    compact: true,
+                    showChecklist: false,
+                    showTracker: true,
+                    trackerDays: 45
+                });
+
+                await progressComponent.loadProgress(program, workoutDetailsMap);
+            }
 
         } catch (error) {
             console.warn('Could not render program tracker:', error);
