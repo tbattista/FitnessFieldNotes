@@ -55,10 +55,14 @@ RULES:
 17. Exercise names should be concise and recognizable (e.g., "Barbell Bench Press" not "Flat Barbell Bench Press on a Flat Bench").
 18. For reps, preserve the original format: "8-12", "10", "AMRAP", "30s" (for timed exercises), "to failure", etc.
 
+19. DATE & TIME EXTRACTION: If the content (especially images or screenshots) contains a date and/or time when the workout was performed (e.g., a timestamp, date header, "Monday Jan 15", "3:30 PM", app screenshot with date), extract it. Return as ISO 8601 format if possible. If only a date is found, return it without time. If only time is found, return just the time. If no date/time is visible, return null for both fields.
+
 OUTPUT SCHEMA (respond with ONLY this JSON, no other text):
 {
   "name": "string (1-100 chars, the workout name/title)",
   "description": "string (0-500 chars, optional summary)",
+  "session_date": "string or null (ISO 8601 date, e.g. '2026-01-15' or '2026-01-15T15:30:00', null if not found)",
+  "session_time": "string or null (time in HH:MM format, e.g. '15:30', null if not found)",
   "exercise_groups": [
     {
       "exercises": {"a": "Exercise Name"},

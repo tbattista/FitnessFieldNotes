@@ -357,6 +357,30 @@ window.importService = {
             }
         }, 350);
 
+        // 10. Store extracted session date/time from AI (if available)
+        if (workoutData.session_date || workoutData.session_time) {
+            const importedSessionMeta = {
+                session_date: workoutData.session_date || null,
+                session_time: workoutData.session_time || null
+            };
+            sessionStorage.setItem('ffn_imported_session_datetime', JSON.stringify(importedSessionMeta));
+            console.log('📅 AI extracted session date/time:', importedSessionMeta);
+
+            // Show a notice to the user
+            setTimeout(() => {
+                const dateStr = workoutData.session_date || '';
+                const timeStr = workoutData.session_time || '';
+                const displayParts = [];
+                if (dateStr) displayParts.push(dateStr);
+                if (timeStr) displayParts.push(timeStr);
+                if (displayParts.length > 0 && window.showToast) {
+                    window.showToast(`Detected workout date: ${displayParts.join(' ')}`, 'info');
+                }
+            }, 500);
+        } else {
+            sessionStorage.removeItem('ffn_imported_session_datetime');
+        }
+
         console.log('✅ Import populated into builder');
     },
 };

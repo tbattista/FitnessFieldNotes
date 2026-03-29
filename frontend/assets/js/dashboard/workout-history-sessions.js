@@ -288,6 +288,12 @@ function createSessionEntry(session) {
         <ul class="dropdown-menu dropdown-menu-end">
           <li>
             <a class="dropdown-item" href="javascript:void(0);"
+               onclick="openEditSessionModal('${session.id}');">
+              <i class="bx bx-edit-alt me-2"></i>Edit Session
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="javascript:void(0);"
                onclick="createTemplateFromSession('${session.id}');">
               <i class="bx bx-copy-alt me-2"></i>Save as Template
             </a>

@@ -123,6 +123,60 @@ class FirestoreSessionOps:
             logger.error(f"Failed to update workout session: {str(e)}")
             return None
 
+    async def edit_completed_session(self, user_id: str, session_id: str, edit_request) -> Optional[Any]:
+        """Edit a completed workout session's metadata and/or exercises"""
+        if not self.is_available():
+            return None
+
+        try:
+            session_ref = (self.db.collection('users')
+                          .document(user_id)
+                          .collection('workout_sessions')
+                          .document(session_id))
+
+            current_doc = session_ref.get()
+            if not current_doc.exists:
+                logger.warning(f"Workout session {session_id} not found for edit")
+                return None
+
+            update_data = edit_request.model_dump(exclude_unset=True)
+
+            # Convert exercises_performed to dict format if present
+            if 'exercises_performed' in update_data and update_data['exercises_performed']:
+                update_data['exercises_performed'] = [
+                    ex.model_dump() if hasattr(ex, 'model_dump') else ex
+                    for ex in (edit_request.exercises_performed or [])
+                ]
+
+            # Convert session_notes to dict format if present
+            if 'session_notes' in update_data and update_data['session_notes']:
+                update_data['session_notes'] = [
+                    note.model_dump() if hasattr(note, 'model_dump') else note
+                    for note in (edit_request.session_notes or [])
+                ]
+
+            # Recalculate duration if both start and end times are being updated
+            current_data = current_doc.to_dict()
+            new_started = update_data.get('started_at', current_data.get('started_at'))
+            new_completed = update_data.get('completed_at', current_data.get('completed_at'))
+
+            if 'duration_minutes' not in update_data and (
+                'started_at' in update_data or 'completed_at' in update_data
+            ):
+                if new_started and new_completed:
+                    sa = new_started.replace(tzinfo=None) if hasattr(new_started, 'replace') and getattr(new_started, 'tzinfo', None) else new_started
+                    ca = new_completed.replace(tzinfo=None) if hasattr(new_completed, 'replace') and getattr(new_completed, 'tzinfo', None) else new_completed
+                    update_data['duration_minutes'] = max(1, int((ca - sa).total_seconds() / 60))
+
+            session_ref.update(update_data)
+
+            logger.info(f"Edited workout session {session_id} for user {user_id}")
+            return await self.get_workout_session(user_id, session_id)
+
+        except Exception as e:
+            logger.error(f"Failed to edit workout session: {str(e)}")
+            return None
+
     async def complete_workout_session(self, user_id: str, session_id: str, complete_request) -> Optional[Any]:
         """Finalize workout session and update exercise history"""
         if not self.is_available():
