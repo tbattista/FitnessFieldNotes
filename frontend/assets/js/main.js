@@ -50,78 +50,74 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // Initialize menu togglers and bind click on each
-  let menuToggler = document.querySelectorAll('.layout-menu-toggle, .mobile-menu-toggle');
-  menuToggler.forEach(item => {
-    item.addEventListener('click', event => {
+  // Helper to close the menu consistently
+  function closeMenu() {
+    const layoutMenu = document.getElementById('layout-menu');
+    const layoutOverlay = document.querySelector('.layout-overlay');
+    if (layoutMenu) {
+      layoutMenu.classList.remove('menu-open');
+    }
+    if (layoutOverlay) {
+      layoutOverlay.classList.remove('active');
+    }
+    document.body.classList.remove('menu-open');
+    document.body.style.overflow = '';
+  }
+
+  // Helper to open the menu consistently
+  function openMenu() {
+    const layoutMenu = document.getElementById('layout-menu');
+    const layoutOverlay = document.querySelector('.layout-overlay');
+    if (layoutMenu && layoutOverlay) {
+      layoutMenu.classList.add('menu-open');
+      layoutOverlay.classList.add('active');
+      document.body.classList.add('menu-open');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  // Use event delegation so it works for dynamically injected menu elements
+  document.addEventListener('click', event => {
+    const toggleBtn = event.target.closest('.layout-menu-toggle, .mobile-menu-toggle');
+    const overlayEl = event.target.closest('.layout-overlay');
+
+    if (toggleBtn) {
       event.preventDefault();
 
-      // On mobile, toggle slide-in menu and overlay
       if (window.Helpers.isSmallScreen()) {
         const layoutMenu = document.getElementById('layout-menu');
-        const layoutOverlay = document.querySelector('.layout-overlay');
-
-        if (layoutMenu && layoutOverlay) {
-          const isOpen = layoutMenu.classList.contains('menu-open');
-
-          if (isOpen) {
-            // Close menu
-            layoutMenu.classList.remove('menu-open');
-            layoutOverlay.classList.remove('active');
-            document.body.classList.remove('menu-open');
-          } else {
-            // Open menu
-            layoutMenu.classList.add('menu-open');
-            layoutOverlay.classList.add('active');
-            document.body.classList.add('menu-open');
-          }
+        if (layoutMenu && layoutMenu.classList.contains('menu-open')) {
+          closeMenu();
+        } else {
+          openMenu();
         }
       } else {
         // Desktop behavior: toggle sidebar visibility via CSS class
         document.documentElement.classList.toggle('desktop-menu-collapsed');
       }
-    });
-  });
+      return;
+    }
 
-  // Initialize overlay to close menu (not toggle)
-  let layoutOverlay = document.querySelector('.layout-overlay');
-  if (layoutOverlay) {
-    layoutOverlay.addEventListener('click', event => {
+    if (overlayEl) {
       event.preventDefault();
 
       if (window.Helpers.isSmallScreen()) {
-        const layoutMenu = document.getElementById('layout-menu');
-        if (layoutMenu) {
-          layoutMenu.classList.remove('menu-open');
-          layoutOverlay.classList.remove('active');
-          document.body.classList.remove('menu-open');
-          document.body.style.overflow = '';
-        }
+        closeMenu();
       } else {
         if (!window.Helpers.isCollapsed()) {
           window.Helpers.setCollapsed(true, true);
         }
       }
-    });
-  }
+      return;
+    }
 
-  // Close menu when clicking outside of it (anywhere on the page)
-  document.addEventListener('click', event => {
+    // Close menu when clicking outside of it
     if (window.Helpers.isSmallScreen()) {
       const layoutMenu = document.getElementById('layout-menu');
-      const layoutOverlay = document.querySelector('.layout-overlay');
-
       if (layoutMenu && layoutMenu.classList.contains('menu-open')) {
         const isClickInsideMenu = layoutMenu.contains(event.target);
-        const isClickOnToggle = event.target.closest('.layout-menu-toggle, .mobile-menu-toggle');
-
-        if (!isClickInsideMenu && !isClickOnToggle) {
-          layoutMenu.classList.remove('menu-open');
-          if (layoutOverlay) {
-            layoutOverlay.classList.remove('active');
-          }
-          document.body.classList.remove('menu-open');
-          document.body.style.overflow = '';
+        if (!isClickInsideMenu) {
+          closeMenu();
         }
       }
     }
