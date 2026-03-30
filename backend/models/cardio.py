@@ -112,6 +112,27 @@ class UpdateCardioSessionRequest(BaseModel):
     notes: Optional[str] = Field(None, max_length=500, description="Session notes")
 
 
+class EditCardioSessionRequest(BaseModel):
+    """Request to edit a completed cardio session (including date/time)"""
+
+    activity_type: Optional[str] = Field(None, description="Type of cardio activity")
+    activity_name: Optional[str] = Field(None, max_length=100, description="Custom session name")
+    started_at: Optional[datetime] = Field(None, description="Updated start time")
+    completed_at: Optional[datetime] = Field(None, description="Updated end time")
+    duration_minutes: Optional[int] = Field(None, ge=1, le=1440, description="Duration in minutes")
+    distance: Optional[float] = Field(None, ge=0, description="Distance covered")
+    distance_unit: Optional[str] = Field(None, description="Distance unit")
+    pace_per_unit: Optional[str] = Field(None, description="Pace string")
+    avg_heart_rate: Optional[int] = Field(None, ge=30, le=250, description="Average HR")
+    max_heart_rate: Optional[int] = Field(None, ge=30, le=250, description="Max HR")
+    calories: Optional[int] = Field(None, ge=0, le=10000, description="Calories burned")
+    rpe: Optional[int] = Field(None, ge=1, le=10, description="RPE (1-10)")
+    elevation_gain: Optional[int] = Field(None, ge=0, description="Elevation gain")
+    elevation_unit: Optional[str] = Field(None, description="Elevation unit")
+    activity_details: Optional[Dict[str, Any]] = Field(None, description="Activity-specific fields")
+    notes: Optional[str] = Field(None, max_length=500, description="Session notes")
+
+
 class CardioSessionListResponse(BaseModel):
     """Response model for cardio session list"""
 

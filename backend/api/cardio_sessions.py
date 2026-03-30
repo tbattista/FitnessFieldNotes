@@ -12,6 +12,7 @@ from ..models import (
     CardioSession,
     CreateCardioSessionRequest,
     UpdateCardioSessionRequest,
+    EditCardioSessionRequest,
     CardioSessionListResponse
 )
 from ..services.firestore_data_service import firestore_data_service
@@ -192,6 +193,50 @@ async def update_cardio_session(
     except Exception as e:
         logger.error(f"Error updating cardio session: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating cardio session: {str(e)}")
+
+
+@router.patch("/{session_id}", response_model=CardioSession)
+async def edit_cardio_session(
+    session_id: str,
+    edit_request: EditCardioSessionRequest,
+    current_user: Optional[dict] = Depends(get_current_user_optional)
+):
+    """
+    Edit a completed cardio session's metadata including date/time.
+
+    **Premium Feature**: Requires authentication
+    """
+    try:
+        user_id = extract_user_id(current_user)
+
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required"
+            )
+
+        logger.info(f"Editing cardio session {session_id} for user {user_id}")
+
+        session = await firestore_data_service.edit_cardio_session(
+            user_id,
+            session_id,
+            edit_request
+        )
+
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail="Cardio session not found"
+            )
+
+        logger.info(f"✅ Cardio session edited: {session_id}")
+        return session
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error editing cardio session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error editing cardio session: {str(e)}")
 
 
 @router.delete("/{session_id}")

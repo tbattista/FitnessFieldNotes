@@ -164,6 +164,46 @@ class FirestoreCardioOps:
             logger.error(f"Failed to update cardio session: {str(e)}")
             return None
 
+    async def edit_cardio_session(self, user_id: str, session_id: str, edit_request) -> Optional[Any]:
+        """Edit a completed cardio session including date/time fields"""
+        if not self.is_available():
+            return None
+
+        try:
+            session_ref = (self.db.collection('users')
+                          .document(user_id)
+                          .collection('cardio_sessions')
+                          .document(session_id))
+
+            current_doc = session_ref.get()
+            if not current_doc.exists:
+                logger.warning(f"Cardio session {session_id} not found for edit")
+                return None
+
+            update_data = edit_request.model_dump(exclude_unset=True)
+
+            # Recalculate duration if dates changed and duration not explicitly set
+            if 'duration_minutes' not in update_data and (
+                'started_at' in update_data or 'completed_at' in update_data
+            ):
+                current_data = current_doc.to_dict()
+                new_started = update_data.get('started_at', current_data.get('started_at'))
+                new_completed = update_data.get('completed_at', current_data.get('completed_at'))
+
+                if new_started and new_completed:
+                    sa = new_started.replace(tzinfo=None) if hasattr(new_started, 'replace') and getattr(new_started, 'tzinfo', None) else new_started
+                    ca = new_completed.replace(tzinfo=None) if hasattr(new_completed, 'replace') and getattr(new_completed, 'tzinfo', None) else new_completed
+                    update_data['duration_minutes'] = max(1, int((ca - sa).total_seconds() / 60))
+
+            session_ref.update(update_data)
+
+            logger.info(f"Edited cardio session {session_id} for user {user_id}")
+            return await self.get_cardio_session(user_id, session_id)
+
+        except Exception as e:
+            logger.error(f"Failed to edit cardio session: {str(e)}")
+            return None
+
     async def delete_cardio_session(self, user_id: str, session_id: str) -> bool:
         """Delete a cardio session"""
         if not self.is_available():

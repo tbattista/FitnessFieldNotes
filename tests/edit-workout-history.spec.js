@@ -210,3 +210,113 @@ test.describe('Edit Workout History', () => {
   });
 
 });
+
+
+test.describe('Edit Cardio Activity History', () => {
+
+  test('cardio edit functions are loaded', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+
+    const editFnExists = await page.evaluate(() => typeof window.openEditCardioSessionModal === 'function');
+    expect(editFnExists).toBe(true);
+
+    const saveFnExists = await page.evaluate(() => typeof window.saveCardioSessionEdits === 'function');
+    expect(saveFnExists).toBe(true);
+  });
+
+  test('cardio session dropdown contains Edit option', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+
+    const hasEditOption = await page.evaluate(() => {
+      if (!window.ffn) window.ffn = {};
+      if (!window.ffn.workoutHistory) window.ffn.workoutHistory = {};
+      window.ffn.workoutHistory.sessions = [{
+        id: 'cardio-test-1',
+        _sessionType: 'cardio',
+        activity_type: 'running',
+        activity_name: 'Morning Run',
+        started_at: '2026-03-28T07:00:00Z',
+        duration_minutes: 30,
+        distance: 3.1,
+        distance_unit: 'mi',
+        status: 'completed'
+      }];
+      window.ffn.workoutHistory.expandedSessions = new Set();
+      window.ffn.workoutHistory.isAllMode = true;
+      window.ffn.workoutHistory.deleteMode = false;
+      window.ffn.workoutHistory.selectedSessionIds = new Set();
+
+      if (typeof window.renderCardioHistoryEntry === 'function') {
+        const html = window.renderCardioHistoryEntry(window.ffn.workoutHistory.sessions[0]);
+        return html.includes('Edit Session');
+      }
+      return false;
+    });
+
+    expect(hasEditOption).toBe(true);
+  });
+
+  test('cardio edit modal opens with correct fields', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+
+    await page.evaluate(() => {
+      if (!window.ffn) window.ffn = {};
+      if (!window.ffn.workoutHistory) window.ffn.workoutHistory = {};
+      window.ffn.workoutHistory.sessions = [{
+        id: 'cardio-test-edit',
+        _sessionType: 'cardio',
+        activity_type: 'running',
+        activity_name: 'Tempo Run',
+        started_at: '2026-03-28T06:30:00Z',
+        completed_at: '2026-03-28T07:15:00Z',
+        duration_minutes: 45,
+        distance: 5.0,
+        distance_unit: 'mi',
+        pace_per_unit: '9:00',
+        avg_heart_rate: 155,
+        max_heart_rate: 175,
+        calories: 450,
+        rpe: 7,
+        elevation_gain: 200,
+        elevation_unit: 'ft',
+        notes: 'Felt strong',
+        status: 'completed'
+      }];
+
+      window.openEditCardioSessionModal('cardio-test-edit');
+    });
+
+    await page.waitForTimeout(500);
+
+    // Check key form fields exist and are pre-filled
+    await expect(page.locator('#editCardioActivityType')).toBeAttached();
+    await expect(page.locator('#editCardioActivityName')).toBeAttached();
+    await expect(page.locator('#editCardioStartDate')).toBeAttached();
+    await expect(page.locator('#editCardioStartTime')).toBeAttached();
+    await expect(page.locator('#editCardioDuration')).toBeAttached();
+    await expect(page.locator('#editCardioDistance')).toBeAttached();
+    await expect(page.locator('#editCardioPace')).toBeAttached();
+    await expect(page.locator('#editCardioAvgHR')).toBeAttached();
+    await expect(page.locator('#editCardioCalories')).toBeAttached();
+    await expect(page.locator('#editCardioRPE')).toBeAttached();
+    await expect(page.locator('#editCardioElevation')).toBeAttached();
+    await expect(page.locator('#editCardioNotes')).toBeAttached();
+
+    // Check pre-filled values
+    const name = await page.locator('#editCardioActivityName').inputValue();
+    expect(name).toBe('Tempo Run');
+
+    const dist = await page.locator('#editCardioDistance').inputValue();
+    expect(dist).toBe('5');
+
+    const notes = await page.locator('#editCardioNotes').inputValue();
+    expect(notes).toBe('Felt strong');
+
+    const dur = await page.locator('#editCardioDuration').inputValue();
+    expect(dur).toBe('45');
+  });
+
+});
