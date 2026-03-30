@@ -56,6 +56,9 @@ class ExercisePerformance(BaseModel):
     original_sets: Optional[str] = Field(None, description="Original template sets before modification")
     original_reps: Optional[str] = Field(None, description="Original template reps before modification")
 
+    # Calories Burned (from smartwatch or manual entry)
+    calories_burned: Optional[int] = Field(None, ge=0, description="Calories burned during this exercise (from smartwatch or manual entry)")
+
     # Exercise Notes
     notes: Optional[str] = Field(None, max_length=500, description="User notes for this exercise during session")
 

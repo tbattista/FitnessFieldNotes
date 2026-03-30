@@ -138,6 +138,33 @@ class SessionExerciseStateService {
     }
 
     /**
+     * Update calories burned for an exercise in current session
+     * @param {string} exerciseName - Exercise name
+     * @param {number|null} calories - Calories burned value (from smartwatch or manual entry)
+     */
+    updateExerciseCalories(exerciseName, calories) {
+        const currentSession = this.onGetCurrentSession();
+        if (!currentSession) {
+            console.warn('No active session to update calories');
+            return;
+        }
+
+        if (!currentSession.exercises) {
+            currentSession.exercises = {};
+        }
+
+        const existingData = currentSession.exercises[exerciseName] || {};
+        currentSession.exercises[exerciseName] = {
+            ...existingData,
+            calories_burned: calories
+        };
+
+        console.log('🔥 Updated calories burned:', exerciseName, calories);
+        this.onNotify('caloriesUpdated', { exerciseName, calories });
+        this.onPersist();
+    }
+
+    /**
      * Update activity (cardio) details in current session
      * Stores session-level overrides without modifying the workout template
      * @param {string} exerciseName - Activity name (activity_type ID)
