@@ -164,6 +164,10 @@ class WorkoutSessionService {
         return this.exerciseStateService.updatePreSessionNotes(exerciseName, notes);
     }
 
+    updateExerciseCalories(exerciseName, calories) {
+        return this.exerciseStateService.updateExerciseCalories(exerciseName, calories);
+    }
+
     updateActivityDetails(exerciseName, cardioConfig) {
         return this.exerciseStateService.updateActivityDetails(exerciseName, cardioConfig);
     }

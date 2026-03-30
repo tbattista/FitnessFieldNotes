@@ -1,0 +1,113 @@
+/**
+ * Workout Mode - Calories Burned Field
+ * Input/display for calorie tracking from smartwatch or manual entry
+ *
+ * @version 1.0.0
+ * @date 2026-03-30
+ */
+
+/* ============================================
+   CALORIES FIELD CONTAINER
+   ============================================ */
+
+.workout-calories-field {
+    display: flex;
+    align-items: center;
+}
+
+/* ============================================
+   DISPLAY MODE
+   ============================================ */
+
+.calories-display {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    transition: opacity 0.2s ease;
+}
+
+.calories-display:hover {
+    opacity: 0.7;
+}
+
+.calories-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--workout-accent);
+    line-height: 1;
+}
+
+.calories-unit {
+    font-size: 0.875rem;
+    color: var(--workout-muted);
+}
+
+/* ============================================
+   EDIT MODE
+   ============================================ */
+
+.calories-editor {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    animation: caloriesEditorFadeIn 0.2s ease;
+}
+
+@keyframes caloriesEditorFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.calories-input {
+    flex: 1;
+    max-width: 120px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--workout-border);
+    border-radius: 0.5rem;
+    background: var(--workout-surface);
+    color: var(--workout-text);
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s ease;
+    -moz-appearance: textfield;
+}
+
+.calories-input::-webkit-outer-spin-button,
+.calories-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.calories-input:focus {
+    border-color: var(--workout-accent);
+}
+
+.calories-unit-label {
+    font-size: 0.875rem;
+    color: var(--workout-muted);
+    font-weight: 500;
+}
+
+.calories-save-btn {
+    padding: 0.375rem 0.5rem;
+    line-height: 1;
+}
+
+/* ============================================
+   SECTION ICON COLOR
+   ============================================ */
+
+.workout-calories-section .workout-section-label i {
+    color: #ff6b35;
+}

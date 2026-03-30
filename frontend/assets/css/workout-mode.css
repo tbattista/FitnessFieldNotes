@@ -36,8 +36,9 @@
 @import url('workout-mode/_weight-field.css');
 @import url('workout-mode/_repssets-field.css');
 
-/* Notes and timer */
+/* Notes, calories, and timer */
 @import url('workout-mode/_notes.css');
+@import url('workout-mode/_calories-field.css');
 @import url('workout-mode/_timer.css');
 
 /* UI components */
