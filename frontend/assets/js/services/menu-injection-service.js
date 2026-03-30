@@ -65,51 +65,9 @@ class MenuInjectionService {
      */
     reinitializeMenu() {
         // Dispatch event to notify that menu content is ready
+        // main.js uses event delegation, so no need to re-attach toggle listeners
         window.dispatchEvent(new CustomEvent('menuContentInjected'));
         console.log('✅ Menu content injected, initialization event dispatched');
-
-        // Re-attach menu toggle listeners
-        // Small delay to ensure Menu class has initialized
-        setTimeout(() => {
-            const menuToggler = document.querySelectorAll('.layout-menu-toggle');
-            menuToggler.forEach(item => {
-                // Remove old listeners by cloning
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-
-                // Add fresh listener with mobile support
-                newItem.addEventListener('click', event => {
-                    event.preventDefault();
-
-                    // On mobile, toggle menu and overlay
-                    if (window.Helpers && window.Helpers.isSmallScreen && window.Helpers.isSmallScreen()) {
-                        const layoutMenu = document.getElementById('layout-menu');
-                        const layoutOverlay = document.querySelector('.layout-overlay');
-
-                        if (layoutMenu && layoutOverlay) {
-                            const isOpen = layoutMenu.classList.contains('menu-open');
-
-                            if (isOpen) {
-                                // Close menu
-                                layoutMenu.classList.remove('menu-open');
-                                layoutOverlay.classList.remove('active');
-                                document.body.style.overflow = '';
-                            } else {
-                                // Open menu
-                                layoutMenu.classList.add('menu-open');
-                                layoutOverlay.classList.add('active');
-                                document.body.style.overflow = 'hidden';
-                            }
-                        }
-                    } else {
-                        // Desktop behavior: toggle sidebar via CSS class
-                        document.documentElement.classList.toggle('desktop-menu-collapsed');
-                    }
-                });
-            });
-
-            console.log('✅ Menu toggle listeners re-attached');
-        }, 150); // Slightly longer delay to ensure Menu is fully initialized
     }
 
 
