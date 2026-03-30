@@ -630,6 +630,13 @@ function renderCardioHistoryEntry(session) {
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
           <li>
+            <a class="dropdown-item" href="javascript:void(0);"
+               onclick="openEditCardioSessionModal('${session.id}');">
+              <i class="bx bx-edit-alt me-2"></i>Edit Session
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
             <a class="dropdown-item text-danger" href="javascript:void(0);"
                onclick="enterDeleteModeWithSelection('${session.id}');">
               <i class="bx bx-trash me-2"></i>Delete

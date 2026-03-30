@@ -329,10 +329,319 @@ function formatTimeForInput(date) {
 
 
 /* ============================================
+   CARDIO SESSION EDIT MODAL
+   ============================================ */
+
+/**
+ * Open edit modal for a cardio session
+ */
+function openEditCardioSessionModal(sessionId) {
+  const session = (window.ffn.workoutHistory.sessions || []).find(s => s.id === sessionId);
+  if (!session) {
+    console.error('Cardio session not found:', sessionId);
+    return;
+  }
+
+  const modalId = 'editCardioSessionModal';
+  const registry = window.ActivityTypeRegistry;
+
+  const startDate = session.started_at ? new Date(session.started_at) : new Date();
+  const completedDate = session.completed_at ? new Date(session.completed_at) : null;
+
+  const startDateStr = formatDateForInput(startDate);
+  const startTimeStr = formatTimeForInput(startDate);
+  const completedDateStr = completedDate ? formatDateForInput(completedDate) : '';
+  const completedTimeStr = completedDate ? formatTimeForInput(completedDate) : '';
+
+  // Build activity type options
+  const allTypes = registry ? registry.getAll() : [];
+  const activityTypeOptions = allTypes.map(t =>
+    `<option value="${t.id}" ${t.id === session.activity_type ? 'selected' : ''}>${t.name}</option>`
+  ).join('');
+
+  // Get field config for current activity type
+  const fieldConfig = registry ? registry.getFieldConfig(session.activity_type) : {};
+
+  const bodyHtml = `
+    <form id="editCardioForm">
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label fw-bold">Activity Type</label>
+          <select class="form-select" id="editCardioActivityType">
+            ${activityTypeOptions}
+            ${!allTypes.find(t => t.id === session.activity_type) ? `<option value="${session.activity_type}" selected>${session.activity_type}</option>` : ''}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-bold">Activity Name</label>
+          <input type="text" class="form-control" id="editCardioActivityName"
+                 value="${escapeHtml(session.activity_name || '')}" maxlength="100"
+                 placeholder="e.g., Morning Run">
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label fw-bold">Start Date</label>
+          <input type="date" class="form-control" id="editCardioStartDate" value="${startDateStr}">
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-bold">Start Time</label>
+          <input type="time" class="form-control" id="editCardioStartTime" value="${startTimeStr}">
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label fw-bold">End Date</label>
+          <input type="date" class="form-control" id="editCardioEndDate" value="${completedDateStr}">
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-bold">End Time</label>
+          <input type="time" class="form-control" id="editCardioEndTime" value="${completedTimeStr}">
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <label class="form-label fw-bold">Duration (min)</label>
+          <input type="number" class="form-control" id="editCardioDuration"
+                 value="${session.duration_minutes || ''}" min="1" max="1440">
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-bold">Distance</label>
+          <input type="number" class="form-control" id="editCardioDistance"
+                 value="${session.distance || ''}" min="0" step="0.01">
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-bold">Unit</label>
+          <select class="form-select" id="editCardioDistanceUnit">
+            <option value="mi" ${session.distance_unit === 'mi' ? 'selected' : ''}>mi</option>
+            <option value="km" ${session.distance_unit === 'km' ? 'selected' : ''}>km</option>
+            <option value="m" ${session.distance_unit === 'm' ? 'selected' : ''}>m</option>
+            <option value="yd" ${session.distance_unit === 'yd' ? 'selected' : ''}>yd</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <label class="form-label fw-bold">Pace</label>
+          <input type="text" class="form-control" id="editCardioPace"
+                 value="${escapeHtml(session.pace_per_unit || '')}" placeholder="8:30">
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-bold">Avg HR</label>
+          <input type="number" class="form-control" id="editCardioAvgHR"
+                 value="${session.avg_heart_rate || ''}" min="30" max="250">
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-bold">Max HR</label>
+          <input type="number" class="form-control" id="editCardioMaxHR"
+                 value="${session.max_heart_rate || ''}" min="30" max="250">
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <label class="form-label fw-bold">Calories</label>
+          <input type="number" class="form-control" id="editCardioCalories"
+                 value="${session.calories || ''}" min="0" max="10000">
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-bold">RPE (1-10)</label>
+          <input type="number" class="form-control" id="editCardioRPE"
+                 value="${session.rpe || ''}" min="1" max="10">
+        </div>
+        <div class="col-4">
+          <label class="form-label fw-bold">Elevation</label>
+          <div class="input-group">
+            <input type="number" class="form-control" id="editCardioElevation"
+                   value="${session.elevation_gain || ''}" min="0">
+            <select class="form-select" id="editCardioElevationUnit" style="max-width:60px">
+              <option value="ft" ${session.elevation_unit === 'ft' ? 'selected' : ''}>ft</option>
+              <option value="m" ${session.elevation_unit === 'm' ? 'selected' : ''}>m</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Notes</label>
+        <textarea class="form-control" id="editCardioNotes" rows="2"
+                  maxlength="500" placeholder="Session notes...">${escapeHtml(session.notes || '')}</textarea>
+      </div>
+    </form>
+  `;
+
+  if (window.ffnModalManager) {
+    window.ffnModalManager.create(modalId, {
+      title: 'Edit Activity',
+      body: bodyHtml,
+      size: 'lg',
+      scrollable: true,
+      buttons: [
+        { text: 'Cancel', class: 'btn-secondary', dismiss: true },
+        {
+          text: 'Save Changes',
+          class: 'btn-primary',
+          onClick: () => saveCardioSessionEdits(sessionId, session)
+        }
+      ]
+    });
+    window.ffnModalManager.show(modalId);
+  }
+
+  // Auto-update duration when dates change
+  setTimeout(() => {
+    const els = {
+      sd: document.getElementById('editCardioStartDate'),
+      st: document.getElementById('editCardioStartTime'),
+      ed: document.getElementById('editCardioEndDate'),
+      et: document.getElementById('editCardioEndTime'),
+      dur: document.getElementById('editCardioDuration')
+    };
+
+    const updateDuration = () => {
+      if (!els.sd.value || !els.st.value || !els.ed.value || !els.et.value) return;
+      const start = new Date(`${els.sd.value}T${els.st.value}`);
+      const end = new Date(`${els.ed.value}T${els.et.value}`);
+      if (!isNaN(start) && !isNaN(end) && end > start) {
+        els.dur.value = Math.round((end - start) / 60000);
+      }
+    };
+
+    [els.sd, els.st, els.ed, els.et].forEach(el => {
+      if (el) el.addEventListener('change', updateDuration);
+    });
+  }, 100);
+}
+
+
+/**
+ * Save cardio session edits via PATCH API
+ */
+async function saveCardioSessionEdits(sessionId, originalSession) {
+  try {
+    if (!window.dataManager || !window.dataManager.isUserAuthenticated()) {
+      throw new Error('Authentication required');
+    }
+
+    const body = {};
+
+    // Gather values
+    const activityType = document.getElementById('editCardioActivityType')?.value;
+    const activityName = document.getElementById('editCardioActivityName')?.value?.trim();
+    const startDate = document.getElementById('editCardioStartDate')?.value;
+    const startTime = document.getElementById('editCardioStartTime')?.value;
+    const endDate = document.getElementById('editCardioEndDate')?.value;
+    const endTime = document.getElementById('editCardioEndTime')?.value;
+    const duration = document.getElementById('editCardioDuration')?.value;
+    const distance = document.getElementById('editCardioDistance')?.value;
+    const distanceUnit = document.getElementById('editCardioDistanceUnit')?.value;
+    const pace = document.getElementById('editCardioPace')?.value?.trim();
+    const avgHR = document.getElementById('editCardioAvgHR')?.value;
+    const maxHR = document.getElementById('editCardioMaxHR')?.value;
+    const calories = document.getElementById('editCardioCalories')?.value;
+    const rpe = document.getElementById('editCardioRPE')?.value;
+    const elevation = document.getElementById('editCardioElevation')?.value;
+    const elevationUnit = document.getElementById('editCardioElevationUnit')?.value;
+    const notes = document.getElementById('editCardioNotes')?.value?.trim();
+
+    // Compare and build delta
+    if (activityType && activityType !== originalSession.activity_type) body.activity_type = activityType;
+    if ((activityName || '') !== (originalSession.activity_name || '')) body.activity_name = activityName || null;
+
+    if (startDate && startTime) {
+      const newStart = new Date(`${startDate}T${startTime}`);
+      if (!isNaN(newStart)) body.started_at = newStart.toISOString();
+    }
+    if (endDate && endTime) {
+      const newEnd = new Date(`${endDate}T${endTime}`);
+      if (!isNaN(newEnd)) body.completed_at = newEnd.toISOString();
+    }
+
+    if (duration) {
+      const d = parseInt(duration, 10);
+      if (d !== (originalSession.duration_minutes || 0)) body.duration_minutes = d;
+    }
+    if (distance !== undefined && distance !== '') {
+      const d = parseFloat(distance);
+      if (d !== (originalSession.distance || 0)) body.distance = d;
+    }
+    if (distanceUnit && distanceUnit !== (originalSession.distance_unit || 'mi')) body.distance_unit = distanceUnit;
+    if ((pace || '') !== (originalSession.pace_per_unit || '')) body.pace_per_unit = pace || null;
+    if (avgHR) { const v = parseInt(avgHR, 10); if (v !== (originalSession.avg_heart_rate || 0)) body.avg_heart_rate = v; }
+    if (maxHR) { const v = parseInt(maxHR, 10); if (v !== (originalSession.max_heart_rate || 0)) body.max_heart_rate = v; }
+    if (calories) { const v = parseInt(calories, 10); if (v !== (originalSession.calories || 0)) body.calories = v; }
+    if (rpe) { const v = parseInt(rpe, 10); if (v !== (originalSession.rpe || 0)) body.rpe = v; }
+    if (elevation) { const v = parseInt(elevation, 10); if (v !== (originalSession.elevation_gain || 0)) body.elevation_gain = v; }
+    if (elevationUnit && elevationUnit !== (originalSession.elevation_unit || 'ft')) body.elevation_unit = elevationUnit;
+    if ((notes || '') !== (originalSession.notes || '')) body.notes = notes || null;
+
+    if (Object.keys(body).length === 0) {
+      window.ffnModalManager.hide('editCardioSessionModal');
+      if (window.showToast) window.showToast('No changes to save', 'info');
+      return;
+    }
+
+    const token = await window.dataManager.getAuthToken();
+    const response = await fetch(`/api/v3/cardio-sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to save changes');
+    }
+
+    const updatedSession = await response.json();
+    // Preserve frontend-only metadata
+    updatedSession._sessionType = 'cardio';
+
+    // Update local state
+    const sessions = window.ffn.workoutHistory.sessions;
+    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex !== -1) {
+      sessions[sessionIndex] = updatedSession;
+    }
+
+    window.ffnModalManager.hide('editCardioSessionModal');
+
+    if (typeof renderSessionHistory === 'function') {
+      renderSessionHistory();
+    }
+    calculateStatistics();
+    renderStatistics();
+
+    if (window.ffn.workoutHistory.calendarView) {
+      window.ffn.workoutHistory.calendarView.setSessionData(sessions);
+    }
+
+    if (window.showToast) window.showToast('Activity updated successfully', 'success');
+    console.log('Cardio session edited:', sessionId);
+
+  } catch (error) {
+    console.error('Error editing cardio session:', error);
+    if (window.ffnModalManager) {
+      window.ffnModalManager.alert('Error', `Failed to save changes: ${error.message}`, 'danger');
+    }
+  }
+}
+
+
+/* ============================================
    EXPORTS
    ============================================ */
 
 window.openEditSessionModal = openEditSessionModal;
 window.saveSessionEdits = saveSessionEdits;
+window.openEditCardioSessionModal = openEditCardioSessionModal;
+window.saveCardioSessionEdits = saveCardioSessionEdits;
 
-console.log('Workout History Edit module loaded (v1.0.0)');
+console.log('Workout History Edit module loaded (v1.1.0)');
