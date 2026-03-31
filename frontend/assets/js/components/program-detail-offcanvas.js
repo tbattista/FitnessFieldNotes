@@ -58,12 +58,15 @@ class ProgramDetailOffcanvas {
 
         const offcanvasHTML = `
             <div class="offcanvas offcanvas-bottom offcanvas-bottom-base offcanvas-desktop-wide" tabindex="-1" id="${this.offcanvasId}" aria-labelledby="${this.offcanvasId}Label" data-bs-scroll="false">
-                <div class="offcanvas-header">
-                    <h5 class="offcanvas-title" id="${this.offcanvasId}Label">
+                <div class="offcanvas-header flex-column">
+                    <div class="offcanvas-grab-bar"></div>
+                    <div class="d-flex align-items-center justify-content-between w-100">
+                    <h5 class="offcanvas-title mb-0" id="${this.offcanvasId}Label">
                         <i class="bx bx-folder me-2"></i>
                         <span id="programDetailName">Program Details</span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="offcanvas-body" id="programDetailBody">
                     <!-- Loading state -->
@@ -283,13 +286,13 @@ class ProgramDetailOffcanvas {
 
         let html = `
             <div class="program-workouts-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">
                         <i class="bx bx-list-ol me-1"></i>
                         Workouts
                     </h6>
-                    <button class="btn btn-sm btn-outline-primary" id="addWorkoutsBtn">
-                        <i class="bx bx-plus me-1"></i>Add
+                    <button class="btn btn-sm btn-primary" id="addWorkoutsBtn">
+                        <i class="bx bx-plus-circle me-1"></i>Add Workouts
                     </button>
                 </div>
         `;
@@ -300,19 +303,19 @@ class ProgramDetailOffcanvas {
                     <i class="bx bx-folder-open display-4 text-muted mb-2"></i>
                     <p class="text-muted mb-2">No workouts in this program yet</p>
                     <button class="btn btn-primary btn-sm" id="addFirstWorkoutBtn">
-                        <i class="bx bx-plus me-1"></i>Add Workouts
+                        <i class="bx bx-plus-circle me-1"></i>Add Workouts
                     </button>
                 </div>
             `;
         } else {
             html += `
+                <small class="text-muted d-flex align-items-center gap-1 mb-2">
+                    <i class="bx bx-info-circle"></i>
+                    Hold and drag to reorder
+                </small>
                 <div class="workout-list-sortable" id="programWorkoutList">
                     ${programWorkouts.map((pw, index) => this._renderWorkoutChip(pw, index)).join('')}
                 </div>
-                <p class="text-muted small mt-2 mb-0">
-                    <i class="bx bx-move-vertical me-1"></i>
-                    Drag to reorder
-                </p>
             `;
         }
 
@@ -332,8 +335,9 @@ class ProgramDetailOffcanvas {
         return `
             <div class="workout-chip" data-workout-id="${programWorkout.workout_id}" data-order="${index}">
                 <div class="workout-chip-handle">
-                    <i class="bx bx-menu"></i>
+                    <i class="bx bx-grid-vertical"></i>
                 </div>
+                <span class="workout-chip-number">${index + 1}</span>
                 <div class="workout-chip-content">
                     <span class="workout-chip-name">${this._escapeHtml(workoutName)}</span>
                     <span class="workout-chip-meta text-muted small">

@@ -548,6 +548,29 @@
 }
 
 /* ============================================
+   PROGRAM CARD FOOTER (Tap-to-edit cue)
+   ============================================ */
+
+.program-card-footer {
+    opacity: 0.45;
+    transition: opacity 0.2s ease;
+}
+
+.program-card:hover .program-card-footer {
+    opacity: 0.85;
+}
+
+.program-card-footer .bx-chevron-right {
+    font-size: 1rem;
+    vertical-align: middle;
+    transition: transform 0.2s ease;
+}
+
+.program-card:hover .program-card-footer .bx-chevron-right {
+    transform: translateX(2px);
+}
+
+/* ============================================
    LOADING & EMPTY STATES
    ============================================ */
 
