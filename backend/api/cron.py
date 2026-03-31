@@ -84,3 +84,37 @@ async def trigger_daily_workout(
     except Exception as e:
         logger.error(f"❌ Daily workout generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/seed-demo")
+async def trigger_seed_demo(
+    token: str = Query(..., description="Cron secret token"),
+) -> Dict[str, Any]:
+    """
+    Re-seed the demo user account with realistic workout data.
+    Used for automated screenshots and build-in-public content.
+
+    Call with: POST /api/cron/seed-demo?token=YOUR_SECRET
+    """
+    _verify_cron_secret(token)
+
+    try:
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent.parent
+        sys.path.insert(0, str(project_root))
+
+        from backend.scripts.seed_demo_user import seed_demo_user
+        result = seed_demo_user(dry_run=False)
+
+        logger.info(f"Demo user seeded: {result.get('message', 'done')}")
+        return {
+            'success': True,
+            **result,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Demo user seeding failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -67,6 +67,7 @@
 
     <!-- Firebase SDK Loader (Centralized) -->
     <script type="module" src="/static/assets/js/firebase-loader.js"></script>
+    <script src="/static/assets/js/services/demo-data-seeder.js"></script>
 
     <!-- Matomo -->
     <script>
@@ -446,16 +447,17 @@
             let hasLoaded = false;
             const checkAuthAndLoad = async () => {
                 const user = window.firebaseAuth?.currentUser;
+                const hasDemo = window.DemoDataSeeder?.hasDemoData();
 
-                if (user && !hasLoaded) {
+                if ((user || hasDemo) && !hasLoaded) {
                     hasLoaded = true;
                     document.getElementById('authRequiredState').style.display = 'none';
                     document.getElementById('activityLogContent').style.display = 'block';
-                    console.log('✅ User authenticated, initializing activity log');
+                    console.log('✅ Initializing activity log' + (hasDemo && !user ? ' (demo mode)' : ''));
                     if (window.initActivityLog) {
                         await window.initActivityLog();
                     }
-                } else if (!user) {
+                } else if (!user && !hasDemo) {
                     document.getElementById('authRequiredState').style.display = 'block';
                     document.getElementById('activityLogContent').style.display = 'none';
                 }

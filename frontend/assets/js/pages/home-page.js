@@ -58,11 +58,17 @@
         // Check auth state
         const checkAuthAndRender = async () => {
             const user = window.firebaseAuth.currentUser;
+            const hasDemo = window.DemoDataSeeder?.hasDemoData();
             updateLandingLayout(!!user);
 
-            if (user) {
+            if (user || hasDemo) {
                 authenticatedDashboard.style.display = 'block';
                 unauthenticatedWelcome.style.display = 'none';
+                // Show demo banner for anonymous visitors with sample data
+                const demoBanner = document.getElementById('demoBanner');
+                if (demoBanner) {
+                    demoBanner.style.display = (!user && hasDemo) ? '' : 'none';
+                }
                 await loadHomeSections();
             } else {
                 authenticatedDashboard.style.display = 'none';
@@ -284,6 +290,18 @@
     // --- Weekly Progress ---
     async function loadSessions() {
         try {
+            // For anonymous users with demo data, load from localStorage
+            if (!window.firebaseAuth?.currentUser) {
+                const localSessions = JSON.parse(localStorage.getItem('ffn_completed_sessions') || '[]');
+                return localSessions
+                    .map(s => ({ ...s, _sessionType: 'strength' }))
+                    .sort((a, b) => {
+                        const dateA = new Date(a.completed_at || a.started_at || a.created_at);
+                        const dateB = new Date(b.completed_at || b.started_at || b.created_at);
+                        return dateB - dateA;
+                    });
+            }
+
             const token = await window.dataManager.getAuthToken();
             const [workoutResponse, cardioResponse] = await Promise.all([
                 fetch('/api/v3/workout-sessions?status=completed&page_size=100&sort=desc', {

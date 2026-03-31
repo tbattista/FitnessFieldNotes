@@ -145,6 +145,7 @@
     
     <!-- Firebase SDK Loader (Centralized) -->
     <script type="module" src="/static/assets/js/firebase-loader.js"></script>
+    <script src="/static/assets/js/services/demo-data-seeder.js"></script>
 
     <!-- Matomo -->
     <script>
@@ -510,6 +511,17 @@
               <!-- ============================================ -->
               <!-- MOBILE VIEW (hidden on desktop via CSS)      -->
               <!-- ============================================ -->
+              <!-- Demo Mode Banner (shown for anonymous visitors with sample data, outside data-view) -->
+              <div id="demoBanner" class="alert alert-info alert-dismissible mb-3" role="alert" style="display: none;">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bx bx-info-circle fs-5"></i>
+                  <div>
+                    <strong>Demo Mode</strong> — You're viewing sample data. <a href="#" class="alert-link" data-bs-toggle="modal" data-bs-target="#loginModal">Sign in</a> to start tracking your own workouts.
+                  </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+
               <div data-view="mobile">
 
               <!-- Alert Container -->
