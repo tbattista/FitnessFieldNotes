@@ -251,7 +251,7 @@ class SessionLifecycleApiService {
      * @param {number|null} durationMinutes - Optional manual duration for Quick Log mode
      * @returns {Promise<Object>} Completed session object
      */
-    async completeSession(exercisesPerformed, durationMinutes = null) {
+    async completeSession(exercisesPerformed, durationMinutes = null, sessionCalories = null) {
         const currentSession = this.onGetCurrentSession();
         try {
             if (!currentSession || !currentSession.id) {
@@ -275,6 +275,7 @@ class SessionLifecycleApiService {
                     completed_at: completedAt.toISOString(),
                     duration_minutes: actualDuration,
                     exercises_performed: exercisesPerformed,
+                    calories: sessionCalories,
                     status: 'completed'
                 };
 
@@ -325,6 +326,11 @@ class SessionLifecycleApiService {
                 console.log('\u23f1\ufe0f Including manual duration for Quick Log:', durationMinutes, 'minutes');
             }
 
+            if (sessionCalories !== null && sessionCalories > 0) {
+                requestBody.calories = sessionCalories;
+                console.log('🔥 Including session calories:', sessionCalories);
+            }
+
             const response = await this._fetchWithRetry(url, {
                 method: 'POST',
                 headers: {
@@ -337,7 +343,7 @@ class SessionLifecycleApiService {
             // Handle session not found - create new session and complete it
             if (response.status === 404) {
                 console.warn('\u26a0\ufe0f Session not found in database, creating new session to save workout data...');
-                return await this._createAndCompleteSession(exercisesPerformed, durationMinutes, token);
+                return await this._createAndCompleteSession(exercisesPerformed, durationMinutes, token, sessionCalories);
             }
 
             if (!response.ok) {
@@ -368,13 +374,13 @@ class SessionLifecycleApiService {
      * Create a new session and immediately complete it (fallback for orphaned localStorage sessions)
      * @private
      */
-    async _createAndCompleteSession(exercisesPerformed, durationMinutes, token) {
+    async _createAndCompleteSession(exercisesPerformed, durationMinutes, token, sessionCalories = null) {
         console.log('\ud83d\udd04 Creating new session to preserve workout data...');
 
         // Strategy 1: Try atomic create-and-complete endpoint
         try {
             const atomicResult = await this._tryAtomicCreateAndComplete(
-                exercisesPerformed, durationMinutes, token
+                exercisesPerformed, durationMinutes, token, sessionCalories
             );
             if (atomicResult) return atomicResult;
         } catch (error) {
@@ -382,14 +388,14 @@ class SessionLifecycleApiService {
         }
 
         // Strategy 2: Two-step with retry
-        return await this._createThenCompleteWithRetry(exercisesPerformed, durationMinutes, token);
+        return await this._createThenCompleteWithRetry(exercisesPerformed, durationMinutes, token, sessionCalories);
     }
 
     /**
      * Try atomic create-and-complete endpoint (single API call)
      * @private
      */
-    async _tryAtomicCreateAndComplete(exercisesPerformed, durationMinutes, token) {
+    async _tryAtomicCreateAndComplete(exercisesPerformed, durationMinutes, token, sessionCalories = null) {
         const currentSession = this.onGetCurrentSession();
         const sessionNotes = this.onGetSessionNotes();
         const preSessionOrder = this.onGetPreSessionOrder();
@@ -422,6 +428,10 @@ class SessionLifecycleApiService {
 
         if (durationMinutes !== null && durationMinutes > 0) {
             requestBody.duration_minutes = durationMinutes;
+        }
+
+        if (sessionCalories !== null && sessionCalories > 0) {
+            requestBody.calories = sessionCalories;
         }
 
         console.log('\ud83d\ude80 Trying atomic create-and-complete endpoint...');
@@ -457,7 +467,7 @@ class SessionLifecycleApiService {
      * Two-step create then complete with retry and exponential backoff
      * @private
      */
-    async _createThenCompleteWithRetry(exercisesPerformed, durationMinutes, token) {
+    async _createThenCompleteWithRetry(exercisesPerformed, durationMinutes, token, sessionCalories = null) {
         const MAX_RETRIES = 3;
         const BASE_DELAY_MS = 150;
         const currentSession = this.onGetCurrentSession();
@@ -509,6 +519,10 @@ class SessionLifecycleApiService {
 
         if (durationMinutes !== null && durationMinutes > 0) {
             requestBody.duration_minutes = durationMinutes;
+        }
+
+        if (sessionCalories !== null && sessionCalories > 0) {
+            requestBody.calories = sessionCalories;
         }
 
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {

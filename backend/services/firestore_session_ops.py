@@ -251,6 +251,11 @@ class FirestoreSessionOps:
                 completion_data['exercise_order'] = complete_request.exercise_order
                 logger.info(f"Saving custom exercise order with {len(complete_request.exercise_order)} exercises")
 
+            # Save session-level calories if provided
+            if hasattr(complete_request, 'calories') and complete_request.calories is not None:
+                completion_data['calories'] = complete_request.calories
+                logger.info(f"Saving session calories: {complete_request.calories}")
+
             # Update session
             session_ref.update(completion_data)
 
@@ -327,7 +332,8 @@ class FirestoreSessionOps:
                     for note in (request.session_notes or [])
                 ],
                 exercise_order=request.exercise_order,
-                duration_minutes=duration_minutes
+                duration_minutes=duration_minutes,
+                calories=getattr(request, 'calories', None)
             )
 
             # Single write with completed state

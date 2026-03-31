@@ -21,9 +21,48 @@ async function loadWorkoutMode(page) {
   await page.waitForTimeout(3000);
 }
 
-test.describe('Calories Burned Field', () => {
+test.describe('Calories Field - Session Level', () => {
 
-  test('updateExerciseCalories method exists on session service', async ({ page }) => {
+  test('calories field is NOT rendered in exercise cards', async ({ page }) => {
+    await loadWorkoutMode(page);
+
+    // Expand the first exercise card
+    const firstCard = page.locator('.workout-card').first();
+    await firstCard.click();
+    await page.waitForTimeout(500);
+
+    // Calories section should NOT exist on exercise cards
+    const caloriesSection = firstCard.locator('.workout-calories-section');
+    await expect(caloriesSection).toHaveCount(0);
+  });
+
+  test('calories input appears in finish workout offcanvas', async ({ page }) => {
+    await loadWorkoutMode(page);
+
+    // Start session if not already started
+    const startBtn = page.locator('#startSessionBtn, [data-action="start-session"]');
+    if (await startBtn.isVisible()) {
+      await startBtn.click();
+      await page.waitForTimeout(1000);
+    }
+
+    // Click finish workout button
+    const finishBtn = page.locator('#finishWorkoutBtn, [data-action="finish-workout"], button:has-text("Finish")');
+    if (await finishBtn.isVisible()) {
+      await finishBtn.click();
+      await page.waitForTimeout(1000);
+    }
+
+    // Check for the calories input in the offcanvas
+    const caloriesInput = page.locator('#sessionCaloriesInput');
+    await expect(caloriesInput).toBeVisible();
+
+    // Verify it accepts numeric input
+    await caloriesInput.fill('350');
+    await expect(caloriesInput).toHaveValue('350');
+  });
+
+  test('updateExerciseCalories method still exists on session service', async ({ page }) => {
     await loadWorkoutMode(page);
 
     const hasMethod = await page.evaluate(() => {
@@ -31,68 +70,5 @@ test.describe('Calories Burned Field', () => {
       return typeof sessionService?.updateExerciseCalories === 'function';
     });
     expect(hasMethod).toBe(true);
-  });
-
-  test('calories field is rendered in exercise cards', async ({ page }) => {
-    await loadWorkoutMode(page);
-
-    // Expand the first exercise card
-    const firstCard = page.locator('.workout-card').first();
-    await firstCard.click();
-    await page.waitForTimeout(500);
-
-    // Check that the calories section exists
-    const caloriesSection = firstCard.locator('.workout-calories-section');
-    await expect(caloriesSection).toBeVisible();
-
-    // Check section label
-    const label = caloriesSection.locator('.workout-section-label');
-    await expect(label).toContainText('Calories Burned');
-  });
-
-  test('calories value is saved to session state', async ({ page }) => {
-    await loadWorkoutMode(page);
-
-    const exerciseName = await page.evaluate(() => {
-      const workout = JSON.parse(localStorage.getItem('gym_workouts') || '[]')[0];
-      return workout?.exercise_groups?.[0]?.exercises?.a || null;
-    });
-
-    expect(exerciseName).toBeTruthy();
-
-    // Save calories via JS API
-    const result = await page.evaluate(({ name }) => {
-      const sessionService = window.workoutModeController?.sessionService;
-      if (!sessionService) return { error: 'no sessionService' };
-
-      sessionService.updateExerciseCalories(name, 250);
-      const data = sessionService.getExerciseWeight(name);
-      return { calories: data?.calories_burned };
-    }, { name: exerciseName });
-
-    expect(result.calories).toBe(250);
-  });
-
-  test('calories field shows display and edit modes', async ({ page }) => {
-    await loadWorkoutMode(page);
-
-    // Expand the first exercise card
-    const firstCard = page.locator('.workout-card').first();
-    await firstCard.click();
-    await page.waitForTimeout(500);
-
-    const caloriesField = firstCard.locator('.workout-calories-field').first();
-
-    // Display mode should be visible, editor hidden
-    await expect(caloriesField.locator('.calories-display')).toBeVisible();
-    await expect(caloriesField.locator('.calories-editor')).toBeHidden();
-
-    // Click display to enter edit mode
-    await caloriesField.locator('.calories-display').click();
-    await page.waitForTimeout(300);
-
-    // Editor should now be visible
-    await expect(caloriesField.locator('.calories-editor')).toBeVisible();
-    await expect(caloriesField.locator('.calories-display')).toBeHidden();
   });
 });

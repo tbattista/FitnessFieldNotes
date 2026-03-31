@@ -35,8 +35,7 @@ class ExerciseCardRenderer {
         const reps = exerciseData?.target_reps || preSessionEdit?.target_reps || group.reps || '8-12';
         const rest = exerciseData?.rest || preSessionEdit?.rest || group.rest || '60s';
         const notes = exerciseData?.notes || group.notes || '';
-        const caloriesBurned = exerciseData?.calories_burned || '';
-        
+
         const restSeconds = this._parseRestTime(rest);
         
         // Get exercise history
@@ -172,12 +171,6 @@ class ExerciseCardRenderer {
                             </div>
                         </div>
                         
-                        <!-- Calories Burned Section -->
-                        <div class="workout-section workout-calories-section">
-                            <div class="workout-section-label"><i class="bx bx-flame"></i>Calories Burned</div>
-                            ${this._renderCaloriesField(caloriesBurned, mainExercise)}
-                        </div>
-
                         <!-- Weight History -->
                         ${lastWeight ? `
                             <div class="workout-section">
@@ -829,33 +822,6 @@ class ExerciseCardRenderer {
         `;
     }
     
-    /**
-     * Render calories burned field
-     * @private
-     */
-    _renderCaloriesField(calories, exerciseName) {
-        const displayCalories = calories || '—';
-
-        return `
-            <div class="workout-calories-field" data-calories="${calories || 0}" data-exercise-name="${this._escapeHtml(exerciseName)}">
-                <!-- Display Mode -->
-                <div class="calories-display" onclick="event.stopPropagation(); const editor = this.nextElementSibling; this.style.display='none'; editor.style.display='flex'; editor.querySelector('input').focus();">
-                    <span class="calories-value">${displayCalories}</span>
-                    ${calories ? '<span class="calories-unit">cal</span>' : ''}
-                </div>
-
-                <!-- Edit Mode -->
-                <div class="calories-editor" style="display: none;">
-                    <input type="number" class="calories-input" value="${calories || ''}" step="1" min="0" max="9999" inputmode="numeric" placeholder="0" onclick="event.stopPropagation();" />
-                    <span class="calories-unit-label">cal</span>
-                    <button class="btn btn-sm btn-success calories-save-btn" type="button" onclick="event.stopPropagation(); const input = this.parentElement.querySelector('.calories-input'); const val = parseInt(input.value) || null; window.workoutSessionService?.updateExerciseCalories?.('${this._escapeHtml(exerciseName)}', val); const field = this.closest('.workout-calories-field'); const display = field.querySelector('.calories-display'); const valSpan = display.querySelector('.calories-value'); valSpan.textContent = val || '—'; const unitSpan = display.querySelector('.calories-unit'); if(val) { if(!unitSpan) { display.insertAdjacentHTML('beforeend', '<span class=\\'calories-unit\\'>cal</span>'); } } else if(unitSpan) { unitSpan.remove(); } field.dataset.calories = val || 0; this.parentElement.style.display='none'; display.style.display='flex';">
-                        <i class="bx bx-check"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
     /**
      * Escape HTML to prevent XSS
      * @private
