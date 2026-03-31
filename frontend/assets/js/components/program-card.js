@@ -73,6 +73,7 @@ class ProgramCard {
                 ${this._renderStats()}
                 ${this._renderDescription()}
                 ${this._renderTags()}
+                ${this._renderFooter()}
             </div>
         `;
 
@@ -282,6 +283,19 @@ class ProgramCard {
                     `<span class="badge bg-label-primary badge-sm">${this._escapeHtml(tag)}</span>`
                 ).join('')}
                 ${tags.length > 2 ? `<span class="badge bg-label-secondary badge-sm">+${tags.length - 2}</span>` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * Render footer with tap-to-edit cue
+     */
+    _renderFooter() {
+        if (this.config.deleteMode) return '';
+
+        return `
+            <div class="program-card-footer mt-auto pt-2 d-flex align-items-center justify-content-end">
+                <span class="text-muted small">Tap to edit <i class="bx bx-chevron-right"></i></span>
             </div>
         `;
     }

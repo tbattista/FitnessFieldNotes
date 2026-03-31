@@ -30,6 +30,19 @@
 }
 
 /* ============================================
+   GRAB BAR (bottom sheet affordance)
+   ============================================ */
+
+.offcanvas-grab-bar {
+    width: 32px;
+    height: 4px;
+    background: var(--bs-secondary);
+    opacity: 0.3;
+    border-radius: 2px;
+    margin: 0 auto 0.5rem;
+}
+
+/* ============================================
    PROGRAM METADATA
    ============================================ */
 
@@ -83,11 +96,29 @@
     background: var(--bs-gray-200);
 }
 
+/* Position number badge */
+.workout-chip-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(var(--bs-primary-rgb), 0.1);
+    color: var(--bs-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
 /* Drag handle */
 .workout-chip-handle {
     cursor: grab;
     color: var(--bs-secondary);
     padding: 0.25rem;
+    padding-right: 0.5rem;
+    margin-right: 0.25rem;
+    border-right: 1px solid var(--bs-border-color);
     touch-action: none;
 }
 
@@ -163,6 +194,19 @@
     background: rgba(var(--bs-primary-rgb), 0.05);
 }
 
+/* Add Workouts button - touch friendly */
+#addWorkoutsBtn {
+    min-height: 36px;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Progress section divider */
+#programDetailProgress:not(:empty) {
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
 /* ============================================
    EMPTY STATE
    ============================================ */
@@ -223,6 +267,14 @@
 }
 
 [data-bs-theme="dark"] .program-detail-meta {
+    border-bottom-color: var(--gs-gray-200);
+}
+
+[data-bs-theme="dark"] .workout-chip-handle {
+    border-right-color: var(--gs-gray-200);
+}
+
+[data-bs-theme="dark"] #programDetailProgress:not(:empty) {
     border-bottom-color: var(--gs-gray-200);
 }
 
