@@ -133,3 +133,20 @@ async def get_review_token(payload: Dict[str, Any]):
         raise HTTPException(status_code=500, detail="Could not generate review token")
 
     return {"token": custom_token}
+
+
+@router.post("/demo-token")
+async def get_demo_token():
+    """Get a Firebase custom token for the shared demo account.
+    Auto-signs anonymous visitors into a pre-populated demo user
+    so they can explore the app with real data."""
+    demo_uid = os.getenv("REVIEWER_UID", "reviewer-demo-user")
+    custom_token = await auth_service.create_custom_token(
+        demo_uid,
+        {"demo": True, "displayName": "Demo User"}
+    )
+
+    if not custom_token:
+        raise HTTPException(status_code=500, detail="Could not generate demo token")
+
+    return {"token": custom_token}

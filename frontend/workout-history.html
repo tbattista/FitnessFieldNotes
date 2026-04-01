@@ -86,7 +86,6 @@
     
     <!-- Firebase SDK Loader (Centralized) -->
     <script type="module" src="/static/assets/js/firebase-loader.js"></script>
-    <script src="/static/assets/js/services/demo-data-seeder.js"></script>
 
     <!-- Matomo -->
     <script>
@@ -584,16 +583,15 @@
             const checkAuthAndLoad = async () => {
                 // Check Firebase directly - this is the source of truth
                 const user = window.firebaseAuth?.currentUser;
-                const hasDemo = window.DemoDataSeeder?.hasDemoData();
-                console.log('📄 [DEBUG] checkAuthAndLoad - user:', user?.email || 'null', 'hasLoaded:', hasLoaded, 'hasDemo:', hasDemo);
+                console.log('📄 [DEBUG] checkAuthAndLoad - user:', user?.email || 'null', 'hasLoaded:', hasLoaded);
 
-                if ((user || hasDemo) && !hasLoaded) {
+                if (user && !hasLoaded) {
                     hasLoaded = true;
-                    console.log('✅ Loading workout history' + (hasDemo && !user ? ' (demo mode)' : ''));
+                    console.log('✅ User authenticated, loading workout history');
                     if (window.initWorkoutHistory) {
                         await window.initWorkoutHistory();
                     }
-                } else if (!user && !hasDemo) {
+                } else if (!user) {
                     console.log('⏭️ User not authenticated, waiting for auth state change');
                 }
             };

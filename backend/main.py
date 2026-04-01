@@ -100,6 +100,8 @@ async def serve_sitemap():
     urls = [
         f'  <url><loc>{base_url}/</loc><priority>1.0</priority><changefreq>weekly</changefreq></url>',
         f'  <url><loc>{base_url}/public-workouts</loc><priority>0.8</priority><changefreq>daily</changefreq></url>',
+        f'  <url><loc>{base_url}/privacy.html</loc><priority>0.3</priority><changefreq>yearly</changefreq></url>',
+        f'  <url><loc>{base_url}/terms.html</loc><priority>0.3</priority><changefreq>yearly</changefreq></url>',
     ]
 
     # Add public workouts dynamically
@@ -395,6 +397,28 @@ async def serve_exercise_history_demo():
             status_code=404
         )
 
+
+@app.get("/privacy.html", response_class=HTMLResponse)
+async def serve_privacy_page():
+    try:
+        with open("frontend/privacy.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Privacy Policy not found</h1><p>Please ensure frontend/privacy.html exists</p>",
+            status_code=404
+        )
+
+@app.get("/terms.html", response_class=HTMLResponse)
+async def serve_terms_page():
+    try:
+        with open("frontend/terms.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Terms of Service not found</h1><p>Please ensure frontend/terms.html exists</p>",
+            status_code=404
+        )
 
 @app.get("/launch")
 @app.get("/launch.html")

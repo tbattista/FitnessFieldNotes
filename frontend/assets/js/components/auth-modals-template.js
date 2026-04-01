@@ -103,7 +103,7 @@ function getAuthModalsHTML() {
                                     <div class="mb-3 form-check">
                                         <input type="checkbox" class="form-check-input" id="agreeTerms" required>
                                         <label class="form-check-label" for="agreeTerms">
-                                            I agree to the <a href="#" class="text-decoration-none">Terms of Service</a>
+                                            I agree to the <a href="/terms.html" target="_blank" class="text-decoration-none">Terms of Service</a> and <a href="/privacy.html" target="_blank" class="text-decoration-none">Privacy Policy</a>
                                         </label>
                                         <div class="invalid-feedback">You must agree to the terms.</div>
                                     </div>
