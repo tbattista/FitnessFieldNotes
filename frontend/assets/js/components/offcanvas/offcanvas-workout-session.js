@@ -192,6 +192,18 @@ export function createCompleteWorkout(data, onConfirm) {
                         <span class="stat-value">${totalExercises}</span>
                         <span>exercise${totalExercises !== 1 ? 's' : ''}</span>
                     </div>
+                    <div class="session-stat editable" title="Click to enter calories burned">
+                        <i class="bx bx-flame"></i>
+                        <input type="number"
+                               id="sessionCaloriesInput"
+                               value=""
+                               placeholder="0"
+                               min="0"
+                               max="9999"
+                               inputmode="numeric">
+                        <span>cal</span>
+                        <i class="bx bx-pencil edit-hint"></i>
+                    </div>
                 </div>
 
                 ${isBuildMode ? `
@@ -264,6 +276,16 @@ export function createCompleteWorkout(data, onConfirm) {
                     }
                 }
 
+                // Collect calories
+                let sessionCalories = null;
+                const caloriesInput = document.getElementById('sessionCaloriesInput');
+                if (caloriesInput && caloriesInput.value) {
+                    sessionCalories = parseInt(caloriesInput.value, 10);
+                    if (isNaN(sessionCalories) || sessionCalories < 0) {
+                        sessionCalories = null;
+                    }
+                }
+
                 // Build & Log: collect template save preference
                 const templateOpts = {};
                 if (isBuildMode && saveToggle?.checked) {
@@ -272,7 +294,7 @@ export function createCompleteWorkout(data, onConfirm) {
                     templateOpts.templateName = nameInput?.value?.trim() || workoutName;
                 }
 
-                await onConfirm(durationMinutes, templateOpts);
+                await onConfirm(durationMinutes, templateOpts, sessionCalories);
                 offcanvas.hide();
             } catch (error) {
                 confirmBtn.disabled = false;

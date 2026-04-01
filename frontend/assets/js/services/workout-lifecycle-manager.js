@@ -228,7 +228,7 @@ class WorkoutLifecycleManager {
             totalExercises,
             isQuickLog: false,
             isBuildMode
-        }, async (durationMinutes, templateOpts = {}) => {
+        }, async (durationMinutes, templateOpts = {}, sessionCalories = null) => {
             try {
                 // Collect exercise data
                 const exercisesPerformed = this.onCollectExerciseData();
@@ -236,7 +236,8 @@ class WorkoutLifecycleManager {
                 // Complete session (pass durationMinutes for Quick Log mode)
                 const completedSession = await this.sessionService.completeSession(
                     exercisesPerformed,
-                    durationMinutes  // null for timed sessions, number for Quick Log
+                    durationMinutes,  // null for timed sessions, number for Quick Log
+                    sessionCalories   // session-level calories from finish offcanvas
                 );
 
                 // Update template weights

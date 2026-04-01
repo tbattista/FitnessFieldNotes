@@ -124,8 +124,8 @@ class WorkoutSessionService {
         return this.lifecycleApiService.startSession(workoutId, workoutName, workoutData);
     }
 
-    async completeSession(exercisesPerformed, durationMinutes = null) {
-        return this.lifecycleApiService.completeSession(exercisesPerformed, durationMinutes);
+    async completeSession(exercisesPerformed, durationMinutes = null, sessionCalories = null) {
+        return this.lifecycleApiService.completeSession(exercisesPerformed, durationMinutes, sessionCalories);
     }
 
     // ============================================

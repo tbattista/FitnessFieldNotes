@@ -115,6 +115,7 @@ class WorkoutSession(BaseModel):
         description="List of exercises performed in this session"
     )
     notes: Optional[str] = Field(None, max_length=500, description="Session notes")
+    calories: Optional[int] = Field(None, ge=0, le=99999, description="Total calories burned during session")
 
     # Session Notes (inline notes interspersed with exercises)
     session_notes: List[SessionNote] = Field(
@@ -258,6 +259,12 @@ class CompleteSessionRequest(BaseModel):
         le=600,
         description="Manual duration for quick_log sessions (in minutes). If provided, overrides auto-calculated duration."
     )
+    calories: Optional[int] = Field(
+        None,
+        ge=0,
+        le=99999,
+        description="Total calories burned during session (from user input at session completion)"
+    )
 
     @field_validator('exercise_order', mode='before')
     @classmethod
@@ -307,6 +314,12 @@ class CreateAndCompleteSessionRequest(BaseModel):
         ge=1,
         le=600,
         description="Manual duration for quick_log sessions (in minutes)"
+    )
+    calories: Optional[int] = Field(
+        None,
+        ge=0,
+        le=99999,
+        description="Total calories burned during session"
     )
 
     @field_validator('exercise_order', mode='before')
