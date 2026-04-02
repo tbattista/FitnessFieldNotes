@@ -15,7 +15,7 @@ test.describe('Spin Ride Page', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Page title visible
-    await expect(page.locator('h4').first()).toContainText('Spin Ride');
+    await expect(page.locator('h5').first()).toContainText('Spin Ride');
 
     // Duration buttons visible
     const buttons = page.locator('.spin-duration-btn');
@@ -71,12 +71,14 @@ test.describe('Spin Ride Page', () => {
     expect(selectVisible || authVisible).toBeTruthy();
   });
 
-  test('back link navigates to dashboard', async ({ page }) => {
+  test('page header matches standard layout', async ({ page }) => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');
 
-    const backLink = page.getByRole('link', { name: 'Back to Dashboard' });
-    await expect(backLink).toBeVisible();
+    // Left-justified h5 header with icon, matching other pages
+    const header = page.locator('h5').first();
+    await expect(header).toContainText('Spin Ride');
+    await expect(page.locator('.bx-cycling')).toBeAttached();
   });
 
   test('ride timer UI elements exist but are hidden initially', async ({ page }) => {
