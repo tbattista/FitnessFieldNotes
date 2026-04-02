@@ -141,6 +141,7 @@ class SpinRideGenerator:
             )
 
             response_text = response.text.strip()
+            logger.info(f"Gemini spin ride response length: {len(response_text)} chars")
             parsed = json.loads(response_text)
 
             # Validate and fix segment timing
@@ -149,44 +150,57 @@ class SpinRideGenerator:
 
         except json.JSONDecodeError as e:
             logger.error(f"Spin ride generator: AI returned invalid JSON: {e}")
+            logger.error(f"Raw response: {response_text[:500] if 'response_text' in dir() else 'N/A'}")
             raise ValueError("AI returned an unexpected format — please try again")
         except Exception as e:
-            logger.error(f"Spin ride generator error: {e}")
+            logger.error(f"Spin ride generator error: {type(e).__name__}: {e}", exc_info=True)
             raise
 
     def _normalize_plan(self, plan: Dict[str, Any], duration_minutes: int) -> Dict[str, Any]:
-        """Validate and fix the generated plan to ensure correct timing."""
+        """Validate and fix the generated plan to ensure correct timing and field types."""
         target_seconds = duration_minutes * 60
         segments = plan.get("segments", [])
 
         if not segments:
             raise ValueError("AI generated an empty ride plan")
 
-        # Calculate actual total
-        actual_total = sum(s.get("duration_seconds", 0) for s in segments)
+        valid_types = {"warmup", "flat", "climb", "sprint", "recovery", "cooldown"}
+        valid_difficulties = {"easy", "moderate", "hard", "intense"}
+
+        # Normalize each segment — ensure all required fields exist with correct types
+        for seg in segments:
+            seg["name"] = str(seg.get("name", "Interval"))[:50]
+            seg["segment_type"] = seg.get("segment_type", "flat")
+            if seg["segment_type"] not in valid_types:
+                seg["segment_type"] = "flat"
+            seg["duration_seconds"] = max(15, int(seg.get("duration_seconds", 60)))
+            seg["resistance"] = max(1, min(10, int(seg.get("resistance", 5))))
+            seg["rpm_low"] = max(50, min(130, int(seg.get("rpm_low", 80))))
+            seg["rpm_high"] = max(50, min(130, int(seg.get("rpm_high", 100))))
+            seg["cue"] = str(seg.get("cue", ""))[:120]
+            if seg["rpm_low"] > seg["rpm_high"]:
+                seg["rpm_low"], seg["rpm_high"] = seg["rpm_high"], seg["rpm_low"]
 
         # Fix timing mismatch by adjusting the last segment
+        actual_total = sum(s["duration_seconds"] for s in segments)
         if actual_total != target_seconds:
             diff = target_seconds - actual_total
             last = segments[-1]
-            adjusted = last.get("duration_seconds", 60) + diff
+            adjusted = last["duration_seconds"] + diff
             if adjusted >= 15:
                 last["duration_seconds"] = adjusted
                 logger.info(f"Adjusted last segment by {diff}s to match target duration")
             else:
                 logger.warning(f"Spin ride timing off by {diff}s, couldn't fix cleanly")
 
+        # Ensure top-level fields
+        plan["title"] = str(plan.get("title", f"{duration_minutes}-Minute Spin Ride"))[:80]
         plan["duration_minutes"] = duration_minutes
         plan["total_seconds"] = target_seconds
-
-        # Clamp values to valid ranges
-        for seg in segments:
-            seg["resistance"] = max(1, min(10, seg.get("resistance", 5)))
-            seg["rpm_low"] = max(50, min(130, seg.get("rpm_low", 80)))
-            seg["rpm_high"] = max(50, min(130, seg.get("rpm_high", 100)))
-            seg["duration_seconds"] = max(15, seg.get("duration_seconds", 60))
-            if seg["rpm_low"] > seg["rpm_high"]:
-                seg["rpm_low"], seg["rpm_high"] = seg["rpm_high"], seg["rpm_low"]
+        plan["segments"] = segments
+        plan["estimated_calories"] = int(plan["estimated_calories"]) if plan.get("estimated_calories") else None
+        difficulty = plan.get("difficulty", "moderate")
+        plan["difficulty"] = difficulty if difficulty in valid_difficulties else "moderate"
 
         return plan
 

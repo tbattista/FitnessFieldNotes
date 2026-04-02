@@ -38,7 +38,7 @@ async def spin_ride_status():
     }
 
 
-@router.post("/generate", response_model=SpinRidePlan)
+@router.post("/generate")
 async def generate_spin_ride(
     request: GenerateSpinRideRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -61,7 +61,8 @@ async def generate_spin_ride(
         return plan
 
     except ValueError as e:
+        logger.error(f"Spin ride generation ValueError: {e}")
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"Spin ride generation failed: {e}")
-        raise HTTPException(status_code=500, detail="Ride generation failed — please try again")
+        logger.error(f"Spin ride generation failed: {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ride generation failed: {str(e)}")
