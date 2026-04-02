@@ -56,7 +56,7 @@ async def generate_spin_ride(
 
     try:
         plan = generator.generate(request.duration_minutes)
-        ai_rate_limiter.record_request(user_id, is_authenticated=True)
+        ai_rate_limiter.record_request(user_id)
         logger.info(f"Generated {request.duration_minutes}min spin ride for user {user_id}")
         return plan
 
