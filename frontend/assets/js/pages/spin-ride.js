@@ -21,6 +21,7 @@
   let audioCtx = null;
 
   const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 from SVG viewBox
+  const SESSION_KEY = 'spinRideSession';
 
   // ── DOM refs ───────────────────────────────────────────────────────────
 
@@ -186,6 +187,113 @@
     }).join('');
   }
 
+  // ── Session Persistence ─────────────────────────────────────────────────
+
+  function saveSession(timerRunning) {
+    try {
+      const data = {
+        ridePlan,
+        currentSegmentIndex,
+        segmentRemaining,
+        totalRemaining,
+        rideStartedAt: rideStartedAt ? rideStartedAt.toISOString() : null,
+        timerRunning: !!timerRunning,
+        savedAt: Date.now(),
+      };
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    } catch (e) { /* storage full or unavailable */ }
+  }
+
+  function clearSession() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function loadSession() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      // Discard sessions older than 2 hours
+      if (Date.now() - data.savedAt > 2 * 60 * 60 * 1000) {
+        clearSession();
+        return null;
+      }
+      return data;
+    } catch (e) { return null; }
+  }
+
+  function restoreSession(data) {
+    ridePlan = data.ridePlan;
+    segments = ridePlan.segments || [];
+    currentSegmentIndex = data.currentSegmentIndex;
+    segmentRemaining = data.segmentRemaining;
+    totalRemaining = data.totalRemaining;
+    rideStartedAt = data.rideStartedAt ? new Date(data.rideStartedAt) : null;
+
+    // If the timer was running, fast-forward by elapsed wall-clock time
+    if (data.timerRunning && data.savedAt) {
+      const elapsedSecs = Math.floor((Date.now() - data.savedAt) / 1000);
+      let remaining = elapsedSecs;
+
+      while (remaining > 0 && currentSegmentIndex < segments.length) {
+        if (remaining >= segmentRemaining) {
+          remaining -= segmentRemaining;
+          totalRemaining -= segmentRemaining;
+          segmentRemaining = 0;
+          currentSegmentIndex++;
+          if (currentSegmentIndex < segments.length) {
+            segmentRemaining = segments[currentSegmentIndex].duration_seconds;
+          }
+        } else {
+          segmentRemaining -= remaining;
+          totalRemaining -= remaining;
+          remaining = 0;
+        }
+      }
+
+      // If fast-forward consumed the entire ride, finish it
+      if (currentSegmentIndex >= segments.length) {
+        populateRideUI();
+        finishRide();
+        return;
+      }
+    }
+
+    populateRideUI();
+    updateSegmentDisplay();
+
+    // Restore correct button state
+    if (data.timerRunning) {
+      els.startBtn.classList.add('d-none');
+      els.pauseBtn.classList.remove('d-none');
+      els.resumeBtn.classList.add('d-none');
+      els.endBtn.classList.remove('d-none');
+      startTimer();
+      requestWakeLock();
+    } else if (rideStartedAt) {
+      // Was paused
+      els.startBtn.classList.add('d-none');
+      els.pauseBtn.classList.add('d-none');
+      els.resumeBtn.classList.remove('d-none');
+      els.endBtn.classList.remove('d-none');
+    } else {
+      // Generated but not started
+      els.startBtn.classList.remove('d-none');
+      els.pauseBtn.classList.add('d-none');
+      els.resumeBtn.classList.add('d-none');
+      els.endBtn.classList.add('d-none');
+    }
+
+    showState('rideState');
+  }
+
+  function populateRideUI() {
+    els.rideTitle.textContent = ridePlan.title;
+    const capDifficulty = ridePlan.difficulty.charAt(0).toUpperCase() + ridePlan.difficulty.slice(1);
+    els.rideMeta.textContent = `${ridePlan.duration_minutes} min · ${capDifficulty} · ${segments.length} segments`;
+    renderSegmentList();
+  }
+
   // ── Timer ──────────────────────────────────────────────────────────────
 
   function tick() {
@@ -204,6 +312,7 @@
     segmentRemaining--;
     totalRemaining--;
     updateSegmentDisplay();
+    saveSession(true);
   }
 
   function startTimer() {
@@ -230,12 +339,14 @@
     els.startBtn.classList.add('d-none');
     els.pauseBtn.classList.remove('d-none');
     els.endBtn.classList.remove('d-none');
+    saveSession(true);
   }
 
   function onPause() {
     stopTimer();
     els.pauseBtn.classList.add('d-none');
     els.resumeBtn.classList.remove('d-none');
+    saveSession(false);
   }
 
   function onResume() {
@@ -245,6 +356,7 @@
     }
     els.resumeBtn.classList.add('d-none');
     els.pauseBtn.classList.remove('d-none');
+    saveSession(true);
   }
 
   function onEnd() {
@@ -256,6 +368,7 @@
   async function finishRide() {
     stopTimer();
     releaseWakeLock();
+    clearSession();
 
     const actualMs = rideStartedAt ? Date.now() - rideStartedAt.getTime() : 0;
     const actualMinutes = Math.round(actualMs / 60000);
@@ -351,6 +464,7 @@
       els.endBtn.classList.add('d-none');
 
       showState('rideState');
+      saveSession(false);
 
     } catch (err) {
       console.error('Spin ride generation failed:', err);
@@ -364,6 +478,7 @@
   function resetToSelection() {
     stopTimer();
     releaseWakeLock();
+    clearSession();
     ridePlan = null;
     segments = [];
     currentSegmentIndex = 0;
@@ -439,6 +554,13 @@
     const isAuth = await waitForAuth();
     if (!isAuth) {
       showState('authRequired');
+      return;
+    }
+
+    // Restore in-progress ride if session exists
+    const saved = loadSession();
+    if (saved && saved.ridePlan) {
+      restoreSession(saved);
     } else {
       showState('selectState');
     }
