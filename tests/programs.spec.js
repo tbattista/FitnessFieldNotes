@@ -163,10 +163,91 @@ test.describe('Programs', () => {
         const handle = chips.first().locator('.workout-chip-handle .bx-grid-vertical');
         await expect(handle).toBeAttached();
 
-        // Reorder hint should be above the list
-        const hint = offcanvas.locator('text=Hold and drag to reorder');
+        // Reorder hint should be below the list
+        const hint = offcanvas.locator('.workout-reorder-hint');
         await expect(hint).toBeAttached();
+        await expect(hint).toContainText('Drag to reorder');
       }
+    }
+  });
+
+  test('workout chips have visible trash delete button', async ({ page }) => {
+    await page.goto(`${BASE}/programs.html`);
+    await waitForAppReady(page);
+    await page.waitForTimeout(1000);
+
+    const cards = page.locator('.program-card');
+    const cardCount = await cards.count();
+
+    if (cardCount > 0) {
+      await cards.first().click();
+
+      const offcanvas = page.locator('#programDetailOffcanvas');
+      await expect(offcanvas).toBeVisible({ timeout: 3000 });
+
+      const chips = offcanvas.locator('.workout-chip');
+      const chipCount = await chips.count();
+
+      if (chipCount > 0) {
+        // Remove button should be visible with trash icon
+        const removeBtn = chips.first().locator('.workout-chip-remove');
+        await expect(removeBtn).toBeVisible();
+        await expect(removeBtn).toHaveAttribute('aria-label', /Remove .+ from program/);
+
+        // Should contain trash icon
+        const trashIcon = removeBtn.locator('.bx-trash');
+        await expect(trashIcon).toBeAttached();
+      }
+    }
+  });
+
+  test('program detail has collapsible details section', async ({ page }) => {
+    await page.goto(`${BASE}/programs.html`);
+    await waitForAppReady(page);
+    await page.waitForTimeout(1000);
+
+    const cards = page.locator('.program-card');
+    const cardCount = await cards.count();
+
+    if (cardCount > 0) {
+      await cards.first().click();
+
+      const offcanvas = page.locator('#programDetailOffcanvas');
+      await expect(offcanvas).toBeVisible({ timeout: 3000 });
+
+      // Details collapse toggle should exist
+      const toggle = offcanvas.locator('.program-detail-collapse-toggle');
+      await expect(toggle).toBeAttached();
+      await expect(toggle).toContainText('Details');
+
+      // Collapse should be hidden by default
+      const collapse = offcanvas.locator('#programDetailsCollapse');
+      await expect(collapse).toBeAttached();
+      await expect(collapse).not.toHaveClass(/show/);
+
+      // Click to expand
+      await toggle.click();
+      await expect(collapse).toHaveClass(/show/, { timeout: 2000 });
+    }
+  });
+
+  test('program detail footer shows Done initially', async ({ page }) => {
+    await page.goto(`${BASE}/programs.html`);
+    await waitForAppReady(page);
+    await page.waitForTimeout(1000);
+
+    const cards = page.locator('.program-card');
+    const cardCount = await cards.count();
+
+    if (cardCount > 0) {
+      await cards.first().click();
+
+      const offcanvas = page.locator('#programDetailOffcanvas');
+      await expect(offcanvas).toBeVisible({ timeout: 3000 });
+
+      // Footer save button should say "Done" initially
+      const saveBtn = offcanvas.locator('[data-action="save"]');
+      await expect(saveBtn).toContainText('Done');
     }
   });
 

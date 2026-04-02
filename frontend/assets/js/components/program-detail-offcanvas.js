@@ -33,6 +33,7 @@ class ProgramDetailOffcanvas {
         this.offcanvasElement = null;
         this.bsOffcanvas = null;
         this.sortableInstance = null;
+        this._isDirty = false;
 
         this.initialize();
     }
@@ -112,6 +113,7 @@ class ProgramDetailOffcanvas {
         console.log('📋 Opening program detail offcanvas:', program.id);
 
         this.currentProgram = program;
+        this._isDirty = false;
         this.showLoadingState();
 
         // Initialize and show offcanvas
@@ -167,8 +169,8 @@ class ProgramDetailOffcanvas {
     _generateContentHTML(program) {
         let html = '';
 
-        // Metadata section
-        html += '<div class="program-detail-meta mb-4">';
+        // --- Essentials section (always visible) ---
+        html += '<div class="program-detail-section program-detail-essentials">';
 
         // Difficulty and Duration badges
         const badges = [];
@@ -194,54 +196,73 @@ class ProgramDetailOffcanvas {
             html += `<p class="text-muted mb-2">${this._escapeHtml(program.description)}</p>`;
         }
 
-        // Dates
-        if (this.config.showDates) {
-            html += `
-                <div class="d-flex gap-3 mb-2 flex-wrap">
-                    <span class="text-muted small">
-                        <i class="bx bx-calendar me-1"></i>
-                        Created: ${this._formatDate(program.created_date)}
-                    </span>
-                    <span class="text-muted small">
-                        <i class="bx bx-time me-1"></i>
-                        Modified: ${this._formatDate(program.modified_date)}
-                    </span>
-                </div>
-            `;
-        }
-
-        // Stats
-        if (this.config.showStats) {
-            const workoutCount = program.workouts?.length || 0;
-            const exerciseCount = this._calculateTotalExercises(program);
-            html += `
-                <div class="d-flex gap-3 mb-2">
-                    <span class="text-muted small">
-                        <i class="bx bx-dumbbell me-1"></i>
-                        ${workoutCount} workout${workoutCount !== 1 ? 's' : ''}
-                    </span>
-                    <span class="text-muted small">
-                        <i class="bx bx-list-ul me-1"></i>
-                        ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}
-                    </span>
-                </div>
-            `;
-        }
-
-        // Tags
-        const tags = program.tags || [];
-        if (tags.length > 0) {
-            html += `
-                <div class="mt-2">
-                    ${tags.map(tag => `<span class="badge bg-label-secondary me-1">${this._escapeHtml(tag)}</span>`).join('')}
-                </div>
-            `;
-        }
-
         html += '</div>';
 
+        // --- Collapsible Details section ---
+        const hasDetails = this.config.showDates || this.config.showStats || (program.tags?.length > 0);
+        if (hasDetails) {
+            html += '<div class="program-detail-section">';
+            html += `
+                <button class="program-detail-collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#programDetailsCollapse" aria-expanded="false" aria-controls="programDetailsCollapse">
+                    <span class="program-detail-section-label">Details</span>
+                    <i class="bx bx-chevron-down program-detail-chevron"></i>
+                </button>
+                <div class="collapse" id="programDetailsCollapse">
+                    <div class="program-detail-collapse-body">
+            `;
+
+            // Dates
+            if (this.config.showDates) {
+                html += `
+                    <div class="d-flex gap-3 mb-2 flex-wrap">
+                        <span class="text-muted small">
+                            <i class="bx bx-calendar me-1"></i>
+                            Created: ${this._formatDate(program.created_date)}
+                        </span>
+                        <span class="text-muted small">
+                            <i class="bx bx-time me-1"></i>
+                            Modified: ${this._formatDate(program.modified_date)}
+                        </span>
+                    </div>
+                `;
+            }
+
+            // Stats
+            if (this.config.showStats) {
+                const workoutCount = program.workouts?.length || 0;
+                const exerciseCount = this._calculateTotalExercises(program);
+                html += `
+                    <div class="d-flex gap-3 mb-2">
+                        <span class="text-muted small">
+                            <i class="bx bx-dumbbell me-1"></i>
+                            ${workoutCount} workout${workoutCount !== 1 ? 's' : ''}
+                        </span>
+                        <span class="text-muted small">
+                            <i class="bx bx-list-ul me-1"></i>
+                            ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                `;
+            }
+
+            // Tags
+            const tags = program.tags || [];
+            if (tags.length > 0) {
+                html += `
+                    <div class="mt-1">
+                        ${tags.map(tag => `<span class="badge bg-label-secondary me-1">${this._escapeHtml(tag)}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+            </div>`;
+        }
+
         // Progress Section (loaded async after render)
-        html += `<div id="programDetailProgress" class="mb-4"></div>`;
+        html += `<div id="programDetailProgress" class="program-detail-section"></div>`;
 
         // Workouts Section
         html += this._renderWorkoutsSection(program);
@@ -309,12 +330,11 @@ class ProgramDetailOffcanvas {
             `;
         } else {
             html += `
-                <small class="text-muted d-flex align-items-center gap-1 mb-2">
-                    <i class="bx bx-info-circle"></i>
-                    Hold and drag to reorder
-                </small>
                 <div class="workout-list-sortable" id="programWorkoutList">
                     ${programWorkouts.map((pw, index) => this._renderWorkoutChip(pw, index)).join('')}
+                </div>
+                <div class="workout-reorder-hint">
+                    <i class="bx bx-move me-1"></i>Drag to reorder
                 </div>
             `;
         }
@@ -344,8 +364,8 @@ class ProgramDetailOffcanvas {
                         ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}
                     </span>
                 </div>
-                <button class="workout-chip-remove btn btn-sm btn-icon" data-remove-workout="${programWorkout.workout_id}" title="Remove from program">
-                    <i class="bx bx-x"></i>
+                <button class="workout-chip-remove" data-remove-workout="${programWorkout.workout_id}" title="Remove from program" aria-label="Remove ${this._escapeHtml(workoutName)} from program">
+                    <i class="bx bx-trash"></i>
                 </button>
             </div>
         `;
@@ -403,6 +423,10 @@ class ProgramDetailOffcanvas {
             };
         }).sort((a, b) => a.order_index - b.order_index);
 
+        // Mark dirty and update footer
+        this._isDirty = true;
+        this._updateFooterState();
+
         // Trigger callback
         if (this.config.onReorderWorkouts) {
             this.config.onReorderWorkouts(this.currentProgram.id, newOrder);
@@ -457,6 +481,9 @@ class ProgramDetailOffcanvas {
             this.currentProgram.workouts = this.currentProgram.workouts.filter(
                 pw => pw.workout_id !== workoutId
             );
+
+            // Mark dirty
+            this._isDirty = true;
 
             // Re-render the program details
             this.renderProgramDetails(this.currentProgram);
@@ -564,6 +591,9 @@ class ProgramDetailOffcanvas {
             }
         });
 
+        // Mark dirty
+        this._isDirty = true;
+
         // Re-render
         this.renderProgramDetails(this.currentProgram);
     }
@@ -615,6 +645,27 @@ class ProgramDetailOffcanvas {
         });
 
         return total;
+    }
+
+    /**
+     * Whether the program has been modified since opening
+     */
+    get isDirty() {
+        return this._isDirty;
+    }
+
+    /**
+     * Update footer save button label based on dirty state
+     */
+    _updateFooterState() {
+        const saveBtn = document.querySelector('#programDetailFooter [data-action="save"]');
+        if (!saveBtn) return;
+
+        if (this._isDirty) {
+            saveBtn.innerHTML = '<i class="bx bx-check me-1"></i>Save & Close';
+        } else {
+            saveBtn.innerHTML = '<i class="bx bx-check me-1"></i>Done';
+        }
     }
 
     /**

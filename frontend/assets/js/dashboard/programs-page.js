@@ -174,15 +174,17 @@
                 },
                 {
                     id: 'save',
-                    label: 'Save & Close',
+                    label: 'Done',
                     icon: 'bx-check',
                     variant: 'primary',
                     primary: true,
                     onClick: async (program) => {
-                        await Crud.saveProgram(program, {
-                            getLatest: () => programDetailOffcanvas?.getCurrentProgram(),
-                            allPrograms: state.all
-                        });
+                        if (programDetailOffcanvas?.isDirty) {
+                            await Crud.saveProgram(program, {
+                                getLatest: () => programDetailOffcanvas?.getCurrentProgram(),
+                                allPrograms: state.all
+                            });
+                        }
                         programDetailOffcanvas.hide();
                         applyFiltersAndRender();
                     }
