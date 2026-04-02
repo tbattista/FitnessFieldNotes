@@ -135,7 +135,8 @@
   function setProgressColor(segmentType) {
     const el = els.timerProgress;
     // Remove all type classes
-    el.className = el.className.replace(/type-\w+/g, '').trim();
+    // SVG elements have className as SVGAnimatedString; use classList instead
+    el.classList.forEach(cls => { if (/^type-\w+/.test(cls)) el.classList.remove(cls); });
     el.classList.add('spin-timer-progress');
     if (segmentType) el.classList.add(`type-${segmentType}`);
   }
