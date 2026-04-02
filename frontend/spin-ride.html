@@ -109,11 +109,10 @@
 
               <!-- Page Header -->
               <div class="mb-3">
-                <h5 class="mb-1">
+                <h5 class="mb-0">
                   <i class="bx bx-cycling me-1"></i>
                   Spin Ride
                 </h5>
-                <p class="text-muted small mb-0">AI-generated interval workouts</p>
               </div>
 
               <!-- STATE: Select Duration -->
@@ -190,11 +189,22 @@
                   </button>
                 </div>
 
-                <!-- Segment List -->
+                <!-- Segment List (collapsible) -->
                 <div class="card spin-plan-card">
                   <div class="card-body p-2">
-                    <h6 class="mb-2 px-1"><i class="bx bx-list-ul me-1"></i>Ride Plan</h6>
-                    <div id="segmentList" class="spin-segment-list"></div>
+                    <!-- Current + Next always visible -->
+                    <div id="segmentPreview" class="spin-segment-list mb-1"></div>
+                    <!-- Full list collapsed -->
+                    <div class="collapse" id="segmentListCollapse">
+                      <div id="segmentList" class="spin-segment-list"></div>
+                    </div>
+                    <button class="btn btn-sm btn-link text-muted w-100 py-1" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#segmentListCollapse"
+                            aria-expanded="false" aria-controls="segmentListCollapse"
+                            id="segmentListToggle">
+                      <i class="bx bx-chevron-down me-1" id="segmentListToggleIcon"></i>
+                      <span id="segmentListToggleText">Show all segments</span>
+                    </button>
                   </div>
                 </div>
 

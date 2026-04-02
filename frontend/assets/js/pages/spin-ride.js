@@ -49,6 +49,11 @@
       segmentRpm: $('segmentRpm'),
       segmentCue: $('segmentCue'),
       segmentList: $('segmentList'),
+      segmentPreview: $('segmentPreview'),
+      segmentListCollapse: $('segmentListCollapse'),
+      segmentListToggle: $('segmentListToggle'),
+      segmentListToggleIcon: $('segmentListToggleIcon'),
+      segmentListToggleText: $('segmentListToggleText'),
       startBtn: $('startBtn'),
       pauseBtn: $('pauseBtn'),
       resumeBtn: $('resumeBtn'),
@@ -144,6 +149,15 @@
 
   // ── Segment Display ────────────────────────────────────────────────────
 
+  function segmentRowHtml(seg, i) {
+    const dur = formatTime(seg.duration_seconds);
+    return `<div class="spin-segment-row" data-index="${i}">
+      <span class="spin-segment-type-dot type-${seg.segment_type}"></span>
+      <span class="spin-segment-name">${seg.name}</span>
+      <span class="spin-segment-meta">R${seg.resistance} &middot; ${seg.rpm_low}-${seg.rpm_high}rpm &middot; ${dur}</span>
+    </div>`;
+  }
+
   function updateSegmentDisplay() {
     const seg = segments[currentSegmentIndex];
     if (!seg) return;
@@ -163,28 +177,51 @@
     const fraction = segmentRemaining / seg.duration_seconds;
     updateProgressArc(fraction);
 
-    // Highlight active in list
+    // Update preview (current + next)
+    updateSegmentPreview();
+
+    // Highlight active in full list
     const rows = els.segmentList.querySelectorAll('.spin-segment-row');
     rows.forEach((row, i) => {
       row.classList.toggle('active', i === currentSegmentIndex);
       row.classList.toggle('completed', i < currentSegmentIndex);
     });
+  }
 
-    // Auto-scroll active segment into view
-    const activeRow = els.segmentList.querySelector('.spin-segment-row.active');
-    if (activeRow) activeRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  function updateSegmentPreview() {
+    const previewSegments = [];
+    if (segments[currentSegmentIndex]) previewSegments.push(currentSegmentIndex);
+    if (segments[currentSegmentIndex + 1]) previewSegments.push(currentSegmentIndex + 1);
+
+    els.segmentPreview.innerHTML = previewSegments.map((i) => {
+      const seg = segments[i];
+      const html = segmentRowHtml(seg, i);
+      return html;
+    }).join('');
+
+    // Apply active/completed styling to preview rows
+    els.segmentPreview.querySelectorAll('.spin-segment-row').forEach((row) => {
+      const i = parseInt(row.dataset.index, 10);
+      row.classList.toggle('active', i === currentSegmentIndex);
+      row.classList.toggle('completed', i < currentSegmentIndex);
+    });
+
+    // Update toggle text with remaining count
+    const remaining = segments.length - currentSegmentIndex - previewSegments.length;
+    if (remaining > 0) {
+      els.segmentListToggle.classList.remove('d-none');
+      els.segmentListToggleText.textContent =
+        els.segmentListCollapse.classList.contains('show')
+          ? 'Hide segments'
+          : `Show all ${segments.length} segments`;
+    } else {
+      els.segmentListToggle.classList.add('d-none');
+    }
   }
 
   function renderSegmentList() {
-    els.segmentList.innerHTML = segments.map((seg, i) => {
-      const dur = formatTime(seg.duration_seconds);
-      return `
-        <div class="spin-segment-row" data-index="${i}">
-          <span class="spin-segment-type-dot type-${seg.segment_type}"></span>
-          <span class="spin-segment-name">${seg.name}</span>
-          <span class="spin-segment-meta">R${seg.resistance} &middot; ${seg.rpm_low}-${seg.rpm_high}rpm &middot; ${dur}</span>
-        </div>`;
-    }).join('');
+    els.segmentList.innerHTML = segments.map((seg, i) => segmentRowHtml(seg, i)).join('');
+    updateSegmentPreview();
   }
 
   // ── Session Persistence ─────────────────────────────────────────────────
@@ -518,6 +555,16 @@
 
     // Error retry
     els.errorRetryBtn.addEventListener('click', resetToSelection);
+
+    // Collapse toggle text update
+    els.segmentListCollapse.addEventListener('shown.bs.collapse', () => {
+      els.segmentListToggleText.textContent = 'Hide segments';
+      els.segmentListToggleIcon.classList.replace('bx-chevron-down', 'bx-chevron-up');
+    });
+    els.segmentListCollapse.addEventListener('hidden.bs.collapse', () => {
+      els.segmentListToggleText.textContent = `Show all ${segments.length} segments`;
+      els.segmentListToggleIcon.classList.replace('bx-chevron-up', 'bx-chevron-down');
+    });
   }
 
   function waitForAuth() {

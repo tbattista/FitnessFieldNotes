@@ -92,6 +92,7 @@ test.describe('Spin Ride Page', () => {
 
     // SVG timer elements exist in DOM
     await expect(page.locator('#timerProgress')).toBeAttached();
+    await expect(page.locator('#segmentPreview')).toBeAttached();
     await expect(page.locator('#segmentList')).toBeAttached();
   });
 
