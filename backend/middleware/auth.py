@@ -3,7 +3,6 @@ Authentication Middleware for Ghost Gym V3
 Handles Firebase JWT token validation and user authentication
 """
 
-import os
 import logging
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, Depends
@@ -102,18 +101,6 @@ async def get_current_user(
         )
     
     return user
-
-DEMO_USER_ID = os.getenv("REVIEWER_UID", "reviewer-demo-user")
-
-
-def guard_demo_user(user_id: Optional[str]):
-    """Raise 403 if the user is the demo account. Call this in write endpoints."""
-    if user_id and user_id == DEMO_USER_ID:
-        raise HTTPException(
-            status_code=403,
-            detail="Demo account is read-only. Create your own account to save changes."
-        )
-
 
 def extract_user_id(user: Optional[Dict[str, Any]]) -> Optional[str]:
     """

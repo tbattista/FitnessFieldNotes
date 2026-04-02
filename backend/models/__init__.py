@@ -16,3 +16,4 @@ from .session import *  # includes ProgramProgressResponse
 from .cardio import *
 from .sharing import *
 from .importing import *
+from .spin_ride import *

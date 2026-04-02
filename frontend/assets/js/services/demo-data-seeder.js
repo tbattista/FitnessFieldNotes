@@ -10,7 +10,8 @@
 (function () {
     'use strict';
 
-    const DEMO_UID = 'reviewer-demo-user';
+    const DEMO_UID_PREFIX = 'demo-';
+    const TEMPLATE_UID = 'reviewer-demo-user';
 
     async function signInAsDemo() {
         try {
@@ -31,7 +32,8 @@
     }
 
     function isDemoUser(user) {
-        return user?.uid === DEMO_UID;
+        if (!user?.uid) return false;
+        return user.uid.startsWith(DEMO_UID_PREFIX) || user.uid === TEMPLATE_UID;
     }
 
     function init() {
@@ -61,7 +63,8 @@
     window.DemoAutoSignIn = {
         signIn: signInAsDemo,
         isDemoUser: isDemoUser,
-        DEMO_UID: DEMO_UID,
+        DEMO_UID_PREFIX: DEMO_UID_PREFIX,
+        TEMPLATE_UID: TEMPLATE_UID,
     };
 
     init();

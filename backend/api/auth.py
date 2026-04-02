@@ -3,7 +3,7 @@ Authentication and User Profile Management
 Handles user authentication, profile creation, and data migration
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Dict, Any
 import os
 import logging
@@ -136,17 +136,40 @@ async def get_review_token(payload: Dict[str, Any]):
 
 
 @router.post("/demo-token")
-async def get_demo_token():
-    """Get a Firebase custom token for the shared demo account.
-    Auto-signs anonymous visitors into a pre-populated demo user
-    so they can explore the app with real data."""
-    demo_uid = os.getenv("REVIEWER_UID", "reviewer-demo-user")
+async def get_demo_token(request: Request):
+    """Create a temporary demo account with isolated sandbox data.
+    Each call generates a unique user with pre-populated workout data.
+    Data expires after 24 hours."""
+    from ..services.demo_provisioner import generate_demo_uid, provision_demo_user
+    from ..services.demo_rate_limiter import demo_rate_limiter
+
+    # Rate limit by client IP
+    client_ip = request.client.host if request.client else "unknown"
+    allowed, remaining = demo_rate_limiter.check_limit(client_ip)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many demo accounts created. Please try again later."
+        )
+
+    # Generate unique UID and custom token
+    uid = generate_demo_uid()
     custom_token = await auth_service.create_custom_token(
-        demo_uid,
+        uid,
         {"demo": True, "displayName": "Demo User"}
     )
 
     if not custom_token:
         raise HTTPException(status_code=500, detail="Could not generate demo token")
 
-    return {"token": custom_token}
+    # Provision Firestore data
+    try:
+        result = provision_demo_user(firebase_service.get_firestore(), uid)
+        logger.info(f"Demo user provisioned: {uid} ({result['sessions']} sessions)")
+    except Exception as e:
+        logger.error(f"Failed to provision demo user {uid}: {e}")
+        # Still return the token -- user gets an empty account rather than failure
+
+    demo_rate_limiter.record_request(client_ip)
+
+    return {"token": custom_token, "uid": uid}

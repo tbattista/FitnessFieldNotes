@@ -118,3 +118,37 @@ async def trigger_seed_demo(
     except Exception as e:
         logger.error(f"Demo user seeding failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cleanup-demo-accounts")
+async def cleanup_demo_accounts(
+    token: str = Query(..., description="Cron secret token"),
+) -> Dict[str, Any]:
+    """
+    Delete expired temporary demo accounts and their Firestore data.
+    Should be called every few hours via Railway cron.
+
+    Call with: POST /api/cron/cleanup-demo-accounts?token=YOUR_SECRET
+    """
+    _verify_cron_secret(token)
+
+    try:
+        from backend.services.demo_provisioner import cleanup_expired_demo_users
+        from backend.config.firebase_config import get_firebase_app
+        from firebase_admin import firestore
+
+        app = get_firebase_app()
+        if not app:
+            raise HTTPException(status_code=500, detail="Firebase not available")
+
+        db = firestore.client(app=app)
+        result = cleanup_expired_demo_users(db)
+
+        logger.info(f"Demo cleanup: deleted {result['deleted']} accounts")
+        return {'success': True, **result}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Demo cleanup failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
