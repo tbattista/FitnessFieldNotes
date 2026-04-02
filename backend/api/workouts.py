@@ -14,7 +14,7 @@ from ..services.data_service import DataService
 from ..services.firestore_data_service import firestore_data_service
 from ..services.firebase_service import firebase_service
 from ..api.dependencies import get_data_service, optional_auth
-from ..middleware.auth import get_current_user_optional, extract_user_id
+from ..middleware.auth import get_current_user_optional, extract_user_id, guard_demo_user
 
 router = APIRouter(prefix="/api/v3", tags=["Workouts"])
 logger = logging.getLogger(__name__)
@@ -156,8 +156,9 @@ async def create_workout_firebase(
     """Create a new workout template (Firebase-enabled with fallback)"""
     try:
         user_id = extract_user_id(current_user)
+        guard_demo_user(user_id)
         logger.info(f"Creating workout: {workout_request.name}, user_id: {user_id}")
-        
+
         if user_id and firebase_service.is_available():
             # Authenticated user - use Firestore data service
             logger.info("Using Firestore for authenticated user")
@@ -176,6 +177,8 @@ async def create_workout_firebase(
         logger.info(f"Workout created in local storage with ID: {workout.id}")
         return workout
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating workout: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating workout: {str(e)}")
@@ -243,6 +246,7 @@ async def update_workout_firebase(
     """Update a workout template (Firebase-enabled with fallback)"""
     try:
         user_id = extract_user_id(current_user)
+        guard_demo_user(user_id)
         logger.info(f"Updating workout {workout_id}, user_id: {user_id}")
         
         if user_id and firebase_service.is_available():
@@ -280,6 +284,7 @@ async def delete_workout_firebase(
     """Delete a workout template (Firebase-enabled with fallback)"""
     try:
         user_id = extract_user_id(current_user)
+        guard_demo_user(user_id)
         logger.info(f"Deleting workout {workout_id}, user_id: {user_id}")
         
         if user_id and firebase_service.is_available():
@@ -347,6 +352,7 @@ async def permanent_delete_workout_firebase(
     """Permanently delete a workout (Firebase-enabled with fallback)"""
     try:
         user_id = extract_user_id(current_user)
+        guard_demo_user(user_id)
         logger.info(f"Permanently deleting workout {workout_id}, user_id: {user_id}")
 
         if user_id and firebase_service.is_available():

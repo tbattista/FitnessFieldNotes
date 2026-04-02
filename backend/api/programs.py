@@ -18,7 +18,7 @@ from ..services.firestore_data_service import firestore_data_service
 from ..services.firebase_service import firebase_service
 from ..services.v2.document_service_v2 import DocumentServiceV2
 from ..api.dependencies import get_data_service, get_document_service
-from ..middleware.auth import get_current_user_optional, extract_user_id
+from ..middleware.auth import get_current_user_optional, extract_user_id, guard_demo_user
 
 router = APIRouter(prefix="/api/v3/programs", tags=["Programs"])
 logger = logging.getLogger(__name__)
@@ -298,7 +298,8 @@ async def create_program_firebase(
     """Create a new program (Firebase-enabled with fallback)"""
     try:
         user_id = extract_user_id(current_user)
-        
+        guard_demo_user(user_id)
+
         if user_id and firebase_service.is_available():
             # Authenticated user - use Firestore data service
             program = await firestore_data_service.create_program(user_id, program_request)
@@ -314,6 +315,8 @@ async def create_program_firebase(
         program = data_service.create_program(program_request)
         return program
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating program: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating program: {str(e)}")
@@ -490,6 +493,7 @@ async def update_program_firebase(
     """Update a program (Firebase-enabled with fallback)"""
     try:
         user_id = extract_user_id(current_user)
+        guard_demo_user(user_id)
 
         if user_id and firebase_service.is_available():
             # Authenticated user - use Firestore
@@ -556,6 +560,7 @@ async def delete_program_firebase(
     """Delete a program (Firebase-enabled with fallback)"""
     try:
         user_id = extract_user_id(current_user)
+        guard_demo_user(user_id)
 
         if user_id and firebase_service.is_available():
             # Authenticated user - use Firestore

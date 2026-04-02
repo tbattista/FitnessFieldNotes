@@ -55,9 +55,22 @@
             return;
         }
 
+        // Allow forcing the landing page via ?landing query param
+        const forceLanding = new URLSearchParams(window.location.search).has('landing');
+
         // Check auth state
         const checkAuthAndRender = async () => {
             const user = window.firebaseAuth.currentUser;
+
+            if (forceLanding) {
+                // Always show landing page when ?landing is in URL
+                updateLandingLayout(false);
+                authenticatedDashboard.style.display = 'none';
+                unauthenticatedWelcome.style.display = 'block';
+                if (window.initLandingAnimations) window.initLandingAnimations();
+                return;
+            }
+
             updateLandingLayout(!!user);
 
             if (user) {

@@ -35,6 +35,9 @@
     }
 
     function init() {
+        // Don't auto-sign-in if ?landing is in URL (user wants the marketing page)
+        if (new URLSearchParams(window.location.search).has('landing')) return;
+
         const onReady = () => {
             // Wait for auth state to settle and page to reach idle.
             // The 2s delay ensures page load/networkidle completes before
