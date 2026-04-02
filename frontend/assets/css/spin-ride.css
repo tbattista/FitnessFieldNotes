@@ -130,8 +130,7 @@
 }
 
 .spin-segment-list {
-  max-height: 300px;
-  overflow-y: auto;
+  /* No scroll — fits content so the page scrolls naturally on mobile */
 }
 
 .spin-segment-row {
