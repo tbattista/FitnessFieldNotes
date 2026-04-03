@@ -19,6 +19,7 @@
   let rideStartedAt = null;
   let wakeLock = null;
   let audioCtx = null;
+  let lastTickTime = null; // Wall-clock time of last tick, for catch-up after background
 
   const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 from SVG viewBox
   const SESSION_KEY = 'spinRideSession';
@@ -348,17 +349,77 @@
 
     segmentRemaining--;
     totalRemaining--;
+    lastTickTime = Date.now();
     updateSegmentDisplay();
     saveSession(true);
   }
 
+  /**
+   * Fast-forward timer by a number of seconds (used when resuming from background).
+   * Advances through segments just like the session restore logic.
+   */
+  function fastForwardTimer(elapsedSecs) {
+    let remaining = elapsedSecs;
+    let segmentChanged = false;
+
+    while (remaining > 0 && currentSegmentIndex < segments.length) {
+      if (remaining >= segmentRemaining) {
+        remaining -= segmentRemaining;
+        totalRemaining -= segmentRemaining;
+        segmentRemaining = 0;
+        currentSegmentIndex++;
+        segmentChanged = true;
+        if (currentSegmentIndex < segments.length) {
+          segmentRemaining = segments[currentSegmentIndex].duration_seconds;
+        }
+      } else {
+        segmentRemaining -= remaining;
+        totalRemaining -= remaining;
+        remaining = 0;
+      }
+    }
+
+    if (totalRemaining < 0) totalRemaining = 0;
+
+    // If fast-forward consumed the entire ride, finish
+    if (currentSegmentIndex >= segments.length) {
+      finishRide();
+      return;
+    }
+
+    if (segmentChanged) {
+      playBeep();
+      vibrate();
+    }
+
+    lastTickTime = Date.now();
+    updateSegmentDisplay();
+    saveSession(true);
+  }
+
+  /**
+   * Handle page becoming visible again — catch up the timer for time spent in background.
+   */
+  function onVisibilityChange() {
+    if (document.visibilityState === 'visible' && timerInterval && lastTickTime) {
+      const elapsedSecs = Math.floor((Date.now() - lastTickTime) / 1000);
+      if (elapsedSecs > 1) {
+        fastForwardTimer(elapsedSecs);
+      }
+      // Re-request wake lock (released by OS when backgrounded)
+      requestWakeLock();
+    }
+  }
+
   function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
+    lastTickTime = Date.now();
     timerInterval = setInterval(tick, 1000);
   }
 
   function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    lastTickTime = null;
   }
 
   // ── Ride Controls ──────────────────────────────────────────────────────
@@ -522,6 +583,7 @@
     segmentRemaining = 0;
     totalRemaining = 0;
     rideStartedAt = null;
+    lastTickTime = null;
     showState('selectState');
   }
 
@@ -555,6 +617,9 @@
 
     // Error retry
     els.errorRetryBtn.addEventListener('click', resetToSelection);
+
+    // Catch up timer when returning from background (mobile tab switch, screen off, etc.)
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     // Collapse toggle text update
     els.segmentListCollapse.addEventListener('shown.bs.collapse', () => {
