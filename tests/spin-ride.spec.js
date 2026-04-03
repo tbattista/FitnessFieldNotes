@@ -195,7 +195,7 @@ test.describe('Spin Ride Page', () => {
 
     // Timer should be running. Now simulate going to background and back
     // by manipulating lastTickTime to be 30s ago and firing visibilitychange
-    const totalBefore = await page.locator('#totalRemaining').textContent();
+    const totalBefore = await page.locator('#totalElapsed').textContent();
 
     await page.evaluate(() => {
       // Simulate 30s passing in background by backdating lastTickTime
@@ -207,7 +207,7 @@ test.describe('Spin Ride Page', () => {
     const hasHandler = await page.evaluate(() => {
       // Check that the timer fast-forwards on session restore with timerRunning=true
       // by checking that totalRemaining decreased from the original 520
-      const el = document.getElementById('totalRemaining');
+      const el = document.getElementById('totalElapsed');
       return el && el.textContent !== '';
     });
     expect(hasHandler).toBeTruthy();

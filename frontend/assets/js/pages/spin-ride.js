@@ -43,7 +43,7 @@
       rideTitle: $('rideTitle'),
       rideMeta: $('rideMeta'),
       timerProgress: $('timerProgress'),
-      totalRemaining: $('totalRemaining'),
+      totalElapsed: $('totalElapsed'),
       segmentName: $('segmentName'),
       segmentTime: $('segmentTime'),
       segmentResistance: $('segmentResistance'),
@@ -159,6 +159,11 @@
     </div>`;
   }
 
+  function getElapsedSeconds() {
+    if (!rideStartedAt) return 0;
+    return Math.floor((Date.now() - rideStartedAt.getTime()) / 1000);
+  }
+
   function updateSegmentDisplay() {
     const seg = segments[currentSegmentIndex];
     if (!seg) return;
@@ -170,7 +175,7 @@
       ? `${seg.rpm_low}`
       : `${seg.rpm_low}-${seg.rpm_high}`;
     els.segmentCue.textContent = seg.cue || '';
-    els.totalRemaining.textContent = formatTime(totalRemaining);
+    els.totalElapsed.textContent = formatTime(getElapsedSeconds());
 
     setProgressColor(seg.segment_type);
 

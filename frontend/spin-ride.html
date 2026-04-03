@@ -144,67 +144,74 @@
                 <h5 class="text-center mb-1" id="rideTitle"></h5>
                 <p class="text-center text-muted small mb-3" id="rideMeta"></p>
 
-                <!-- Circular Timer -->
-                <div class="spin-timer-container">
-                  <svg class="spin-timer-svg" viewBox="0 0 200 200">
-                    <circle class="spin-timer-track" cx="100" cy="100" r="88" />
-                    <circle class="spin-timer-progress" cx="100" cy="100" r="88" id="timerProgress" />
-                  </svg>
-                  <div class="spin-timer-content">
-                    <div class="spin-timer-remaining" id="totalRemaining">--:--</div>
-                    <div class="spin-timer-segment-name" id="segmentName">---</div>
-                    <div class="spin-timer-segment-time" id="segmentTime">--:--</div>
-                  </div>
-                </div>
-
-                <!-- Current Segment Details -->
-                <div class="spin-segment-details" id="segmentDetails">
-                  <div class="spin-detail">
-                    <span class="spin-detail-label">Resistance</span>
-                    <span class="spin-detail-value" id="segmentResistance">-</span>
-                    <span class="spin-detail-label">/10</span>
-                  </div>
-                  <div class="spin-detail">
-                    <span class="spin-detail-label">RPM</span>
-                    <span class="spin-detail-value" id="segmentRpm">-</span>
-                  </div>
-                </div>
-
-                <!-- Cue -->
-                <p class="text-center text-muted fst-italic small mb-3" id="segmentCue"></p>
-
-                <!-- Controls -->
-                <div class="d-flex justify-content-center gap-2 mb-4" id="rideControls">
-                  <button class="btn btn-success btn-lg" id="startBtn">
-                    <i class="bx bx-play me-1"></i>Start Ride
-                  </button>
-                  <button class="btn btn-warning btn-lg d-none" id="pauseBtn">
-                    <i class="bx bx-pause me-1"></i>Pause
-                  </button>
-                  <button class="btn btn-success btn-lg d-none" id="resumeBtn">
-                    <i class="bx bx-play me-1"></i>Resume
-                  </button>
-                  <button class="btn btn-outline-danger btn-lg d-none" id="endBtn">
-                    <i class="bx bx-stop me-1"></i>End Ride
-                  </button>
-                </div>
-
-                <!-- Segment List (collapsible) -->
-                <div class="card spin-plan-card">
-                  <div class="card-body p-2">
-                    <!-- Current + Next always visible -->
-                    <div id="segmentPreview" class="spin-segment-list mb-1"></div>
-                    <!-- Full list collapsed -->
-                    <div class="collapse" id="segmentListCollapse">
-                      <div id="segmentList" class="spin-segment-list"></div>
+                <div class="spin-ride-layout">
+                  <!-- Left: Timer + Details + Controls -->
+                  <div class="spin-ride-timer-col">
+                    <!-- Circular Timer -->
+                    <div class="spin-timer-container">
+                      <svg class="spin-timer-svg" viewBox="0 0 200 200">
+                        <circle class="spin-timer-track" cx="100" cy="100" r="88" />
+                        <circle class="spin-timer-progress" cx="100" cy="100" r="88" id="timerProgress" />
+                      </svg>
+                      <div class="spin-timer-content">
+                        <div class="spin-timer-remaining" id="segmentTime">--:--</div>
+                        <div class="spin-timer-segment-name" id="segmentName">---</div>
+                        <div class="spin-timer-elapsed" id="totalElapsed">00:00</div>
+                      </div>
                     </div>
-                    <button class="btn btn-sm btn-link text-muted w-100 py-1" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#segmentListCollapse"
-                            aria-expanded="false" aria-controls="segmentListCollapse"
-                            id="segmentListToggle">
-                      <i class="bx bx-chevron-down me-1" id="segmentListToggleIcon"></i>
-                      <span id="segmentListToggleText">Show all segments</span>
-                    </button>
+
+                    <!-- Current Segment Details -->
+                    <div class="spin-segment-details" id="segmentDetails">
+                      <div class="spin-detail">
+                        <span class="spin-detail-label">Resistance</span>
+                        <span class="spin-detail-value" id="segmentResistance">-</span>
+                        <span class="spin-detail-label">/10</span>
+                      </div>
+                      <div class="spin-detail">
+                        <span class="spin-detail-label">RPM</span>
+                        <span class="spin-detail-value" id="segmentRpm">-</span>
+                      </div>
+                    </div>
+
+                    <!-- Cue -->
+                    <p class="text-center text-muted fst-italic small mb-3" id="segmentCue"></p>
+
+                    <!-- Controls -->
+                    <div class="d-flex justify-content-center gap-2 mb-4" id="rideControls">
+                      <button class="btn btn-success btn-lg" id="startBtn">
+                        <i class="bx bx-play me-1"></i>Start Ride
+                      </button>
+                      <button class="btn btn-warning btn-lg d-none" id="pauseBtn">
+                        <i class="bx bx-pause me-1"></i>Pause
+                      </button>
+                      <button class="btn btn-success btn-lg d-none" id="resumeBtn">
+                        <i class="bx bx-play me-1"></i>Resume
+                      </button>
+                      <button class="btn btn-outline-danger btn-lg d-none" id="endBtn">
+                        <i class="bx bx-stop me-1"></i>End Ride
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Right: Segment List -->
+                  <div class="spin-ride-segments-col">
+                    <div class="card spin-plan-card">
+                      <div class="card-body p-2">
+                        <!-- Current + Next always visible -->
+                        <div id="segmentPreview" class="spin-segment-list mb-1"></div>
+                        <!-- Full list collapsed -->
+                        <div class="collapse" id="segmentListCollapse">
+                          <div id="segmentList" class="spin-segment-list"></div>
+                        </div>
+                        <button class="btn btn-sm btn-link text-muted w-100 py-1" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#segmentListCollapse"
+                                aria-expanded="false" aria-controls="segmentListCollapse"
+                                id="segmentListToggle">
+                          <i class="bx bx-chevron-down me-1" id="segmentListToggleIcon"></i>
+                          <span id="segmentListToggleText">Show all segments</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
