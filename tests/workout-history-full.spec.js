@@ -215,6 +215,69 @@ test.describe('Workout History', () => {
     expect(chipText).toContain('225');
   });
 
+  test('renderExerciseTableRow handles string weight_change without error', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await page.waitForFunction(() => typeof window.renderExerciseTableRow === 'function', { timeout: 10000 });
+
+    // Test with string weight_change (as demo data and real API responses provide)
+    const result = await page.evaluate(() => {
+      const exercises = [
+        { exercise_name: 'Bench Press', weight: '185', weight_unit: 'lbs', sets_completed: 4, target_sets: '4', target_reps: '6-8', weight_change: '5', previous_weight: '180' },
+        { exercise_name: 'Squat', weight: '275', weight_unit: 'lbs', sets_completed: 4, target_sets: '4', target_reps: '6-8', weight_change: '-10', previous_weight: '285' },
+        { exercise_name: 'Deadlift', weight: '315', weight_unit: 'lbs', sets_completed: 3, target_sets: '3', target_reps: '5', weight_change: '0', previous_weight: '315' },
+        { exercise_name: 'OHP', weight: '135', weight_unit: 'lbs', sets_completed: 3, target_sets: '3', target_reps: '8', weight_change: null, previous_weight: null },
+      ];
+
+      const results = [];
+      for (const ex of exercises) {
+        try {
+          const html = window.renderExerciseTableRow(ex);
+          results.push({ name: ex.exercise_name, ok: true, html });
+        } catch (e) {
+          results.push({ name: ex.exercise_name, ok: false, error: e.message });
+        }
+      }
+      return results;
+    });
+
+    // All exercises should render without error
+    for (const r of result) {
+      expect(r.ok, `${r.name} failed: ${r.error}`).toBe(true);
+    }
+
+    // Positive change should show up arrow
+    expect(result[0].html).toContain('text-success');
+    expect(result[0].html).toContain('5.0');
+
+    // Negative change should show down arrow
+    expect(result[1].html).toContain('text-danger');
+
+    // Zero change should show neutral indicator
+    expect(result[2].html).toContain('text-muted');
+
+    // Null weight_change with no previous_weight should show "New"
+    expect(result[3].html).toContain('New');
+  });
+
+  test('renderExerciseTableRow handles numeric weight_change', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await page.waitForFunction(() => typeof window.renderExerciseTableRow === 'function', { timeout: 10000 });
+
+    // Test with numeric weight_change (as frontend in-memory state may provide)
+    const result = await page.evaluate(() => {
+      const ex = { exercise_name: 'Bench Press', weight: '185', weight_unit: 'lbs', sets_completed: 4, target_sets: '4', target_reps: '6-8', weight_change: 10, previous_weight: '175' };
+      try {
+        return { ok: true, html: window.renderExerciseTableRow(ex) };
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+    });
+
+    expect(result.ok, `Failed: ${result.error}`).toBe(true);
+    expect(result.html).toContain('text-success');
+    expect(result.html).toContain('10.0');
+  });
+
   test('PR CSS file loads with correct styles', async ({ page }) => {
     await page.goto(`${BASE}/workout-history.html`);
     await waitForAppReady(page);

@@ -289,7 +289,7 @@ def build_sessions(workouts, program_id, now):
                     previous_weight = prev_weight
                     diff = int(weight) - int(prev_weight)
                     if diff > 0:
-                        weight_change = f'+{diff}'
+                        weight_change = str(diff)
                     elif diff == 0:
                         weight_change = '0'
 
