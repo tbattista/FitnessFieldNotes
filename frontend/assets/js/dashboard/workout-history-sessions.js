@@ -412,16 +412,17 @@ function renderExerciseTableRow(ex, prev) {
   if (ex.is_skipped) {
     changeIndicator = '—';
   } else if (ex.weight_change !== undefined && ex.weight_change !== null) {
+    const weightChange = Number(ex.weight_change);
     const unitDisplay = ex.weight_unit && ex.weight_unit !== 'other' ? ` ${ex.weight_unit}` : '';
-    if (ex.weight_change > 0) {
+    if (weightChange > 0) {
       changeIcon = '↑';
       changeIndicator = `<span class="text-success fw-bold" title="Weight increased from previous session">
-        ${changeIcon} +${ex.weight_change.toFixed(1)}${unitDisplay}
+        ${changeIcon} +${weightChange.toFixed(1)}${unitDisplay}
       </span>`;
-    } else if (ex.weight_change < 0) {
+    } else if (weightChange < 0) {
       changeIcon = '↓';
       changeIndicator = `<span class="text-danger fw-bold" title="Weight decreased from previous session">
-        ${changeIcon} ${ex.weight_change.toFixed(1)}${unitDisplay}
+        ${changeIcon} ${weightChange.toFixed(1)}${unitDisplay}
       </span>`;
     } else if (ex.previous_weight) {
       changeIcon = '→';
