@@ -690,12 +690,13 @@ function _formatPRDate(dateStr) {
  */
 function togglePRSection() {
   const collapsible = document.querySelector('.pr-chips-collapsible');
-  const icon = document.querySelector('.pr-collapse-btn i');
-  if (!collapsible || !icon) return;
+  const btn = document.querySelector('.pr-collapse-btn');
+  if (!collapsible || !btn) return;
 
   const isCollapsing = !collapsible.classList.contains('collapsed');
   collapsible.classList.toggle('collapsed');
-  icon.className = isCollapsing ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+  btn.textContent = isCollapsing ? 'Show' : 'Hide';
+  btn.title = isCollapsing ? 'Show PRs' : 'Hide PRs';
   localStorage.setItem('ffn_pr_section_visible', !isCollapsing ? 'true' : 'false');
 }
 
