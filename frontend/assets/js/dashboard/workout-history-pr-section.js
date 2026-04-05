@@ -289,11 +289,11 @@ async function renderPRSection() {
         <i class="bx bxs-trophy"></i> Personal Records
       </span>
       <div class="d-flex align-items-center gap-1">
+        <button class="btn btn-xs btn-outline-secondary pr-collapse-btn" onclick="togglePRSection()" title="${isCollapsed ? 'Show PRs' : 'Hide PRs'}">
+          ${isCollapsed ? 'Show' : 'Hide'}
+        </button>
         <button class="btn btn-xs ${reorderBtnClass} pr-reorder-btn" onclick="togglePRReorderMode()" title="${reorderBtnTitle}">
           ${reorderBtnLabel}
-        </button>
-        <button class="pr-collapse-btn" onclick="togglePRSection()" title="Toggle PR section">
-          <i class="bx ${isCollapsed ? 'bx-chevron-down' : 'bx-chevron-up'}"></i>
         </button>
       </div>
     </div>
