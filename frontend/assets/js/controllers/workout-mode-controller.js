@@ -51,7 +51,10 @@ class WorkoutModeController {
             sessionService: this.sessionService,
             cardRenderer: this.cardRenderer,
             noteCardRenderer: this.noteCardRenderer,
-            timerManager: this.timerManager
+            timerManager: this.timerManager,
+            onAutoSave: () => this.autoSave(null),
+            onRenderWorkout: () => this.renderWorkout(true),
+            onGetCurrentWorkout: () => this.currentWorkout
         });
 
         // Landing Manager (NEW - extracted landing page logic)

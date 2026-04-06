@@ -35,6 +35,7 @@
 /* Field morphing patterns */
 @import url('workout-mode/_weight-field.css');
 @import url('workout-mode/_repssets-field.css');
+@import url('workout-mode/_activity-field.css');
 
 /* Notes, calories, and timer */
 @import url('workout-mode/_notes.css');

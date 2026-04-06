@@ -1,0 +1,205 @@
+/**
+ * Workout Mode - Activity Field
+ * Inline editing for cardio/activity card fields
+ *
+ * @version 1.0.0
+ */
+
+/* ============================================
+   DISPLAY MODE (click-to-edit)
+   ============================================ */
+
+.activity-fields-display {
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: background 0.15s ease;
+}
+
+.activity-fields-display:hover {
+    background: var(--workout-accent-5);
+}
+
+.activity-fields-display div {
+    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.activity-fields-display div i {
+    font-size: 1rem;
+    color: var(--workout-accent);
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.activity-fields-display .text-muted.fst-italic {
+    justify-content: center;
+    padding: 0.75rem 0;
+}
+
+/* ============================================
+   EDIT MODE
+   ============================================ */
+
+.activity-fields-editor {
+    padding: 0.75rem;
+    animation: activityEditorFadeIn 0.2s ease;
+}
+
+@keyframes activityEditorFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.activity-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.activity-edit-row:last-child {
+    margin-bottom: 0;
+}
+
+.activity-edit-row label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--workout-muted);
+    white-space: nowrap;
+    min-width: 90px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 0;
+}
+
+.activity-edit-row label i {
+    font-size: 1rem;
+    color: var(--workout-accent);
+}
+
+.activity-edit-row input[type="number"],
+.activity-edit-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--workout-border);
+    border-radius: 6px;
+    background: var(--workout-card-bg);
+    color: var(--workout-text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.activity-edit-row input:focus {
+    outline: none;
+    border-color: var(--workout-accent);
+    box-shadow: 0 0 0 2px var(--workout-accent-10);
+}
+
+/* Input group (input + suffix/select) */
+.activity-edit-input-group {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+}
+
+.activity-edit-input-group input {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-edit-suffix {
+    font-size: 0.8rem;
+    color: var(--workout-muted);
+    white-space: nowrap;
+}
+
+.activity-edit-distance-unit {
+    padding: 0.375rem 0.35rem;
+    font-size: 0.8rem;
+    border: 1px solid var(--workout-border);
+    border-radius: 6px;
+    background: var(--workout-card-bg);
+    color: var(--workout-text);
+    cursor: pointer;
+}
+
+.activity-edit-distance-unit:focus {
+    outline: none;
+    border-color: var(--workout-accent);
+}
+
+/* ============================================
+   UNIFIED ACTIONS (Save / Cancel)
+   ============================================ */
+
+.activity-unified-actions {
+    display: none;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0 0.75rem 0.5rem;
+    width: 100%;
+}
+
+.activity-unified-actions .activity-unified-save-btn,
+.activity-unified-actions .activity-unified-cancel-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 1.125rem;
+    line-height: 1;
+    border-radius: 6px;
+}
+
+.activity-unified-actions .activity-unified-save-btn {
+    background: var(--workout-success);
+    border-color: var(--workout-success);
+    color: white;
+}
+
+.activity-unified-actions .activity-unified-save-btn:hover {
+    background: var(--workout-success);
+    filter: brightness(1.1);
+}
+
+.activity-unified-actions .activity-unified-cancel-btn {
+    background: transparent;
+    border: 1px solid var(--workout-border);
+    color: var(--workout-muted);
+}
+
+.activity-unified-actions .activity-unified-cancel-btn:hover {
+    border-color: var(--workout-danger);
+    color: var(--workout-danger);
+    background: var(--workout-danger-10);
+}
+
+/* ============================================
+   EDIT ACTIVE STATE
+   ============================================ */
+
+.workout-card.activity-edit-active {
+    border-color: var(--workout-accent);
+    box-shadow: 0 0 0 1px var(--workout-accent-10);
+}
+
+/* Hide display when in edit mode (handled by JS, this is fallback) */
+.workout-card.activity-edit-active .activity-fields-display {
+    display: none;
+}
+
+/* Disable click-to-edit on completed cards */
+.workout-card.logged .activity-fields-display {
+    cursor: default;
+    pointer-events: none;
+}
+
+.workout-card.logged .activity-fields-display:hover {
+    background: transparent;
+}

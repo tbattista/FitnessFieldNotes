@@ -12,6 +12,9 @@ class WorkoutRenderManager {
         this.cardRenderer = options.cardRenderer;
         this.noteCardRenderer = options.noteCardRenderer;
         this.timerManager = options.timerManager;
+        this.onAutoSave = options.onAutoSave || (() => Promise.resolve());
+        this.onRenderWorkout = options.onRenderWorkout || (() => {});
+        this.onGetCurrentWorkout = options.onGetCurrentWorkout || (() => null);
         this.cardManager = null;
         this._lastSectionMeta = null;
 
@@ -502,7 +505,7 @@ class WorkoutRenderManager {
                         </div>
                         <div class="workout-header-actions">
                             <button class="workout-edit-btn${isCompleted ? ' edit-locked' : ''}"
-                                    onclick="window.workoutModeController?.handleEditActivity?.('${escapedName}', ${index}); event.stopPropagation();"
+                                    onclick="this.closest('.workout-card')?.dispatchEvent(new CustomEvent('enterActivityEditMode', { bubbles: false })); event.stopPropagation();"
                                     aria-label="${isCompleted ? 'Editing locked - uncomplete to edit' : 'Edit activity'}"
                                     title="${isCompleted ? 'Uncomplete to edit' : 'Edit activity'}">
                                 <i class="bx ${isCompleted ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
@@ -530,14 +533,75 @@ class WorkoutRenderManager {
                             ${skipReason ? `<p class="mb-0 mt-1 small">${escapeHtml(skipReason)}</p>` : ''}
                         </div>
                     ` : `
-                        <div class="p-3 text-muted small">
-                            ${displayConfig.duration_minutes ? `<div><strong>Duration:</strong> ${displayConfig.duration_minutes} min</div>` : ''}
-                            ${displayConfig.distance ? `<div><strong>Distance:</strong> ${displayConfig.distance} ${displayConfig.distance_unit || 'mi'}</div>` : ''}
-                            ${displayConfig.target_pace ? `<div><strong>Target Pace:</strong> ${displayConfig.target_pace}</div>` : ''}
-                            ${displayConfig.target_rpe ? `<div><strong>RPE:</strong> ${displayConfig.target_rpe}/10</div>` : ''}
-                            ${displayConfig.target_heart_rate ? `<div><strong>Heart Rate:</strong> ${displayConfig.target_heart_rate} bpm</div>` : ''}
-                            ${displayConfig.target_calories ? `<div><strong>Calories:</strong> ${displayConfig.target_calories} cal</div>` : ''}
-                            ${displayConfig.notes ? `<div class="mt-2"><strong>Notes:</strong> ${escapeHtml(displayConfig.notes)}</div>` : ''}
+                        <!-- Display Mode (click to edit) -->
+                        <div class="activity-fields-display click-to-edit p-3 text-muted small">
+                            ${displayConfig.duration_minutes ? `<div><i class="bx bx-time-five"></i> <strong>Duration:</strong> ${displayConfig.duration_minutes} min</div>` : ''}
+                            ${displayConfig.distance ? `<div><i class="bx bx-ruler"></i> <strong>Distance:</strong> ${displayConfig.distance} ${displayConfig.distance_unit || 'mi'}</div>` : ''}
+                            ${displayConfig.target_pace ? `<div><i class="bx bx-run"></i> <strong>Target Pace:</strong> ${displayConfig.target_pace}</div>` : ''}
+                            ${displayConfig.target_rpe ? `<div><i class="bx bx-heart"></i> <strong>RPE:</strong> ${displayConfig.target_rpe}/10</div>` : ''}
+                            ${displayConfig.target_heart_rate ? `<div><i class="bx bx-pulse"></i> <strong>Heart Rate:</strong> ${displayConfig.target_heart_rate} bpm</div>` : ''}
+                            ${displayConfig.target_calories ? `<div><i class="bx bx-flame"></i> <strong>Calories:</strong> ${displayConfig.target_calories} cal</div>` : ''}
+                            ${displayConfig.notes ? `<div class="mt-2"><i class="bx bx-note"></i> <strong>Notes:</strong> ${escapeHtml(displayConfig.notes)}</div>` : ''}
+                            ${!displayConfig.duration_minutes && !displayConfig.distance && !displayConfig.target_pace && !displayConfig.target_rpe && !displayConfig.target_heart_rate && !displayConfig.target_calories ? '<div class="text-muted fst-italic">Tap to add details</div>' : ''}
+                        </div>
+
+                        <!-- Edit Mode (hidden initially) -->
+                        <div class="activity-fields-editor" style="display: none;" onclick="event.stopPropagation();">
+                            <div class="activity-edit-row">
+                                <label><i class="bx bx-time-five"></i> Duration</label>
+                                <div class="activity-edit-input-group">
+                                    <input type="number" class="activity-edit-duration" data-field="duration_minutes" value="${displayConfig.duration_minutes || ''}" placeholder="0" min="0" step="1" inputmode="numeric" />
+                                    <span class="activity-edit-suffix">min</span>
+                                </div>
+                            </div>
+                            <div class="activity-edit-row">
+                                <label><i class="bx bx-ruler"></i> Distance</label>
+                                <div class="activity-edit-input-group">
+                                    <input type="number" class="activity-edit-distance" data-field="distance" value="${displayConfig.distance || ''}" placeholder="0" min="0" step="0.1" inputmode="decimal" />
+                                    <select class="activity-edit-distance-unit" data-field="distance_unit">
+                                        <option value="mi" ${(displayConfig.distance_unit || 'mi') === 'mi' ? 'selected' : ''}>mi</option>
+                                        <option value="km" ${displayConfig.distance_unit === 'km' ? 'selected' : ''}>km</option>
+                                        <option value="m" ${displayConfig.distance_unit === 'm' ? 'selected' : ''}>m</option>
+                                        <option value="yd" ${displayConfig.distance_unit === 'yd' ? 'selected' : ''}>yd</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="activity-edit-row">
+                                <label><i class="bx bx-run"></i> Pace</label>
+                                <input type="text" class="activity-edit-pace" data-field="target_pace" value="${escapeHtml(displayConfig.target_pace || '')}" placeholder="e.g. 10:00/mi" />
+                            </div>
+                            <div class="activity-edit-row">
+                                <label><i class="bx bx-heart"></i> RPE</label>
+                                <input type="number" class="activity-edit-rpe" data-field="target_rpe" value="${displayConfig.target_rpe || ''}" placeholder="1-10" min="1" max="10" step="1" inputmode="numeric" />
+                            </div>
+                            <div class="activity-edit-row">
+                                <label><i class="bx bx-pulse"></i> Heart Rate</label>
+                                <div class="activity-edit-input-group">
+                                    <input type="number" class="activity-edit-hr" data-field="target_heart_rate" value="${displayConfig.target_heart_rate || ''}" placeholder="0" min="0" step="1" inputmode="numeric" />
+                                    <span class="activity-edit-suffix">bpm</span>
+                                </div>
+                            </div>
+                            <div class="activity-edit-row">
+                                <label><i class="bx bx-flame"></i> Calories</label>
+                                <div class="activity-edit-input-group">
+                                    <input type="number" class="activity-edit-calories" data-field="target_calories" value="${displayConfig.target_calories || ''}" placeholder="0" min="0" step="1" inputmode="numeric" />
+                                    <span class="activity-edit-suffix">cal</span>
+                                </div>
+                            </div>
+                            <div class="activity-edit-row">
+                                <label><i class="bx bx-note"></i> Notes</label>
+                                <input type="text" class="activity-edit-notes" data-field="notes" value="${escapeHtml(displayConfig.notes || '')}" placeholder="Add notes..." />
+                            </div>
+                        </div>
+
+                        <!-- Unified Save/Cancel Buttons -->
+                        <div class="activity-unified-actions" style="display: none;" onclick="event.stopPropagation();">
+                            <button class="btn btn-sm btn-success activity-unified-save-btn" type="button" aria-label="Save changes" title="Save">
+                                <i class="bx bx-check"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary activity-unified-cancel-btn" type="button" aria-label="Cancel changes" title="Cancel">
+                                <i class="bx bx-x"></i>
+                            </button>
                         </div>
                     `}
                 </div>
@@ -572,7 +636,7 @@ class WorkoutRenderManager {
                     </button>
                 `}
                 <button class="workout-menu-item${isCompleted ? ' disabled' : ''}"
-                        onclick="window.workoutModeController?.handleEditActivity?.('${escaped}', ${index}); event.stopPropagation();"${isCompleted ? ' disabled' : ''}>
+                        onclick="this.closest('.workout-card')?.dispatchEvent(new CustomEvent('enterActivityEditMode', { bubbles: false })); event.stopPropagation();"${isCompleted ? ' disabled' : ''}>
                     <i class="bx ${isCompleted ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
                     ${isCompleted ? 'Edit (uncomplete first)' : 'Edit activity'}
                 </button>
@@ -706,6 +770,28 @@ class WorkoutRenderManager {
                 console.log('✅ Logbook V2: Unified edit controllers initialized');
             } else {
                 console.warn('⚠️ Logbook V2: UnifiedEditController not available');
+            }
+
+            // Activity field controllers (inline editing for cardio cards)
+            if (window.ActivityFieldController) {
+                const cardioCards = document.querySelectorAll('.workout-card[data-card-type="cardio"]');
+                cardioCards.forEach((card) => {
+                    const exerciseName = card.getAttribute('data-exercise-name');
+                    if (exerciseName) {
+                        const controller = new window.ActivityFieldController(
+                            card,
+                            this.sessionService,
+                            () => this.onAutoSave(),
+                            () => this.onRenderWorkout(),
+                            () => this.onGetCurrentWorkout()
+                        );
+                        card.activityFieldController = controller;
+                        console.log(`✅ Activity field controller initialized for ${exerciseName}`);
+                    }
+                });
+                console.log(`✅ Logbook V2: Activity field controllers initialized (${cardioCards.length} cards)`);
+            } else {
+                console.warn('⚠️ Logbook V2: ActivityFieldController not available');
             }
 
             // Dispatch event for unified notes controller
