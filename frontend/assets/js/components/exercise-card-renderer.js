@@ -130,28 +130,19 @@ class ExerciseCardRenderer {
                     ` : ''}
                     
                     ${!isSkipped ? `
-                        <!-- Weight Section -->
-                        <div class="workout-section">
-                            <div class="workout-section-label"><i class="bx bx-dumbbell"></i>Weight</div>
-                            ${this._renderWeightField(currentWeight, currentUnit, mainExercise)}
-                            ${this._renderPlateBreakdown(currentWeight, currentUnit)}
-                        </div>
+                        <!-- Weight + Protocol Fields Row (side-by-side display, stacked edit) -->
+                        <div class="workout-fields-row">
+                            <!-- Weight Section -->
+                            <div class="workout-section">
+                                ${this._renderWeightField(currentWeight, currentUnit, mainExercise)}
+                            </div>
 
-                        <!-- Protocol Section (formerly Sets × Reps) -->
-                        <div class="workout-section">
-                            <div class="workout-section-label"><i class="bx bx-list-ul"></i>Protocol</div>
-                            ${this._renderRepsSetsField(sets, reps, mainExercise)}
+                            <!-- Protocol Section -->
+                            <div class="workout-section">
+                                ${this._renderRepsSetsField(sets, reps, mainExercise)}
+                            </div>
                         </div>
-
-                        <!-- Unified Save/Cancel Buttons (below both fields, outside sections) -->
-                        <div class="workout-unified-actions" onclick="event.stopPropagation();">
-                            <button class="btn btn-sm btn-success unified-save-btn" type="button" aria-label="Save changes" title="Save">
-                                <i class="bx bx-check"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary unified-cancel-btn" type="button" aria-label="Cancel changes" title="Cancel">
-                                <i class="bx bx-x"></i>
-                            </button>
-                        </div>
+                        ${this._renderPlateBreakdown(currentWeight, currentUnit)}
 
                         <!-- Notes Section -->
                         <div class="workout-section workout-notes-timer-section workout-unified-notes">
@@ -430,6 +421,7 @@ class ExerciseCardRenderer {
             <div class="workout-weight-field" data-weight="${weight || 0}" data-unit="${currentUnit}" data-weight-mode="${isDIYMode ? 'text' : 'numeric'}" data-exercise-name="${this._escapeHtml(exerciseName)}">
                 <!-- Display Mode (click to edit) -->
                 <div class="weight-display click-to-edit" onclick="event.stopPropagation(); this.closest('.workout-card')?.dispatchEvent(new CustomEvent('enterUnifiedEditMode', { bubbles: false }));">
+                    <div class="workout-section-label inline"><i class="bx bx-dumbbell"></i>Weight</div>
                     <div class="weight-value-group">
                         <span class="weight-value">${displayWeight}</span>
                         ${(displayUnit && currentUnit !== 'diy') ? `<span class="weight-unit">${displayUnit}</span>` : ''}
@@ -438,12 +430,13 @@ class ExerciseCardRenderer {
 
                 <!-- Edit Mode (hidden initially) -->
                 <div class="weight-editor ${isDIYMode ? 'diy-active' : ''}" style="display: none;">
-                    <!-- Numeric Mode: Full width input -->
+                    <div class="workout-section-label inline"><i class="bx bx-dumbbell"></i>Weight</div>
+                    <!-- Numeric Mode input -->
                     <div class="weight-input-row numeric-mode">
                         <input type="number" class="weight-input" value="${isDIYMode ? '' : (weight || '')}" step="5" min="0" max="9999" inputmode="decimal" placeholder="0" onclick="event.stopPropagation();" />
                     </div>
 
-                    <!-- DIY Mode: Full width text input -->
+                    <!-- DIY Mode text input -->
                     <div class="weight-input-row diy-mode">
                         <input type="text" class="weight-text-input" value="${isDIYMode ? weight : ''}" placeholder="e.g., body weight + 10lbs" onclick="event.stopPropagation();" />
                     </div>
@@ -480,16 +473,27 @@ class ExerciseCardRenderer {
             <div class="workout-repssets-field" data-protocol="${displayValue}" data-exercise-name="${this._escapeHtml(exerciseName)}">
                 <!-- Display Mode (click to edit) -->
                 <div class="repssets-display click-to-edit" onclick="event.stopPropagation(); this.closest('.workout-card')?.dispatchEvent(new CustomEvent('enterUnifiedEditMode', { bubbles: false }));">
+                    <div class="workout-section-label inline"><i class="bx bx-list-ul"></i>Protocol</div>
                     <span class="repssets-value-text">${displayValue}</span>
                 </div>
 
-                <!-- Edit Mode (Full Width) -->
+                <!-- Edit Mode (inline row) -->
                 <div class="repssets-editor" style="display: none;">
+                    <div class="workout-section-label inline"><i class="bx bx-list-ul"></i>Protocol</div>
                     <input type="text"
                            class="repssets-input repssets-text-input"
                            value="${displayValue}"
-                           placeholder="e.g., 3x10, 4 sets to failure, AMRAP"
+                           placeholder="e.g., 3x10, AMRAP"
                            onclick="event.stopPropagation();" />
+                    <!-- Unified Save/Cancel (inline after protocol input) -->
+                    <div class="workout-unified-actions inline" onclick="event.stopPropagation();">
+                        <button class="btn btn-sm btn-success unified-save-btn" type="button" aria-label="Save changes" title="Save">
+                            <i class="bx bx-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary unified-cancel-btn" type="button" aria-label="Cancel changes" title="Cancel">
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;

@@ -115,8 +115,16 @@ function renderExerciseGroup(group) {
   const lastDate = group.lastDate ? formatExerciseDate(group.lastDate) : '';
   const hasMultipleVariants = group.variants.length > 1;
 
-  // PR tracking: check if this exercise has a PR
-  const isPR = state.prExerciseNames.has(group.baseName.toLowerCase());
+  // PR tracking: check if this exercise has a PR (check canonical name + any merged alias names)
+  let isPR = state.prExerciseNames.has(group.baseName.toLowerCase());
+  if (!isPR && group.mergedNames && group.mergedNames.size > 0) {
+    for (const alias of group.mergedNames) {
+      if (state.prExerciseNames.has(alias.toLowerCase())) {
+        isPR = true;
+        break;
+      }
+    }
+  }
   // Get most recent variant for pre-fill (user expects "last weight I did")
   const mostRecentVariant = group.variants.reduce((best, v) => {
     const bestDate = best.lastDate ? new Date(best.lastDate) : new Date(0);
@@ -128,6 +136,14 @@ function renderExerciseGroup(group) {
   // Find the earliest date the best weight was first achieved (across all variants)
   const bestWeightDate = mostRecentVariant?.bestWeightDate || '';
 
+  // Build alias display text
+  const mergedNamesArray = group.mergedNames && group.mergedNames.size > 0
+    ? Array.from(group.mergedNames).filter(n => n.toLowerCase() !== group.baseName.toLowerCase())
+    : [];
+  const aliasHtml = mergedNamesArray.length > 0
+    ? `<span class="exercise-group-aliases">also: ${mergedNamesArray.map(n => escapeHtml(n)).join(', ')}</span>`
+    : '';
+
   let html = `
     <div class="exercise-group-item">
       <div class="exercise-group-header"
@@ -136,7 +152,7 @@ function renderExerciseGroup(group) {
            aria-expanded="${isExpanded}"
            aria-controls="${groupId}">
         <div class="exercise-group-header-row1">
-          <span class="exercise-group-name">${escapeHtml(group.baseName)}</span>
+          <span class="exercise-group-name">${escapeHtml(group.baseName)}</span>${aliasHtml}
           <div class="exercise-group-header-right">
             ${hasMultipleVariants ? `<span class="exercise-group-variant-count">${group.variants.length} variants</span>` : ''}
             <button class="pr-toggle-btn ${isPR ? 'active' : ''}"
@@ -467,4 +483,4 @@ window.cycleExerciseTabSort = cycleExerciseTabSort;
 window.initExerciseTabVisibility = initExerciseTabVisibility;
 window.toggleExercisePRTracking = toggleExercisePRTracking;
 
-console.log('Workout History Exercise Tab module loaded (v1.1.0)');
+console.log('Workout History Exercise Tab module loaded (v2.0.0)');

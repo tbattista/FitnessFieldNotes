@@ -51,11 +51,10 @@
         gap: 0.375rem;
     }
 
-    /* Weight field adjustments - full width, consistent sizing */
+    /* Weight field adjustments */
     .weight-input,
     .weight-text-input {
-        font-size: 1.25rem;
-        width: 100% !important;
+        font-size: 1.125rem;
         max-width: none !important;
     }
 
@@ -65,10 +64,9 @@
         min-width: 32px;
     }
 
-    /* Reps/sets field adjustments - match weight input sizing */
+    /* Reps/sets field adjustments */
     .repssets-text-input {
-        font-size: 1.25rem;
-        width: 100% !important;
+        font-size: 1.125rem;
         max-width: none !important;
     }
 
@@ -99,13 +97,18 @@
     }
 
     .weight-display .weight-value {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
 
     .repssets-display .repssets-value-text {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
 
+    /* Stack fields on very small screens */
+    .workout-fields-row {
+        flex-direction: column;
+        gap: 0.375rem;
+    }
 }
 
 /* ============================================
@@ -129,11 +132,11 @@
 @media (min-width: 768px) {
     /* Larger weight display on desktop */
     .weight-display .weight-value {
-        font-size: 2.25rem;
+        font-size: 1.75rem;
     }
 
     .repssets-display .repssets-value-text {
-        font-size: 2.25rem;
+        font-size: 1.75rem;
     }
 
     /* Wider menu on desktop */

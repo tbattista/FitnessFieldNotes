@@ -24,7 +24,7 @@ class UnifiedEditController {
         this.weightFieldController = weightFieldController;
         this.repsSetFieldController = repsSetFieldController;
 
-        // Find unified action buttons (now in card body, not inside repssets-editor)
+        // Find unified action buttons (inline inside protocol/repssets-editor row)
         this.unifiedActionsContainer = cardElement.querySelector('.workout-unified-actions');
         this.unifiedSaveBtn = cardElement.querySelector('.unified-save-btn');
         this.unifiedCancelBtn = cardElement.querySelector('.unified-cancel-btn');
@@ -123,9 +123,9 @@ class UnifiedEditController {
         this.cardElement.classList.add('unified-edit-active');
         this.isUnifiedEditActive = true;
 
-        // Show the unified actions container
+        // Show the unified actions container (inline-flex for inline layout)
         if (this.unifiedActionsContainer) {
-            this.unifiedActionsContainer.style.display = 'flex';
+            this.unifiedActionsContainer.style.display = 'inline-flex';
         }
 
         // NOW open both editors (blur handlers will ignore events because unified mode is active)

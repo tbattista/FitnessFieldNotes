@@ -178,7 +178,7 @@ async function loadAllSessions(scrollToSessionId = null) {
     calculateStatistics();
 
     // Render UI for All Mode
-    renderAllModeUI();
+    await renderAllModeUI();
     initHistoryCalendar();
 
     // Show content
@@ -201,7 +201,7 @@ async function loadAllSessions(scrollToSessionId = null) {
 /**
  * Render UI for All Sessions mode
  */
-function renderAllModeUI() {
+async function renderAllModeUI() {
   // Extract unique workout names for filter dropdown
   extractUniqueWorkouts();
 
@@ -213,13 +213,24 @@ function renderAllModeUI() {
   if (window.renderPRSection) renderPRSection();
 
   // Aggregate and render exercise overview (All Sessions mode)
-  aggregateAndRenderExercises();
+  await aggregateAndRenderExercises();
 }
 
 /**
  * Aggregate exercise data from sessions and render the exercise tab
+ * Async to ensure exercise cache is loaded for fuzzy matching
  */
-function aggregateAndRenderExercises() {
+async function aggregateAndRenderExercises() {
+  // Ensure exercise cache is ready for fuzzy matching
+  const cacheService = window.exerciseCacheService;
+  if (cacheService) {
+    try {
+      await cacheService.getExercisesWithInstantFallback();
+    } catch (e) {
+      console.warn('[History] Could not load exercise cache for fuzzy matching:', e);
+    }
+  }
+
   const sessions = window.ffn.workoutHistory.sessions;
   // Only aggregate strength sessions (exclude cardio)
   const strengthSessions = sessions.filter(s => s._sessionType !== 'cardio');

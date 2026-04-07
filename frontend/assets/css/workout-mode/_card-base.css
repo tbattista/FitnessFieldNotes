@@ -338,7 +338,7 @@
 
 /* Section styling */
 .workout-section {
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .workout-section:last-child {
@@ -361,4 +361,35 @@
 .workout-section-label i {
     font-size: 0.8125rem;
     opacity: 0.7;
+}
+
+/* Inline label variant - sits beside input instead of above */
+.workout-section-label.inline {
+    display: inline-flex;
+    margin-bottom: 0;
+    margin-right: 0.5rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Fields row - side-by-side display for weight + protocol */
+.workout-fields-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.workout-fields-row .workout-section {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+/* Unified actions inline in protocol row */
+.workout-unified-actions.inline {
+    display: none;
+    flex-shrink: 0;
+    margin: 0;
+    gap: 0.25rem;
+    align-items: center;
 }

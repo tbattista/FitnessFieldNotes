@@ -235,8 +235,14 @@ async function renderPRSection() {
   const records = Array.from(state.personalRecords.values());
 
   if (records.length === 0) {
-    container.innerHTML = '';
-    container.style.display = 'none';
+    container.style.display = '';
+    container.innerHTML = `
+      <div class="pr-section-empty">
+        <button class="btn btn-sm btn-outline-warning" onclick="showAddPRModal()">
+          <i class="bx bxs-trophy me-1"></i> Add Your First PR
+        </button>
+      </div>
+    `;
     return;
   }
 
@@ -289,8 +295,13 @@ async function renderPRSection() {
         <i class="bx bxs-trophy"></i> Personal Records
       </span>
       <div class="d-flex align-items-center gap-1">
+<<<<<<< HEAD
         <button class="btn btn-xs btn-outline-secondary pr-collapse-btn" onclick="togglePRSection()" title="${isCollapsed ? 'Show PRs' : 'Hide PRs'}">
           ${isCollapsed ? 'Show' : 'Hide'}
+=======
+        <button class="btn btn-xs btn-outline-primary pr-add-btn" onclick="showAddPRModal()" title="Add a PR for any exercise">
+          <i class="bx bx-plus"></i> Add
+>>>>>>> 0ff6f40 (feat: add exercise fuzzy matching and Add PR for any exercise on history page)
         </button>
         <button class="btn btn-xs ${reorderBtnClass} pr-reorder-btn" onclick="togglePRReorderMode()" title="${reorderBtnTitle}">
           ${reorderBtnLabel}
@@ -700,10 +711,289 @@ function togglePRSection() {
   localStorage.setItem('ffn_pr_section_visible', !isCollapsing ? 'true' : 'false');
 }
 
+/* ============================================
+   ADD PR FOR ANY EXERCISE (MODAL)
+   ============================================ */
+
+/** Debounce timer for PR modal search */
+let _prModalSearchTimer = null;
+
+/**
+ * Show modal to add a PR for any exercise (searched from full exercise DB)
+ */
+async function showAddPRModal() {
+  if (!window.ffnModalManager) return;
+
+  // Ensure exercise cache is ready
+  const cacheService = window.exerciseCacheService;
+  if (cacheService) {
+    await cacheService.getExercisesWithInstantFallback();
+  }
+
+  const modalId = `pr-add-modal-${Date.now()}`;
+  const exerciseInputId = `${modalId}-exercise`;
+  const resultsId = `${modalId}-results`;
+  const typeId = `${modalId}-type`;
+  const valueId = `${modalId}-value`;
+  const unitId = `${modalId}-unit`;
+  const dateId = `${modalId}-date`;
+
+  const defaultUnits = {
+    weight: 'lbs',
+    distance: 'miles',
+    duration: 'min',
+    pace: 'min/mi'
+  };
+
+  const body = `
+    <div class="mb-3">
+      <label for="${exerciseInputId}" class="form-label">Exercise</label>
+      <input type="text" class="form-control" id="${exerciseInputId}"
+             placeholder="Search exercises..." autocomplete="off">
+      <div class="pr-modal-search-results" id="${resultsId}" style="display: none;"></div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">PR Type</label>
+      <div class="d-flex gap-2 flex-wrap" id="${typeId}">
+        <label class="btn btn-outline-secondary btn-sm pr-type-radio active">
+          <input type="radio" name="prType" value="weight" checked class="d-none"> Weight
+        </label>
+        <label class="btn btn-outline-secondary btn-sm pr-type-radio">
+          <input type="radio" name="prType" value="distance" class="d-none"> Distance
+        </label>
+        <label class="btn btn-outline-secondary btn-sm pr-type-radio">
+          <input type="radio" name="prType" value="duration" class="d-none"> Duration
+        </label>
+        <label class="btn btn-outline-secondary btn-sm pr-type-radio">
+          <input type="radio" name="prType" value="pace" class="d-none"> Pace
+        </label>
+      </div>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-7">
+        <label for="${valueId}" class="form-label">Value</label>
+        <input type="text" class="form-control" id="${valueId}" placeholder="e.g. 225">
+      </div>
+      <div class="col-5">
+        <label for="${unitId}" class="form-label">Unit</label>
+        <input type="text" class="form-control" id="${unitId}" value="lbs">
+      </div>
+    </div>
+    <div class="mb-2">
+      <label for="${dateId}" class="form-label">Date <span class="text-muted">(optional)</span></label>
+      <input type="date" class="form-control" id="${dateId}">
+    </div>
+  `;
+
+  let pendingResult = null;
+
+  const modal = window.ffnModalManager.create(modalId, {
+    title: 'Add Personal Record',
+    body: body,
+    size: 'sm',
+    buttons: [
+      { text: 'Cancel', class: 'btn-secondary', dismiss: true },
+      {
+        text: 'Save PR',
+        class: 'btn-warning',
+        onClick: () => {
+          const exerciseInput = document.getElementById(exerciseInputId);
+          const valueInput = document.getElementById(valueId);
+          const unitInput = document.getElementById(unitId);
+          const dateInput = document.getElementById(dateId);
+          const selectedType = document.querySelector(`#${typeId} input[name="prType"]:checked`);
+
+          pendingResult = {
+            exercise_name: exerciseInput ? exerciseInput.value.trim() : '',
+            pr_type: selectedType ? selectedType.value : 'weight',
+            value: valueInput ? valueInput.value.trim() : '',
+            value_unit: unitInput ? unitInput.value.trim() : 'lbs',
+            date: dateInput ? dateInput.value : ''
+          };
+          window.ffnModalManager.hide(modalId);
+        }
+      }
+    ]
+  });
+
+  // Wire up interactions after modal is shown
+  modal.element.addEventListener('shown.bs.modal', () => {
+    const exerciseInput = document.getElementById(exerciseInputId);
+    if (exerciseInput) {
+      exerciseInput.focus();
+
+      // Exercise search on input
+      exerciseInput.addEventListener('input', () => {
+        clearTimeout(_prModalSearchTimer);
+        _prModalSearchTimer = setTimeout(() => {
+          _handlePRModalSearch(exerciseInput.value, resultsId, exerciseInputId);
+        }, 250);
+      });
+    }
+
+    // PR type radio toggle
+    const typeContainer = document.getElementById(typeId);
+    if (typeContainer) {
+      typeContainer.addEventListener('click', (e) => {
+        const label = e.target.closest('.pr-type-radio');
+        if (!label) return;
+        typeContainer.querySelectorAll('.pr-type-radio').forEach(l => l.classList.remove('active'));
+        label.classList.add('active');
+        const radio = label.querySelector('input[type="radio"]');
+        if (radio) {
+          radio.checked = true;
+          // Update unit default
+          const unitInput = document.getElementById(unitId);
+          if (unitInput) unitInput.value = defaultUnits[radio.value] || '';
+        }
+      });
+    }
+  }, { once: true });
+
+  // Handle Enter key to submit
+  modal.element.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.id !== exerciseInputId) {
+      e.preventDefault();
+      const exerciseInput = document.getElementById(exerciseInputId);
+      const valueInput = document.getElementById(valueId);
+      const unitInput = document.getElementById(unitId);
+      const dateInput = document.getElementById(dateId);
+      const selectedType = document.querySelector(`#${typeId} input[name="prType"]:checked`);
+
+      pendingResult = {
+        exercise_name: exerciseInput ? exerciseInput.value.trim() : '',
+        pr_type: selectedType ? selectedType.value : 'weight',
+        value: valueInput ? valueInput.value.trim() : '',
+        value_unit: unitInput ? unitInput.value.trim() : 'lbs',
+        date: dateInput ? dateInput.value : ''
+      };
+      window.ffnModalManager.hide(modalId);
+    }
+  });
+
+  // Process result on modal close
+  const result = await new Promise(resolve => {
+    modal.element.addEventListener('hidden.bs.modal', () => {
+      window.ffnModalManager.destroy(modalId);
+      resolve(pendingResult);
+    }, { once: true });
+
+    window.ffnModalManager.show(modalId);
+  });
+
+  if (!result || !result.exercise_name || !result.value) return;
+
+  // Save the PR via API
+  try {
+    if (!window.dataManager) return;
+    const token = await window.dataManager.getAuthToken();
+
+    const payload = {
+      pr_type: result.pr_type,
+      exercise_name: result.exercise_name,
+      value: result.value,
+      value_unit: result.value_unit
+    };
+    if (result.date) {
+      payload.session_date = new Date(result.date + 'T12:00:00').toISOString();
+    }
+
+    console.log('[PR] Creating PR via Add modal:', payload);
+
+    const response = await fetch('/api/v3/users/me/personal-records', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const prId = data.pr_id;
+      if (!prId) {
+        console.error('[PR] Response missing pr_id:', data);
+        if (window.showToast) window.showToast('PR saved but ID missing', 'warning');
+        return;
+      }
+
+      const state = window.ffn.workoutHistory;
+      state.personalRecords.set(prId, {
+        id: prId,
+        pr_type: result.pr_type,
+        exercise_name: result.exercise_name,
+        value: result.value,
+        value_unit: result.value_unit,
+        session_date: result.date ? new Date(result.date + 'T12:00:00').toISOString() : null,
+        marked_at: new Date().toISOString(),
+        is_manual: true
+      });
+      state.prExerciseNames.add(result.exercise_name.toLowerCase());
+
+      if (window.showToast) window.showToast(`PR added for ${result.exercise_name}!`, 'success');
+      renderPRSection();
+      if (window.renderExerciseTab) window.renderExerciseTab();
+    } else {
+      const errBody = await response.text().catch(() => '');
+      console.error('[PR] Create failed:', response.status, errBody);
+      if (window.showToast) window.showToast('Failed to save PR', 'danger');
+    }
+  } catch (error) {
+    console.error('Error creating PR:', error);
+    if (window.showToast) window.showToast('Failed to save PR', 'danger');
+  }
+}
+
+/**
+ * Handle exercise search within the Add PR modal
+ */
+function _handlePRModalSearch(query, resultsContainerId, exerciseInputId) {
+  const container = document.getElementById(resultsContainerId);
+  if (!container) return;
+
+  if (!query || query.trim().length < 2) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+
+  const cacheService = window.exerciseCacheService;
+  if (!cacheService) return;
+
+  const results = cacheService.searchExercises(query.trim(), { limit: 8 });
+
+  if (results.length === 0) {
+    container.innerHTML = '<div class="pr-modal-search-item text-muted">No matches found</div>';
+    container.style.display = '';
+    return;
+  }
+
+  container.innerHTML = results.map(ex => `
+    <div class="pr-modal-search-item" data-name="${escapeHtml(ex.name)}">
+      <div>${escapeHtml(ex.name)}</div>
+      ${ex.targetMuscleGroup || ex.primaryEquipment ? `<div class="pr-modal-search-subtitle">${escapeHtml(ex.targetMuscleGroup || '')}${ex.primaryEquipment ? ' &middot; ' + escapeHtml(ex.primaryEquipment) : ''}</div>` : ''}
+    </div>
+  `).join('');
+  container.style.display = '';
+
+  // Attach click handlers
+  container.querySelectorAll('.pr-modal-search-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const nameInput = document.getElementById(exerciseInputId);
+      if (nameInput) {
+        nameInput.value = item.dataset.name;
+      }
+      container.style.display = 'none';
+    });
+  });
+}
+
 // Exports
 window.renderPRSection = renderPRSection;
 window.editPRValue = editPRValue;
 window.togglePRSection = togglePRSection;
 window.togglePRReorderMode = togglePRReorderMode;
+window.showAddPRModal = showAddPRModal;
 
-console.log('Workout History PR Section module loaded (v3.0.0)');
+console.log('Workout History PR Section module loaded (v4.0.0)');

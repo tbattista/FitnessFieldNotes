@@ -99,6 +99,18 @@
   flex: 1;
 }
 
+.exercise-group-aliases {
+  font-size: 0.6875rem;
+  color: var(--bs-secondary-color);
+  font-style: italic;
+  margin-left: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
 .exercise-group-variant-count {
   font-size: 0.6875rem;
   font-weight: 500;
