@@ -130,7 +130,7 @@ class ExerciseCardRenderer {
                     ` : ''}
                     
                     ${!isSkipped ? `
-                        <!-- Weight + Protocol Fields Row (side-by-side display, stacked edit) -->
+                        <!-- Weight + Protocol Fields Row (stacked vertically) -->
                         <div class="workout-fields-row">
                             <!-- Weight Section -->
                             <div class="workout-section">
