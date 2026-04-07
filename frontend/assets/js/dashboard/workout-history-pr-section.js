@@ -295,13 +295,11 @@ async function renderPRSection() {
         <i class="bx bxs-trophy"></i> Personal Records
       </span>
       <div class="d-flex align-items-center gap-1">
-<<<<<<< HEAD
-        <button class="btn btn-xs btn-outline-secondary pr-collapse-btn" onclick="togglePRSection()" title="${isCollapsed ? 'Show PRs' : 'Hide PRs'}">
-          ${isCollapsed ? 'Show' : 'Hide'}
-=======
         <button class="btn btn-xs btn-outline-primary pr-add-btn" onclick="showAddPRModal()" title="Add a PR for any exercise">
           <i class="bx bx-plus"></i> Add
->>>>>>> 0ff6f40 (feat: add exercise fuzzy matching and Add PR for any exercise on history page)
+        </button>
+        <button class="btn btn-xs btn-outline-secondary pr-collapse-btn" onclick="togglePRSection()" title="${isCollapsed ? 'Show PRs' : 'Hide PRs'}">
+          ${isCollapsed ? 'Show' : 'Hide'}
         </button>
         <button class="btn btn-xs ${reorderBtnClass} pr-reorder-btn" onclick="togglePRReorderMode()" title="${reorderBtnTitle}">
           ${reorderBtnLabel}
