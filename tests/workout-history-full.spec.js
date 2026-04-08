@@ -222,4 +222,74 @@ test.describe('Workout History', () => {
     const cssLink = page.locator('link[href*="workout-history-pr.css"]');
     await expect(cssLink).toBeAttached();
   });
+
+  test('desktop view has 3 tabs at top (History, Calendar, Exercise Stats)', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const desktopPage = await context.newPage();
+    await desktopPage.goto(`${BASE}/workout-history.html`);
+    await desktopPage.waitForLoadState('networkidle');
+    await desktopPage.waitForTimeout(2000);
+
+    // Desktop view should have 3 tab buttons in the desktop tabs wrapper
+    // (content is hidden until auth, so check DOM attachment not visibility)
+    const historyTab = desktopPage.locator('.desktop-history-tabs-wrapper #history-tab');
+    const calendarTab = desktopPage.locator('.desktop-history-tabs-wrapper #calendar-tab');
+    const exercisesTab = desktopPage.locator('.desktop-history-tabs-wrapper #exercises-tab');
+
+    await expect(historyTab).toBeAttached();
+    await expect(calendarTab).toBeAttached();
+    await expect(exercisesTab).toBeAttached();
+
+    // History tab should be active by default
+    await expect(historyTab).toHaveClass(/active/);
+
+    // Tab navigation wrapper exists in desktop view DOM
+    const tabsWrapper = desktopPage.locator('.desktop-history-tabs-wrapper');
+    await expect(tabsWrapper).toBeAttached();
+
+    // No sidebar layout (old 2-column design should be gone)
+    const sidebar = desktopPage.locator('.desktop-history-sidebar');
+    await expect(sidebar).toHaveCount(0);
+
+    await context.close();
+  });
+
+  test('desktop tab panes exist for all 3 tabs', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const desktopPage = await context.newPage();
+    await desktopPage.goto(`${BASE}/workout-history.html`);
+    await desktopPage.waitForLoadState('networkidle');
+    await desktopPage.waitForTimeout(2000);
+
+    // Tab panes should exist in DOM
+    await expect(desktopPage.locator('#desktopHistoryTabPane')).toBeAttached();
+    await expect(desktopPage.locator('#desktopCalendarTabPane')).toBeAttached();
+    await expect(desktopPage.locator('#desktopExercisesTabPane')).toBeAttached();
+
+    // History tab pane should be active by default
+    await expect(desktopPage.locator('#desktopHistoryTabPane')).toHaveClass(/active/);
+
+    await context.close();
+  });
+
+  test('desktop PR section is inside History tab only', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const desktopPage = await context.newPage();
+    await desktopPage.goto(`${BASE}/workout-history.html`);
+    await desktopPage.waitForLoadState('networkidle');
+    await desktopPage.waitForTimeout(2000);
+
+    // After ID swap, desktopPrSectionContainer becomes prSectionContainer
+    // PR container should be inside the History tab pane
+    const prInHistoryTab = desktopPage.locator('#desktopHistoryTabPane [id$="PrSectionContainer"], #desktopHistoryTabPane [id$="prSectionContainer"]');
+    await expect(prInHistoryTab.first()).toBeAttached();
+
+    // PR container should NOT be in calendar or exercises tab
+    const prInCalendarTab = desktopPage.locator('#desktopCalendarTabPane [id$="PrSectionContainer"], #desktopCalendarTabPane [id$="prSectionContainer"]');
+    const prInExercisesTab = desktopPage.locator('#desktopExercisesTabPane [id$="PrSectionContainer"], #desktopExercisesTabPane [id$="prSectionContainer"]');
+    await expect(prInCalendarTab).toHaveCount(0);
+    await expect(prInExercisesTab).toHaveCount(0);
+
+    await context.close();
+  });
 });

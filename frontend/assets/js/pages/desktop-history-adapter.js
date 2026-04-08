@@ -1,8 +1,8 @@
 /**
  * Desktop History Adapter
- * Overrides workout-history rendering for desktop-optimized layout
+ * Overrides workout-history rendering for desktop-optimized tabbed layout
  * Follows same IIFE + early-exit pattern as desktop-home-adapter.js
- * @version 1.0.0
+ * @version 2.0.0 — tabbed layout (History / Calendar / Exercises)
  */
 (function() {
     'use strict';
@@ -16,24 +16,8 @@
     console.log('Desktop history adapter activating...');
 
     // ============================================
-    // 1. SHOW EXERCISE PERFORMANCE CARD IN SINGLE WORKOUT MODE
-    // ============================================
-
-    const _origLoadWorkoutHistory = window.loadWorkoutHistory;
-    if (_origLoadWorkoutHistory) {
-        window.loadWorkoutHistory = async function(workoutId) {
-            await _origLoadWorkoutHistory(workoutId);
-            // Show exercise performance card wrapper on desktop
-            const wrapper = document.getElementById('desktopExercisePerfCardWrapper');
-            if (wrapper) {
-                wrapper.style.display = '';
-            }
-        };
-    }
-
-    // ============================================
-    // 2. OVERRIDE renderStatistics FOR DESKTOP
-    //    Show richer key-value stats in sidebar card
+    // 1. OVERRIDE renderStatistics FOR DESKTOP
+    //    Show compact inline stats bar on History tab
     // ============================================
 
     window.renderStatistics = function() {
@@ -48,7 +32,7 @@
             : null;
 
         if (sessionCount === 0) {
-            container.innerHTML = '<p class="text-muted mb-0 small">No sessions yet</p>';
+            container.innerHTML = '';
             return;
         }
 
@@ -56,27 +40,27 @@
             ? window.getThisMonthSessionCount()
             : 0;
 
-        var rows = '';
-        rows += '<div class="d-flex justify-content-between"><span class="text-muted small">Total Sessions</span><span class="fw-semibold">' + sessionCount + '</span></div>';
+        var items = '';
+        items += '<div class="stat-item"><span class="stat-label">Total:</span><span class="stat-value">' + sessionCount + ' sessions</span></div>';
 
         if (avgDuration > 0) {
-            rows += '<div class="d-flex justify-content-between"><span class="text-muted small">Avg Duration</span><span class="fw-semibold">' + avgDuration + ' min</span></div>';
+            items += '<div class="stat-item"><span class="stat-label">Avg:</span><span class="stat-value">' + avgDuration + ' min</span></div>';
         }
 
         if (thisMonthCount > 0) {
-            rows += '<div class="d-flex justify-content-between"><span class="text-muted small">This Month</span><span class="fw-semibold">' + thisMonthCount + ' sessions</span></div>';
+            items += '<div class="stat-item"><span class="stat-label">This Month:</span><span class="stat-value">' + thisMonthCount + '</span></div>';
         }
 
         if (lastDate) {
-            rows += '<div class="d-flex justify-content-between"><span class="text-muted small">Last Trained</span><span class="fw-semibold">' + lastDate + '</span></div>';
+            items += '<div class="stat-item"><span class="stat-label">Last:</span><span class="stat-value">' + lastDate + '</span></div>';
         }
 
-        container.innerHTML = '<div class="d-flex flex-column gap-2">' + rows + '</div>';
-        container.style.display = 'block';
+        container.innerHTML = items;
+        container.style.display = '';
     };
 
     // ============================================
-    // 3. OVERRIDE createSessionEntry FOR DESKTOP
+    // 2. OVERRIDE createSessionEntry FOR DESKTOP
     //    Show completion badge + exercise count inline
     // ============================================
 
@@ -186,5 +170,26 @@
             '</div>';
     };
 
-    console.log('Desktop history adapter loaded');
+    // ============================================
+    // 3. TAB VISIBILITY — hide/show content per tab
+    // ============================================
+
+    var tabsEl = document.getElementById('desktopHistoryTabs');
+    if (tabsEl) {
+        tabsEl.addEventListener('shown.bs.tab', function(event) {
+            var targetId = event.target.id;
+
+            // When switching to calendar tab, trigger calendar render if needed
+            if (targetId === 'desktop-calendar-tab' && window.ffn.workoutHistory.calendarView) {
+                // Calendar already initialized, just ensure it's up to date
+            }
+
+            // When switching to exercises tab, render exercise data if needed
+            if (targetId === 'desktop-exercises-tab' && window.renderExerciseTab) {
+                window.renderExerciseTab();
+            }
+        });
+    }
+
+    console.log('Desktop history adapter loaded (v2.0.0 - tabbed layout)');
 })();

@@ -291,9 +291,6 @@
                 <!-- Desktop History Content -->
                 <div id="desktopHistoryContent" style="display: none;">
 
-                  <!-- Suppress mobile tabs on desktop -->
-                  <div id="desktopHistoryTabs" style="display: none;"></div>
-
                   <!-- Page Header -->
                   <div class="mb-3">
                     <h5 class="mb-1"><i class="bx bx-history me-1"></i>History</h5>
@@ -306,11 +303,44 @@
                     <p class="text-muted small mb-0" id="desktopWorkoutDescription"></p>
                   </div>
 
-                  <!-- 2-Column Layout -->
-                  <div class="row g-4">
+                  <!-- Tab Navigation (3 tabs at top, like mobile) -->
+                  <div class="history-tabs-wrapper desktop-history-tabs-wrapper">
+                    <ul class="nav nav-tabs history-tabs mb-0" id="desktopHistoryTabs" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="desktop-history-tab" data-bs-toggle="tab"
+                                data-bs-target="#desktopHistoryTabPane" type="button" role="tab"
+                                aria-controls="desktopHistoryTabPane" aria-selected="true">
+                          <i class="bx bx-history me-1"></i>History
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="desktop-calendar-tab" data-bs-toggle="tab"
+                                data-bs-target="#desktopCalendarTabPane" type="button" role="tab"
+                                aria-controls="desktopCalendarTabPane" aria-selected="false">
+                          <i class="bx bx-calendar me-1"></i>Calendar
+                        </button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="desktop-exercises-tab" data-bs-toggle="tab"
+                                data-bs-target="#desktopExercisesTabPane" type="button" role="tab"
+                                aria-controls="desktopExercisesTabPane" aria-selected="false">
+                          <i class="bx bx-dumbbell me-1"></i>Exercise Stats
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
 
-                    <!-- LEFT COLUMN: Session History -->
-                    <div class="col-lg-8">
+                  <!-- Tab Content -->
+                  <div class="tab-content" id="desktopHistoryTabContent">
+
+                    <!-- History Tab -->
+                    <div class="tab-pane fade show active" id="desktopHistoryTabPane" role="tabpanel"
+                         aria-labelledby="desktop-history-tab" tabindex="0">
+
+                      <!-- Stats Summary Bar -->
+                      <div class="desktop-stats-bar mb-3" id="desktopStatisticsCards">
+                        <!-- Stats rendered by JS -->
+                      </div>
 
                       <!-- Date Filter Indicator -->
                       <div id="desktopDateFilterIndicator" class="date-filter-indicator mb-3" style="display: none;">
@@ -323,7 +353,7 @@
                         </button>
                       </div>
 
-                      <!-- Personal Records Section (Desktop) -->
+                      <!-- Personal Records Section (Desktop - History tab only) -->
                       <div id="desktopPrSectionContainer" style="display: none;">
                         <!-- PR section rendered by JS -->
                       </div>
@@ -334,95 +364,48 @@
                       </div>
 
                     </div>
-                    <!-- / LEFT COLUMN -->
 
-                    <!-- RIGHT COLUMN: Sidebar -->
-                    <div class="col-lg-4">
-                      <div class="desktop-history-sidebar">
-
-                        <!-- Stats Summary Card -->
-                        <div class="card desktop-stats-card mb-4">
-                          <div class="card-header py-3 px-4">
-                            <h6 class="mb-0 fw-semibold">
-                              <i class="bx bx-bar-chart-alt-2 me-2"></i>Summary
-                            </h6>
+                    <!-- Calendar Tab -->
+                    <div class="tab-pane fade" id="desktopCalendarTabPane" role="tabpanel"
+                         aria-labelledby="desktop-calendar-tab" tabindex="0">
+                      <div class="desktop-calendar-fullwidth mt-3">
+                        <div class="calendar-panel" id="desktopHistoryCalendarCard">
+                          <div class="calendar-panel-header">
+                            <button id="desktopPrevMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
+                              <i class="bx bx-chevron-left"></i>
+                            </button>
+                            <span id="desktopCurrentMonth" class="fw-medium">January 2026</span>
+                            <button id="desktopNextMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
+                              <i class="bx bx-chevron-right"></i>
+                            </button>
                           </div>
-                          <div class="card-body py-3 px-4">
-                            <div id="desktopStatisticsCards">
-                              <!-- Stats rendered by JS -->
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Calendar + Exercises Tabbed Card -->
-                        <div class="card desktop-cal-exercise-card mb-4" id="desktopExerciseOverviewCardWrapper">
-                          <div class="card-header py-0 px-4">
-                            <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                              <li class="nav-item">
-                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#desktopCalendarPane" role="tab">
-                                  <i class="bx bx-calendar me-1"></i>Calendar
-                                </button>
-                              </li>
-                              <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#desktopExercisePane" role="tab">
-                                  <i class="bx bx-dumbbell me-1"></i>Exercise Stats
-                                </button>
-                              </li>
-                            </ul>
-                          </div>
-                          <div class="card-body">
-                            <div class="tab-content">
-                              <div class="tab-pane fade show active" id="desktopCalendarPane" role="tabpanel">
-                                <div class="calendar-panel" id="desktopHistoryCalendarCard">
-                                  <div class="calendar-panel-header">
-                                    <button id="desktopPrevMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
-                                      <i class="bx bx-chevron-left"></i>
-                                    </button>
-                                    <span id="desktopCurrentMonth" class="fw-medium">January 2026</span>
-                                    <button id="desktopNextMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
-                                      <i class="bx bx-chevron-right"></i>
-                                    </button>
-                                  </div>
-                                  <div id="desktopCalendarGrid" class="calendar-grid">
-                                    <div class="text-center py-3">
-                                      <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                        <span class="visually-hidden">Loading calendar...</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div class="tab-pane fade" id="desktopExercisePane" role="tabpanel">
-                                <div class="desktop-exercise-overview-body">
-                                  <div id="desktopExerciseTabContainer">
-                                    <!-- Exercise groups rendered by JS -->
-                                  </div>
-                                </div>
+                          <div id="desktopCalendarGrid" class="calendar-grid">
+                            <div class="text-center py-3">
+                              <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading calendar...</span>
                               </div>
                             </div>
                           </div>
                         </div>
-
-                        <!-- Exercise Performance Card (single workout mode only) -->
-                        <div class="card desktop-exercise-perf-card mb-4" id="desktopExercisePerfCardWrapper" style="display: none;">
-                          <div class="card-header py-3 px-4">
-                            <h6 class="mb-0 fw-semibold">
-                              <i class="bx bx-line-chart me-2"></i>Exercise Performance
-                            </h6>
-                          </div>
-                          <div class="card-body py-3 px-4 desktop-exercise-perf-body">
-                            <div id="desktopExercisePerformanceContainer">
-                              <!-- Exercise performance rendered by JS -->
-                            </div>
-                          </div>
-                        </div>
-
                       </div>
                     </div>
-                    <!-- / RIGHT COLUMN -->
+
+                    <!-- Exercises Tab -->
+                    <div class="tab-pane fade" id="desktopExercisesTabPane" role="tabpanel"
+                         aria-labelledby="desktop-exercises-tab" tabindex="0">
+                      <div id="desktopExerciseTabContainer" class="mt-3">
+                        <!-- Exercise groups rendered by JS -->
+                      </div>
+                    </div>
 
                   </div>
-                  <!-- / 2-Column Layout -->
+                  <!-- / Tab Content -->
+
+                  <!-- Hidden: Exercise Overview Card Wrapper (for JS compatibility) -->
+                  <div id="desktopExerciseOverviewCardWrapper" style="display: none;"></div>
+
+                  <!-- Hidden: Exercise Performance Container (single workout mode) -->
+                  <div id="desktopExercisePerformanceContainer" style="display: none;"></div>
 
                 </div>
                 <!-- / Desktop History Content -->
@@ -469,7 +452,10 @@
           ['exercisePerformanceContainer', 'desktopExercisePerformanceContainer'],
           ['exerciseTabContainer',   'desktopExerciseTabContainer'],
           ['exerciseOverviewCardWrapper', 'desktopExerciseOverviewCardWrapper'],
-          ['historyTabs',            'desktopHistoryTabs']
+          ['historyTabs',            'desktopHistoryTabs'],
+          ['history-tab',            'desktop-history-tab'],
+          ['calendar-tab',           'desktop-calendar-tab'],
+          ['exercises-tab',          'desktop-exercises-tab']
         ];
         _swaps.forEach(function(pair) {
           var mobileEl = document.getElementById(pair[0]);

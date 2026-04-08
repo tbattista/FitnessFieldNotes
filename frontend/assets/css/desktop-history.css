@@ -2,7 +2,7 @@
  * Desktop History CSS
  * Desktop-only styles for the workout history page
  * Only active when .desktop-view is set on <html>
- * @version 1.0.0
+ * @version 2.0.0 — tabbed layout (History / Calendar / Exercises)
  */
 
 /* ============================================
@@ -19,97 +19,82 @@
 }
 
 /* ============================================
-   CARD HEADER SEPARATOR
+   DESKTOP TAB BAR
    ============================================ */
-[data-view="desktop"] .card-header {
-    border-bottom: 1px solid var(--bs-border-color);
+.desktop-history-tabs-wrapper {
+    border-bottom: 2px solid var(--bs-border-color);
+    margin-bottom: 1.25rem;
 }
 
-/* ============================================
-   SIDEBAR
-   ============================================ */
-.desktop-history-sidebar {
-    position: sticky;
-    top: 80px;
-    align-self: flex-start;
-}
-
-/* Stats card */
-.desktop-stats-card .stats-summary-row {
-    font-size: 0.875rem;
-    padding: 0;
-    margin: 0;
-}
-
-/* Calendar card - remove double border from inner panel */
-.desktop-calendar-card .calendar-panel,
-.desktop-cal-exercise-card .calendar-panel {
-    border: none;
-    padding: 0;
-    background: transparent;
-}
-
-/* Tabbed calendar + exercises card */
-.desktop-cal-exercise-card > .card-body {
-    padding: 0;
-}
-
-/* Calendar pane needs more breathing room */
-.desktop-cal-exercise-card #desktopCalendarPane {
-    padding: 0.75rem 1rem;
-}
-
-/* Exercise pane needs tight sides for long names */
-.desktop-cal-exercise-card #desktopExercisePane {
-    padding: 0.25rem 0;
-}
-
-.desktop-cal-exercise-card .card-header {
+.desktop-history-tabs-wrapper .history-tabs {
     border-bottom: none;
 }
 
-.desktop-cal-exercise-card .nav-tabs {
-    border-bottom: 1px solid var(--bs-border-color);
-}
-
-.desktop-cal-exercise-card .nav-tabs .nav-link {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    padding: 0.625rem 1rem;
-    color: var(--bs-secondary-color);
-    border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-}
-
-.desktop-cal-exercise-card .nav-tabs .nav-link.active {
-    color: var(--bs-primary);
-    border-bottom-color: var(--bs-primary);
-    background: transparent;
-}
-
-.desktop-cal-exercise-card .nav-tabs .nav-link:hover:not(.active) {
-    color: var(--bs-body-color);
-    border-bottom-color: var(--bs-border-color);
-}
-
-/* Exercise performance card - constrained height with scroll */
-.desktop-exercise-perf-body {
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-/* Exercise list in sidebar - tighter spacing */
-.desktop-exercise-perf-body .exercise-row {
-    padding: 0.5rem 0.25rem;
-}
-
-.desktop-exercise-perf-body .exercise-filter-bar {
-    padding: 0 0 0.5rem;
+.desktop-history-tabs-wrapper .history-tabs .nav-link {
+    font-size: 0.9375rem;
+    padding: 0.75rem 1.5rem;
 }
 
 /* ============================================
-   SESSION ENTRIES - DESKTOP ENHANCEMENTS
+   STATS SUMMARY BAR (inline on History tab)
+   ============================================ */
+.desktop-stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--bs-card-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    font-size: 0.875rem;
+}
+
+.desktop-stats-bar:empty {
+    display: none;
+}
+
+.desktop-stats-bar .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.desktop-stats-bar .stat-label {
+    color: var(--bs-secondary-color);
+}
+
+.desktop-stats-bar .stat-value {
+    font-weight: 600;
+}
+
+/* ============================================
+   CALENDAR TAB — full-width, centered
+   ============================================ */
+.desktop-calendar-fullwidth {
+    max-width: 600px;
+}
+
+.desktop-calendar-fullwidth .calendar-panel {
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    padding: 1rem 1.25rem;
+    background: var(--bs-card-bg);
+}
+
+/* Larger calendar cells on desktop */
+.desktop-calendar-fullwidth .calendar-grid .calendar-day {
+    min-height: 48px;
+    font-size: 0.9375rem;
+}
+
+/* ============================================
+   EXERCISE TAB — full-width
+   ============================================ */
+[data-view="desktop"] #desktopExercisesTabPane {
+    max-width: 800px;
+}
+
+/* ============================================
+   SESSION ENTRIES — DESKTOP ENHANCEMENTS
    ============================================ */
 
 /* Slightly more spacious on desktop */
@@ -131,7 +116,7 @@
     opacity: 1;
 }
 
-/* Session details table - benefit from wider space */
+/* Session details table — benefit from wider space */
 .desktop-view .session-details .table th {
     font-size: 0.8125rem;
     padding: 0.625rem 0.75rem;
@@ -142,22 +127,22 @@
     font-size: 0.875rem;
 }
 
-/* Offcanvas desktop styles moved to shared desktop-offcanvas.css */
+/* Limit session list width for readability */
+[data-view="desktop"] #desktopHistoryTabPane {
+    max-width: 900px;
+}
 
 /* ============================================
    RESPONSIVE: SMALLER DESKTOP (992-1199px)
    ============================================ */
 @media (min-width: 992px) and (max-width: 1199.98px) {
-    .desktop-exercise-perf-body {
-        max-height: 320px;
-    }
-
     .desktop-view .session-entry {
         padding: 0.75rem 0.875rem;
     }
 
-    .desktop-history-sidebar {
-        top: 70px;
+    .desktop-history-tabs-wrapper .history-tabs .nav-link {
+        font-size: 0.875rem;
+        padding: 0.625rem 1rem;
     }
 }
 
@@ -165,10 +150,6 @@
    RESPONSIVE: LARGE DESKTOP (1400px+)
    ============================================ */
 @media (min-width: 1400px) {
-    .desktop-exercise-perf-body {
-        max-height: 500px;
-    }
-
     .desktop-view .session-details .table td {
         padding: 0.75rem 1rem;
     }
@@ -177,13 +158,12 @@
 /* ============================================
    DARK MODE
    ============================================ */
-[data-bs-theme="dark"].desktop-view .offcanvas.offcanvas-bottom {
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-}
-
-[data-bs-theme="dark"] .desktop-stats-card,
-[data-bs-theme="dark"] .desktop-calendar-card,
-[data-bs-theme="dark"] .desktop-exercise-perf-card,
-[data-bs-theme="dark"] .desktop-cal-exercise-card {
+[data-bs-theme="dark"] .desktop-stats-bar {
     border-color: var(--gs-gray-200);
 }
+
+[data-bs-theme="dark"] .desktop-calendar-fullwidth .calendar-panel {
+    border-color: var(--gs-gray-200);
+}
+
+/* Offcanvas desktop styles moved to shared desktop-offcanvas.css */
