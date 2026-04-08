@@ -325,18 +325,41 @@
     font-size: 0.8125rem;
 }
 
-/* Stats row - horizontal, neutral */
+/* Stats row - stacked, label above value */
 .session-stats-row {
     display: flex;
-    gap: 2rem;
+    flex-direction: column;
+    gap: 0.375rem;
     padding: 1rem 0;
 }
 
 .session-stat {
     display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    color: var(--bs-body-color);
+}
+
+.session-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bs-secondary-color);
+}
+
+.session-stat-label i {
+    font-size: 0.8125rem;
+    opacity: 0.7;
+}
+
+.session-stat-value {
+    display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--bs-body-color);
 }
 
 .session-stat i {
@@ -345,13 +368,14 @@
 }
 
 .session-stat input {
-    width: 50px;
-    text-align: center;
+    width: 60px;
+    text-align: left;
     border: 1px solid transparent;
     border-radius: 4px;
     padding: 0.25rem;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
     background: transparent;
     transition: border-color 0.2s, background-color 0.2s;
     color: var(--bs-body-color);
@@ -375,8 +399,9 @@
 }
 
 .session-stat .stat-value {
-    font-weight: 600;
-    font-size: 1rem;
+    font-weight: 700;
+    font-size: 1.5rem;
+    line-height: 1;
 }
 
 /* Editable stat with pencil hint */

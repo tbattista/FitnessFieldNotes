@@ -174,35 +174,49 @@ export function createCompleteWorkout(data, onConfirm) {
                     <small class="text-muted">${formattedDateTime}</small>
                 </div>
 
-                <!-- Stats row - horizontal, neutral, inline editable duration -->
+                <!-- Stats - stacked, label above value -->
                 <div class="session-stats-row mb-4">
                     <div class="session-stat editable" title="Click to edit duration">
-                        <i class="bx bx-time-five"></i>
-                        <input type="number"
-                               id="sessionDurationInput"
-                               value="${durationValue}"
-                               placeholder="${durationPlaceholder}"
-                               min="1"
-                               max="600">
-                        <span>min</span>
-                        <i class="bx bx-pencil edit-hint"></i>
+                        <div class="session-stat-label">
+                            <i class="bx bx-time-five"></i>
+                            <span>Time</span>
+                        </div>
+                        <div class="session-stat-value">
+                            <input type="number"
+                                   id="sessionDurationInput"
+                                   value="${durationValue}"
+                                   placeholder="${durationPlaceholder}"
+                                   min="1"
+                                   max="600">
+                            <span>min</span>
+                            <i class="bx bx-pencil edit-hint"></i>
+                        </div>
                     </div>
                     <div class="session-stat">
-                        <i class="bx bx-list-check"></i>
-                        <span class="stat-value">${totalExercises}</span>
-                        <span>exercise${totalExercises !== 1 ? 's' : ''}</span>
+                        <div class="session-stat-label">
+                            <i class="bx bx-list-check"></i>
+                            <span>Exercises</span>
+                        </div>
+                        <div class="session-stat-value">
+                            <span class="stat-value">${totalExercises}</span>
+                        </div>
                     </div>
                     <div class="session-stat editable" title="Click to enter calories burned">
-                        <i class="bx bx-flame"></i>
-                        <input type="number"
-                               id="sessionCaloriesInput"
-                               value=""
-                               placeholder="0"
-                               min="0"
-                               max="9999"
-                               inputmode="numeric">
-                        <span>cal</span>
-                        <i class="bx bx-pencil edit-hint"></i>
+                        <div class="session-stat-label">
+                            <i class="bx bx-flame"></i>
+                            <span>Calories</span>
+                        </div>
+                        <div class="session-stat-value">
+                            <input type="number"
+                                   id="sessionCaloriesInput"
+                                   value=""
+                                   placeholder="0"
+                                   min="0"
+                                   max="9999"
+                                   inputmode="numeric">
+                            <span>cal</span>
+                            <i class="bx bx-pencil edit-hint"></i>
+                        </div>
                     </div>
                 </div>
 
