@@ -156,6 +156,9 @@ class MenuInjectionService {
         if (filename.includes('exercise-database')) return 'exercise-database';
         if (filename.includes('exercise-edit')) return 'exercise-database';
 
+        // Lab Projects
+        if (filename.includes('spin-ride')) return 'spin-ride';
+
         // Everything else maps to Home
         if (filename.includes('index') || filename === '') return 'home';
 
