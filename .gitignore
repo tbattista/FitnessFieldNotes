@@ -112,3 +112,7 @@ CSS_REFACTOR_HANDOFF.md
 DASHBOARD_V3_README.md
 EXERCISE_HISTORY_QUICKSTART.md
 .mcp.json
+
+# Playwright test artifacts
+test-results/
+playwright-report/
