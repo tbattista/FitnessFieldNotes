@@ -14,12 +14,16 @@ class GenerateSpinRideRequest(BaseModel):
         ge=5,
         le=120,
     )
+    include_all_outs: bool = Field(
+        default=False,
+        description="If true, the generator may include short max-effort 'all-out' sprint segments.",
+    )
 
 
 class SpinRideSegment(BaseModel):
     """A single interval segment within a spin ride."""
     name: str = Field(..., max_length=50, description="Segment name, e.g. 'Hill Climb 1'")
-    segment_type: Literal["warmup", "flat", "climb", "sprint", "recovery", "cooldown"] = Field(
+    segment_type: Literal["warmup", "flat", "climb", "sprint", "all_out", "recovery", "cooldown"] = Field(
         ..., description="Type of interval segment"
     )
     duration_seconds: int = Field(..., ge=15, le=600, description="Segment duration in seconds")

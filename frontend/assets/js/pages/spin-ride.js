@@ -30,6 +30,7 @@
   const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 from SVG viewBox
   const SESSION_KEY = 'spinRideSession';
   const BIKE_GEARS_KEY = 'spinRideBikeGears';
+  const INCLUDE_ALL_OUTS_KEY = 'spinRideIncludeAllOuts';
 
   // ── Bike gear mapping ──────────────────────────────────────────────────
   // Users can map the abstract resistance scale (1..10) onto their own bike's
@@ -88,6 +89,7 @@
       errorState: $('errorState'),
       durationButtons: $('durationButtons'),
       customDurationInput: $('customDurationInput'),
+      includeAllOutsToggle: $('includeAllOutsToggle'),
       generateBtn: $('generateBtn'),
       recoveryGearInput: $('recoveryGearInput'),
       maxGearInput: $('maxGearInput'),
@@ -595,10 +597,15 @@
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      const includeAllOuts = !!(els.includeAllOutsToggle && els.includeAllOutsToggle.checked);
+
       const response = await fetch('/api/v3/spin-ride/generate', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ duration_minutes: durationMinutes }),
+        body: JSON.stringify({
+          duration_minutes: durationMinutes,
+          include_all_outs: includeAllOuts,
+        }),
       });
 
       if (!response.ok) {
@@ -693,6 +700,15 @@
           els.durationButtons.querySelectorAll('.spin-duration-btn').forEach((b) => b.classList.remove('active'));
         }
         refreshGenerateButtonState();
+      });
+    }
+
+    // Include-all-outs toggle (persist preference)
+    if (els.includeAllOutsToggle) {
+      els.includeAllOutsToggle.addEventListener('change', () => {
+        try {
+          localStorage.setItem(INCLUDE_ALL_OUTS_KEY, els.includeAllOutsToggle.checked ? '1' : '0');
+        } catch (e) { /* ignore */ }
       });
     }
 
@@ -796,6 +812,13 @@
       if (els.maxGearInput) els.maxGearInput.value = bikeGears.max;
     }
     updateBikeSetupToggleText();
+
+    // Restore include-all-outs preference
+    if (els.includeAllOutsToggle) {
+      try {
+        els.includeAllOutsToggle.checked = localStorage.getItem(INCLUDE_ALL_OUTS_KEY) === '1';
+      } catch (e) { /* ignore */ }
+    }
 
     const isAuth = await waitForAuth();
     if (!isAuth) {

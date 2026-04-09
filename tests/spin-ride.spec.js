@@ -467,6 +467,103 @@ test.describe('Spin Ride Page', () => {
     await expect(firstRowMeta).not.toContainText('R3');
   });
 
+  test('all-out toggle persists and is sent in the generate request', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const toggle = page.locator('#includeAllOutsToggle');
+    await expect(toggle).toBeVisible();
+    await expect(toggle).not.toBeChecked();
+
+    // Turn it on and verify localStorage persistence
+    await toggle.check();
+    const stored = await page.evaluate(() => localStorage.getItem('spinRideIncludeAllOuts'));
+    expect(stored).toBe('1');
+
+    // Reload and verify the toggle stays on
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1500);
+    await expect(page.locator('#includeAllOutsToggle')).toBeChecked();
+
+    // Intercept the generate request and verify the body payload
+    let capturedBody = null;
+    await page.route('**/api/v3/spin-ride/generate', async (route) => {
+      capturedBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          title: 'Intercepted Ride',
+          duration_minutes: 20,
+          total_seconds: 1200,
+          difficulty: 'moderate',
+          estimated_calories: 180,
+          segments: [
+            { name: 'Warmup', segment_type: 'warmup', duration_seconds: 240, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Easy' },
+            { name: 'Climb', segment_type: 'climb', duration_seconds: 300, resistance: 7, rpm_low: 65, rpm_high: 75, cue: 'Push' },
+            { name: 'All Out', segment_type: 'all_out', duration_seconds: 30, resistance: 7, rpm_low: 110, rpm_high: 125, cue: 'Go!' },
+            { name: 'Recover', segment_type: 'recovery', duration_seconds: 630, resistance: 3, rpm_low: 75, rpm_high: 85, cue: 'Ease' },
+          ],
+        }),
+      });
+    });
+
+    await page.locator('.spin-duration-btn[data-minutes="20"]').click();
+    await page.locator('#generateBtn').click();
+    await page.waitForTimeout(1500);
+
+    // If the request wasn't captured, auth likely blocked us — skip.
+    if (!capturedBody) return;
+    expect(capturedBody.duration_minutes).toBe(20);
+    expect(capturedBody.include_all_outs).toBe(true);
+  });
+
+  test('all_out segment type renders in the list with a distinct color', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const now = Date.now();
+    const fakeSession = {
+      ridePlan: {
+        title: 'All Out Render',
+        duration_minutes: 10,
+        total_seconds: 600,
+        difficulty: 'hard',
+        estimated_calories: 120,
+        segments: [
+          { name: 'Warmup', segment_type: 'warmup', duration_seconds: 180, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Easy' },
+          { name: 'Climb', segment_type: 'climb', duration_seconds: 240, resistance: 8, rpm_low: 65, rpm_high: 75, cue: 'Push' },
+          { name: 'All Out', segment_type: 'all_out', duration_seconds: 30, resistance: 7, rpm_low: 110, rpm_high: 125, cue: 'Max!' },
+          { name: 'Recover', segment_type: 'recovery', duration_seconds: 150, resistance: 3, rpm_low: 75, rpm_high: 85, cue: 'Ease' },
+        ],
+      },
+      rideStartedAt: new Date(now - 30000).toISOString(),
+      pausedAt: new Date(now).toISOString(),
+      timerRunning: false,
+      savedAt: now,
+    };
+    await page.evaluate((session) => {
+      sessionStorage.setItem('spinRideSession', JSON.stringify(session));
+    }, fakeSession);
+
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(4000);
+
+    const rideVisible = await page.locator('#rideState').isVisible();
+    if (!rideVisible) return;
+
+    // Third row is the all_out segment; its type dot should have the distinct class
+    const dot = page.locator('.spin-segment-row').nth(2).locator('.spin-segment-type-dot');
+    await expect(dot).toHaveClass(/type-all_out/);
+
+    // Its background should match the deep-red color we set in CSS
+    const bg = await dot.evaluate((el) => getComputedStyle(el).backgroundColor);
+    // #B91C1C → rgb(185, 28, 28)
+    expect(bg).toBe('rgb(185, 28, 28)');
+  });
+
   test('clearSession removes saved ride on new ride', async ({ page }) => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');

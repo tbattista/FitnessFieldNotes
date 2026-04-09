@@ -57,7 +57,7 @@
     <link rel="stylesheet" href="/static/assets/css/design-system.css" />
 
     <!-- Spin Ride CSS -->
-    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409c" />
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409d" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -127,7 +127,7 @@
                 </div>
 
                 <!-- Custom duration input -->
-                <div class="d-flex justify-content-center align-items-center gap-2 mb-4">
+                <div class="d-flex justify-content-center align-items-center gap-2 mb-3">
                   <label for="customDurationInput" class="text-muted small mb-0">or custom:</label>
                   <input type="number" id="customDurationInput"
                          class="form-control form-control-sm spin-custom-duration-input"
@@ -135,7 +135,18 @@
                   <span class="text-muted small">min (5-120)</span>
                 </div>
 
-                <button class="btn btn-primary btn-lg mb-4" id="generateBtn" disabled>
+                <!-- All-out sprint toggle -->
+                <div class="form-check form-switch d-inline-flex align-items-center mb-4">
+                  <input class="form-check-input me-2" type="checkbox" id="includeAllOutsToggle" />
+                  <label class="form-check-label small" for="includeAllOutsToggle">
+                    Include all-out sprints
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">
+                      Max-effort bursts (15-45s) after hard efforts
+                    </span>
+                  </label>
+                </div>
+
+                <button class="btn btn-primary btn-lg mb-4 d-block mx-auto" id="generateBtn" disabled>
                   <i class="bx bx-bolt-circle me-1"></i>Generate Ride
                 </button>
 
@@ -343,6 +354,6 @@
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
     <!-- Spin Ride Controller -->
-    <script src="/static/assets/js/pages/spin-ride.js?v=20260409c"></script>
+    <script src="/static/assets/js/pages/spin-ride.js?v=20260409d"></script>
   </body>
 </html>

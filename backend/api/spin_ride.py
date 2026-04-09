@@ -55,9 +55,15 @@ async def generate_spin_ride(
         )
 
     try:
-        plan = generator.generate(request.duration_minutes)
+        plan = generator.generate(
+            request.duration_minutes,
+            include_all_outs=request.include_all_outs,
+        )
         ai_rate_limiter.record_request(user_id)
-        logger.info(f"Generated {request.duration_minutes}min spin ride for user {user_id}")
+        logger.info(
+            f"Generated {request.duration_minutes}min spin ride for user {user_id} "
+            f"(all_outs={'on' if request.include_all_outs else 'off'})"
+        )
         return plan
 
     except ValueError as e:

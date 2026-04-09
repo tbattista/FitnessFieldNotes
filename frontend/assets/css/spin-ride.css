@@ -156,6 +156,7 @@
 .spin-timer-progress.type-flat     { stroke: var(--gs-primary, #C97C5D); }
 .spin-timer-progress.type-climb    { stroke: var(--gs-primary, #C97C5D); }
 .spin-timer-progress.type-sprint   { stroke: var(--gs-danger, #D66A6A); }
+.spin-timer-progress.type-all_out  { stroke: #B91C1C; }
 .spin-timer-progress.type-recovery { stroke: var(--gs-success, #8CBF9F); }
 .spin-timer-progress.type-cooldown { stroke: var(--gs-success, #8CBF9F); }
 
@@ -307,6 +308,7 @@
 .spin-segment-type-dot.type-flat     { background: var(--gs-primary, #C97C5D); }
 .spin-segment-type-dot.type-climb    { background: var(--gs-primary, #C97C5D); }
 .spin-segment-type-dot.type-sprint   { background: var(--gs-danger, #D66A6A); }
+.spin-segment-type-dot.type-all_out  { background: #B91C1C; }
 .spin-segment-type-dot.type-recovery { background: var(--gs-success, #8CBF9F); }
 .spin-segment-type-dot.type-cooldown { background: var(--gs-success, #8CBF9F); }
 
