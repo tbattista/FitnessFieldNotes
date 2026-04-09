@@ -9,17 +9,23 @@
   'use strict';
 
   // ── State ──────────────────────────────────────────────────────────────
+  //
+  // Timer is fully time-based: rideStartedAt + pausedAt are the source of truth.
+  // currentSegmentIndex / segmentRemaining / totalRemaining are DERIVED from
+  // wall-clock elapsed time on every tick, so both the total and current-lap
+  // timers stay correct across tab backgrounding, browser close, and reload.
 
   let ridePlan = null;
   let segments = [];
+  let segmentOffsets = [];    // Cumulative start-time (seconds) of each segment
   let currentSegmentIndex = 0;
   let segmentRemaining = 0;
   let totalRemaining = 0;
   let timerInterval = null;
-  let rideStartedAt = null;
+  let rideStartedAt = null;   // Date — wall-clock start. Adjusted forward on resume to discount paused time.
+  let pausedAt = null;        // Date — set while paused, null while running.
   let wakeLock = null;
   let audioCtx = null;
-  let lastTickTime = null; // Wall-clock time of last tick, for catch-up after background
 
   const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 from SVG viewBox
   const SESSION_KEY = 'spinRideSession';
@@ -50,11 +56,6 @@
       segmentRpm: $('segmentRpm'),
       segmentCue: $('segmentCue'),
       segmentList: $('segmentList'),
-      segmentPreview: $('segmentPreview'),
-      segmentListCollapse: $('segmentListCollapse'),
-      segmentListToggle: $('segmentListToggle'),
-      segmentListToggleIcon: $('segmentListToggleIcon'),
-      segmentListToggleText: $('segmentListToggleText'),
       startBtn: $('startBtn'),
       pauseBtn: $('pauseBtn'),
       resumeBtn: $('resumeBtn'),
@@ -159,9 +160,60 @@
     </div>`;
   }
 
+  function computeSegmentOffsets() {
+    segmentOffsets = [];
+    let acc = 0;
+    for (const seg of segments) {
+      segmentOffsets.push(acc);
+      acc += seg.duration_seconds;
+    }
+  }
+
   function getElapsedSeconds() {
     if (!rideStartedAt) return 0;
-    return Math.floor((Date.now() - rideStartedAt.getTime()) / 1000);
+    // When paused, freeze elapsed at the moment of pause.
+    const ref = pausedAt ? pausedAt.getTime() : Date.now();
+    return Math.max(0, Math.floor((ref - rideStartedAt.getTime()) / 1000));
+  }
+
+  /**
+   * Recompute currentSegmentIndex / segmentRemaining / totalRemaining from
+   * wall-clock elapsed time. This is the single source of truth for timer
+   * display, so both timers survive tab suspension and browser close.
+   *
+   * Returns { segmentChanged, finished }.
+   */
+  function deriveSegmentState() {
+    if (!ridePlan || segments.length === 0) {
+      return { segmentChanged: false, finished: false };
+    }
+    const elapsed = getElapsedSeconds();
+    const total = ridePlan.total_seconds || 0;
+    totalRemaining = Math.max(0, total - elapsed);
+
+    let idx = segments.length; // default: finished
+    for (let i = 0; i < segments.length; i++) {
+      const segEnd = segmentOffsets[i] + segments[i].duration_seconds;
+      if (elapsed < segEnd) {
+        idx = i;
+        break;
+      }
+    }
+
+    const prevIndex = currentSegmentIndex;
+    currentSegmentIndex = idx;
+
+    if (idx < segments.length) {
+      const segEnd = segmentOffsets[idx] + segments[idx].duration_seconds;
+      segmentRemaining = Math.max(0, segEnd - elapsed);
+    } else {
+      segmentRemaining = 0;
+    }
+
+    return {
+      segmentChanged: idx !== prevIndex,
+      finished: idx >= segments.length,
+    };
   }
 
   function updateSegmentDisplay() {
@@ -183,51 +235,18 @@
     const fraction = segmentRemaining / seg.duration_seconds;
     updateProgressArc(fraction);
 
-    // Update preview (current + next)
-    updateSegmentPreview();
-
-    // Highlight active in full list
+    // Highlight active + next in full list. Current row is emphasized most,
+    // the next row slightly emphasized, others use the base font size.
     const rows = els.segmentList.querySelectorAll('.spin-segment-row');
     rows.forEach((row, i) => {
       row.classList.toggle('active', i === currentSegmentIndex);
+      row.classList.toggle('next', i === currentSegmentIndex + 1);
       row.classList.toggle('completed', i < currentSegmentIndex);
     });
-  }
-
-  function updateSegmentPreview() {
-    const previewSegments = [];
-    if (segments[currentSegmentIndex]) previewSegments.push(currentSegmentIndex);
-    if (segments[currentSegmentIndex + 1]) previewSegments.push(currentSegmentIndex + 1);
-
-    els.segmentPreview.innerHTML = previewSegments.map((i) => {
-      const seg = segments[i];
-      const html = segmentRowHtml(seg, i);
-      return html;
-    }).join('');
-
-    // Apply active/completed styling to preview rows
-    els.segmentPreview.querySelectorAll('.spin-segment-row').forEach((row) => {
-      const i = parseInt(row.dataset.index, 10);
-      row.classList.toggle('active', i === currentSegmentIndex);
-      row.classList.toggle('completed', i < currentSegmentIndex);
-    });
-
-    // Update toggle text with remaining count
-    const remaining = segments.length - currentSegmentIndex - previewSegments.length;
-    if (remaining > 0) {
-      els.segmentListToggle.classList.remove('d-none');
-      els.segmentListToggleText.textContent =
-        els.segmentListCollapse.classList.contains('show')
-          ? 'Hide segments'
-          : `Show all ${segments.length} segments`;
-    } else {
-      els.segmentListToggle.classList.add('d-none');
-    }
   }
 
   function renderSegmentList() {
     els.segmentList.innerHTML = segments.map((seg, i) => segmentRowHtml(seg, i)).join('');
-    updateSegmentPreview();
   }
 
   // ── Session Persistence ─────────────────────────────────────────────────
@@ -236,12 +255,14 @@
     try {
       const data = {
         ridePlan,
+        rideStartedAt: rideStartedAt ? rideStartedAt.toISOString() : null,
+        pausedAt: pausedAt ? pausedAt.toISOString() : null,
+        timerRunning: !!timerRunning,
+        savedAt: Date.now(),
+        // Legacy fields kept for any stale readers; not used on restore.
         currentSegmentIndex,
         segmentRemaining,
         totalRemaining,
-        rideStartedAt: rideStartedAt ? rideStartedAt.toISOString() : null,
-        timerRunning: !!timerRunning,
-        savedAt: Date.now(),
       };
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
     } catch (e) { /* storage full or unavailable */ }
@@ -268,53 +289,45 @@
   function restoreSession(data) {
     ridePlan = data.ridePlan;
     segments = ridePlan.segments || [];
-    currentSegmentIndex = data.currentSegmentIndex;
-    segmentRemaining = data.segmentRemaining;
-    totalRemaining = data.totalRemaining;
+    computeSegmentOffsets();
+
     rideStartedAt = data.rideStartedAt ? new Date(data.rideStartedAt) : null;
+    pausedAt = data.pausedAt ? new Date(data.pausedAt) : null;
 
-    // If the timer was running, fast-forward by elapsed wall-clock time
-    if (data.timerRunning && data.savedAt) {
-      const elapsedSecs = Math.floor((Date.now() - data.savedAt) / 1000);
-      let remaining = elapsedSecs;
+    // Back-compat: an old saved session may not have pausedAt but have
+    // timerRunning=false with a rideStartedAt — treat as paused at savedAt.
+    if (!pausedAt && rideStartedAt && !data.timerRunning && data.savedAt) {
+      pausedAt = new Date(data.savedAt);
+    }
 
-      while (remaining > 0 && currentSegmentIndex < segments.length) {
-        if (remaining >= segmentRemaining) {
-          remaining -= segmentRemaining;
-          totalRemaining -= segmentRemaining;
-          segmentRemaining = 0;
-          currentSegmentIndex++;
-          if (currentSegmentIndex < segments.length) {
-            segmentRemaining = segments[currentSegmentIndex].duration_seconds;
-          }
-        } else {
-          segmentRemaining -= remaining;
-          totalRemaining -= remaining;
-          remaining = 0;
-        }
-      }
-
-      // If fast-forward consumed the entire ride, finish it
-      if (currentSegmentIndex >= segments.length) {
+    // Derive the current segment / remaining from wall-clock timestamps.
+    if (rideStartedAt) {
+      const { finished } = deriveSegmentState();
+      if (finished) {
         populateRideUI();
         finishRide();
         return;
       }
+    } else {
+      currentSegmentIndex = 0;
+      segmentRemaining = segments[0] ? segments[0].duration_seconds : 0;
+      totalRemaining = ridePlan.total_seconds || 0;
     }
 
     populateRideUI();
     updateSegmentDisplay();
 
     // Restore correct button state
-    if (data.timerRunning) {
+    if (rideStartedAt && !pausedAt) {
+      // Running
       els.startBtn.classList.add('d-none');
       els.pauseBtn.classList.remove('d-none');
       els.resumeBtn.classList.add('d-none');
       els.endBtn.classList.remove('d-none');
       startTimer();
       requestWakeLock();
-    } else if (rideStartedAt) {
-      // Was paused
+    } else if (rideStartedAt && pausedAt) {
+      // Paused
       els.startBtn.classList.add('d-none');
       els.pauseBtn.classList.add('d-none');
       els.resumeBtn.classList.remove('d-none');
@@ -338,79 +351,44 @@
   }
 
   // ── Timer ──────────────────────────────────────────────────────────────
+  //
+  // The tick is just a UI refresh — all timer values are derived from
+  // wall-clock timestamps via deriveSegmentState(). This means the timer
+  // can never "drift" or get stuck: one tick after the page becomes visible
+  // (or is reloaded) the display jumps to the correct elapsed time.
 
   function tick() {
-    if (segmentRemaining <= 0) {
-      // Advance to next segment
-      currentSegmentIndex++;
-      if (currentSegmentIndex >= segments.length) {
-        finishRide();
-        return;
-      }
-      segmentRemaining = segments[currentSegmentIndex].duration_seconds;
-      playBeep();
-      vibrate();
-    }
+    const { segmentChanged, finished } = deriveSegmentState();
 
-    segmentRemaining--;
-    totalRemaining--;
-    lastTickTime = Date.now();
-    updateSegmentDisplay();
-    saveSession(true);
-  }
-
-  /**
-   * Fast-forward timer by a number of seconds (used when resuming from background).
-   * Advances through segments just like the session restore logic.
-   */
-  function fastForwardTimer(elapsedSecs) {
-    let remaining = elapsedSecs;
-    let segmentChanged = false;
-
-    while (remaining > 0 && currentSegmentIndex < segments.length) {
-      if (remaining >= segmentRemaining) {
-        remaining -= segmentRemaining;
-        totalRemaining -= segmentRemaining;
-        segmentRemaining = 0;
-        currentSegmentIndex++;
-        segmentChanged = true;
-        if (currentSegmentIndex < segments.length) {
-          segmentRemaining = segments[currentSegmentIndex].duration_seconds;
-        }
-      } else {
-        segmentRemaining -= remaining;
-        totalRemaining -= remaining;
-        remaining = 0;
-      }
-    }
-
-    if (totalRemaining < 0) totalRemaining = 0;
-
-    // If fast-forward consumed the entire ride, finish
-    if (currentSegmentIndex >= segments.length) {
+    if (finished) {
+      updateSegmentDisplay();
       finishRide();
       return;
     }
 
-    if (segmentChanged) {
+    // Play cue on segment transition (but not on the first derivation
+    // after load — we're either starting the ride or resuming).
+    if (segmentChanged && currentSegmentIndex > 0) {
       playBeep();
       vibrate();
     }
 
-    lastTickTime = Date.now();
     updateSegmentDisplay();
     saveSession(true);
   }
 
   /**
-   * Handle page becoming visible again — catch up the timer for time spent in background.
+   * Handle page becoming visible again — re-derive from wall-clock immediately.
    */
   function onVisibilityChange() {
-    if (document.visibilityState === 'visible' && timerInterval && lastTickTime) {
-      const elapsedSecs = Math.floor((Date.now() - lastTickTime) / 1000);
-      if (elapsedSecs > 1) {
-        fastForwardTimer(elapsedSecs);
+    if (document.visibilityState === 'visible' && timerInterval) {
+      const { finished } = deriveSegmentState();
+      if (finished) {
+        updateSegmentDisplay();
+        finishRide();
+        return;
       }
+      updateSegmentDisplay();
       // Re-request wake lock (released by OS when backgrounded)
       requestWakeLock();
     }
@@ -418,19 +396,20 @@
 
   function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
-    lastTickTime = Date.now();
     timerInterval = setInterval(tick, 1000);
   }
 
   function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    lastTickTime = null;
   }
 
   // ── Ride Controls ──────────────────────────────────────────────────────
 
   function onStart() {
     rideStartedAt = new Date();
+    pausedAt = null;
+    deriveSegmentState();
+    updateSegmentDisplay();
     startTimer();
     requestWakeLock();
 
@@ -446,13 +425,24 @@
   }
 
   function onPause() {
+    pausedAt = new Date();
     stopTimer();
+    updateSegmentDisplay();
     els.pauseBtn.classList.add('d-none');
     els.resumeBtn.classList.remove('d-none');
     saveSession(false);
   }
 
   function onResume() {
+    // Adjust rideStartedAt forward by the paused duration so elapsed math
+    // stays simple: elapsed = now - rideStartedAt.
+    if (pausedAt && rideStartedAt) {
+      const pauseDurationMs = Date.now() - pausedAt.getTime();
+      rideStartedAt = new Date(rideStartedAt.getTime() + pauseDurationMs);
+    }
+    pausedAt = null;
+    deriveSegmentState();
+    updateSegmentDisplay();
     startTimer();
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume();
@@ -473,8 +463,9 @@
     releaseWakeLock();
     clearSession();
 
-    const actualMs = rideStartedAt ? Date.now() - rideStartedAt.getTime() : 0;
-    const actualMinutes = Math.round(actualMs / 60000);
+    // Use elapsed-seconds helper so paused time is excluded correctly.
+    const actualSeconds = getElapsedSeconds();
+    const actualMinutes = Math.round(actualSeconds / 60);
     const segmentsCompleted = Math.min(currentSegmentIndex + 1, segments.length);
     const allCompleted = currentSegmentIndex >= segments.length;
 
@@ -548,9 +539,12 @@
       if (segments.length === 0) throw new Error('Empty ride plan received');
 
       // Initialize timer state
+      computeSegmentOffsets();
       currentSegmentIndex = 0;
       segmentRemaining = segments[0].duration_seconds;
       totalRemaining = ridePlan.total_seconds;
+      rideStartedAt = null;
+      pausedAt = null;
 
       // Populate UI
       els.rideTitle.textContent = ridePlan.title;
@@ -584,11 +578,12 @@
     clearSession();
     ridePlan = null;
     segments = [];
+    segmentOffsets = [];
     currentSegmentIndex = 0;
     segmentRemaining = 0;
     totalRemaining = 0;
     rideStartedAt = null;
-    lastTickTime = null;
+    pausedAt = null;
     showState('selectState');
   }
 
@@ -625,16 +620,6 @@
 
     // Catch up timer when returning from background (mobile tab switch, screen off, etc.)
     document.addEventListener('visibilitychange', onVisibilityChange);
-
-    // Collapse toggle text update
-    els.segmentListCollapse.addEventListener('shown.bs.collapse', () => {
-      els.segmentListToggleText.textContent = 'Hide segments';
-      els.segmentListToggleIcon.classList.replace('bx-chevron-down', 'bx-chevron-up');
-    });
-    els.segmentListCollapse.addEventListener('hidden.bs.collapse', () => {
-      els.segmentListToggleText.textContent = `Show all ${segments.length} segments`;
-      els.segmentListToggleIcon.classList.replace('bx-chevron-up', 'bx-chevron-down');
-    });
   }
 
   function waitForAuth() {

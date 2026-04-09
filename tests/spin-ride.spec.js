@@ -92,7 +92,6 @@ test.describe('Spin Ride Page', () => {
 
     // SVG timer elements exist in DOM
     await expect(page.locator('#timerProgress')).toBeAttached();
-    await expect(page.locator('#segmentPreview')).toBeAttached();
     await expect(page.locator('#segmentList')).toBeAttached();
   });
 
@@ -100,7 +99,10 @@ test.describe('Spin Ride Page', () => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Seed a fake session into sessionStorage
+    // Seed a fake session into sessionStorage.
+    // Ride started 300s ago and paused "now" — that puts us 120s into the
+    // "Push" segment (180s Warmup + 120s into the 240s Push).
+    const now = Date.now();
     const fakeSession = {
       ridePlan: {
         title: 'Test Ride',
@@ -114,12 +116,10 @@ test.describe('Spin Ride Page', () => {
           { name: 'Cooldown', segment_type: 'cooldown', duration_seconds: 180, resistance: 2, rpm_low: 70, rpm_high: 80, cue: 'Wind down' },
         ],
       },
-      currentSegmentIndex: 1,
-      segmentRemaining: 120,
-      totalRemaining: 300,
-      rideStartedAt: new Date().toISOString(),
+      rideStartedAt: new Date(now - 300000).toISOString(),
+      pausedAt: new Date(now).toISOString(),
       timerRunning: false,
-      savedAt: Date.now(),
+      savedAt: now,
     };
 
     await page.evaluate((session) => {
@@ -156,7 +156,8 @@ test.describe('Spin Ride Page', () => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Seed a running session with lastTickTime 30 seconds ago
+    // Seed a running session that started 80 seconds ago. With time-based
+    // derivation, we expect the segment + total timers to catch up to that.
     const now = Date.now();
     const fakeSession = {
       ridePlan: {
@@ -171,10 +172,8 @@ test.describe('Spin Ride Page', () => {
           { name: 'Cooldown', segment_type: 'cooldown', duration_seconds: 180, resistance: 2, rpm_low: 70, rpm_high: 80, cue: 'Done' },
         ],
       },
-      currentSegmentIndex: 0,
-      segmentRemaining: 100,
-      totalRemaining: 520,
       rideStartedAt: new Date(now - 80000).toISOString(),
+      pausedAt: null,
       timerRunning: true,
       savedAt: now,
     };
@@ -211,6 +210,177 @@ test.describe('Spin Ride Page', () => {
       return el && el.textContent !== '';
     });
     expect(hasHandler).toBeTruthy();
+  });
+
+  test('segment (lap) timer catches up to wall-clock on page reload', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Seed a running session that started 250 seconds ago.
+    // Warmup = 180s → finished. Push starts at 180s; at 250s elapsed we are
+    // 70s into Push, so 240-70 = 170s remaining on the current segment.
+    const now = Date.now();
+    const fakeSession = {
+      ridePlan: {
+        title: 'Lap Timer Test',
+        duration_minutes: 10,
+        total_seconds: 600,
+        difficulty: 'moderate',
+        estimated_calories: 100,
+        segments: [
+          { name: 'Warmup', segment_type: 'warmup', duration_seconds: 180, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Go' },
+          { name: 'Push', segment_type: 'climb', duration_seconds: 240, resistance: 7, rpm_low: 70, rpm_high: 80, cue: 'Climb' },
+          { name: 'Cooldown', segment_type: 'cooldown', duration_seconds: 180, resistance: 2, rpm_low: 70, rpm_high: 80, cue: 'Done' },
+        ],
+      },
+      rideStartedAt: new Date(now - 250000).toISOString(),
+      pausedAt: null,
+      timerRunning: true,
+      savedAt: now,
+    };
+
+    await page.evaluate((session) => {
+      sessionStorage.setItem('spinRideSession', JSON.stringify(session));
+    }, fakeSession);
+
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(4000);
+
+    const rideVisible = await page.locator('#rideState').isVisible();
+    if (!rideVisible) return; // Auth not available — skip
+
+    // Segment name should be "Push" (we advanced past Warmup)
+    await expect(page.locator('#segmentName')).toContainText('Push');
+
+    // Segment timer should be ~170s remaining (allow ±5s for test timing).
+    // It should NOT be frozen at the original segment duration (240s/04:00).
+    const segmentTime = await page.locator('#segmentTime').textContent();
+    const [m, s] = segmentTime.trim().split(':').map(Number);
+    const segRemaining = m * 60 + s;
+    expect(segRemaining).toBeLessThan(180);
+    expect(segRemaining).toBeGreaterThan(160);
+
+    // Total elapsed should be ~250s = 04:10 (allow ±5s)
+    const totalElapsed = await page.locator('#totalElapsed').textContent();
+    const [tm, ts] = totalElapsed.trim().split(':').map(Number);
+    const totalSec = tm * 60 + ts;
+    expect(totalSec).toBeGreaterThan(245);
+    expect(totalSec).toBeLessThan(260);
+  });
+
+  test('two-column layout on large screens, stacked on small', async ({ page }) => {
+    // Seed a ride so the rideState is visible.
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const now = Date.now();
+    const fakeSession = {
+      ridePlan: {
+        title: 'Layout Test',
+        duration_minutes: 10,
+        total_seconds: 600,
+        difficulty: 'moderate',
+        estimated_calories: 100,
+        segments: [
+          { name: 'Warmup', segment_type: 'warmup', duration_seconds: 300, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Go' },
+          { name: 'Cooldown', segment_type: 'cooldown', duration_seconds: 300, resistance: 2, rpm_low: 70, rpm_high: 80, cue: 'Done' },
+        ],
+      },
+      rideStartedAt: new Date(now - 30000).toISOString(),
+      pausedAt: new Date(now).toISOString(),
+      timerRunning: false,
+      savedAt: now,
+    };
+    await page.evaluate((session) => {
+      sessionStorage.setItem('spinRideSession', JSON.stringify(session));
+    }, fakeSession);
+
+    // Large viewport — expect side-by-side
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(4000);
+
+    const rideVisible = await page.locator('#rideState').isVisible();
+    if (!rideVisible) return; // Auth not available — skip
+
+    const timerCol = page.locator('.spin-ride-timer-col');
+    const segCol = page.locator('.spin-ride-segments-col');
+    const timerBox = await timerCol.boundingBox();
+    const segBox = await segCol.boundingBox();
+    expect(timerBox).not.toBeNull();
+    expect(segBox).not.toBeNull();
+    // Side-by-side: segments column is to the right of the timer column,
+    // and their vertical positions overlap.
+    expect(segBox.x).toBeGreaterThan(timerBox.x + timerBox.width - 20);
+    expect(Math.abs(segBox.y - timerBox.y)).toBeLessThan(timerBox.height);
+
+    // Small viewport — expect stacked
+    await page.setViewportSize({ width: 600, height: 900 });
+    await page.waitForTimeout(300);
+    const timerBox2 = await timerCol.boundingBox();
+    const segBox2 = await segCol.boundingBox();
+    // Stacked: segments column starts below the timer column
+    expect(segBox2.y).toBeGreaterThan(timerBox2.y + timerBox2.height - 20);
+  });
+
+  test('current and next segment rows use larger fonts than other rows', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Seed a paused session sitting on segment index 1 (Push).
+    const now = Date.now();
+    const fakeSession = {
+      ridePlan: {
+        title: 'Font Size Test',
+        duration_minutes: 10,
+        total_seconds: 600,
+        difficulty: 'moderate',
+        estimated_calories: 100,
+        segments: [
+          { name: 'Warmup', segment_type: 'warmup', duration_seconds: 180, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Go' },
+          { name: 'Push', segment_type: 'climb', duration_seconds: 240, resistance: 7, rpm_low: 70, rpm_high: 80, cue: 'Climb' },
+          { name: 'Recover', segment_type: 'recovery', duration_seconds: 60, resistance: 2, rpm_low: 70, rpm_high: 80, cue: 'Ease' },
+          { name: 'Cooldown', segment_type: 'cooldown', duration_seconds: 120, resistance: 2, rpm_low: 70, rpm_high: 80, cue: 'Done' },
+        ],
+      },
+      rideStartedAt: new Date(now - 250000).toISOString(),
+      pausedAt: new Date(now).toISOString(),
+      timerRunning: false,
+      savedAt: now,
+    };
+    await page.evaluate((session) => {
+      sessionStorage.setItem('spinRideSession', JSON.stringify(session));
+    }, fakeSession);
+
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(4000);
+
+    const rideVisible = await page.locator('#rideState').isVisible();
+    if (!rideVisible) return; // Auth not available — skip
+
+    // No duplicate preview element
+    expect(await page.locator('#segmentPreview').count()).toBe(0);
+
+    // Row 1 is active, row 2 is next, row 0 is completed, row 3 is base
+    const active = page.locator('.spin-segment-row').nth(1);
+    const next = page.locator('.spin-segment-row').nth(2);
+    const base = page.locator('.spin-segment-row').nth(3);
+    await expect(active).toHaveClass(/active/);
+    await expect(next).toHaveClass(/next/);
+
+    const sizeOf = async (loc) => {
+      const fs = await loc.evaluate((el) => getComputedStyle(el).fontSize);
+      return parseFloat(fs);
+    };
+    const activeSize = await sizeOf(active);
+    const nextSize = await sizeOf(next);
+    const baseSize = await sizeOf(base);
+
+    expect(activeSize).toBeGreaterThan(nextSize);
+    expect(nextSize).toBeGreaterThan(baseSize);
   });
 
   test('clearSession removes saved ride on new ride', async ({ page }) => {
