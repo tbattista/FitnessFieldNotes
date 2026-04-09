@@ -383,6 +383,90 @@ test.describe('Spin Ride Page', () => {
     expect(nextSize).toBeGreaterThan(baseSize);
   });
 
+  test('custom duration input enables Generate and overrides preset', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const generateBtn = page.locator('#generateBtn');
+    await expect(generateBtn).toBeDisabled();
+
+    // Typing a valid custom duration enables the button.
+    await page.locator('#customDurationInput').fill('25');
+    await expect(generateBtn).toBeEnabled();
+
+    // Clicking a preset clears the custom field.
+    await page.locator('.spin-duration-btn[data-minutes="30"]').click();
+    await expect(page.locator('#customDurationInput')).toHaveValue('');
+    await expect(page.locator('.spin-duration-btn[data-minutes="30"]')).toHaveClass(/active/);
+
+    // Typing in the custom field deselects the preset.
+    await page.locator('#customDurationInput').fill('17');
+    await expect(page.locator('.spin-duration-btn[data-minutes="30"]')).not.toHaveClass(/active/);
+    await expect(generateBtn).toBeEnabled();
+
+    // Out-of-range values disable the button.
+    await page.locator('#customDurationInput').fill('3');
+    await expect(generateBtn).toBeDisabled();
+    await page.locator('#customDurationInput').fill('200');
+    await expect(generateBtn).toBeDisabled();
+  });
+
+  test('bike gear mapping persists and rewrites the resistance display', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Save a gear mapping (recovery=10, max=21)
+    await page.evaluate(() => {
+      localStorage.setItem('spinRideBikeGears', JSON.stringify({ min: 10, max: 21 }));
+    });
+
+    // Seed an active ride so the segment list / details render.
+    const now = Date.now();
+    const fakeSession = {
+      ridePlan: {
+        title: 'Gear Test',
+        duration_minutes: 10,
+        total_seconds: 600,
+        difficulty: 'moderate',
+        estimated_calories: 100,
+        segments: [
+          { name: 'Warmup', segment_type: 'warmup', duration_seconds: 180, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Easy' },
+          { name: 'Push', segment_type: 'climb', duration_seconds: 240, resistance: 8, rpm_low: 70, rpm_high: 80, cue: 'Climb' },
+          { name: 'Recover', segment_type: 'recovery', duration_seconds: 180, resistance: 4, rpm_low: 75, rpm_high: 85, cue: 'Ease' },
+        ],
+      },
+      rideStartedAt: new Date(now - 30000).toISOString(),
+      pausedAt: new Date(now).toISOString(),
+      timerRunning: false,
+      savedAt: now,
+    };
+    await page.evaluate((session) => {
+      sessionStorage.setItem('spinRideSession', JSON.stringify(session));
+    }, fakeSession);
+
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(4000);
+
+    const rideVisible = await page.locator('#rideState').isVisible();
+    if (!rideVisible) return;
+
+    // Resistance pill should now show "Gear" with mapped value, not raw 3.
+    // R3 with [10..21] → 10 + (3-1)/9 * 11 ≈ 12.4 → 13
+    await expect(page.locator('#segmentResistanceLabel')).toContainText('Gear');
+    await expect(page.locator('#segmentResistance')).toHaveText('13');
+    await expect(page.locator('#segmentResistanceSuffix')).toContainText('R3');
+
+    // Segment list rows should show G-prefix instead of R-prefix.
+    const firstRowMeta = page.locator('.spin-segment-row').nth(0).locator('.spin-segment-meta');
+    await expect(firstRowMeta).toContainText('G13');
+    // R8 → 10 + 7/9 * 11 ≈ 18.6 → 19
+    const pushRowMeta = page.locator('.spin-segment-row').nth(1).locator('.spin-segment-meta');
+    await expect(pushRowMeta).toContainText('G19');
+    // None of the rows should show the raw "R " prefix
+    await expect(firstRowMeta).not.toContainText('R3');
+  });
+
   test('clearSession removes saved ride on new ride', async ({ page }) => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');

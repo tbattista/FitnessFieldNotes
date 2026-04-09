@@ -57,7 +57,7 @@
     <link rel="stylesheet" href="/static/assets/css/design-system.css" />
 
     <!-- Spin Ride CSS -->
-    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409b" />
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409c" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -118,16 +118,61 @@
               <!-- STATE: Select Duration -->
               <div id="selectState" class="text-center">
                 <p class="mb-3 fw-semibold">Choose your ride duration</p>
-                <div class="d-flex flex-wrap justify-content-center gap-2 mb-4" id="durationButtons">
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-3" id="durationButtons">
                   <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="10">10 min</button>
                   <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="20">20 min</button>
                   <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="30">30 min</button>
                   <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="45">45 min</button>
                   <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="60">60 min</button>
                 </div>
-                <button class="btn btn-primary btn-lg" id="generateBtn" disabled>
+
+                <!-- Custom duration input -->
+                <div class="d-flex justify-content-center align-items-center gap-2 mb-4">
+                  <label for="customDurationInput" class="text-muted small mb-0">or custom:</label>
+                  <input type="number" id="customDurationInput"
+                         class="form-control form-control-sm spin-custom-duration-input"
+                         min="5" max="120" step="1" placeholder="min" />
+                  <span class="text-muted small">min (5-120)</span>
+                </div>
+
+                <button class="btn btn-primary btn-lg mb-4" id="generateBtn" disabled>
                   <i class="bx bx-bolt-circle me-1"></i>Generate Ride
                 </button>
+
+                <!-- Bike Setup (personal gear mapping) -->
+                <div class="spin-bike-setup mx-auto">
+                  <button class="btn btn-link btn-sm text-muted p-0" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#bikeSetupCollapse"
+                          aria-expanded="false" aria-controls="bikeSetupCollapse"
+                          id="bikeSetupToggle">
+                    <i class="bx bx-cog me-1"></i><span id="bikeSetupToggleText">My bike gears</span>
+                  </button>
+                  <div class="collapse mt-2" id="bikeSetupCollapse">
+                    <div class="card card-body p-3 text-start">
+                      <p class="text-muted small mb-2">
+                        Map the abstract resistance scale (1-10) to your bike's actual gear numbers.
+                        Leave blank to use the default 1-10 scale.
+                      </p>
+                      <div class="row g-2">
+                        <div class="col-6">
+                          <label for="recoveryGearInput" class="form-label small mb-1">Recovery (lowest) gear</label>
+                          <input type="number" id="recoveryGearInput" class="form-control form-control-sm"
+                                 min="1" max="100" step="1" placeholder="e.g. 10" />
+                        </div>
+                        <div class="col-6">
+                          <label for="maxGearInput" class="form-label small mb-1">Max climb (hardest) gear</label>
+                          <input type="number" id="maxGearInput" class="form-control form-control-sm"
+                                 min="1" max="100" step="1" placeholder="e.g. 21" />
+                        </div>
+                      </div>
+                      <div class="d-flex justify-content-end gap-2 mt-2">
+                        <button class="btn btn-sm btn-outline-secondary" id="bikeGearsClearBtn">Clear</button>
+                        <button class="btn btn-sm btn-primary" id="bikeGearsSaveBtn">Save</button>
+                      </div>
+                      <p class="text-muted small mb-0 mt-2" id="bikeGearsStatus"></p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- STATE: Generating -->
@@ -163,9 +208,9 @@
                     <!-- Current Segment Details -->
                     <div class="spin-segment-details" id="segmentDetails">
                       <div class="spin-detail">
-                        <span class="spin-detail-label">Resistance</span>
+                        <span class="spin-detail-label" id="segmentResistanceLabel">Resistance</span>
                         <span class="spin-detail-value" id="segmentResistance">-</span>
-                        <span class="spin-detail-label">/10</span>
+                        <span class="spin-detail-label" id="segmentResistanceSuffix">/10</span>
                       </div>
                       <div class="spin-detail">
                         <span class="spin-detail-label">RPM</span>
@@ -298,6 +343,6 @@
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
     <!-- Spin Ride Controller -->
-    <script src="/static/assets/js/pages/spin-ride.js?v=20260409b"></script>
+    <script src="/static/assets/js/pages/spin-ride.js?v=20260409c"></script>
   </body>
 </html>

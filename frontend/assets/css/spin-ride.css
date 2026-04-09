@@ -238,6 +238,17 @@
   color: #fff !important;
 }
 
+/* Custom duration input — keep it small and inline */
+.spin-custom-duration-input {
+  width: 5rem;
+  text-align: center;
+}
+
+/* Bike Setup section (personal gear mapping) */
+.spin-bike-setup {
+  max-width: 480px;
+}
+
 /* ── Segment List ─────────────────────────── */
 
 .spin-plan-card {

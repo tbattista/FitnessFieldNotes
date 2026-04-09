@@ -11,8 +11,8 @@ class GenerateSpinRideRequest(BaseModel):
     duration_minutes: int = Field(
         ...,
         description="Ride duration in minutes",
-        ge=10,
-        le=60,
+        ge=5,
+        le=120,
     )
 
 

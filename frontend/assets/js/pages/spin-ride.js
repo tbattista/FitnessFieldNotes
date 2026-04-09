@@ -29,6 +29,48 @@
 
   const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 from SVG viewBox
   const SESSION_KEY = 'spinRideSession';
+  const BIKE_GEARS_KEY = 'spinRideBikeGears';
+
+  // ── Bike gear mapping ──────────────────────────────────────────────────
+  // Users can map the abstract resistance scale (1..10) onto their own bike's
+  // gears (e.g., 10..21). When configured, the UI shows "Gear 15" instead of
+  // "R 5". Stored in localStorage so it persists across sessions/devices.
+
+  let bikeGears = null; // { min: number, max: number } or null
+
+  function loadBikeGears() {
+    try {
+      const raw = localStorage.getItem(BIKE_GEARS_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (typeof data.min === 'number' && typeof data.max === 'number' && data.max > data.min) {
+        return data;
+      }
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function saveBikeGears(min, max) {
+    try {
+      localStorage.setItem(BIKE_GEARS_KEY, JSON.stringify({ min, max }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearBikeGears() {
+    try { localStorage.removeItem(BIKE_GEARS_KEY); } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Map abstract resistance (1..10) to the user's bike gear via linear
+   * interpolation between min (recovery) and max (climb). Returns the
+   * rounded gear number, or null if no mapping is configured.
+   */
+  function mapResistanceToGear(resistance) {
+    if (!bikeGears) return null;
+    const r = Math.max(1, Math.min(10, Number(resistance) || 1));
+    const gear = bikeGears.min + ((r - 1) / 9) * (bikeGears.max - bikeGears.min);
+    return Math.round(gear);
+  }
 
   // ── DOM refs ───────────────────────────────────────────────────────────
 
@@ -45,7 +87,16 @@
       authRequired: $('authRequired'),
       errorState: $('errorState'),
       durationButtons: $('durationButtons'),
+      customDurationInput: $('customDurationInput'),
       generateBtn: $('generateBtn'),
+      recoveryGearInput: $('recoveryGearInput'),
+      maxGearInput: $('maxGearInput'),
+      bikeGearsSaveBtn: $('bikeGearsSaveBtn'),
+      bikeGearsClearBtn: $('bikeGearsClearBtn'),
+      bikeGearsStatus: $('bikeGearsStatus'),
+      bikeSetupToggleText: $('bikeSetupToggleText'),
+      segmentResistanceLabel: $('segmentResistanceLabel'),
+      segmentResistanceSuffix: $('segmentResistanceSuffix'),
       rideTitle: $('rideTitle'),
       rideMeta: $('rideMeta'),
       timerProgress: $('timerProgress'),
@@ -86,6 +137,14 @@
   }
 
   function getSelectedDuration() {
+    // Custom input takes priority when it has a valid value.
+    const customRaw = els.customDurationInput && els.customDurationInput.value;
+    if (customRaw) {
+      const custom = parseInt(customRaw, 10);
+      if (!Number.isNaN(custom) && custom >= 5 && custom <= 120) {
+        return custom;
+      }
+    }
     const active = els.durationButtons.querySelector('.active');
     return active ? parseInt(active.dataset.minutes, 10) : null;
   }
@@ -153,10 +212,12 @@
 
   function segmentRowHtml(seg, i) {
     const dur = formatTime(seg.duration_seconds);
+    const gear = mapResistanceToGear(seg.resistance);
+    const resistanceLabel = gear !== null ? `G${gear}` : `R${seg.resistance}`;
     return `<div class="spin-segment-row" data-index="${i}">
       <span class="spin-segment-type-dot type-${seg.segment_type}"></span>
       <span class="spin-segment-name">${seg.name}</span>
-      <span class="spin-segment-meta">R${seg.resistance} &middot; ${seg.rpm_low}-${seg.rpm_high}rpm &middot; ${dur}</span>
+      <span class="spin-segment-meta">${resistanceLabel} &middot; ${seg.rpm_low}-${seg.rpm_high}rpm &middot; ${dur}</span>
     </div>`;
   }
 
@@ -222,7 +283,19 @@
 
     els.segmentName.textContent = seg.name;
     els.segmentTime.textContent = formatTime(segmentRemaining);
-    els.segmentResistance.textContent = seg.resistance;
+
+    // Resistance / Gear display
+    const gear = mapResistanceToGear(seg.resistance);
+    if (gear !== null) {
+      els.segmentResistanceLabel.textContent = 'Gear';
+      els.segmentResistance.textContent = gear;
+      els.segmentResistanceSuffix.textContent = `(R${seg.resistance})`;
+    } else {
+      els.segmentResistanceLabel.textContent = 'Resistance';
+      els.segmentResistance.textContent = seg.resistance;
+      els.segmentResistanceSuffix.textContent = '/10';
+    }
+
     els.segmentRpm.textContent = seg.rpm_low === seg.rpm_high
       ? `${seg.rpm_low}`
       : `${seg.rpm_low}-${seg.rpm_high}`;
@@ -589,21 +662,84 @@
 
   // ── Init ───────────────────────────────────────────────────────────────
 
+  function refreshGenerateButtonState() {
+    els.generateBtn.disabled = getSelectedDuration() === null;
+  }
+
+  function updateBikeSetupToggleText() {
+    if (!els.bikeSetupToggleText) return;
+    els.bikeSetupToggleText.textContent = bikeGears
+      ? `My bike gears (${bikeGears.min}–${bikeGears.max})`
+      : 'My bike gears';
+  }
+
   function bindEvents() {
-    // Duration buttons
+    // Duration preset buttons
     els.durationButtons.addEventListener('click', (e) => {
       const btn = e.target.closest('.spin-duration-btn');
       if (!btn) return;
       els.durationButtons.querySelectorAll('.spin-duration-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      els.generateBtn.disabled = false;
+      // Selecting a preset clears the custom field so it's clear which is active.
+      if (els.customDurationInput) els.customDurationInput.value = '';
+      refreshGenerateButtonState();
     });
+
+    // Custom duration input
+    if (els.customDurationInput) {
+      els.customDurationInput.addEventListener('input', () => {
+        // Typing a custom duration deselects any preset.
+        if (els.customDurationInput.value) {
+          els.durationButtons.querySelectorAll('.spin-duration-btn').forEach((b) => b.classList.remove('active'));
+        }
+        refreshGenerateButtonState();
+      });
+    }
 
     // Generate
     els.generateBtn.addEventListener('click', () => {
       const dur = getSelectedDuration();
       if (dur) generateRide(dur);
     });
+
+    // Bike gear save / clear
+    if (els.bikeGearsSaveBtn) {
+      els.bikeGearsSaveBtn.addEventListener('click', () => {
+        const min = parseInt(els.recoveryGearInput.value, 10);
+        const max = parseInt(els.maxGearInput.value, 10);
+        if (Number.isNaN(min) || Number.isNaN(max) || min < 1 || max < 1) {
+          els.bikeGearsStatus.textContent = 'Enter both gears as positive numbers.';
+          return;
+        }
+        if (max <= min) {
+          els.bikeGearsStatus.textContent = 'Max gear must be higher than recovery gear.';
+          return;
+        }
+        saveBikeGears(min, max);
+        bikeGears = { min, max };
+        els.bikeGearsStatus.textContent = `Saved — gears ${min} to ${max} mapped to resistance 1-10.`;
+        updateBikeSetupToggleText();
+        // If a ride is loaded, re-render so it picks up the new mapping.
+        if (ridePlan && segments.length) {
+          renderSegmentList();
+          updateSegmentDisplay();
+        }
+      });
+    }
+    if (els.bikeGearsClearBtn) {
+      els.bikeGearsClearBtn.addEventListener('click', () => {
+        clearBikeGears();
+        bikeGears = null;
+        els.recoveryGearInput.value = '';
+        els.maxGearInput.value = '';
+        els.bikeGearsStatus.textContent = 'Cleared — using default 1-10 resistance scale.';
+        updateBikeSetupToggleText();
+        if (ridePlan && segments.length) {
+          renderSegmentList();
+          updateSegmentDisplay();
+        }
+      });
+    }
 
     // Ride controls
     els.startBtn.addEventListener('click', onStart);
@@ -652,6 +788,14 @@
   async function init() {
     cacheDom();
     bindEvents();
+
+    // Load saved bike-gear mapping and prefill the setup form.
+    bikeGears = loadBikeGears();
+    if (bikeGears) {
+      if (els.recoveryGearInput) els.recoveryGearInput.value = bikeGears.min;
+      if (els.maxGearInput) els.maxGearInput.value = bikeGears.max;
+    }
+    updateBikeSetupToggleText();
 
     const isAuth = await waitForAuth();
     if (!isAuth) {
