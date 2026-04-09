@@ -19,7 +19,7 @@ Generate a complete spin ride plan for the requested duration. The ride must fee
 
 RIDE STRUCTURE RULES:
 1. Always start with a WARM-UP (2-4 min for short rides, 4-5 min for 30+ min rides)
-2. Always end with a COOL-DOWN (2-3 min for short rides, 3-5 min for 30+ min rides)
+2. Do NOT include a cool-down segment — the rider will cool down on their own. The ride should end on the final working effort.
 3. Working portion uses a mix of segment types with recovery between hard efforts
 4. Longer rides (30+ min) should have 2-3 build/peak cycles, not just one long grind
 5. Segment durations should be between 30 seconds and 4 minutes
@@ -31,7 +31,7 @@ SEGMENT TYPES AND TYPICAL RANGES:
 - climb: Resistance 6-9, RPM 60-80. Heavy resistance, slower cadence, seated or standing climbs.
 - sprint: Resistance 4-6, RPM 100-120. Fast cadence bursts, moderate resistance.
 - recovery: Resistance 3-4, RPM 70-85. Active recovery, easy spinning, catch your breath.
-- cooldown: Resistance 2-3, RPM 70-80. Gradually decreasing effort.
+- (do NOT use the "cooldown" segment type — the ride should end on the final working effort)
 
 RESISTANCE SCALE (1-10):
 - 1-2: Almost no resistance, very easy
@@ -78,6 +78,7 @@ RESPONSE FORMAT (strict JSON):
 }
 
 CRITICAL: The total_seconds field and the sum of all segment duration_seconds MUST equal exactly (duration_minutes * 60). Count carefully.
+CRITICAL: Do NOT include any cool-down segment at the end. The last segment should be a working effort (flat / climb / sprint / recovery), not a cooldown.
 """
 
 
@@ -180,6 +181,15 @@ class SpinRideGenerator:
             seg["cue"] = str(seg.get("cue", ""))[:120]
             if seg["rpm_low"] > seg["rpm_high"]:
                 seg["rpm_low"], seg["rpm_high"] = seg["rpm_high"], seg["rpm_low"]
+
+        # Defensive: the prompt says "no cooldown", but if the model still
+        # emits a trailing cooldown segment, convert it to a recovery so the
+        # ride still ends on a working effort (and total duration is preserved).
+        while segments and segments[-1]["segment_type"] == "cooldown":
+            last = segments[-1]
+            last["segment_type"] = "recovery"
+            if last["name"].lower() in {"cool down", "cooldown", "cool-down"}:
+                last["name"] = "Final Recovery"
 
         # Fix timing mismatch by adjusting the last segment
         actual_total = sum(s["duration_seconds"] for s in segments)
