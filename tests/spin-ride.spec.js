@@ -471,20 +471,25 @@ test.describe('Spin Ride Page', () => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');
 
-    const toggle = page.locator('#includeAllOutsToggle');
-    await expect(toggle).toBeVisible();
-    await expect(toggle).not.toBeChecked();
+    // Default: "No, just efforts" is active
+    const noBtn = page.locator('.spin-all-out-btn[data-value="0"]');
+    const yesBtn = page.locator('.spin-all-out-btn[data-value="1"]');
+    await expect(noBtn).toBeVisible();
+    await expect(noBtn).toHaveClass(/active/);
+    await expect(yesBtn).not.toHaveClass(/active/);
 
-    // Turn it on and verify localStorage persistence
-    await toggle.check();
+    // Click "Yes, add all-outs" and verify localStorage persistence
+    await yesBtn.click();
+    await expect(yesBtn).toHaveClass(/active/);
+    await expect(noBtn).not.toHaveClass(/active/);
     const stored = await page.evaluate(() => localStorage.getItem('spinRideIncludeAllOuts'));
     expect(stored).toBe('1');
 
-    // Reload and verify the toggle stays on
+    // Reload and verify the selection stays
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1500);
-    await expect(page.locator('#includeAllOutsToggle')).toBeChecked();
+    await expect(page.locator('.spin-all-out-btn[data-value="1"]')).toHaveClass(/active/);
 
     // Intercept the generate request and verify the body payload
     let capturedBody = null;
@@ -562,6 +567,35 @@ test.describe('Spin Ride Page', () => {
     const bg = await dot.evaluate((el) => getComputedStyle(el).backgroundColor);
     // #B91C1C → rgb(185, 28, 28)
     expect(bg).toBe('rgb(185, 28, 28)');
+  });
+
+  test('select screen shows numbered 1-2-3 steps in order', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const steps = page.locator('#selectState .spin-step');
+    await expect(steps).toHaveCount(3);
+
+    // Step numbers should be 1, 2, 3 in order
+    const numbers = await steps.locator('.spin-step-number').allTextContents();
+    expect(numbers).toEqual(['1', '2', '3']);
+
+    // Each step contains the expected controls
+    await expect(steps.nth(0).locator('#durationButtons')).toBeVisible();
+    await expect(steps.nth(0).locator('#customDurationInput')).toBeVisible();
+    await expect(steps.nth(1).locator('#recoveryGearInput')).toBeVisible();
+    await expect(steps.nth(1).locator('#maxGearInput')).toBeVisible();
+    await expect(steps.nth(2).locator('#allOutsButtons')).toBeVisible();
+
+    // Gear inputs should no longer be hidden in a collapse
+    expect(await page.locator('#bikeSetupCollapse').count()).toBe(0);
+
+    // Steps should be vertically ordered (y of step 2 > step 1, step 3 > step 2)
+    const box1 = await steps.nth(0).boundingBox();
+    const box2 = await steps.nth(1).boundingBox();
+    const box3 = await steps.nth(2).boundingBox();
+    expect(box2.y).toBeGreaterThan(box1.y);
+    expect(box3.y).toBeGreaterThan(box2.y);
   });
 
   test('clearSession removes saved ride on new ride', async ({ page }) => {

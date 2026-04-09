@@ -57,7 +57,7 @@
     <link rel="stylesheet" href="/static/assets/css/design-system.css" />
 
     <!-- Spin Ride CSS -->
-    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409d" />
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409e" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -117,73 +117,73 @@
 
               <!-- STATE: Select Duration -->
               <div id="selectState" class="text-center">
-                <p class="mb-3 fw-semibold">Choose your ride duration</p>
-                <div class="d-flex flex-wrap justify-content-center gap-2 mb-3" id="durationButtons">
-                  <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="10">10 min</button>
-                  <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="20">20 min</button>
-                  <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="30">30 min</button>
-                  <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="45">45 min</button>
-                  <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="60">60 min</button>
-                </div>
 
-                <!-- Custom duration input -->
-                <div class="d-flex justify-content-center align-items-center gap-2 mb-3">
-                  <label for="customDurationInput" class="text-muted small mb-0">or custom:</label>
-                  <input type="number" id="customDurationInput"
-                         class="form-control form-control-sm spin-custom-duration-input"
-                         min="5" max="120" step="1" placeholder="min" />
-                  <span class="text-muted small">min (5-120)</span>
-                </div>
-
-                <!-- All-out sprint toggle -->
-                <div class="form-check form-switch d-inline-flex align-items-center mb-4">
-                  <input class="form-check-input me-2" type="checkbox" id="includeAllOutsToggle" />
-                  <label class="form-check-label small" for="includeAllOutsToggle">
-                    Include all-out sprints
-                    <span class="text-muted d-block" style="font-size: 0.75rem;">
-                      Max-effort bursts (15-45s) after hard efforts
-                    </span>
-                  </label>
-                </div>
-
-                <button class="btn btn-primary btn-lg mb-4 d-block mx-auto" id="generateBtn" disabled>
-                  <i class="bx bx-bolt-circle me-1"></i>Generate Ride
-                </button>
-
-                <!-- Bike Setup (personal gear mapping) -->
-                <div class="spin-bike-setup mx-auto">
-                  <button class="btn btn-link btn-sm text-muted p-0" type="button"
-                          data-bs-toggle="collapse" data-bs-target="#bikeSetupCollapse"
-                          aria-expanded="false" aria-controls="bikeSetupCollapse"
-                          id="bikeSetupToggle">
-                    <i class="bx bx-cog me-1"></i><span id="bikeSetupToggleText">My bike gears</span>
-                  </button>
-                  <div class="collapse mt-2" id="bikeSetupCollapse">
-                    <div class="card card-body p-3 text-start">
-                      <p class="text-muted small mb-2">
-                        Map the abstract resistance scale (1-10) to your bike's actual gear numbers.
-                        Leave blank to use the default 1-10 scale.
-                      </p>
-                      <div class="row g-2">
-                        <div class="col-6">
-                          <label for="recoveryGearInput" class="form-label small mb-1">Recovery (lowest) gear</label>
-                          <input type="number" id="recoveryGearInput" class="form-control form-control-sm"
-                                 min="1" max="100" step="1" placeholder="e.g. 10" />
-                        </div>
-                        <div class="col-6">
-                          <label for="maxGearInput" class="form-label small mb-1">Max climb (hardest) gear</label>
-                          <input type="number" id="maxGearInput" class="form-control form-control-sm"
-                                 min="1" max="100" step="1" placeholder="e.g. 21" />
-                        </div>
-                      </div>
-                      <div class="d-flex justify-content-end gap-2 mt-2">
-                        <button class="btn btn-sm btn-outline-secondary" id="bikeGearsClearBtn">Clear</button>
-                        <button class="btn btn-sm btn-primary" id="bikeGearsSaveBtn">Save</button>
-                      </div>
-                      <p class="text-muted small mb-0 mt-2" id="bikeGearsStatus"></p>
-                    </div>
+                <!-- Step 1 — Duration -->
+                <div class="spin-step">
+                  <p class="spin-step-title">
+                    <span class="spin-step-number">1</span>Choose your ride duration
+                  </p>
+                  <div class="d-flex flex-wrap justify-content-center gap-2 mb-2" id="durationButtons">
+                    <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="10">10 min</button>
+                    <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="20">20 min</button>
+                    <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="30">30 min</button>
+                    <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="45">45 min</button>
+                    <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="60">60 min</button>
+                  </div>
+                  <div class="d-flex justify-content-center align-items-center gap-2">
+                    <label for="customDurationInput" class="text-muted small mb-0">or custom:</label>
+                    <input type="number" id="customDurationInput"
+                           class="form-control form-control-sm spin-custom-duration-input"
+                           min="5" max="120" step="1" placeholder="min" />
+                    <span class="text-muted small">min (5-120)</span>
                   </div>
                 </div>
+
+                <!-- Step 2 — Bike gears -->
+                <div class="spin-step">
+                  <p class="spin-step-title">
+                    <span class="spin-step-number">2</span>Map to your bike's gears
+                    <span class="text-muted fw-normal small">(optional)</span>
+                  </p>
+                  <p class="text-muted small mb-2">
+                    Show "Gear 15" instead of "Resistance 5". Leave blank to use the default 1-10 scale.
+                  </p>
+                  <div class="d-flex flex-wrap justify-content-center align-items-end gap-3 mb-2">
+                    <div class="spin-gear-field">
+                      <label for="recoveryGearInput" class="spin-gear-label">Recovery (lowest)</label>
+                      <input type="number" id="recoveryGearInput" class="form-control spin-gear-input"
+                             min="1" max="100" step="1" placeholder="e.g. 10" />
+                    </div>
+                    <div class="spin-gear-arrow" aria-hidden="true">→</div>
+                    <div class="spin-gear-field">
+                      <label for="maxGearInput" class="spin-gear-label">Max climb (hardest)</label>
+                      <input type="number" id="maxGearInput" class="form-control spin-gear-input"
+                             min="1" max="100" step="1" placeholder="e.g. 21" />
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="bikeGearsClearBtn">Use default 1-10</button>
+                    <button class="btn btn-sm btn-primary" id="bikeGearsSaveBtn">Save gears</button>
+                  </div>
+                  <p class="text-muted small mt-2 mb-0" id="bikeGearsStatus"></p>
+                </div>
+
+                <!-- Step 3 — All-outs -->
+                <div class="spin-step">
+                  <p class="spin-step-title">
+                    <span class="spin-step-number">3</span>Include all-out sprints?
+                  </p>
+                  <p class="text-muted small mb-2">Max-effort bursts (15-45s) after hard efforts.</p>
+                  <div class="d-flex flex-wrap justify-content-center gap-2" id="allOutsButtons">
+                    <button class="btn btn-outline-primary btn-lg spin-all-out-btn active" data-value="0">No, just efforts</button>
+                    <button class="btn btn-outline-primary btn-lg spin-all-out-btn" data-value="1">Yes, add all-outs</button>
+                  </div>
+                </div>
+
+                <!-- Generate -->
+                <button class="btn btn-primary btn-lg d-block mx-auto mt-2 mb-4" id="generateBtn" disabled>
+                  <i class="bx bx-bolt-circle me-1"></i>Generate Ride
+                </button>
               </div>
 
               <!-- STATE: Generating -->
@@ -354,6 +354,6 @@
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
     <!-- Spin Ride Controller -->
-    <script src="/static/assets/js/pages/spin-ride.js?v=20260409d"></script>
+    <script src="/static/assets/js/pages/spin-ride.js?v=20260409e"></script>
   </body>
 </html>

@@ -89,14 +89,13 @@
       errorState: $('errorState'),
       durationButtons: $('durationButtons'),
       customDurationInput: $('customDurationInput'),
-      includeAllOutsToggle: $('includeAllOutsToggle'),
+      allOutsButtons: $('allOutsButtons'),
       generateBtn: $('generateBtn'),
       recoveryGearInput: $('recoveryGearInput'),
       maxGearInput: $('maxGearInput'),
       bikeGearsSaveBtn: $('bikeGearsSaveBtn'),
       bikeGearsClearBtn: $('bikeGearsClearBtn'),
       bikeGearsStatus: $('bikeGearsStatus'),
-      bikeSetupToggleText: $('bikeSetupToggleText'),
       segmentResistanceLabel: $('segmentResistanceLabel'),
       segmentResistanceSuffix: $('segmentResistanceSuffix'),
       rideTitle: $('rideTitle'),
@@ -597,7 +596,7 @@
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const includeAllOuts = !!(els.includeAllOutsToggle && els.includeAllOutsToggle.checked);
+      const includeAllOuts = getIncludeAllOuts();
 
       const response = await fetch('/api/v3/spin-ride/generate', {
         method: 'POST',
@@ -673,11 +672,27 @@
     els.generateBtn.disabled = getSelectedDuration() === null;
   }
 
-  function updateBikeSetupToggleText() {
-    if (!els.bikeSetupToggleText) return;
-    els.bikeSetupToggleText.textContent = bikeGears
-      ? `My bike gears (${bikeGears.min}–${bikeGears.max})`
-      : 'My bike gears';
+  function getIncludeAllOuts() {
+    if (!els.allOutsButtons) return false;
+    const active = els.allOutsButtons.querySelector('.spin-all-out-btn.active');
+    return !!(active && active.dataset.value === '1');
+  }
+
+  function setIncludeAllOuts(value) {
+    if (!els.allOutsButtons) return;
+    const target = value ? '1' : '0';
+    els.allOutsButtons.querySelectorAll('.spin-all-out-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.value === target);
+    });
+  }
+
+  function updateBikeGearsStatus() {
+    if (!els.bikeGearsStatus) return;
+    if (bikeGears) {
+      els.bikeGearsStatus.textContent = `Mapped: gears ${bikeGears.min}–${bikeGears.max} → resistance 1-10.`;
+    } else {
+      els.bikeGearsStatus.textContent = '';
+    }
   }
 
   function bindEvents() {
@@ -703,12 +718,16 @@
       });
     }
 
-    // Include-all-outs toggle (persist preference)
-    if (els.includeAllOutsToggle) {
-      els.includeAllOutsToggle.addEventListener('change', () => {
+    // All-outs button pair (persist preference)
+    if (els.allOutsButtons) {
+      els.allOutsButtons.addEventListener('click', (e) => {
+        const btn = e.target.closest('.spin-all-out-btn');
+        if (!btn) return;
+        const value = btn.dataset.value === '1';
+        setIncludeAllOuts(value);
         try {
-          localStorage.setItem(INCLUDE_ALL_OUTS_KEY, els.includeAllOutsToggle.checked ? '1' : '0');
-        } catch (e) { /* ignore */ }
+          localStorage.setItem(INCLUDE_ALL_OUTS_KEY, value ? '1' : '0');
+        } catch (err) { /* ignore */ }
       });
     }
 
@@ -733,8 +752,7 @@
         }
         saveBikeGears(min, max);
         bikeGears = { min, max };
-        els.bikeGearsStatus.textContent = `Saved — gears ${min} to ${max} mapped to resistance 1-10.`;
-        updateBikeSetupToggleText();
+        updateBikeGearsStatus();
         // If a ride is loaded, re-render so it picks up the new mapping.
         if (ridePlan && segments.length) {
           renderSegmentList();
@@ -748,8 +766,7 @@
         bikeGears = null;
         els.recoveryGearInput.value = '';
         els.maxGearInput.value = '';
-        els.bikeGearsStatus.textContent = 'Cleared — using default 1-10 resistance scale.';
-        updateBikeSetupToggleText();
+        els.bikeGearsStatus.textContent = 'Using default 1-10 resistance scale.';
         if (ridePlan && segments.length) {
           renderSegmentList();
           updateSegmentDisplay();
@@ -811,14 +828,12 @@
       if (els.recoveryGearInput) els.recoveryGearInput.value = bikeGears.min;
       if (els.maxGearInput) els.maxGearInput.value = bikeGears.max;
     }
-    updateBikeSetupToggleText();
+    updateBikeGearsStatus();
 
     // Restore include-all-outs preference
-    if (els.includeAllOutsToggle) {
-      try {
-        els.includeAllOutsToggle.checked = localStorage.getItem(INCLUDE_ALL_OUTS_KEY) === '1';
-      } catch (e) { /* ignore */ }
-    }
+    try {
+      setIncludeAllOuts(localStorage.getItem(INCLUDE_ALL_OUTS_KEY) === '1');
+    } catch (e) { /* ignore */ }
 
     const isAuth = await waitForAuth();
     if (!isAuth) {
