@@ -32,6 +32,10 @@ Build programs, track sessions, and see your progress — no social feeds, no ga
 | Testing | Playwright (E2E) |
 | Deployment | Railway (NIXPACKS) |
 
+## Screenshots
+
+See [docs/user-flows/](docs/user-flows/) for detailed user flow screenshots across desktop and mobile.
+
 ## Getting Started
 
 ### Prerequisites
@@ -44,8 +48,8 @@ Build programs, track sessions, and see your progress — no social feeds, no ga
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-username/fitness-field-notes.git
-cd fitness-field-notes
+git clone https://github.com/tbattista/FitnessFieldNotes.git
+cd FitnessFieldNotes
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -76,11 +80,16 @@ The app runs at **http://localhost:8001** and API docs are at **http://localhost
 ```
 backend/
 ├── main.py              # FastAPI entry point
-├── models.py            # Pydantic data models
+├── models/              # Pydantic data models (split by domain)
+│   ├── workout.py       # Workout & exercise models
+│   ├── session.py       # Session tracking models
+│   ├── program.py       # Program models
+│   └── ...              # Additional domain models
 ├── api/                 # Route handlers (~20 routers)
 ├── services/            # Business logic & Firebase ops
 │   └── parsers/         # AI, PDF, CSV, JSON, text, image parsers
 ├── middleware/           # Auth middleware
+├── scripts/             # Seed data & maintenance utilities
 └── templates/html/      # Jinja2 templates for PDF export
 
 frontend/
@@ -96,6 +105,9 @@ frontend/
 │   └── css/             # Component-scoped styles
 
 tests/                   # Playwright E2E tests
+scripts/                 # Utility scripts (screenshots, data tools)
+docs/user-flows/         # User flow documentation & screenshots
+gotenberg-service/       # Gotenberg PDF microservice (Docker/Railway)
 ```
 
 ## Testing
