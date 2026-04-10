@@ -57,7 +57,7 @@
     <link rel="stylesheet" href="/static/assets/css/design-system.css" />
 
     <!-- Spin Ride CSS -->
-    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409e" />
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409f" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -116,21 +116,21 @@
               </div>
 
               <!-- STATE: Select Duration -->
-              <div id="selectState" class="text-center">
+              <div id="selectState">
 
                 <!-- Step 1 — Duration -->
                 <div class="spin-step">
                   <p class="spin-step-title">
                     <span class="spin-step-number">1</span>Choose your ride duration
                   </p>
-                  <div class="d-flex flex-wrap justify-content-center gap-2 mb-2" id="durationButtons">
+                  <div class="d-flex flex-wrap gap-2 mb-2" id="durationButtons">
                     <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="10">10 min</button>
                     <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="20">20 min</button>
                     <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="30">30 min</button>
                     <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="45">45 min</button>
                     <button class="btn btn-outline-primary btn-lg spin-duration-btn" data-minutes="60">60 min</button>
                   </div>
-                  <div class="d-flex justify-content-center align-items-center gap-2">
+                  <div class="d-flex align-items-center gap-2">
                     <label for="customDurationInput" class="text-muted small mb-0">or custom:</label>
                     <input type="number" id="customDurationInput"
                            class="form-control form-control-sm spin-custom-duration-input"
@@ -148,7 +148,7 @@
                   <p class="text-muted small mb-2">
                     Show "Gear 15" instead of "Resistance 5". Leave blank to use the default 1-10 scale.
                   </p>
-                  <div class="d-flex flex-wrap justify-content-center align-items-end gap-3 mb-2">
+                  <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
                     <div class="spin-gear-field">
                       <label for="recoveryGearInput" class="spin-gear-label">Recovery (lowest)</label>
                       <input type="number" id="recoveryGearInput" class="form-control spin-gear-input"
@@ -161,7 +161,7 @@
                              min="1" max="100" step="1" placeholder="e.g. 21" />
                     </div>
                   </div>
-                  <div class="d-flex justify-content-center gap-2">
+                  <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-secondary" id="bikeGearsClearBtn">Use default 1-10</button>
                     <button class="btn btn-sm btn-primary" id="bikeGearsSaveBtn">Save gears</button>
                   </div>
@@ -174,14 +174,14 @@
                     <span class="spin-step-number">3</span>Include all-out sprints?
                   </p>
                   <p class="text-muted small mb-2">Max-effort bursts (15-45s) after hard efforts.</p>
-                  <div class="d-flex flex-wrap justify-content-center gap-2" id="allOutsButtons">
+                  <div class="d-flex flex-wrap gap-2" id="allOutsButtons">
                     <button class="btn btn-outline-primary btn-lg spin-all-out-btn active" data-value="0">No, just efforts</button>
                     <button class="btn btn-outline-primary btn-lg spin-all-out-btn" data-value="1">Yes, add all-outs</button>
                   </div>
                 </div>
 
                 <!-- Generate -->
-                <button class="btn btn-primary btn-lg d-block mx-auto mt-2 mb-4" id="generateBtn" disabled>
+                <button class="btn btn-primary btn-lg mt-2 mb-4" id="generateBtn" disabled>
                   <i class="bx bx-bolt-circle me-1"></i>Generate Ride
                 </button>
               </div>
