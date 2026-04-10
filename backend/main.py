@@ -434,12 +434,12 @@ async def serve_spin_ride():
             status_code=404
         )
 
-@app.get("/launch")
-@app.get("/launch.html")
+@app.get("/launch", response_class=HTMLResponse)
+@app.get("/launch.html", response_class=HTMLResponse)
 async def serve_launch_page():
-    """Redirect old launch page to home page"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/", status_code=301)
+    """Serve the launch/landing page (same as index.html)"""
+    with open("frontend/index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
 @app.get("/share/{token}", response_class=HTMLResponse)
 async def serve_share_page(token: str):
