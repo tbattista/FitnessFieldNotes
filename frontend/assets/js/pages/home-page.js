@@ -247,7 +247,7 @@
                                 <h6 class="fw-bold mt-1 mb-1">${escapeHtml(activeProgram.name)}</h6>
                                 ${progressHtml}
                                 <p class="text-muted small mb-2">Next: ${escapeHtml(workoutName)}</p>
-                                <a href="workout-mode.html?id=${nextWorkout.workout_id}" class="btn btn-primary btn-sm">
+                                <a href="workout-mode.html?id=${nextWorkout.workout_id}&programId=${activeProgramId}" class="btn btn-primary btn-sm">
                                     <i class="bx bx-play me-1"></i>Start Workout
                                 </a>
                             </div>

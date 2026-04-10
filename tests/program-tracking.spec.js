@@ -104,4 +104,45 @@ test.describe('Program Tracking Feature', () => {
     expect(response.status()).toBe(401);
   });
 
+  test('_detectProgramId falls back to any program containing the workout', async ({ page }) => {
+    // Regression test for program workout tracking bug: previously the
+    // detection only matched pinned or tracker-enabled programs, so sessions
+    // for workouts in ordinary programs were never linked.
+    await page.goto(`${BASE}/workout-mode.html?id=does-not-matter`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1500);
+
+    const detected = await page.evaluate(async () => {
+      // Stub dataManager to return a single non-tracker, non-pinned program
+      window.dataManager = window.dataManager || {};
+      window.dataManager.getPrograms = async () => ([
+        {
+          id: 'prog-fallback-1',
+          name: 'Ordinary Program',
+          tracker_enabled: false,
+          workouts: [{ workout_id: 'workout-xyz' }]
+        }
+      ]);
+      localStorage.removeItem('ffn_active_program_id');
+
+      const svc = new SessionLifecycleApiService({});
+      return await svc._detectProgramId('workout-xyz');
+    });
+
+    expect(detected).toBe('prog-fallback-1');
+  });
+
+  test('_detectProgramId honors explicit programId URL parameter', async ({ page }) => {
+    await page.goto(`${BASE}/workout-mode.html?id=abc&programId=explicit-prog-id`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1500);
+
+    const detected = await page.evaluate(async () => {
+      const svc = new SessionLifecycleApiService({});
+      return await svc._detectProgramId('abc');
+    });
+
+    expect(detected).toBe('explicit-prog-id');
+  });
+
 });

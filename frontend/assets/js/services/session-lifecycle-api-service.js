@@ -583,13 +583,23 @@ class SessionLifecycleApiService {
 
     /**
      * Detect which program this workout belongs to and return its program_id.
-     * Priority: 1) Primary/pinned program, 2) Any tracker-enabled program containing this workout.
+     * Priority:
+     *   1) Explicit programId from URL (?programId=...)
+     *   2) Primary/pinned program containing the workout
+     *   3) Any tracker-enabled program containing the workout
+     *   4) Any program containing the workout (first match)
      * @param {string} workoutId - The workout being started
      * @returns {Promise<string|null>} program_id if workout belongs to a program, null otherwise
      * @private
      */
     async _detectProgramId(workoutId) {
         try {
+            // 0. Explicit programId from the current URL wins
+            try {
+                const urlProgramId = new URLSearchParams(window.location.search).get('programId');
+                if (urlProgramId) return urlProgramId;
+            } catch (_) { /* ignore */ }
+
             if (!window.dataManager?.getPrograms) return null;
 
             const programs = await window.dataManager.getPrograms({ pageSize: 100 });
@@ -611,6 +621,19 @@ class SessionLifecycleApiService {
             // 2. Check all tracker-enabled programs
             for (const program of programs) {
                 if (program.tracker_enabled && program.workouts) {
+                    const workoutIds = program.workouts.map(w => w.workout_id);
+                    if (workoutIds.includes(workoutId)) {
+                        return program.id;
+                    }
+                }
+            }
+
+            // 3. Fall back to ANY program containing this workout.
+            // Without this, workouts in programs that aren't pinned and don't
+            // have the tracker enabled never get linked to a program, and
+            // their sessions don't show up on the program detail view.
+            for (const program of programs) {
+                if (program.workouts) {
                     const workoutIds = program.workouts.map(w => w.workout_id);
                     if (workoutIds.includes(workoutId)) {
                         return program.id;

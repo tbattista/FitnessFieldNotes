@@ -724,34 +724,82 @@ class FirestoreSessionOps:
         self,
         user_id: str,
         program_id: str,
-        limit: int = 200
+        limit: int = 200,
+        program_workout_ids: Optional[List[str]] = None
     ) -> List[Any]:
-        """Get all completed sessions linked to a specific program"""
+        """Get all completed sessions for a program.
+
+        Includes:
+          1. Sessions explicitly linked via program_id.
+          2. Orphan sessions (no program_id set) whose workout_id is in the
+             program's workout list. This retroactively attributes historical
+             sessions that were logged before program auto-linking worked.
+        """
         if not self.is_available():
             return []
 
         try:
             from ..models import WorkoutSession
 
-            sessions_ref = (self.db.collection('users')
-                           .document(user_id)
-                           .collection('workout_sessions')
-                           .where('program_id', '==', program_id)
-                           .where('status', '==', 'completed')
-                           .order_by('completed_at', direction=firestore.Query.DESCENDING)
-                           .limit(limit))
+            sessions_by_id: Dict[str, Any] = {}
 
-            docs = sessions_ref.stream()
-            sessions = []
+            # Query 1: sessions explicitly linked to this program
+            linked_ref = (self.db.collection('users')
+                          .document(user_id)
+                          .collection('workout_sessions')
+                          .where('program_id', '==', program_id)
+                          .where('status', '==', 'completed')
+                          .order_by('completed_at', direction=firestore.Query.DESCENDING)
+                          .limit(limit))
 
-            for doc in docs:
+            for doc in linked_ref.stream():
                 try:
                     session_data = doc.to_dict()
                     session = WorkoutSession(**session_data)
-                    sessions.append(session)
+                    sessions_by_id[session.id] = session
                 except Exception as e:
                     logger.warning(f"Failed to parse program session {doc.id}: {str(e)}")
                     continue
+
+            # Query 2: orphan sessions whose workout_id is in the program.
+            # Firestore `in` queries are limited to 30 values, so batch if
+            # necessary. We filter program_id in Python since Firestore can't
+            # efficiently combine `in` with `==` on nullable fields.
+            if program_workout_ids:
+                unique_wids = list({wid for wid in program_workout_ids if wid})
+                BATCH = 30
+                for i in range(0, len(unique_wids), BATCH):
+                    batch_ids = unique_wids[i:i + BATCH]
+                    try:
+                        orphan_ref = (self.db.collection('users')
+                                      .document(user_id)
+                                      .collection('workout_sessions')
+                                      .where('workout_id', 'in', batch_ids)
+                                      .where('status', '==', 'completed')
+                                      .limit(limit))
+                        for doc in orphan_ref.stream():
+                            try:
+                                session_data = doc.to_dict()
+                                # Only include if unlinked or already matches
+                                existing_pid = session_data.get('program_id')
+                                if existing_pid and existing_pid != program_id:
+                                    continue
+                                session = WorkoutSession(**session_data)
+                                # Dedupe with linked query results
+                                sessions_by_id.setdefault(session.id, session)
+                            except Exception as e:
+                                logger.warning(f"Failed to parse orphan session {doc.id}: {str(e)}")
+                                continue
+                    except Exception as e:
+                        logger.warning(f"Failed orphan session query batch: {str(e)}")
+                        continue
+
+            sessions = list(sessions_by_id.values())
+            # Sort by completed_at desc, missing values last
+            sessions.sort(
+                key=lambda s: s.completed_at or s.started_at or datetime.min,
+                reverse=True
+            )
 
             logger.info(f"Retrieved {len(sessions)} program sessions for program {program_id}")
             return sessions
@@ -769,7 +817,11 @@ class FirestoreSessionOps:
     ) -> dict:
         """Compute program progress stats from completed sessions"""
         try:
-            sessions = await self.get_program_sessions(user_id, program_id)
+            sessions = await self.get_program_sessions(
+                user_id,
+                program_id,
+                program_workout_ids=program_workout_ids
+            )
 
             # Build stats
             workouts_completed: Dict[str, int] = {}
