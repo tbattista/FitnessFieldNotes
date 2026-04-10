@@ -285,25 +285,41 @@ async function renderPRSection() {
     `;
   }).join('');
 
-  const reorderBtnClass = _prReorderMode ? 'btn-warning' : 'btn-outline-secondary';
-  const reorderBtnLabel = _prReorderMode ? 'Done' : 'Reorder';
-  const reorderBtnTitle = _prReorderMode ? 'Save order' : 'Reorder PRs';
+  const reorderLabel = _prReorderMode ? '<i class="bx bx-check me-2"></i>Done Reordering' : '<i class="bx bx-sort-alt-2 me-2"></i>Reorder';
+  const collapseLabel = isCollapsed
+    ? '<i class="bx bx-show me-2"></i>Show'
+    : '<i class="bx bx-hide me-2"></i>Hide';
 
   container.innerHTML = `
     <div class="pr-section-header">
       <span class="pr-section-label">
         <i class="bx bxs-trophy"></i> Personal Records
       </span>
-      <div class="d-flex align-items-center gap-1">
-        <button class="btn btn-xs btn-outline-primary pr-add-btn" onclick="showAddPRModal()" title="Add a PR for any exercise">
-          <i class="bx bx-plus"></i> Add
+      <div class="dropdown pr-section-menu">
+        <button class="btn btn-sm btn-icon pr-menu-btn"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                title="Personal Records options">
+          <i class="bx bx-dots-vertical-rounded"></i>
         </button>
-        <button class="btn btn-xs btn-outline-secondary pr-collapse-btn" onclick="togglePRSection()" title="${isCollapsed ? 'Show PRs' : 'Hide PRs'}">
-          ${isCollapsed ? 'Show' : 'Hide'}
-        </button>
-        <button class="btn btn-xs ${reorderBtnClass} pr-reorder-btn" onclick="togglePRReorderMode()" title="${reorderBtnTitle}">
-          ${reorderBtnLabel}
-        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a class="dropdown-item" href="javascript:void(0);" onclick="showAddPRModal();">
+              <i class="bx bx-plus me-2"></i>Add PR
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="javascript:void(0);" onclick="togglePRSection();">
+              ${collapseLabel}
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="javascript:void(0);" onclick="togglePRReorderMode();">
+              ${reorderLabel}
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
     <div class="pr-chips-collapsible${isCollapsed ? ' collapsed' : ''}">
@@ -699,14 +715,13 @@ function _formatPRDate(dateStr) {
  */
 function togglePRSection() {
   const collapsible = document.querySelector('.pr-chips-collapsible');
-  const btn = document.querySelector('.pr-collapse-btn');
-  if (!collapsible || !btn) return;
+  if (!collapsible) return;
 
   const isCollapsing = !collapsible.classList.contains('collapsed');
   collapsible.classList.toggle('collapsed');
-  btn.textContent = isCollapsing ? 'Show' : 'Hide';
-  btn.title = isCollapsing ? 'Show PRs' : 'Hide PRs';
   localStorage.setItem('ffn_pr_section_visible', !isCollapsing ? 'true' : 'false');
+  // Re-render so dropdown label updates to Show/Hide
+  renderPRSection();
 }
 
 /* ============================================

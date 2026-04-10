@@ -100,13 +100,15 @@ test.describe('PR Section Reordering', () => {
 
     await page.waitForTimeout(200);
 
-    // Check reorder button exists
-    const reorderBtn = page.locator('.pr-reorder-btn');
-    const btnExists = await reorderBtn.count();
+    // Open the PR dropdown menu and click Reorder
+    const menuBtn = page.locator('.pr-menu-btn');
+    const btnExists = await menuBtn.count();
 
     if (btnExists > 0) {
-      // Click to enter reorder mode
-      await reorderBtn.click();
+      await menuBtn.click();
+      await page.waitForTimeout(100);
+      // Click the Reorder option in the dropdown
+      await page.locator('.pr-section-menu .dropdown-item', { hasText: 'Reorder' }).click();
       await page.waitForTimeout(200);
 
       // Chips should have reorder class and drag handles

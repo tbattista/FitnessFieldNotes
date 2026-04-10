@@ -65,19 +65,20 @@
   font-size: 0.9rem;
 }
 
-.pr-collapse-btn {
+/* PR Section 3-dot dropdown menu */
+.pr-section-menu .pr-menu-btn {
   border: none;
   background: transparent;
   cursor: pointer;
-  padding: 0.15rem 0.35rem;
+  padding: 0.15rem 0.25rem;
   color: var(--bs-secondary-color, #6c757d);
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   line-height: 1;
   border-radius: 0.25rem;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.pr-collapse-btn:hover {
+.pr-section-menu .pr-menu-btn:hover {
   background-color: var(--bs-tertiary-bg, #f0f0f0);
   color: var(--bs-body-color);
 }
@@ -197,12 +198,6 @@
    Reorder Mode & Drag-and-Drop
    ============================================ */
 
-.pr-reorder-btn {
-  padding: 0.1rem 0.35rem;
-  font-size: 0.8rem;
-  line-height: 1;
-  border-radius: 0.25rem;
-}
 
 .pr-chip-reorder {
   cursor: grab;
@@ -241,12 +236,6 @@
    Add PR Button & Empty State
    ============================================ */
 
-.pr-add-btn {
-  padding: 0.1rem 0.35rem;
-  font-size: 0.8rem;
-  line-height: 1;
-  border-radius: 0.25rem;
-}
 
 .pr-section-empty {
   text-align: center;
@@ -320,6 +309,6 @@
   background: rgba(255,255,255,0.15);
 }
 
-[data-bs-theme="dark"] .pr-collapse-btn:hover {
+[data-bs-theme="dark"] .pr-section-menu .pr-menu-btn:hover {
   background-color: var(--bs-tertiary-bg, #2a2a2a);
 }
