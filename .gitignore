@@ -116,3 +116,29 @@ EXERCISE_HISTORY_QUICKSTART.md
 # Playwright test artifacts
 test-results/
 playwright-report/
+
+# Personal/non-project directories
+home movies/
+word templates/
+
+# Python test virtual environment
+test_env/
+
+# Backend cache (exercise GIF cache)
+backend/cache/
+
+# Root-level data dumps and artifacts
+/*.csv
+/*.png
+/*.docx
+/*.htm
+screenshot_builder*.py
+
+# n8n / social media workflow configs
+Tutorial Posts*.json
+
+# Windows filesystem artifacts
+*logbook-theme-temp*
+
+# Root-level duplicate files
+(1).gitignore
