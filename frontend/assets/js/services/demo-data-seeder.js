@@ -37,8 +37,10 @@
     }
 
     function init() {
-        // Don't auto-sign-in if ?landing is in URL (user wants the marketing page)
+        // Don't auto-sign-in if user wants the marketing/launch page
+        const path = window.location.pathname;
         if (new URLSearchParams(window.location.search).has('landing')) return;
+        if (path === '/launch' || path === '/launch.html') return;
 
         const onReady = () => {
             // Wait for auth state to settle and page to reach idle.

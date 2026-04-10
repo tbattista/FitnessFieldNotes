@@ -55,8 +55,9 @@
             return;
         }
 
-        // Allow forcing the landing page via ?landing query param
-        const forceLanding = new URLSearchParams(window.location.search).has('landing');
+        // Allow forcing the landing page via ?landing query param or /launch path
+        const forceLanding = new URLSearchParams(window.location.search).has('landing')
+            || window.location.pathname === '/launch' || window.location.pathname === '/launch.html';
 
         // Check auth state
         const checkAuthAndRender = async () => {
