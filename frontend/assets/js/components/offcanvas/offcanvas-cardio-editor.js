@@ -29,6 +29,7 @@ export function createCardioEditor(config) {
 
     // Current values
     const activityType = cardioConfig.activity_type || '';
+    const activityName = cardioConfig.activity_name || '';
     const durationMinutes = cardioConfig.duration_minutes || null;
     const distance = cardioConfig.distance || null;
     const distanceUnit = cardioConfig.distance_unit || 'mi';
@@ -97,6 +98,13 @@ export function createCardioEditor(config) {
                 <div class="activity-type-grid mb-3" id="cardioTypeGrid-${id}">
                     ${favoritesHtml}
                     ${moreBtn}
+                </div>
+
+                <!-- Custom Session Name -->
+                <div class="mb-3">
+                    <label for="cardioName-${id}" class="form-label">Session Name <small class="text-muted">(optional)</small></label>
+                    <input type="text" class="form-control" id="cardioName-${id}"
+                           maxlength="100" value="${escapeHtml(activityName)}" placeholder="e.g., Kettlebell Leg HIIT">
                 </div>
 
                 <!-- Duration -->
@@ -330,6 +338,7 @@ export function createCardioEditor(config) {
 
                 const updatedConfig = {
                     activity_type: selectedType,
+                    activity_name: el.querySelector(`#cardioName-${id}`)?.value?.trim() || '',
                     duration_minutes: totalMinutes || null,
                     distance: parseFloat(distInput?.value) || null,
                     distance_unit: distUnitSelect?.value || 'mi',

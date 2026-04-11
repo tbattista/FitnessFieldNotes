@@ -221,6 +221,16 @@ function selectActivity(type) {
     // Update button states
     highlightSelectedActivity(type);
 
+    // Show session name field and update placeholder
+    const nameRow = document.getElementById('sessionNameRow');
+    const nameInput = document.getElementById('sessionName');
+    if (nameRow) nameRow.style.display = '';
+    if (nameInput) {
+        const registry = window.ActivityTypeRegistry;
+        const typeName = registry ? registry.getName(type) : type;
+        nameInput.placeholder = `e.g., Morning ${typeName}, Leg Day ${typeName}`;
+    }
+
     // Show/hide conditional fields based on activity
     updateConditionalFields(type);
 
@@ -369,6 +379,10 @@ async function saveCardioSession() {
         started_at: startedAt
     };
 
+    // Custom session name
+    const sessionName = document.getElementById('sessionName')?.value?.trim();
+    if (sessionName) data.activity_name = sessionName;
+
     // Optional fields
     const distance = parseFloat(document.getElementById('distance')?.value);
     if (distance > 0) {
@@ -463,6 +477,12 @@ function resetForm() {
         String(now.getHours()).padStart(2, '0') + ':' +
         String(now.getMinutes()).padStart(2, '0');
     document.getElementById('sessionDateTime').value = localIso;
+
+    // Reset session name
+    const nameInput = document.getElementById('sessionName');
+    if (nameInput) nameInput.value = '';
+    const nameRow = document.getElementById('sessionNameRow');
+    if (nameRow) nameRow.style.display = 'none';
 
     ['distance', 'pace', 'avgHeartRate', 'maxHeartRate', 'calories',
      'elevationGain', 'cadence', 'strokeRate', 'laps', 'poolLength', 'incline',
