@@ -73,6 +73,10 @@
       totalTimeHelper: $('totalTimeHelper'),
       generateBtn: $('generateBtn'),
 
+      totalValue: document.querySelector('#totalTimeHelper .tk-total-value'),
+      totalSub: document.querySelector('#totalTimeHelper .tk-total-sub'),
+      ctaHint: document.querySelector('.tk-cta-hint'),
+
       workoutTitle: $('workoutTitle'),
       workoutMeta: $('workoutMeta'),
       timerProgress: $('timerProgress'),
@@ -654,6 +658,16 @@
   function refreshGenerateButtonState() {
     const ok = !!selectedProtocol && selectedFocus.size > 0 && selectedSets >= MIN_SETS;
     els.generateBtn.disabled = !ok;
+    // Update the CTA hint line under the Generate button with what's missing
+    if (els.ctaHint) {
+      if (ok) {
+        els.ctaHint.textContent = '';
+      } else if (selectedFocus.size === 0) {
+        els.ctaHint.textContent = 'Pick a focus to continue';
+      } else {
+        els.ctaHint.textContent = '';
+      }
+    }
   }
 
   function updateTotalTimeHelper() {
@@ -661,11 +675,16 @@
     const totalMin = Math.floor(total / 60);
     const totalSec = total % 60;
     const { work, rest } = protocolSeconds(selectedProtocol);
-    els.totalTimeHelper.textContent =
-      `Total: ${totalMin}m ${String(totalSec).padStart(2, '0')}s  ·  ` +
-      `${selectedSets} sets × ${selectedRoundsPerSet} rounds·(${work}s work + ${rest}s rest)` +
-      (selectedSets > 1 ? ` + ${selectedSets - 1} × 1:00 set rest` : '') +
-      '  ·  (no warmup — assume already warmed up)';
+
+    if (els.totalValue) {
+      els.totalValue.textContent = totalSec === 0
+        ? `${totalMin} min`
+        : `${totalMin}m ${String(totalSec).padStart(2, '0')}s`;
+    }
+    if (els.totalSub) {
+      els.totalSub.textContent =
+        `${selectedSets} set${selectedSets !== 1 ? 's' : ''} × ${selectedRoundsPerSet} rounds · ${work}s / ${rest}s · no warmup`;
+    }
   }
 
   function setProtocol(value) {

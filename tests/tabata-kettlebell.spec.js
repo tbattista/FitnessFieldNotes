@@ -89,7 +89,8 @@ test.describe('Tabata Kettlebell Page', () => {
 
     const after = (await helper.textContent()) || '';
     expect(after).not.toBe(before);
-    expect(after).toContain('40+20s');
+    // New Total card subtitle includes "40s / 20s"
+    expect(after).toContain('40s / 20s');
 
     // Active class swap
     await expect(page.locator('.tk-protocol-btn[data-value="40/20"]')).toHaveClass(/active/);

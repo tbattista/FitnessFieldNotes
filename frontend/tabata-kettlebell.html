@@ -59,7 +59,7 @@
     <!-- Spin Ride CSS (reused base layout) -->
     <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409f" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412a" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412b" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -110,11 +110,15 @@
             <div class="container-xxl flex-grow-1 container-p-y">
 
               <!-- Page Header -->
-              <div class="mb-3">
-                <h5 class="mb-0">
-                  <i class="bx bx-dumbbell me-1"></i>
-                  Tabata Kettlebell
-                </h5>
+              <div class="tk-hero mb-3">
+                <div class="tk-hero-title">
+                  <i class="bx bx-dumbbell tk-hero-icon"></i>
+                  <h5 class="mb-0">Tabata Kettlebell</h5>
+                  <span class="tk-ai-badge" title="AI-generated workout">
+                    <i class="bx bx-bolt-circle"></i>AI
+                  </span>
+                </div>
+                <p class="tk-hero-sub">Pick a focus. We program the tabata.</p>
               </div>
 
               <!-- STATE: Select Settings -->
@@ -123,9 +127,8 @@
                 <!-- Step 1 — Protocol -->
                 <div class="spin-step">
                   <p class="spin-step-title">
-                    <span class="spin-step-number">1</span>Pick your tabata protocol
+                    <span class="spin-step-number">1</span>Protocol
                   </p>
-                  <p class="text-muted small mb-2">Work / rest ratio for every interval.</p>
                   <div class="d-flex flex-wrap gap-2" id="protocolButtons">
                     <button class="btn btn-outline-primary btn-lg tk-protocol-btn active" data-value="20/10">
                       20s / 10s
@@ -133,7 +136,7 @@
                     </button>
                     <button class="btn btn-outline-primary btn-lg tk-protocol-btn" data-value="40/20">
                       40s / 20s
-                      <span class="d-block small fw-normal">Extended work</span>
+                      <span class="d-block small fw-normal">Longer efforts</span>
                     </button>
                   </div>
                 </div>
@@ -141,32 +144,24 @@
                 <!-- Step 2 — Focus areas -->
                 <div class="spin-step">
                   <p class="spin-step-title">
-                    <span class="spin-step-number">2</span>Choose your focus
+                    <span class="spin-step-number">2</span>Focus
+                    <span class="text-muted fw-normal small">· tap one or more</span>
                   </p>
-                  <p class="text-muted small mb-2">Pick one or more areas. The AI will build a workout around them.</p>
                   <div class="d-flex flex-wrap gap-2" id="focusButtons">
-                    <button class="btn btn-outline-primary tk-focus-btn" data-value="full_body">Full Body</button>
-                    <button class="btn btn-outline-primary tk-focus-btn" data-value="upper_body">Upper Body</button>
-                    <button class="btn btn-outline-primary tk-focus-btn" data-value="lower_body">Lower Body</button>
-                    <button class="btn btn-outline-primary tk-focus-btn" data-value="chest">Chest</button>
-                    <button class="btn btn-outline-primary tk-focus-btn" data-value="back">Back</button>
-                    <button class="btn btn-outline-primary tk-focus-btn" data-value="core">Core</button>
-                    <button class="btn btn-outline-primary tk-focus-btn" data-value="conditioning">Conditioning</button>
+                    <button class="btn btn-outline-primary btn-lg tk-focus-btn" data-value="full_body">Full Body</button>
+                    <button class="btn btn-outline-primary btn-lg tk-focus-btn" data-value="upper_body">Upper Body</button>
+                    <button class="btn btn-outline-primary btn-lg tk-focus-btn" data-value="lower_body">Lower Body</button>
+                    <button class="btn btn-outline-primary btn-lg tk-focus-btn" data-value="chest">Chest</button>
+                    <button class="btn btn-outline-primary btn-lg tk-focus-btn" data-value="back">Back</button>
+                    <button class="btn btn-outline-primary btn-lg tk-focus-btn" data-value="core">Core</button>
+                    <button class="btn btn-outline-primary btn-lg tk-focus-btn" data-value="conditioning">Conditioning</button>
                   </div>
                 </div>
 
                 <!-- Step 3 — Length / Sets / Rounds per Set -->
                 <div class="spin-step">
                   <p class="spin-step-title">
-                    <span class="spin-step-number">3</span>Workout length
-                  </p>
-                  <p class="text-muted small mb-2">
-                    Pick a target length — sets are auto-calculated to go <em>at least</em> that long. No warmup is included.
-                    <br>
-                    <span class="text-muted small">
-                      <strong>1 Round</strong> = 1 Work Interval + 1 Rest Interval &nbsp;·&nbsp;
-                      <strong>1 Set</strong> = your Rounds/set value, back-to-back (classic Tabata = 8).
-                    </span>
+                    <span class="spin-step-number">3</span>Length
                   </p>
                   <div class="d-flex flex-wrap gap-2 mb-3" id="lengthButtons">
                     <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="10">~10 min</button>
@@ -175,13 +170,20 @@
                     <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="45">~45 min</button>
                   </div>
 
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="text-muted small">Sets:</span>
-                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="-1" id="setsDownBtn">−</button>
+                  <!-- Total card — the star of step 3 -->
+                  <div class="tk-total-card" id="totalTimeHelper">
+                    <span class="tk-total-value">—</span>
+                    <span class="tk-total-sub">choose a length</span>
+                  </div>
+
+                  <!-- Compact advanced row — de-emphasized but available -->
+                  <div class="tk-advanced-row d-flex align-items-center gap-2 flex-wrap">
+                    <span class="tk-advanced-label">Sets</span>
+                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="-1" id="setsDownBtn" aria-label="Fewer sets">−</button>
                     <span class="tk-sets-display" id="setsDisplay">5</span>
-                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="1" id="setsUpBtn">+</button>
-                    <span class="text-muted small ms-3">Rounds/set:</span>
-                    <select class="form-select form-select-sm tk-rounds-select" id="roundsPerSetSelect">
+                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="1" id="setsUpBtn" aria-label="More sets">+</button>
+                    <span class="tk-advanced-label ms-3">Rounds / set</span>
+                    <select class="form-select form-select-sm tk-rounds-select" id="roundsPerSetSelect" aria-label="Rounds per set">
                       <option value="4">4</option>
                       <option value="6">6</option>
                       <option value="8" selected>8</option>
@@ -189,23 +191,27 @@
                       <option value="12">12</option>
                     </select>
                   </div>
-                  <p class="text-muted small mt-2 mb-0" id="totalTimeHelper">
-                    Total: —
-                  </p>
+                  <p class="tk-advanced-hint">Classic Tabata = 8 rounds per set · no warmup included</p>
                 </div>
 
-                <!-- Generate -->
-                <button class="btn btn-primary btn-lg mt-2 mb-4" id="generateBtn" disabled>
-                  <i class="bx bx-bolt-circle me-1"></i>Generate Workout
-                </button>
+                <!-- Sticky CTA bar (mobile) / inline CTA (desktop) -->
+                <div class="tk-cta-bar">
+                  <button class="btn btn-primary btn-lg tk-cta-btn" id="generateBtn" disabled>
+                    <i class="bx bx-bolt-circle me-1"></i>Generate Workout
+                  </button>
+                  <p class="tk-cta-hint">Pick a focus to continue</p>
+                </div>
               </div>
 
               <!-- STATE: Generating -->
               <div id="generatingState" class="d-none text-center py-5">
                 <div class="spinner-border text-primary mb-3" role="status">
-                  <span class="visually-hidden">Building workout...</span>
+                  <span class="visually-hidden">Programming your tabata...</span>
                 </div>
-                <p class="text-muted">Building your tabata workout...</p>
+                <p class="mb-1 fw-semibold">Programming your tabata…</p>
+                <p class="text-muted small mb-0">
+                  <i class="bx bx-bolt-circle me-1"></i>Built by AI from your picks
+                </p>
               </div>
 
               <!-- STATE: Ready / Working -->
@@ -299,9 +305,9 @@
               <!-- STATE: Auth Required -->
               <div id="authRequired" class="d-none text-center py-5">
                 <i class="bx bx-lock-alt display-1 text-muted"></i>
-                <h5 class="mt-3">Sign In Required</h5>
-                <p class="text-muted">AI workout generation requires an account.</p>
-                <p class="text-muted small">Sign in using the menu above to get started.</p>
+                <h5 class="mt-3">Sign in to generate</h5>
+                <p class="text-muted mb-3">AI workouts are tied to your account so we can save them to your log.</p>
+                <p class="text-muted small mb-0">Use the menu in the top-right to sign in, then come back here.</p>
               </div>
 
               <!-- STATE: Error -->
@@ -370,6 +376,6 @@
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412a"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412b"></script>
   </body>
 </html>
