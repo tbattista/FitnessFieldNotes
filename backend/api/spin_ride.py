@@ -58,11 +58,13 @@ async def generate_spin_ride(
         plan = generator.generate(
             request.duration_minutes,
             include_all_outs=request.include_all_outs,
+            difficulty=request.difficulty,
         )
         ai_rate_limiter.record_request(user_id)
         logger.info(
             f"Generated {request.duration_minutes}min spin ride for user {user_id} "
-            f"(all_outs={'on' if request.include_all_outs else 'off'})"
+            f"(all_outs={'on' if request.include_all_outs else 'off'}, "
+            f"difficulty={request.difficulty or 'auto'})"
         )
         return plan
 

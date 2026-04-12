@@ -18,6 +18,10 @@ class GenerateSpinRideRequest(BaseModel):
         default=False,
         description="If true, the generator may include short max-effort 'all-out' sprint segments.",
     )
+    difficulty: Optional[Literal["easy", "moderate", "hard", "intense"]] = Field(
+        default=None,
+        description="Requested ride difficulty. If omitted, AI chooses based on ride theme.",
+    )
 
 
 class SpinRideSegment(BaseModel):

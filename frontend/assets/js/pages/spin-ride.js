@@ -31,6 +31,14 @@
   const SESSION_KEY = 'spinRideSession';
   const BIKE_GEARS_KEY = 'spinRideBikeGears';
   const INCLUDE_ALL_OUTS_KEY = 'spinRideIncludeAllOuts';
+  const DIFFICULTY_KEY = 'spinRideDifficulty';
+
+  const DIFFICULTY_DESCRIPTIONS = {
+    easy: 'Gentle rolling hills. Comfortable the whole time. Great for beginners or recovery days.',
+    moderate: 'Solid workout with clear peaks and valleys. Work-to-recovery ratio ~3:1.',
+    hard: 'Demanding climbs, sprint intervals, short recovery. You earn every rest. ~5:1 work-to-recovery.',
+    intense: 'Near-max efforts, minimal recovery. The kind of ride you talk about for days.',
+  };
 
   // ── Bike gear mapping ──────────────────────────────────────────────────
   // Users can map the abstract resistance scale (1..10) onto their own bike's
@@ -90,6 +98,8 @@
       durationButtons: $('durationButtons'),
       customDurationInput: $('customDurationInput'),
       allOutsButtons: $('allOutsButtons'),
+      difficultyButtons: $('difficultyButtons'),
+      difficultyDescription: $('difficultyDescription'),
       generateBtn: $('generateBtn'),
       recoveryGearInput: $('recoveryGearInput'),
       maxGearInput: $('maxGearInput'),
@@ -597,6 +607,7 @@
       }
 
       const includeAllOuts = getIncludeAllOuts();
+      const difficulty = getSelectedDifficulty();
 
       const response = await fetch('/api/v3/spin-ride/generate', {
         method: 'POST',
@@ -604,6 +615,7 @@
         body: JSON.stringify({
           duration_minutes: durationMinutes,
           include_all_outs: includeAllOuts,
+          difficulty: difficulty,
         }),
       });
 
@@ -686,6 +698,24 @@
     });
   }
 
+  function getSelectedDifficulty() {
+    if (!els.difficultyButtons) return 'moderate';
+    const active = els.difficultyButtons.querySelector('.spin-difficulty-btn.active');
+    return active ? active.dataset.value : 'moderate';
+  }
+
+  function setSelectedDifficulty(value) {
+    if (!els.difficultyButtons) return;
+    const validValues = ['easy', 'moderate', 'hard', 'intense'];
+    const target = validValues.includes(value) ? value : 'moderate';
+    els.difficultyButtons.querySelectorAll('.spin-difficulty-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.value === target);
+    });
+    if (els.difficultyDescription) {
+      els.difficultyDescription.textContent = DIFFICULTY_DESCRIPTIONS[target] || '';
+    }
+  }
+
   function updateBikeGearsStatus() {
     if (!els.bikeGearsStatus) return;
     if (bikeGears) {
@@ -727,6 +757,18 @@
         setIncludeAllOuts(value);
         try {
           localStorage.setItem(INCLUDE_ALL_OUTS_KEY, value ? '1' : '0');
+        } catch (err) { /* ignore */ }
+      });
+    }
+
+    // Difficulty button group (persist preference)
+    if (els.difficultyButtons) {
+      els.difficultyButtons.addEventListener('click', (e) => {
+        const btn = e.target.closest('.spin-difficulty-btn');
+        if (!btn) return;
+        setSelectedDifficulty(btn.dataset.value);
+        try {
+          localStorage.setItem(DIFFICULTY_KEY, btn.dataset.value);
         } catch (err) { /* ignore */ }
       });
     }
@@ -833,6 +875,12 @@
     // Restore include-all-outs preference
     try {
       setIncludeAllOuts(localStorage.getItem(INCLUDE_ALL_OUTS_KEY) === '1');
+    } catch (e) { /* ignore */ }
+
+    // Restore difficulty preference
+    try {
+      const savedDifficulty = localStorage.getItem(DIFFICULTY_KEY);
+      if (savedDifficulty) setSelectedDifficulty(savedDifficulty);
     } catch (e) { /* ignore */ }
 
     const isAuth = await waitForAuth();

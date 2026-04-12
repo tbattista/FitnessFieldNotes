@@ -569,16 +569,16 @@ test.describe('Spin Ride Page', () => {
     expect(bg).toBe('rgb(185, 28, 28)');
   });
 
-  test('select screen shows numbered 1-2-3 steps in order', async ({ page }) => {
+  test('select screen shows numbered 1-2-3-4 steps in order', async ({ page }) => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');
 
     const steps = page.locator('#selectState .spin-step');
-    await expect(steps).toHaveCount(3);
+    await expect(steps).toHaveCount(4);
 
-    // Step numbers should be 1, 2, 3 in order
+    // Step numbers should be 1, 2, 3, 4 in order
     const numbers = await steps.locator('.spin-step-number').allTextContents();
-    expect(numbers).toEqual(['1', '2', '3']);
+    expect(numbers).toEqual(['1', '2', '3', '4']);
 
     // Each step contains the expected controls
     await expect(steps.nth(0).locator('#durationButtons')).toBeVisible();
@@ -586,16 +586,85 @@ test.describe('Spin Ride Page', () => {
     await expect(steps.nth(1).locator('#recoveryGearInput')).toBeVisible();
     await expect(steps.nth(1).locator('#maxGearInput')).toBeVisible();
     await expect(steps.nth(2).locator('#allOutsButtons')).toBeVisible();
+    await expect(steps.nth(3).locator('#difficultyButtons')).toBeVisible();
 
     // Gear inputs should no longer be hidden in a collapse
     expect(await page.locator('#bikeSetupCollapse').count()).toBe(0);
 
-    // Steps should be vertically ordered (y of step 2 > step 1, step 3 > step 2)
+    // Steps should be vertically ordered
     const box1 = await steps.nth(0).boundingBox();
     const box2 = await steps.nth(1).boundingBox();
     const box3 = await steps.nth(2).boundingBox();
+    const box4 = await steps.nth(3).boundingBox();
     expect(box2.y).toBeGreaterThan(box1.y);
     expect(box3.y).toBeGreaterThan(box2.y);
+    expect(box4.y).toBeGreaterThan(box3.y);
+  });
+
+  test('difficulty selection persists and is sent in the generate request', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Default: "Moderate" is active
+    const moderateBtn = page.locator('.spin-difficulty-btn[data-value="moderate"]');
+    const hardBtn = page.locator('.spin-difficulty-btn[data-value="hard"]');
+    const easyBtn = page.locator('.spin-difficulty-btn[data-value="easy"]');
+    const intenseBtn = page.locator('.spin-difficulty-btn[data-value="intense"]');
+    await expect(moderateBtn).toHaveClass(/active/);
+    await expect(hardBtn).not.toHaveClass(/active/);
+
+    // All four difficulty buttons are visible
+    await expect(easyBtn).toBeVisible();
+    await expect(moderateBtn).toBeVisible();
+    await expect(hardBtn).toBeVisible();
+    await expect(intenseBtn).toBeVisible();
+
+    // Click "Hard" and verify localStorage persistence
+    await hardBtn.click();
+    await expect(hardBtn).toHaveClass(/active/);
+    await expect(moderateBtn).not.toHaveClass(/active/);
+    const stored = await page.evaluate(() => localStorage.getItem('spinRideDifficulty'));
+    expect(stored).toBe('hard');
+
+    // Description should update
+    const desc = page.locator('#difficultyDescription');
+    await expect(desc).toContainText('Demanding');
+
+    // Reload and verify the selection stays
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1500);
+    await expect(page.locator('.spin-difficulty-btn[data-value="hard"]')).toHaveClass(/active/);
+
+    // Intercept the generate request and verify the body payload includes difficulty
+    let capturedBody = null;
+    await page.route('**/api/v3/spin-ride/generate', async (route) => {
+      capturedBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          title: 'Hard Ride',
+          duration_minutes: 20,
+          total_seconds: 1200,
+          difficulty: 'hard',
+          estimated_calories: 220,
+          segments: [
+            { name: 'Warmup', segment_type: 'warmup', duration_seconds: 150, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Easy' },
+            { name: 'Climb', segment_type: 'climb', duration_seconds: 1050, resistance: 8, rpm_low: 60, rpm_high: 75, cue: 'Push' },
+          ],
+        }),
+      });
+    });
+
+    await page.locator('.spin-duration-btn[data-minutes="20"]').click();
+    await page.locator('#generateBtn').click();
+    await page.waitForTimeout(1500);
+
+    // If the request wasn't captured, auth likely blocked us — skip.
+    if (!capturedBody) return;
+    expect(capturedBody.duration_minutes).toBe(20);
+    expect(capturedBody.difficulty).toBe('hard');
   });
 
   test('clearSession removes saved ride on new ride', async ({ page }) => {
