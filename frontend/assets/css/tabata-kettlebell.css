@@ -1,0 +1,102 @@
+/* ============================================
+   Tabata Kettlebell - Overrides on top of spin-ride.css
+   ============================================ */
+
+/* Hide the global Log Session FAB on this page */
+.tabata-kettlebell-page .global-log-fab {
+  display: none !important;
+}
+
+/* ── Segment type colors (timer ring) ─────── */
+.spin-timer-progress.type-warmup     { stroke: var(--gs-warning, #E3A14F); }
+.spin-timer-progress.type-work       { stroke: var(--gs-primary, #C97C5D); }
+.spin-timer-progress.type-rest       { stroke: var(--gs-success, #8CBF9F); }
+.spin-timer-progress.type-round_rest { stroke: var(--gs-gray-500, #64748b); }
+
+/* ── Segment list dots ────────────────────── */
+.spin-segment-type-dot.type-warmup     { background: var(--gs-warning, #E3A14F); }
+.spin-segment-type-dot.type-work       { background: var(--gs-primary, #C97C5D); }
+.spin-segment-type-dot.type-rest       { background: var(--gs-success, #8CBF9F); }
+.spin-segment-type-dot.type-round_rest { background: var(--gs-gray-500, #64748b); }
+
+/* ── Protocol picker buttons (20/10 vs 40/20) ── */
+.tk-protocol-btn {
+  min-width: 140px;
+  line-height: 1.3;
+}
+
+.tk-protocol-btn .small {
+  margin-top: 0.125rem;
+  opacity: 0.85;
+}
+
+.tk-protocol-btn.active {
+  background-color: var(--gs-primary, #C97C5D) !important;
+  border-color: var(--gs-primary, #C97C5D) !important;
+  color: #fff !important;
+}
+
+/* ── Focus area chips (multi-select) ──────── */
+.tk-focus-btn.active {
+  background-color: var(--gs-primary, #C97C5D) !important;
+  border-color: var(--gs-primary, #C97C5D) !important;
+  color: #fff !important;
+}
+
+/* ── Length preset buttons ────────────────── */
+.tk-length-btn {
+  min-width: 90px;
+}
+
+.tk-length-btn.active {
+  background-color: var(--gs-primary, #C97C5D) !important;
+  border-color: var(--gs-primary, #C97C5D) !important;
+  color: #fff !important;
+}
+
+/* ── Rounds adjuster ──────────────────────── */
+.tk-rounds-display {
+  font-size: 1.5rem;
+  font-weight: 700;
+  min-width: 2.5rem;
+  text-align: center;
+  color: var(--gs-primary, #C97C5D);
+  display: inline-block;
+}
+
+.tk-round-adjust {
+  min-width: 2.25rem;
+  padding: 0.25rem 0.5rem;
+  font-weight: 700;
+}
+
+/* ── Intervals-per-round select ───────────── */
+.tk-intervals-select {
+  width: 4.5rem;
+}
+
+/* ── Current Exercise Name (below circular timer) ── */
+.tk-exercise-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--gs-gray-800, #1e293b);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Dark mode overrides ──────────────────── */
+[data-bs-theme="dark"] .tk-exercise-name {
+  color: var(--bs-body-color, #e4e6eb);
+}
+
+[data-bs-theme="dark"] .tk-rounds-display {
+  color: var(--gs-primary, #C97C5D);
+}
+
+[data-bs-theme="dark"] .tk-protocol-btn.active,
+[data-bs-theme="dark"] .tk-focus-btn.active,
+[data-bs-theme="dark"] .tk-length-btn.active {
+  background-color: var(--gs-primary, #C97C5D) !important;
+  border-color: var(--gs-primary, #C97C5D) !important;
+  color: #fff !important;
+}

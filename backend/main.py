@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import routers
-from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride
+from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride, tabata_kettlebell
 from .services.sharing_service import sharing_service
 import re
 import html
@@ -65,8 +65,9 @@ app.include_router(universal_log_routes.router)  # Universal Logger (AI session 
 app.include_router(cron.router)  # Scheduled task endpoints (daily workout generator)
 app.include_router(exercise_images.router)  # Exercise GIF proxy/cache
 app.include_router(spin_ride.router)  # Spin Ride generator (experimental)
+app.include_router(tabata_kettlebell.router)  # Tabata Kettlebell generator (experimental)
 
-logger.info("✅ All routers included successfully (21 routers total)")
+logger.info("✅ All routers included successfully (22 routers total)")
 
 # ============================================
 # SEO Routes (robots.txt, sitemap.xml, llms.txt)
@@ -431,6 +432,19 @@ async def serve_spin_ride():
     except FileNotFoundError:
         return HTMLResponse(
             content="<h1>Spin Ride not found</h1><p>Please ensure frontend/spin-ride.html exists</p>",
+            status_code=404
+        )
+
+@app.get("/tabata-kettlebell", response_class=HTMLResponse)
+@app.get("/tabata-kettlebell.html", response_class=HTMLResponse)
+async def serve_tabata_kettlebell():
+    """Serve the Tabata Kettlebell page (experimental, direct link only)"""
+    try:
+        with open("frontend/tabata-kettlebell.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Tabata Kettlebell not found</h1><p>Please ensure frontend/tabata-kettlebell.html exists</p>",
             status_code=404
         )
 

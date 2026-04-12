@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html
+  lang="en"
+  class="layout-menu-fixed layout-compact"
+  data-assets-path="/static/assets/"
+  data-template="vertical-menu-template-free">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+
+    <title>Tabata Kettlebell - Fitness Field Notes</title>
+
+    <meta name="description" content="AI-generated kettlebell tabata workouts with guided timer" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/static/assets/img/favicon/favicon.svg" />
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#C97C5D">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="/static/assets/vendor/fonts/iconify-icons.css" />
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="/static/assets/vendor/css/core.css" />
+    <link rel="stylesheet" href="/static/assets/css/demo.css" />
+
+    <!-- Vendors CSS -->
+    <link rel="stylesheet" href="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+
+    <!-- Custom FFN CSS -->
+    <link rel="stylesheet" href="/static/assets/css/ffn-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
+
+    <!-- Component CSS -->
+    <link rel="stylesheet" href="/static/assets/css/components.css" />
+
+    <!-- Unified Offcanvas CSS -->
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-specialized.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-dark.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/desktop-offcanvas.css" />
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="/static/assets/css/design-system.css" />
+
+    <!-- Spin Ride CSS (reused base layout) -->
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409f" />
+    <!-- Tabata Kettlebell overrides -->
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412a" />
+
+    <!-- Helpers -->
+    <script src="/static/assets/vendor/js/helpers.js"></script>
+    <script src="/static/assets/js/config.js"></script>
+
+    <!-- Theme Manager (must load early) -->
+    <script src="/static/assets/js/services/theme-manager.js"></script>
+
+    <!-- FFN Centralized Configuration -->
+    <script src="/static/assets/js/app-config.js"></script>
+
+    <!-- Firebase SDK Loader -->
+    <script type="module" src="/static/assets/js/firebase-loader.js"></script>
+
+    <!-- Matomo -->
+    <script>
+      var _paq = window._paq = window._paq || [];
+      _paq.push(['disableCookies']);
+      _paq.push(['trackPageView']);
+      _paq.push(['enableLinkTracking']);
+      (function() {
+        var u="//matomo-production-72c8.up.railway.app/";
+        _paq.push(['setTrackerUrl', u+'matomo.php']);
+        _paq.push(['setSiteId', '2']);
+        var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+        g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+      })();
+    </script>
+  </head>
+
+  <body class="spin-ride-page tabata-kettlebell-page">
+
+    <!-- Layout wrapper -->
+    <div class="layout-wrapper layout-content-navbar">
+      <div class="layout-container">
+        <!-- Menu -->
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+          <!-- Menu injected by menu-injection-service.js -->
+        </aside>
+        <!-- / Menu -->
+
+        <!-- Layout container -->
+        <div class="layout-page">
+
+          <!-- Content wrapper -->
+          <div class="content-wrapper">
+            <!-- Content -->
+            <div class="container-xxl flex-grow-1 container-p-y">
+
+              <!-- Page Header -->
+              <div class="mb-3">
+                <h5 class="mb-0">
+                  <i class="bx bx-dumbbell me-1"></i>
+                  Tabata Kettlebell
+                </h5>
+              </div>
+
+              <!-- STATE: Select Settings -->
+              <div id="selectState">
+
+                <!-- Step 1 — Protocol -->
+                <div class="spin-step">
+                  <p class="spin-step-title">
+                    <span class="spin-step-number">1</span>Pick your tabata protocol
+                  </p>
+                  <p class="text-muted small mb-2">Work / rest ratio for every interval.</p>
+                  <div class="d-flex flex-wrap gap-2" id="protocolButtons">
+                    <button class="btn btn-outline-primary btn-lg tk-protocol-btn active" data-value="20/10">
+                      20s / 10s
+                      <span class="d-block small fw-normal">Classic tabata</span>
+                    </button>
+                    <button class="btn btn-outline-primary btn-lg tk-protocol-btn" data-value="40/20">
+                      40s / 20s
+                      <span class="d-block small fw-normal">Extended work</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Step 2 — Focus areas -->
+                <div class="spin-step">
+                  <p class="spin-step-title">
+                    <span class="spin-step-number">2</span>Choose your focus
+                  </p>
+                  <p class="text-muted small mb-2">Pick one or more areas. The AI will build a workout around them.</p>
+                  <div class="d-flex flex-wrap gap-2" id="focusButtons">
+                    <button class="btn btn-outline-primary tk-focus-btn" data-value="full_body">Full Body</button>
+                    <button class="btn btn-outline-primary tk-focus-btn" data-value="upper_body">Upper Body</button>
+                    <button class="btn btn-outline-primary tk-focus-btn" data-value="lower_body">Lower Body</button>
+                    <button class="btn btn-outline-primary tk-focus-btn" data-value="chest">Chest</button>
+                    <button class="btn btn-outline-primary tk-focus-btn" data-value="back">Back</button>
+                    <button class="btn btn-outline-primary tk-focus-btn" data-value="core">Core</button>
+                    <button class="btn btn-outline-primary tk-focus-btn" data-value="conditioning">Conditioning</button>
+                  </div>
+                </div>
+
+                <!-- Step 3 — Length / Rounds -->
+                <div class="spin-step">
+                  <p class="spin-step-title">
+                    <span class="spin-step-number">3</span>Workout length
+                  </p>
+                  <p class="text-muted small mb-2">Pick a preset length — rounds are auto-calculated to fit cleanly.</p>
+                  <div class="d-flex flex-wrap gap-2 mb-3" id="lengthButtons">
+                    <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="10">~10 min</button>
+                    <button class="btn btn-outline-primary btn-lg tk-length-btn active" data-minutes="20">~20 min</button>
+                    <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="30">~30 min</button>
+                    <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="45">~45 min</button>
+                  </div>
+
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-muted small">Rounds:</span>
+                    <button class="btn btn-sm btn-outline-secondary tk-round-adjust" data-delta="-1" id="roundsDownBtn">−</button>
+                    <span class="tk-rounds-display" id="roundsDisplay">5</span>
+                    <button class="btn btn-sm btn-outline-secondary tk-round-adjust" data-delta="1" id="roundsUpBtn">+</button>
+                    <span class="text-muted small ms-3">Intervals/round:</span>
+                    <select class="form-select form-select-sm tk-intervals-select" id="intervalsPerRoundSelect">
+                      <option value="4">4</option>
+                      <option value="6">6</option>
+                      <option value="8" selected>8</option>
+                      <option value="10">10</option>
+                      <option value="12">12</option>
+                    </select>
+                  </div>
+                  <p class="text-muted small mt-2 mb-0" id="totalTimeHelper">
+                    Total: —
+                  </p>
+                </div>
+
+                <!-- Generate -->
+                <button class="btn btn-primary btn-lg mt-2 mb-4" id="generateBtn" disabled>
+                  <i class="bx bx-bolt-circle me-1"></i>Generate Workout
+                </button>
+              </div>
+
+              <!-- STATE: Generating -->
+              <div id="generatingState" class="d-none text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                  <span class="visually-hidden">Building workout...</span>
+                </div>
+                <p class="text-muted">Building your tabata workout...</p>
+              </div>
+
+              <!-- STATE: Ready / Working -->
+              <div id="workoutState" class="d-none">
+                <!-- Workout Title -->
+                <h5 class="text-center mb-1" id="workoutTitle"></h5>
+                <p class="text-center text-muted small mb-3" id="workoutMeta"></p>
+
+                <div class="spin-ride-layout">
+                  <!-- Left: Timer + Details + Controls -->
+                  <div class="spin-ride-timer-col">
+                    <!-- Circular Timer -->
+                    <div class="spin-timer-container">
+                      <svg class="spin-timer-svg" viewBox="0 0 200 200">
+                        <circle class="spin-timer-track" cx="100" cy="100" r="88" />
+                        <circle class="spin-timer-progress" cx="100" cy="100" r="88" id="timerProgress" />
+                      </svg>
+                      <div class="spin-timer-content">
+                        <div class="spin-timer-remaining" id="segmentTime">--:--</div>
+                        <div class="spin-timer-segment-name" id="segmentName">---</div>
+                        <div class="spin-timer-elapsed" id="totalElapsed">00:00</div>
+                      </div>
+                    </div>
+
+                    <!-- Current Exercise Name -->
+                    <h4 class="text-center mb-1 tk-exercise-name" id="currentExerciseName"></h4>
+
+                    <!-- Round / Interval Badges -->
+                    <div class="spin-segment-details" id="segmentDetails">
+                      <div class="spin-detail">
+                        <span class="spin-detail-label">Round</span>
+                        <span class="spin-detail-value" id="segmentRound">-</span>
+                      </div>
+                      <div class="spin-detail">
+                        <span class="spin-detail-label">Interval</span>
+                        <span class="spin-detail-value" id="segmentInterval">-</span>
+                      </div>
+                    </div>
+
+                    <!-- Cue -->
+                    <p class="text-center text-muted fst-italic small mb-3" id="segmentCue"></p>
+
+                    <!-- Controls -->
+                    <div class="d-flex justify-content-center gap-2 mb-4" id="workoutControls">
+                      <button class="btn btn-success btn-lg" id="startBtn">
+                        <i class="bx bx-play me-1"></i>Start Workout
+                      </button>
+                      <button class="btn btn-warning btn-lg d-none" id="pauseBtn">
+                        <i class="bx bx-pause me-1"></i>Pause
+                      </button>
+                      <button class="btn btn-success btn-lg d-none" id="resumeBtn">
+                        <i class="bx bx-play me-1"></i>Resume
+                      </button>
+                      <button class="btn btn-outline-danger btn-lg d-none" id="endBtn">
+                        <i class="bx bx-stop me-1"></i>End Workout
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Right: Segment List -->
+                  <div class="spin-ride-segments-col">
+                    <div class="card spin-plan-card">
+                      <div class="card-body p-2">
+                        <div id="segmentList" class="spin-segment-list"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- New Workout button -->
+                <div class="text-center mt-3">
+                  <button class="btn btn-outline-secondary btn-sm" id="newWorkoutBtn">
+                    <i class="bx bx-refresh me-1"></i>New Workout
+                  </button>
+                </div>
+              </div>
+
+              <!-- STATE: Finished -->
+              <div id="finishedState" class="d-none text-center py-5">
+                <div class="mb-3">
+                  <i class="bx bx-check-circle display-1 text-success"></i>
+                </div>
+                <h4 class="mb-2">Workout Complete!</h4>
+                <p class="text-muted mb-1" id="finishedSummary"></p>
+                <p class="text-muted small mb-4" id="finishedSaveStatus"></p>
+                <button class="btn btn-primary" id="finishedNewWorkoutBtn">
+                  <i class="bx bx-refresh me-1"></i>Start Another Workout
+                </button>
+              </div>
+
+              <!-- STATE: Auth Required -->
+              <div id="authRequired" class="d-none text-center py-5">
+                <i class="bx bx-lock-alt display-1 text-muted"></i>
+                <h5 class="mt-3">Sign In Required</h5>
+                <p class="text-muted">AI workout generation requires an account.</p>
+                <p class="text-muted small">Sign in using the menu above to get started.</p>
+              </div>
+
+              <!-- STATE: Error -->
+              <div id="errorState" class="d-none text-center py-5">
+                <i class="bx bx-error-circle display-1 text-danger"></i>
+                <h5 class="mt-3">Something went wrong</h5>
+                <p class="text-muted" id="errorMessage"></p>
+                <button class="btn btn-primary mt-2" id="errorRetryBtn">
+                  <i class="bx bx-refresh me-1"></i>Try Again
+                </button>
+              </div>
+
+            </div>
+            <!-- / Content -->
+
+            <div class="content-backdrop fade"></div>
+          </div>
+          <!-- Content wrapper -->
+        </div>
+        <!-- / Layout page -->
+      </div>
+
+      <!-- Overlay -->
+      <div class="layout-overlay layout-menu-toggle"></div>
+    </div>
+    <!-- / Layout wrapper -->
+
+    <!-- Core JS -->
+    <script src="/static/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="/static/assets/vendor/libs/popper/popper.js"></script>
+    <script src="/static/assets/vendor/js/bootstrap.js"></script>
+    <script src="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="/static/assets/vendor/js/menu.js"></script>
+
+    <!-- Load templates FIRST -->
+    <script src="/static/assets/js/components/menu-template.js"></script>
+    <script src="/static/assets/js/components/navbar-template.js"></script>
+    <script src="/static/assets/js/components/auth-modals-template.js"></script>
+
+    <!-- Inject components SECOND -->
+    <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/universal-log-service.js"></script>
+    <script type="module" src="/static/assets/js/components/offcanvas/offcanvas-universal-logger.js"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
+    <script src="/static/assets/js/services/navbar-injection-service.js"></script>
+
+    <!-- Feedback System (Global) -->
+    <script src="/static/assets/js/services/feedback-injection-service.js"></script>
+
+    <!-- Main JS -->
+    <script src="/static/assets/js/main.js?v=20260216"></script>
+
+    <!-- Firebase Services -->
+    <script src="/static/assets/js/firebase/firebase-init.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-service.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-ui.js?v=20251020-03"></script>
+
+    <!-- Common Utilities -->
+    <script src="/static/assets/js/utils/common-utils.js"></script>
+    <script src="/static/assets/js/services/activity-type-registry.js?v=1.0.0"></script>
+
+    <!-- Toast Notifications -->
+    <script src="/static/assets/js/utils/toast-notifications.js"></script>
+
+    <!-- Offcanvas Manager -->
+    <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
+
+    <!-- Tabata Kettlebell Controller -->
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412a"></script>
+  </body>
+</html>
