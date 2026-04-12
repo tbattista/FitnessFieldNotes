@@ -26,20 +26,27 @@
   const SESSION_KEY = 'tabataKettlebellSession';
   const PROTOCOL_KEY = 'tabataKBProtocol';
   const FOCUS_KEY = 'tabataKBFocusAreas';
-  const ROUNDS_KEY = 'tabataKBRounds';
-  const INTERVALS_KEY = 'tabataKBIntervalsPerRound';
+  const SETS_KEY = 'tabataKBSets';
+  const ROUNDS_PER_SET_KEY = 'tabataKBRoundsPerSet';
   const LENGTH_KEY = 'tabataKBLength';
 
   // Fixed timing constants (must match backend generator)
-  const ROUND_REST_SECONDS = 60;
-  const MIN_ROUNDS = 1;
-  const MAX_ROUNDS = 12;
+  //
+  // Terminology (Tabata standard):
+  //   Work Interval  = 20s (or 40s) all-out effort
+  //   Rest Interval  = 10s (or 20s) recovery
+  //   Round          = 1 Work Interval + 1 Rest Interval
+  //   Set            = N Rounds back-to-back (classic Tabata = 8 Rounds = 4 min)
+  //   Set Rest       = recovery between Sets
+  const SET_REST_SECONDS = 60;
+  const MIN_SETS = 1;
+  const MAX_SETS = 12;
 
   // Config / inputs
   let selectedProtocol = '20/10';
   let selectedFocus = new Set();
-  let selectedRounds = 5;
-  let selectedIntervalsPerRound = 8;
+  let selectedSets = 5;
+  let selectedRoundsPerSet = 8;
   let selectedLength = 20; // preset minutes
 
   // ── DOM refs ───────────────────────────────────────────────────────────
@@ -59,10 +66,10 @@
       protocolButtons: $('protocolButtons'),
       focusButtons: $('focusButtons'),
       lengthButtons: $('lengthButtons'),
-      roundsDisplay: $('roundsDisplay'),
-      roundsDownBtn: $('roundsDownBtn'),
-      roundsUpBtn: $('roundsUpBtn'),
-      intervalsPerRoundSelect: $('intervalsPerRoundSelect'),
+      setsDisplay: $('setsDisplay'),
+      setsDownBtn: $('setsDownBtn'),
+      setsUpBtn: $('setsUpBtn'),
+      roundsPerSetSelect: $('roundsPerSetSelect'),
       totalTimeHelper: $('totalTimeHelper'),
       generateBtn: $('generateBtn'),
 
@@ -73,8 +80,8 @@
       segmentName: $('segmentName'),
       segmentTime: $('segmentTime'),
       currentExerciseName: $('currentExerciseName'),
+      segmentSet: $('segmentSet'),
       segmentRound: $('segmentRound'),
-      segmentInterval: $('segmentInterval'),
       segmentCue: $('segmentCue'),
       segmentList: $('segmentList'),
 
@@ -114,34 +121,36 @@
   /**
    * Compute total workout seconds from current inputs.
    * No warmup — user is assumed to be already warmed up.
-   * total = rounds * (intervals * (work + rest)) + (rounds - 1) * round_rest
+   *   1 Round = 1 work + 1 rest interval
+   *   1 Set   = rounds_per_set rounds back-to-back
+   *   total   = sets * (rounds_per_set * (work + rest)) + (sets - 1) * set_rest
    */
-  function computeTotalSeconds(protocol, rounds, intervalsPerRound) {
+  function computeTotalSeconds(protocol, sets, roundsPerSet) {
     const { work, rest } = protocolSeconds(protocol);
-    const roundLen = intervalsPerRound * (work + rest);
-    const roundRests = Math.max(0, rounds - 1) * ROUND_REST_SECONDS;
-    return rounds * roundLen + roundRests;
+    const setLen = roundsPerSet * (work + rest);
+    const setRests = Math.max(0, sets - 1) * SET_REST_SECONDS;
+    return sets * setLen + setRests;
   }
 
   /**
-   * For a preset length (minutes), compute the smallest integer rounds count
+   * For a preset length (minutes), compute the smallest integer SET count
    * whose total time is >= presetMinutes * 60. We always go OVER the preset
    * (never under) so the user gets a complete workout.
    *
-   * Solve r such that r*roundLen + (r-1)*roundRest >= target
-   *   => r*(roundLen + roundRest) >= target + roundRest
-   *   => r >= (target + roundRest) / (roundLen + roundRest)
+   * Solve s such that s*setLen + (s-1)*setRest >= target
+   *   => s*(setLen + setRest) >= target + setRest
+   *   => s >= (target + setRest) / (setLen + setRest)
    */
-  function roundsForPresetLength(protocol, intervalsPerRound, presetMinutes) {
+  function setsForPresetLength(protocol, roundsPerSet, presetMinutes) {
     const target = presetMinutes * 60;
     const { work, rest } = protocolSeconds(protocol);
-    const roundLen = intervalsPerRound * (work + rest);
-    const numerator = target + ROUND_REST_SECONDS;
-    const denom = roundLen + ROUND_REST_SECONDS;
-    let r = Math.ceil(numerator / denom);
-    if (r < MIN_ROUNDS) r = MIN_ROUNDS;
-    if (r > MAX_ROUNDS) r = MAX_ROUNDS;
-    return r;
+    const setLen = roundsPerSet * (work + rest);
+    const numerator = target + SET_REST_SECONDS;
+    const denom = setLen + SET_REST_SECONDS;
+    let s = Math.ceil(numerator / denom);
+    if (s < MIN_SETS) s = MIN_SETS;
+    if (s > MAX_SETS) s = MAX_SETS;
+    return s;
   }
 
   // ── Audio / Vibration ──────────────────────────────────────────────────
@@ -206,14 +215,13 @@
     const dur = formatTime(seg.duration_seconds);
     const displayLabel = seg.name || seg.exercise || seg.segment_type;
     const metaBits = [];
-    if (seg.segment_type === 'work' && seg.round_index) {
-      metaBits.push(`R${seg.round_index}·I${(seg.interval_index || 0) + 1}`);
+    if (seg.segment_type === 'work' && seg.set_index) {
+      // "S2·R3" → Set 2, Round 3 (1-based display)
+      metaBits.push(`S${seg.set_index}·R${(seg.round_index || 0) + 1}`);
     } else if (seg.segment_type === 'rest') {
-      metaBits.push('rest');
-    } else if (seg.segment_type === 'round_rest') {
-      metaBits.push('round rest');
-    } else if (seg.segment_type === 'warmup') {
-      metaBits.push('warmup');
+      metaBits.push('rest interval');
+    } else if (seg.segment_type === 'set_rest') {
+      metaBits.push('set rest');
     }
     metaBits.push(dur);
     return `<div class="spin-segment-row" data-index="${i}">
@@ -275,8 +283,13 @@
     const seg = segments[currentSegmentIndex];
     if (!seg) return;
 
-    // Timer center
-    els.segmentName.textContent = (seg.segment_type || '').toUpperCase();
+    // Timer center — show the full human label
+    const typeLabel = {
+      work: 'WORK INTERVAL',
+      rest: 'REST INTERVAL',
+      set_rest: 'SET REST',
+    }[seg.segment_type] || (seg.segment_type || '').toUpperCase();
+    els.segmentName.textContent = typeLabel;
     els.segmentTime.textContent = formatTime(segmentRemaining);
     els.totalElapsed.textContent = formatTime(getElapsedSeconds());
 
@@ -284,27 +297,25 @@
     if (seg.segment_type === 'work') {
       els.currentExerciseName.textContent = seg.exercise || seg.name || '';
     } else if (seg.segment_type === 'rest') {
-      els.currentExerciseName.textContent = 'Rest';
-    } else if (seg.segment_type === 'round_rest') {
-      els.currentExerciseName.textContent = 'Round Rest';
-    } else if (seg.segment_type === 'warmup') {
-      els.currentExerciseName.textContent = seg.name || 'Warmup';
+      els.currentExerciseName.textContent = 'Rest Interval';
+    } else if (seg.segment_type === 'set_rest') {
+      els.currentExerciseName.textContent = 'Set Rest';
     } else {
       els.currentExerciseName.textContent = seg.name || '';
     }
 
-    // Round / Interval badges
+    // Set / Round badges
     if (workoutPlan) {
-      if (seg.segment_type === 'work' || seg.segment_type === 'rest' || seg.segment_type === 'round_rest') {
-        els.segmentRound.textContent = `${seg.round_index || 1}/${workoutPlan.rounds}`;
-        if (seg.segment_type === 'work') {
-          els.segmentInterval.textContent = `${(seg.interval_index || 0) + 1}/${workoutPlan.intervals_per_round}`;
+      if (seg.segment_type === 'work' || seg.segment_type === 'rest' || seg.segment_type === 'set_rest') {
+        els.segmentSet.textContent = `${seg.set_index || 1}/${workoutPlan.sets}`;
+        if (seg.segment_type === 'work' || seg.segment_type === 'rest') {
+          els.segmentRound.textContent = `${(seg.round_index || 0) + 1}/${workoutPlan.rounds_per_set}`;
         } else {
-          els.segmentInterval.textContent = '—';
+          els.segmentRound.textContent = '—';
         }
       } else {
+        els.segmentSet.textContent = '—';
         els.segmentRound.textContent = '—';
-        els.segmentInterval.textContent = '—';
       }
     }
 
@@ -330,7 +341,7 @@
     els.workoutTitle.textContent = workoutPlan.title;
     const focusText = (workoutPlan.focus_areas || []).map((f) => f.replace(/_/g, ' ')).join(' · ');
     const totalMin = Math.round(workoutPlan.total_seconds / 60);
-    els.workoutMeta.textContent = `${workoutPlan.protocol} · ${workoutPlan.rounds} rounds × ${workoutPlan.intervals_per_round} · ${totalMin} min · ${focusText}`;
+    els.workoutMeta.textContent = `${workoutPlan.protocol} · ${workoutPlan.sets} sets × ${workoutPlan.rounds_per_set} rounds · ${totalMin} min · ${focusText}`;
     renderSegmentList();
   }
 
@@ -520,15 +531,15 @@
     const actualSeconds = getElapsedSeconds();
     const actualMinutes = Math.round(actualSeconds / 60);
 
-    // Count completed work intervals
-    const completedWorkIntervals = segments
+    // Count completed Work Intervals (Rounds completed)
+    const completedRounds = segments
       .slice(0, currentSegmentIndex)
       .filter((s) => s.segment_type === 'work').length;
-    const totalWorkIntervals = segments.filter((s) => s.segment_type === 'work').length;
+    const totalRounds = segments.filter((s) => s.segment_type === 'work').length;
 
     const summaryText = currentSegmentIndex >= segments.length
-      ? `${workoutPlan.title} — ${actualMinutes} min, all ${totalWorkIntervals} intervals completed`
-      : `${workoutPlan.title} — ${actualMinutes} min, ${completedWorkIntervals}/${totalWorkIntervals} intervals`;
+      ? `${workoutPlan.title} — ${actualMinutes} min, all ${totalRounds} rounds completed`
+      : `${workoutPlan.title} — ${actualMinutes} min, ${completedRounds}/${totalRounds} rounds`;
     els.finishedSummary.textContent = summaryText;
 
     showState('finishedState');
@@ -539,7 +550,8 @@
           `Tabata Kettlebell: ${workoutPlan.title}`,
           `Protocol: ${workoutPlan.protocol}`,
           `Focus: ${(workoutPlan.focus_areas || []).join(', ')}`,
-          `Intervals: ${completedWorkIntervals}/${totalWorkIntervals}`,
+          `Sets: ${workoutPlan.sets} × ${workoutPlan.rounds_per_set} rounds`,
+          `Rounds completed: ${completedRounds}/${totalRounds}`,
         ];
 
         await window.universalLogService.saveCardio({
@@ -576,8 +588,8 @@
       const body = {
         protocol: selectedProtocol,
         focus_areas: Array.from(selectedFocus),
-        rounds: selectedRounds,
-        intervals_per_round: selectedIntervalsPerRound,
+        sets: selectedSets,
+        rounds_per_set: selectedRoundsPerSet,
       };
 
       const response = await fetch('/api/v3/tabata-kettlebell/generate', {
@@ -640,19 +652,19 @@
   // ── Input handling / setup screen ──────────────────────────────────────
 
   function refreshGenerateButtonState() {
-    const ok = !!selectedProtocol && selectedFocus.size > 0 && selectedRounds >= MIN_ROUNDS;
+    const ok = !!selectedProtocol && selectedFocus.size > 0 && selectedSets >= MIN_SETS;
     els.generateBtn.disabled = !ok;
   }
 
   function updateTotalTimeHelper() {
-    const total = computeTotalSeconds(selectedProtocol, selectedRounds, selectedIntervalsPerRound);
+    const total = computeTotalSeconds(selectedProtocol, selectedSets, selectedRoundsPerSet);
     const totalMin = Math.floor(total / 60);
     const totalSec = total % 60;
     const { work, rest } = protocolSeconds(selectedProtocol);
     els.totalTimeHelper.textContent =
       `Total: ${totalMin}m ${String(totalSec).padStart(2, '0')}s  ·  ` +
-      `${selectedRounds} × ${selectedIntervalsPerRound}·(${work}+${rest}s)` +
-      (selectedRounds > 1 ? ` + ${selectedRounds - 1} × 1:00 round rest` : '') +
+      `${selectedSets} sets × ${selectedRoundsPerSet} rounds·(${work}s work + ${rest}s rest)` +
+      (selectedSets > 1 ? ` + ${selectedSets - 1} × 1:00 set rest` : '') +
       '  ·  (no warmup — assume already warmed up)';
   }
 
@@ -662,9 +674,9 @@
       b.classList.toggle('active', b.dataset.value === selectedProtocol);
     });
     try { localStorage.setItem(PROTOCOL_KEY, selectedProtocol); } catch (e) { /* ignore */ }
-    // Re-align rounds to preset length
-    selectedRounds = roundsForPresetLength(selectedProtocol, selectedIntervalsPerRound, selectedLength);
-    updateRoundsDisplay();
+    // Re-align sets to preset length
+    selectedSets = setsForPresetLength(selectedProtocol, selectedRoundsPerSet, selectedLength);
+    updateSetsDisplay();
     updateTotalTimeHelper();
   }
 
@@ -685,38 +697,38 @@
     els.lengthButtons.querySelectorAll('.tk-length-btn').forEach((b) => {
       b.classList.toggle('active', parseInt(b.dataset.minutes, 10) === minutes);
     });
-    selectedRounds = roundsForPresetLength(selectedProtocol, selectedIntervalsPerRound, minutes);
+    selectedSets = setsForPresetLength(selectedProtocol, selectedRoundsPerSet, minutes);
     try { localStorage.setItem(LENGTH_KEY, String(minutes)); } catch (e) { /* ignore */ }
-    updateRoundsDisplay();
+    updateSetsDisplay();
     updateTotalTimeHelper();
   }
 
-  function adjustRounds(delta) {
-    const next = Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, selectedRounds + delta));
-    if (next === selectedRounds) return;
-    selectedRounds = next;
-    // Manual round change → deselect length preset
+  function adjustSets(delta) {
+    const next = Math.max(MIN_SETS, Math.min(MAX_SETS, selectedSets + delta));
+    if (next === selectedSets) return;
+    selectedSets = next;
+    // Manual set change → deselect length preset
     els.lengthButtons.querySelectorAll('.tk-length-btn').forEach((b) => b.classList.remove('active'));
-    try { localStorage.setItem(ROUNDS_KEY, String(selectedRounds)); } catch (e) { /* ignore */ }
-    updateRoundsDisplay();
+    try { localStorage.setItem(SETS_KEY, String(selectedSets)); } catch (e) { /* ignore */ }
+    updateSetsDisplay();
     updateTotalTimeHelper();
   }
 
-  function updateRoundsDisplay() {
-    els.roundsDisplay.textContent = String(selectedRounds);
-    els.roundsDownBtn.disabled = selectedRounds <= MIN_ROUNDS;
-    els.roundsUpBtn.disabled = selectedRounds >= MAX_ROUNDS;
+  function updateSetsDisplay() {
+    els.setsDisplay.textContent = String(selectedSets);
+    els.setsDownBtn.disabled = selectedSets <= MIN_SETS;
+    els.setsUpBtn.disabled = selectedSets >= MAX_SETS;
   }
 
-  function setIntervalsPerRound(n) {
-    selectedIntervalsPerRound = n;
-    els.intervalsPerRoundSelect.value = String(n);
-    try { localStorage.setItem(INTERVALS_KEY, String(n)); } catch (e) { /* ignore */ }
-    // Re-align rounds to preset length if a preset is active
+  function setRoundsPerSet(n) {
+    selectedRoundsPerSet = n;
+    els.roundsPerSetSelect.value = String(n);
+    try { localStorage.setItem(ROUNDS_PER_SET_KEY, String(n)); } catch (e) { /* ignore */ }
+    // Re-align sets to preset length if a preset is active
     const activePreset = els.lengthButtons.querySelector('.tk-length-btn.active');
     if (activePreset) {
-      selectedRounds = roundsForPresetLength(selectedProtocol, n, parseInt(activePreset.dataset.minutes, 10));
-      updateRoundsDisplay();
+      selectedSets = setsForPresetLength(selectedProtocol, n, parseInt(activePreset.dataset.minutes, 10));
+      updateSetsDisplay();
     }
     updateTotalTimeHelper();
   }
@@ -744,12 +756,12 @@
       refreshGenerateButtonState();
     });
 
-    els.roundsDownBtn.addEventListener('click', () => adjustRounds(-1));
-    els.roundsUpBtn.addEventListener('click', () => adjustRounds(1));
+    els.setsDownBtn.addEventListener('click', () => adjustSets(-1));
+    els.setsUpBtn.addEventListener('click', () => adjustSets(1));
 
-    els.intervalsPerRoundSelect.addEventListener('change', () => {
-      const n = parseInt(els.intervalsPerRoundSelect.value, 10);
-      if (!Number.isNaN(n)) setIntervalsPerRound(n);
+    els.roundsPerSetSelect.addEventListener('change', () => {
+      const n = parseInt(els.roundsPerSetSelect.value, 10);
+      if (!Number.isNaN(n)) setRoundsPerSet(n);
     });
 
     els.generateBtn.addEventListener('click', () => {
@@ -788,8 +800,8 @@
     } catch (e) { /* ignore */ }
 
     try {
-      const n = parseInt(localStorage.getItem(INTERVALS_KEY), 10);
-      if (!Number.isNaN(n) && n >= 4 && n <= 12) selectedIntervalsPerRound = n;
+      const n = parseInt(localStorage.getItem(ROUNDS_PER_SET_KEY), 10);
+      if (!Number.isNaN(n) && n >= 4 && n <= 12) selectedRoundsPerSet = n;
     } catch (e) { /* ignore */ }
 
     // Apply to UI
@@ -802,10 +814,10 @@
     els.lengthButtons.querySelectorAll('.tk-length-btn').forEach((b) => {
       b.classList.toggle('active', parseInt(b.dataset.minutes, 10) === selectedLength);
     });
-    els.intervalsPerRoundSelect.value = String(selectedIntervalsPerRound);
+    els.roundsPerSetSelect.value = String(selectedRoundsPerSet);
 
-    selectedRounds = roundsForPresetLength(selectedProtocol, selectedIntervalsPerRound, selectedLength);
-    updateRoundsDisplay();
+    selectedSets = setsForPresetLength(selectedProtocol, selectedRoundsPerSet, selectedLength);
+    updateSetsDisplay();
     updateTotalTimeHelper();
     refreshGenerateButtonState();
   }

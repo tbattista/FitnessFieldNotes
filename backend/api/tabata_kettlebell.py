@@ -58,14 +58,14 @@ async def generate_tabata_kettlebell(
         plan = generator.generate(
             protocol=request.protocol,
             focus_areas=list(request.focus_areas),
-            rounds=request.rounds,
-            intervals_per_round=request.intervals_per_round,
+            sets=request.sets,
+            rounds_per_set=request.rounds_per_set,
         )
         ai_rate_limiter.record_request(user_id)
         logger.info(
             f"Generated tabata KB workout for user {user_id} "
-            f"(protocol={request.protocol}, rounds={request.rounds}, "
-            f"intervals={request.intervals_per_round}, focus={request.focus_areas})"
+            f"(protocol={request.protocol}, sets={request.sets}, "
+            f"rounds_per_set={request.rounds_per_set}, focus={request.focus_areas})"
         )
         return plan
 

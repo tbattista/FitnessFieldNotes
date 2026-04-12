@@ -155,12 +155,19 @@
                   </div>
                 </div>
 
-                <!-- Step 3 — Length / Rounds -->
+                <!-- Step 3 — Length / Sets / Rounds per Set -->
                 <div class="spin-step">
                   <p class="spin-step-title">
                     <span class="spin-step-number">3</span>Workout length
                   </p>
-                  <p class="text-muted small mb-2">Pick a target length — rounds are auto-calculated to go <em>at least</em> that long. No warmup is included.</p>
+                  <p class="text-muted small mb-2">
+                    Pick a target length — sets are auto-calculated to go <em>at least</em> that long. No warmup is included.
+                    <br>
+                    <span class="text-muted small">
+                      <strong>1 Round</strong> = 1 Work Interval + 1 Rest Interval &nbsp;·&nbsp;
+                      <strong>1 Set</strong> = your Rounds/set value, back-to-back (classic Tabata = 8).
+                    </span>
+                  </p>
                   <div class="d-flex flex-wrap gap-2 mb-3" id="lengthButtons">
                     <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="10">~10 min</button>
                     <button class="btn btn-outline-primary btn-lg tk-length-btn active" data-minutes="20">~20 min</button>
@@ -169,12 +176,12 @@
                   </div>
 
                   <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="text-muted small">Rounds:</span>
-                    <button class="btn btn-sm btn-outline-secondary tk-round-adjust" data-delta="-1" id="roundsDownBtn">−</button>
-                    <span class="tk-rounds-display" id="roundsDisplay">5</span>
-                    <button class="btn btn-sm btn-outline-secondary tk-round-adjust" data-delta="1" id="roundsUpBtn">+</button>
-                    <span class="text-muted small ms-3">Intervals/round:</span>
-                    <select class="form-select form-select-sm tk-intervals-select" id="intervalsPerRoundSelect">
+                    <span class="text-muted small">Sets:</span>
+                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="-1" id="setsDownBtn">−</button>
+                    <span class="tk-sets-display" id="setsDisplay">5</span>
+                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="1" id="setsUpBtn">+</button>
+                    <span class="text-muted small ms-3">Rounds/set:</span>
+                    <select class="form-select form-select-sm tk-rounds-select" id="roundsPerSetSelect">
                       <option value="4">4</option>
                       <option value="6">6</option>
                       <option value="8" selected>8</option>
@@ -226,15 +233,15 @@
                     <!-- Current Exercise Name -->
                     <h4 class="text-center mb-1 tk-exercise-name" id="currentExerciseName"></h4>
 
-                    <!-- Round / Interval Badges -->
+                    <!-- Set / Round Badges -->
                     <div class="spin-segment-details" id="segmentDetails">
+                      <div class="spin-detail">
+                        <span class="spin-detail-label">Set</span>
+                        <span class="spin-detail-value" id="segmentSet">-</span>
+                      </div>
                       <div class="spin-detail">
                         <span class="spin-detail-label">Round</span>
                         <span class="spin-detail-value" id="segmentRound">-</span>
-                      </div>
-                      <div class="spin-detail">
-                        <span class="spin-detail-label">Interval</span>
-                        <span class="spin-detail-value" id="segmentInterval">-</span>
                       </div>
                     </div>
 

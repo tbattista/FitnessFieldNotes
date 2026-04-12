@@ -1,5 +1,12 @@
 """
 Tabata Kettlebell Models - Data models for AI-generated tabata kettlebell workouts.
+
+Terminology (Tabata standard):
+  - Work Interval  = 20s (or 40s) all-out effort
+  - Rest Interval  = 10s (or 20s) recovery between rounds
+  - Round          = one Work Interval + one Rest Interval
+  - Set            = a group of rounds (classic Tabata = 8 rounds = 1 set = 4 minutes)
+  - Set Rest       = recovery between Tabata sets
 """
 
 from pydantic import BaseModel, Field
@@ -30,34 +37,34 @@ class GenerateTabataKettlebellRequest(BaseModel):
         max_length=4,
         description="Muscle group or training focus for the workout.",
     )
-    rounds: int = Field(
+    sets: int = Field(
         ...,
         ge=1,
         le=12,
-        description="Number of tabata rounds (one round = N intervals of work+rest).",
+        description="Number of Tabata sets. One set = rounds_per_set rounds (classic = 8).",
     )
-    intervals_per_round: int = Field(
+    rounds_per_set: int = Field(
         default=8,
         ge=4,
         le=12,
-        description="Intervals per round. Default 8 (classic tabata).",
+        description="Rounds per set. One round = one work interval + one rest interval. Default 8 (classic tabata).",
     )
 
 
 class TabataKettlebellSegment(BaseModel):
-    """A single segment within a tabata kettlebell workout (warmup, work, rest, or round rest)."""
+    """A single segment within a tabata kettlebell workout (work interval, rest interval, or set rest)."""
     name: str = Field(..., max_length=60, description="Segment name / exercise name")
-    segment_type: Literal["warmup", "work", "rest", "round_rest"] = Field(
+    segment_type: Literal["work", "rest", "set_rest"] = Field(
         ..., description="Type of segment"
     )
     duration_seconds: int = Field(..., ge=5, le=600, description="Segment duration in seconds")
-    exercise: str = Field(default="", max_length=60, description="Kettlebell exercise name (work segments only)")
+    exercise: str = Field(default="", max_length=60, description="Kettlebell exercise name (work intervals only)")
     cue: str = Field(default="", max_length=140, description="Brief coaching cue")
     side: Optional[Literal["left", "right", "both"]] = Field(
         default=None, description="Which side for unilateral exercises"
     )
-    round_index: int = Field(default=0, ge=0, description="0-based round index (0 for warmup)")
-    interval_index: int = Field(default=0, ge=0, description="0-based interval index within the round")
+    set_index: int = Field(default=1, ge=1, description="1-based Tabata set index")
+    round_index: int = Field(default=0, ge=0, description="0-based round index within the set")
 
 
 class TabataKettlebellPlan(BaseModel):
@@ -65,10 +72,10 @@ class TabataKettlebellPlan(BaseModel):
     title: str = Field(..., max_length=80, description="Workout title")
     protocol: Protocol = Field(..., description="Work/rest protocol used")
     focus_areas: List[FocusArea] = Field(..., description="Focus areas for this workout")
-    rounds: int = Field(..., description="Number of rounds")
-    intervals_per_round: int = Field(..., description="Intervals per round")
+    sets: int = Field(..., description="Number of Tabata sets")
+    rounds_per_set: int = Field(..., description="Rounds per set (1 round = 1 work + 1 rest interval)")
     total_seconds: int = Field(..., description="Sum of all segment durations")
     segments: List[TabataKettlebellSegment] = Field(
-        ..., min_length=1, description="Ordered list of segments (warmup, work, rest, round_rest)"
+        ..., min_length=1, description="Ordered list of segments (work, rest, set_rest)"
     )
     estimated_calories: Optional[int] = Field(None, ge=0, description="Rough calorie estimate")

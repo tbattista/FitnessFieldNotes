@@ -8,16 +8,14 @@
 }
 
 /* ── Segment type colors (timer ring) ─────── */
-.spin-timer-progress.type-warmup     { stroke: var(--gs-warning, #E3A14F); }
 .spin-timer-progress.type-work       { stroke: var(--gs-primary, #C97C5D); }
 .spin-timer-progress.type-rest       { stroke: var(--gs-success, #8CBF9F); }
-.spin-timer-progress.type-round_rest { stroke: var(--gs-gray-500, #64748b); }
+.spin-timer-progress.type-set_rest   { stroke: var(--gs-gray-500, #64748b); }
 
 /* ── Segment list dots ────────────────────── */
-.spin-segment-type-dot.type-warmup     { background: var(--gs-warning, #E3A14F); }
 .spin-segment-type-dot.type-work       { background: var(--gs-primary, #C97C5D); }
 .spin-segment-type-dot.type-rest       { background: var(--gs-success, #8CBF9F); }
-.spin-segment-type-dot.type-round_rest { background: var(--gs-gray-500, #64748b); }
+.spin-segment-type-dot.type-set_rest   { background: var(--gs-gray-500, #64748b); }
 
 /* ── Protocol picker buttons (20/10 vs 40/20) ── */
 .tk-protocol-btn {
@@ -54,8 +52,8 @@
   color: #fff !important;
 }
 
-/* ── Rounds adjuster ──────────────────────── */
-.tk-rounds-display {
+/* ── Sets adjuster ────────────────────────── */
+.tk-sets-display {
   font-size: 1.5rem;
   font-weight: 700;
   min-width: 2.5rem;
@@ -64,14 +62,14 @@
   display: inline-block;
 }
 
-.tk-round-adjust {
+.tk-set-adjust {
   min-width: 2.25rem;
   padding: 0.25rem 0.5rem;
   font-weight: 700;
 }
 
-/* ── Intervals-per-round select ───────────── */
-.tk-intervals-select {
+/* ── Rounds-per-set select ────────────────── */
+.tk-rounds-select {
   width: 4.5rem;
 }
 
@@ -89,7 +87,7 @@
   color: var(--bs-body-color, #e4e6eb);
 }
 
-[data-bs-theme="dark"] .tk-rounds-display {
+[data-bs-theme="dark"] .tk-sets-display {
   color: var(--gs-primary, #C97C5D);
 }
 

@@ -16,8 +16,8 @@ test.describe('Tabata Kettlebell Page', () => {
     await page.evaluate(() => {
       localStorage.removeItem('tabataKBProtocol');
       localStorage.removeItem('tabataKBFocusAreas');
-      localStorage.removeItem('tabataKBRounds');
-      localStorage.removeItem('tabataKBIntervalsPerRound');
+      localStorage.removeItem('tabataKBSets');
+      localStorage.removeItem('tabataKBRoundsPerSet');
       localStorage.removeItem('tabataKBLength');
       sessionStorage.removeItem('tabataKettlebellSession');
     });
@@ -96,49 +96,50 @@ test.describe('Tabata Kettlebell Page', () => {
     await expect(page.locator('.tk-protocol-btn[data-value="20/10"]')).not.toHaveClass(/active/);
   });
 
-  test('length preset adjusts rounds to keep alignment', async ({ page }) => {
+  test('length preset adjusts sets to keep alignment', async ({ page }) => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Ensure protocol = 20/10, intervals = 8 (defaults)
+    // Ensure protocol = 20/10, rounds per set = 8 (defaults)
     await page.locator('.tk-protocol-btn[data-value="20/10"]').click();
-    await page.locator('#intervalsPerRoundSelect').selectOption('8');
+    await page.locator('#roundsPerSetSelect').selectOption('8');
 
     // Pick the 20-minute preset
     await page.locator('.tk-length-btn[data-minutes="20"]').click();
 
-    // For 20/10 × 8 intervals: roundLen = 8×30 = 240s, roundRest = 60s
+    // For 20/10 × 8 rounds/set: setLen = 8×30 = 240s, setRest = 60s
     // No warmup. Round UP to hit ≥ 1200s:
-    //   r = ceil((1200 + 60) / (240 + 60)) = ceil(1260/300) = ceil(4.2) = 5
-    // 4 rounds = 4×240 + 3×60 = 1140s (19 min) — too short
-    // 5 rounds = 5×240 + 4×60 = 1440s (24 min) — goes over, pick this
-    const roundsText = await page.locator('#roundsDisplay').textContent();
-    expect(parseInt((roundsText || '').trim(), 10)).toBe(5);
+    //   s = ceil((1200 + 60) / (240 + 60)) = ceil(1260/300) = ceil(4.2) = 5
+    // 4 sets = 4×240 + 3×60 = 1140s (19 min) — too short
+    // 5 sets = 5×240 + 4×60 = 1440s (24 min) — goes over, pick this
+    const setsText = await page.locator('#setsDisplay').textContent();
+    expect(parseInt((setsText || '').trim(), 10)).toBe(5);
 
-    // Helper should mention "5 ×" rounds
-    await expect(page.locator('#totalTimeHelper')).toContainText('5 ×');
+    // Helper should mention "5 sets" (and 8 rounds)
+    await expect(page.locator('#totalTimeHelper')).toContainText('5 sets');
+    await expect(page.locator('#totalTimeHelper')).toContainText('8 rounds');
   });
 
-  test('rounds stepper manual adjust deselects length presets', async ({ page }) => {
+  test('sets stepper manual adjust deselects length presets', async ({ page }) => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');
 
     // Start from a known preset
     await page.locator('.tk-length-btn[data-minutes="20"]').click();
-    const startRounds = parseInt((await page.locator('#roundsDisplay').textContent() || '0').trim(), 10);
+    const startSets = parseInt((await page.locator('#setsDisplay').textContent() || '0').trim(), 10);
 
-    await page.locator('#roundsUpBtn').click();
-    await page.locator('#roundsUpBtn').click();
+    await page.locator('#setsUpBtn').click();
+    await page.locator('#setsUpBtn').click();
 
-    const newRounds = parseInt((await page.locator('#roundsDisplay').textContent() || '0').trim(), 10);
-    expect(newRounds).toBe(startRounds + 2);
+    const newSets = parseInt((await page.locator('#setsDisplay').textContent() || '0').trim(), 10);
+    expect(newSets).toBe(startSets + 2);
 
     // All length presets should have lost the active class
     const activeCount = await page.locator('.tk-length-btn.active').count();
     expect(activeCount).toBe(0);
   });
 
-  test('intervals select change updates rounds for current preset', async ({ page }) => {
+  test('rounds-per-set change updates sets for current preset', async ({ page }) => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');
 
@@ -147,21 +148,21 @@ test.describe('Tabata Kettlebell Page', () => {
 
     // Pick the 30-min preset
     await page.locator('.tk-length-btn[data-minutes="30"]').click();
-    const beforeRounds = parseInt((await page.locator('#roundsDisplay').textContent() || '0').trim(), 10);
+    const beforeSets = parseInt((await page.locator('#setsDisplay').textContent() || '0').trim(), 10);
 
-    // Switch intervals to 4
-    await page.locator('#intervalsPerRoundSelect').selectOption('4');
+    // Switch rounds-per-set to 4
+    await page.locator('#roundsPerSetSelect').selectOption('4');
 
-    const afterRounds = parseInt((await page.locator('#roundsDisplay').textContent() || '0').trim(), 10);
+    const afterSets = parseInt((await page.locator('#setsDisplay').textContent() || '0').trim(), 10);
 
-    // 20/10 × 4 intervals: roundLen = 4×30 = 120s, roundRest = 60s
+    // 20/10 × 4 rounds/set: setLen = 4×30 = 120s, setRest = 60s
     // No warmup. Round UP to hit ≥ 1800s:
-    //   r = ceil((1800 + 60) / (120 + 60)) = ceil(1860/180) = ceil(10.33) = 11
-    expect(afterRounds).toBe(11);
-    expect(afterRounds).not.toBe(beforeRounds);
+    //   s = ceil((1800 + 60) / (120 + 60)) = ceil(1860/180) = ceil(10.33) = 11
+    expect(afterSets).toBe(11);
+    expect(afterSets).not.toBe(beforeSets);
 
-    // localStorage persisted
-    const stored = await page.evaluate(() => localStorage.getItem('tabataKBIntervalsPerRound'));
+    // localStorage persisted (new key name)
+    const stored = await page.evaluate(() => localStorage.getItem('tabataKBRoundsPerSet'));
     expect(stored).toBe('4');
   });
 
@@ -184,30 +185,30 @@ test.describe('Tabata Kettlebell Page', () => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Plan: 4 intervals × (work 20 + rest 10) = 120s total. No warmup.
+    // Plan: 1 set of 4 rounds × (20s work + 10s rest) = 120s total. No warmup.
     // Started 35s ago, paused now →
-    //   0-20s:  Work 1 (Swings)
-    //   20-30s: Rest
-    //   30-50s: Work 2 (Goblet Squat)  ← 35s elapsed is 5s into Work 2, 15s remaining
+    //   0-20s:  Work Interval 1 (Swings)
+    //   20-30s: Rest Interval
+    //   30-50s: Work Interval 2 (Goblet Squat)  ← 35s elapsed = 5s into W2, 15s remaining
     const now = Date.now();
     const fakeSession = {
       workoutPlan: {
         title: 'Restore Test',
         protocol: '20/10',
         focus_areas: ['core'],
-        rounds: 1,
-        intervals_per_round: 4,
+        sets: 1,
+        rounds_per_set: 4,
         total_seconds: 120,
         estimated_calories: 30,
         segments: [
-          { name: 'Work 1', exercise: 'Swings', segment_type: 'work', duration_seconds: 20, round_index: 1, interval_index: 0, cue: 'Go' },
-          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, round_index: 1, interval_index: 0, cue: 'Breathe' },
-          { name: 'Work 2', exercise: 'Goblet Squat', segment_type: 'work', duration_seconds: 20, round_index: 1, interval_index: 1, cue: 'Squat' },
-          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, round_index: 1, interval_index: 1, cue: 'Breathe' },
-          { name: 'Work 3', exercise: 'Cleans', segment_type: 'work', duration_seconds: 20, round_index: 1, interval_index: 2, cue: 'Clean' },
-          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, round_index: 1, interval_index: 2, cue: 'Breathe' },
-          { name: 'Work 4', exercise: 'Snatch', segment_type: 'work', duration_seconds: 20, round_index: 1, interval_index: 3, cue: 'Snatch' },
-          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, round_index: 1, interval_index: 3, cue: 'Done' },
+          { name: 'Work 1', exercise: 'Swings', segment_type: 'work', duration_seconds: 20, set_index: 1, round_index: 0, cue: 'Go' },
+          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, set_index: 1, round_index: 0, cue: 'Breathe' },
+          { name: 'Work 2', exercise: 'Goblet Squat', segment_type: 'work', duration_seconds: 20, set_index: 1, round_index: 1, cue: 'Squat' },
+          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, set_index: 1, round_index: 1, cue: 'Breathe' },
+          { name: 'Work 3', exercise: 'Cleans', segment_type: 'work', duration_seconds: 20, set_index: 1, round_index: 2, cue: 'Clean' },
+          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, set_index: 1, round_index: 2, cue: 'Breathe' },
+          { name: 'Work 4', exercise: 'Snatch', segment_type: 'work', duration_seconds: 20, set_index: 1, round_index: 3, cue: 'Snatch' },
+          { name: 'Rest', segment_type: 'rest', duration_seconds: 10, set_index: 1, round_index: 3, cue: 'Done' },
         ],
       },
       workoutStartedAt: new Date(now - 35000).toISOString(),
@@ -228,8 +229,8 @@ test.describe('Tabata Kettlebell Page', () => {
     if (!workoutVisible) return; // Auth not available — skip
 
     await expect(page.locator('#workoutTitle')).toContainText('Restore Test');
-    // Should be in Work 2 (Goblet Squat). Segment type label is uppercased.
-    await expect(page.locator('#segmentName')).toContainText('WORK');
+    // Should be in Work Interval 2 (Goblet Squat). Timer label shows "WORK INTERVAL".
+    await expect(page.locator('#segmentName')).toContainText('WORK INTERVAL');
     await expect(page.locator('#currentExerciseName')).toContainText('Goblet Squat');
 
     // Remaining ~15s (allow ±3s for test timing wobble)
@@ -250,15 +251,15 @@ test.describe('Tabata Kettlebell Page', () => {
 
     // Set protocol 20/10, select two focus areas, length 10
     await page.locator('.tk-protocol-btn[data-value="20/10"]').click();
-    await page.locator('#intervalsPerRoundSelect').selectOption('8');
+    await page.locator('#roundsPerSetSelect').selectOption('8');
     await page.locator('.tk-focus-btn[data-value="core"]').click();
     await page.locator('.tk-focus-btn[data-value="upper_body"]').click();
     await page.locator('.tk-length-btn[data-minutes="10"]').click();
 
-    // For 20/10 × 8 at 10 min (no warmup):
-    //   r = ceil((600 + 60) / (240 + 60)) = ceil(660/300) = ceil(2.2) = 3
+    // For 20/10 × 8 rounds/set at 10 min target (no warmup):
+    //   s = ceil((600 + 60) / (240 + 60)) = ceil(660/300) = ceil(2.2) = 3
     // Read from DOM to stay robust.
-    const rounds = parseInt((await page.locator('#roundsDisplay').textContent() || '0').trim(), 10);
+    const sets = parseInt((await page.locator('#setsDisplay').textContent() || '0').trim(), 10);
 
     let capturedBody = null;
     await page.route('**/api/v3/tabata-kettlebell/generate', async (route) => {
@@ -266,38 +267,38 @@ test.describe('Tabata Kettlebell Page', () => {
 
       // Build a minimal but well-formed plan response (no warmup).
       const segments = [];
-      for (let r = 0; r < rounds; r++) {
-        for (let i = 0; i < 8; i++) {
+      for (let s = 0; s < sets; s++) {
+        for (let r = 0; r < 8; r++) {
           segments.push({
-            name: `Work ${r + 1}-${i + 1}`,
+            name: `Work S${s + 1}-R${r + 1}`,
             exercise: 'Swings',
             segment_type: 'work',
             duration_seconds: 20,
-            round_index: r + 1,
-            interval_index: i,
+            set_index: s + 1,
+            round_index: r,
             cue: 'Go',
           });
           segments.push({
             name: 'Rest',
             segment_type: 'rest',
             duration_seconds: 10,
-            round_index: r + 1,
-            interval_index: i,
+            set_index: s + 1,
+            round_index: r,
             cue: 'Breathe',
           });
         }
-        if (r < rounds - 1) {
+        if (s < sets - 1) {
           segments.push({
-            name: 'Round Rest',
-            segment_type: 'round_rest',
+            name: 'Set Rest',
+            segment_type: 'set_rest',
             duration_seconds: 60,
-            round_index: r + 1,
-            interval_index: 8,
+            set_index: s + 1,
+            round_index: 8,
             cue: 'Shake it out',
           });
         }
       }
-      const totalSeconds = rounds * 8 * 30 + Math.max(0, rounds - 1) * 60;
+      const totalSeconds = sets * 8 * 30 + Math.max(0, sets - 1) * 60;
 
       await route.fulfill({
         status: 200,
@@ -306,8 +307,8 @@ test.describe('Tabata Kettlebell Page', () => {
           title: 'Mocked Tabata',
           protocol: '20/10',
           focus_areas: ['core', 'upper_body'],
-          rounds,
-          intervals_per_round: 8,
+          sets,
+          rounds_per_set: 8,
           total_seconds: totalSeconds,
           estimated_calories: 90,
           segments,
@@ -322,8 +323,8 @@ test.describe('Tabata Kettlebell Page', () => {
     if (capturedBody === null) return;
 
     expect(capturedBody.protocol).toBe('20/10');
-    expect(capturedBody.rounds).toBe(rounds);
-    expect(capturedBody.intervals_per_round).toBe(8);
+    expect(capturedBody.sets).toBe(sets);
+    expect(capturedBody.rounds_per_set).toBe(8);
     expect(Array.isArray(capturedBody.focus_areas)).toBe(true);
     expect(capturedBody.focus_areas.sort()).toEqual(['core', 'upper_body'].sort());
 

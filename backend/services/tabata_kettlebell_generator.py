@@ -2,10 +2,16 @@
 Tabata Kettlebell Generator - Uses Google Gemini to create structured
 tabata-style kettlebell workouts.
 
-The controller/UI decides the timing structure (warmup, rounds, intervals,
-inter-round rests) from user inputs. This service asks the AI ONLY for
-the creative content — exercise selection and coaching cues — then expands
-that into a flat list of segments with precise durations.
+Terminology (Tabata standard):
+  - Work Interval  = 20s (or 40s) all-out effort
+  - Rest Interval  = 10s (or 20s) recovery between rounds
+  - Round          = one Work Interval + one Rest Interval
+  - Set            = a group of rounds (classic Tabata = 8 rounds per set)
+  - Set Rest       = recovery between Tabata sets
+
+The controller/UI decides the timing structure (sets, rounds_per_set, set rests) from
+user inputs. This service asks the AI ONLY for the creative content — exercise selection
+and coaching cues — then expands that into a flat list of segments with precise durations.
 """
 
 import json
@@ -22,34 +28,42 @@ logger = logging.getLogger(__name__)
 _BASE_PROMPT = """You are an elite kettlebell conditioning coach in the style of Onnit Academy,
 Rogue Fitness, and the top kettlebell-focused YouTube channels (StrongFirst, Kettlebell Kings,
 Mark Wildman, Heavy Metal Strength Training, Joe Daniels). Your job is to program a TABATA-style
-kettlebell workout: short, sharp, all-effort intervals with a clear focus and good exercise flow.
+kettlebell workout using the STANDARD TABATA STRUCTURE:
+
+  - 20s Work Interval  (or 40s for the 40/20 protocol)
+  - 10s Rest Interval  (or 20s for the 40/20 protocol)
+  - 8 Rounds           = one Tabata SET  (4 minutes for 20/10)
+  - Multiple Sets make up the full workout, separated by a Set Rest.
+
+So one "Round" = one Work Interval + one Rest Interval.
+One "Set" = {rounds_per_set} rounds back-to-back.
 
 ═══════════════════════════════════════════════════════════════════
-PROTOCOL
+YOUR JOB
 ═══════════════════════════════════════════════════════════════════
 The controller has already decided the timing. You will be told the protocol (either 20s work /
-10s rest, or 40s work / 20s rest), the number of rounds, and the intervals-per-round count. Your
-only job is to fill in the EXERCISES and CUES for each work interval. Do NOT return timing —
-just the exercises and cues.
+10s rest, or 40s work / 20s rest), the number of Sets, and the Rounds-per-Set count. Your only
+job is to fill in the EXERCISES and CUES for each Work Interval. Do NOT return timing — just the
+exercises and cues.
 
 ═══════════════════════════════════════════════════════════════════
-ROUND STRUCTURE
+SET STRUCTURE
 ═══════════════════════════════════════════════════════════════════
-Every round has a theme (e.g., "Lower Push", "Ballistic Swings", "Upper Pull + Core").
-Group complementary exercises within a round so the athlete can settle into a groove.
-Across rounds, rotate themes so the whole body gets worked (unless the focus is narrow).
+Every Set has a theme (e.g., "Lower Push", "Ballistic Swings", "Upper Pull + Core").
+Group complementary exercises within a Set so the athlete can settle into a groove.
+Across Sets, rotate themes so the whole body gets worked (unless the focus is narrow).
 
-For 8-interval rounds, a classic kettlebell tabata pattern is:
+For 8-round Sets, a classic kettlebell tabata pattern is:
 - 8 × SAME exercise (pure tabata — hardest, simplest)
 - 4 × A, 4 × B  (couplet)
 - 2 × (A + B + C + D)  (4-exercise round robin)
-- 8 × alternating L/R on a unilateral lift (one side per interval)
+- 8 × alternating L/R on a unilateral lift (one side per round)
 
-For 4- or 6-interval rounds, prefer SAME exercise or a couplet.
-For 10- or 12-interval rounds, use round-robins or ladder patterns.
+For 4- or 6-round Sets, prefer SAME exercise or a couplet.
+For 10- or 12-round Sets, use round-robins or ladder patterns.
 
 SIDE HANDLING (unilateral exercises — KB snatch, clean, press, row, single-arm swing, TGU,
-windmill, halo, suitcase carry): alternate L / R across consecutive intervals. Mark `side`
+windmill, halo, suitcase carry): alternate L / R across consecutive rounds. Mark `side`
 as "left" or "right". For bilateral exercises (two-handed swing, goblet squat, thruster,
 sumo deadlift, plank pulls), set `side` to null.
 
@@ -96,8 +110,8 @@ CONDITIONING (metabolic, high heart-rate):
 NO WARMUP
 ═══════════════════════════════════════════════════════════════════
 Do NOT include a warmup. The athlete is already warmed up before starting. Jump straight
-into Round 1 — pick exercises for Round 1 that start at a manageable intensity if the
-workout will be long, but there is no warmup block.
+into Set 1 — pick exercises for Set 1 that start at a manageable intensity if the workout
+will be long, but there is no warmup block.
 
 ═══════════════════════════════════════════════════════════════════
 COACHING CUES
@@ -113,10 +127,10 @@ RESPONSE FORMAT (strict JSON)
 ═══════════════════════════════════════════════════════════════════
 {{
   "title": "Creative workout name (e.g., 'Iron Cardio Tabata', 'Swing City', 'Heavy Metal 20:10')",
-  "rounds": [
+  "sets": [
     {{
-      "round_name": "Round 1 — Ballistic Hips",
-      "intervals": [
+      "set_name": "Set 1 — Ballistic Hips",
+      "rounds": [
         {{ "exercise": "Two-Hand KB Swing", "cue": "Snap the hips at the top", "side": null }},
         {{ "exercise": "Two-Hand KB Swing", "cue": "Pack your lats, breathe behind the shield", "side": null }}
       ]
@@ -126,13 +140,13 @@ RESPONSE FORMAT (strict JSON)
 }}
 
 CRITICAL:
-- You MUST return exactly {rounds_count} rounds.
-- Each round MUST contain exactly {intervals_per_round} intervals.
-- Do NOT include rest or round_rest entries — only work intervals. The controller inserts rests.
-- Every interval MUST include an "exercise" string; "cue" and "side" are optional but preferred.
+- You MUST return exactly {sets_count} Sets.
+- Each Set MUST contain exactly {rounds_per_set} Rounds.
+- Do NOT include rest or set_rest entries — only Work Intervals. The controller inserts rests.
+- Every Round MUST include an "exercise" string; "cue" and "side" are optional but preferred.
 - Focus on the user's requested focus areas: {focus_summary}
 - Protocol is {protocol} ({work_label} work / {rest_label} rest).
-- Total rounds: {rounds_count}. Intervals per round: {intervals_per_round}.
+- Total Sets: {sets_count}. Rounds per Set: {rounds_per_set}.
 """
 
 
@@ -154,16 +168,16 @@ def _protocol_seconds(protocol: str) -> tuple[int, int]:
 def _build_prompt(
     protocol: str,
     focus_areas: List[str],
-    rounds: int,
-    intervals_per_round: int,
+    sets: int,
+    rounds_per_set: int,
 ) -> str:
     """Build the system prompt injecting the user's chosen workout parameters."""
     work, rest = _protocol_seconds(protocol)
     focus_summary = ", ".join(focus_areas).replace("_", " ")
 
     return _BASE_PROMPT.format(
-        rounds_count=rounds,
-        intervals_per_round=intervals_per_round,
+        sets_count=sets,
+        rounds_per_set=rounds_per_set,
         protocol=protocol,
         work_label=f"{work}s",
         rest_label=f"{rest}s",
@@ -174,7 +188,7 @@ def _build_prompt(
 class TabataKettlebellGenerator:
     """Generates structured tabata kettlebell workouts using Gemini AI."""
 
-    ROUND_REST_SECONDS = 60  # 60s rest between rounds
+    SET_REST_SECONDS = 60  # 60s rest between Tabata sets
 
     def __init__(self, api_key: str = None):
         self.config = TabataKettlebellGeneratorConfig()
@@ -199,8 +213,8 @@ class TabataKettlebellGenerator:
         self,
         protocol: str,
         focus_areas: List[str],
-        rounds: int,
-        intervals_per_round: int = 8,
+        sets: int,
+        rounds_per_set: int = 8,
     ) -> Dict[str, Any]:
         """
         Generate a tabata kettlebell workout plan.
@@ -208,8 +222,8 @@ class TabataKettlebellGenerator:
         Args:
             protocol: "20/10" or "40/20"
             focus_areas: list of focus area keys (upper_body, lower_body, etc.)
-            rounds: number of tabata rounds (1-12)
-            intervals_per_round: intervals per round (default 8)
+            sets: number of Tabata sets (1-12)
+            rounds_per_set: rounds per set (default 8 — classic Tabata)
 
         Returns:
             Dict matching TabataKettlebellPlan schema.
@@ -219,12 +233,12 @@ class TabataKettlebellGenerator:
 
             client = self._get_client()
             system_instruction = _build_prompt(
-                protocol, focus_areas, rounds, intervals_per_round
+                protocol, focus_areas, sets, rounds_per_set
             )
             focus_human = ", ".join(a.replace("_", " ") for a in focus_areas)
             user_prompt = (
-                f"Program a {protocol} tabata kettlebell workout with exactly {rounds} "
-                f"rounds of {intervals_per_round} intervals each. Focus areas: {focus_human}. "
+                f"Program a {protocol} tabata kettlebell workout with exactly {sets} "
+                f"Sets of {rounds_per_set} Rounds each. Focus areas: {focus_human}. "
                 f"Return JSON only."
             )
 
@@ -246,7 +260,7 @@ class TabataKettlebellGenerator:
             parsed = json.loads(response_text)
 
             return self._normalize_plan(
-                parsed, protocol, focus_areas, rounds, intervals_per_round
+                parsed, protocol, focus_areas, sets, rounds_per_set
             )
 
         except json.JSONDecodeError as e:
@@ -263,43 +277,45 @@ class TabataKettlebellGenerator:
         raw: Dict[str, Any],
         protocol: str,
         focus_areas: List[str],
-        rounds: int,
-        intervals_per_round: int,
+        sets: int,
+        rounds_per_set: int,
     ) -> Dict[str, Any]:
         """
         Convert AI response into a flat segment list with controller-computed timings.
-        Auto-pads/trims the AI's rounds and intervals so the shape is always valid.
+        Auto-pads/trims the AI's sets and rounds so the shape is always valid.
         """
         work_sec, rest_sec = _protocol_seconds(protocol)
 
         title = str(raw.get("title") or "Tabata Kettlebell Workout")[:80]
 
-        # Get rounds, pad/trim to exact shape
-        ai_rounds: List[Dict[str, Any]] = list(raw.get("rounds") or [])
-        while len(ai_rounds) < rounds:
-            ai_rounds.append({"round_name": f"Round {len(ai_rounds) + 1}", "intervals": []})
-        ai_rounds = ai_rounds[:rounds]
+        # Support both the new shape ({sets:[{set_name, rounds:[...]}]}) and the
+        # legacy shape ({rounds:[{round_name, intervals:[...]}]}) in case the AI
+        # returns either. Pad/trim to exact counts.
+        ai_sets: List[Dict[str, Any]] = list(raw.get("sets") or raw.get("rounds") or [])
+        while len(ai_sets) < sets:
+            ai_sets.append({"set_name": f"Set {len(ai_sets) + 1}", "rounds": []})
+        ai_sets = ai_sets[:sets]
 
         segments: List[Dict[str, Any]] = []
 
-        # No warmup — athlete is assumed already warmed up. Jump straight into Round 1.
+        # No warmup — athlete is assumed already warmed up. Jump straight into Set 1.
 
-        for r_idx, rnd in enumerate(ai_rounds):
-            round_name = str(rnd.get("round_name") or f"Round {r_idx + 1}")[:60]
-            intervals = list(rnd.get("intervals") or [])
+        for s_idx, st in enumerate(ai_sets):
+            set_name = str(st.get("set_name") or st.get("round_name") or f"Set {s_idx + 1}")[:60]
+            rounds_in_set = list(st.get("rounds") or st.get("intervals") or [])
             # Pad if AI returned too few
-            while len(intervals) < intervals_per_round:
-                intervals.append({
-                    "exercise": intervals[-1].get("exercise") if intervals else "Two-Hand KB Swing",
+            while len(rounds_in_set) < rounds_per_set:
+                rounds_in_set.append({
+                    "exercise": rounds_in_set[-1].get("exercise") if rounds_in_set else "Two-Hand KB Swing",
                     "cue": "Stay strong.",
                     "side": None,
                 })
-            intervals = intervals[:intervals_per_round]
+            rounds_in_set = rounds_in_set[:rounds_per_set]
 
-            for i_idx, iv in enumerate(intervals):
-                exercise = str(iv.get("exercise") or "KB Work")[:60]
-                cue = str(iv.get("cue") or "")[:140]
-                side = iv.get("side")
+            for r_idx, rnd in enumerate(rounds_in_set):
+                exercise = str(rnd.get("exercise") or "KB Work")[:60]
+                cue = str(rnd.get("cue") or "")[:140]
+                side = rnd.get("side")
                 if side not in (None, "left", "right", "both"):
                     side = None
 
@@ -307,7 +323,7 @@ class TabataKettlebellGenerator:
                 if side in ("left", "right"):
                     label = f"{exercise} ({side[0].upper()})"
 
-                # Work interval
+                # Work Interval
                 segments.append({
                     "name": label,
                     "segment_type": "work",
@@ -315,11 +331,11 @@ class TabataKettlebellGenerator:
                     "exercise": exercise,
                     "cue": cue,
                     "side": side,
-                    "round_index": r_idx + 1,
-                    "interval_index": i_idx,
+                    "set_index": s_idx + 1,
+                    "round_index": r_idx,
                 })
 
-                # Rest interval
+                # Rest Interval
                 segments.append({
                     "name": "Rest",
                     "segment_type": "rest",
@@ -327,21 +343,21 @@ class TabataKettlebellGenerator:
                     "exercise": "",
                     "cue": "Breathe. Reset your grip.",
                     "side": None,
-                    "round_index": r_idx + 1,
-                    "interval_index": i_idx,
+                    "set_index": s_idx + 1,
+                    "round_index": r_idx,
                 })
 
-            # Round rest (not after last round)
-            if r_idx < rounds - 1:
+            # Set rest (not after last set)
+            if s_idx < sets - 1:
                 segments.append({
-                    "name": f"{round_name} — Round Rest",
-                    "segment_type": "round_rest",
-                    "duration_seconds": self.ROUND_REST_SECONDS,
+                    "name": f"{set_name} — Set Rest",
+                    "segment_type": "set_rest",
+                    "duration_seconds": self.SET_REST_SECONDS,
                     "exercise": "",
-                    "cue": "Shake it out. Chalk up for the next round.",
+                    "cue": "Shake it out. Chalk up for the next set.",
                     "side": None,
-                    "round_index": r_idx + 1,
-                    "interval_index": intervals_per_round,
+                    "set_index": s_idx + 1,
+                    "round_index": rounds_per_set,
                 })
 
         total_seconds = sum(s["duration_seconds"] for s in segments)
@@ -358,8 +374,8 @@ class TabataKettlebellGenerator:
             "title": title,
             "protocol": protocol,
             "focus_areas": focus_areas,
-            "rounds": rounds,
-            "intervals_per_round": intervals_per_round,
+            "sets": sets,
+            "rounds_per_set": rounds_per_set,
             "total_seconds": total_seconds,
             "segments": segments,
             "estimated_calories": estimated_calories,
