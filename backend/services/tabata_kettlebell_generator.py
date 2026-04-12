@@ -93,11 +93,11 @@ CONDITIONING (metabolic, high heart-rate):
   KB Russian Swing + Jumping Jack
 
 ═══════════════════════════════════════════════════════════════════
-WARMUP
+NO WARMUP
 ═══════════════════════════════════════════════════════════════════
-Include ONE warmup entry with a single flow name (e.g., "Primer Flow: halos, hip hinges,
-bodyweight squats, arm circles, light swings"). You do not need to break the warmup into
-intervals — the controller renders it as one block.
+Do NOT include a warmup. The athlete is already warmed up before starting. Jump straight
+into Round 1 — pick exercises for Round 1 that start at a manageable intensity if the
+workout will be long, but there is no warmup block.
 
 ═══════════════════════════════════════════════════════════════════
 COACHING CUES
@@ -113,10 +113,6 @@ RESPONSE FORMAT (strict JSON)
 ═══════════════════════════════════════════════════════════════════
 {{
   "title": "Creative workout name (e.g., 'Iron Cardio Tabata', 'Swing City', 'Heavy Metal 20:10')",
-  "warmup": {{
-    "name": "Primer Flow",
-    "cue": "Loosen hips, shoulders, and spine before the first swing."
-  }},
   "rounds": [
     {{
       "round_name": "Round 1 — Ballistic Hips",
@@ -178,7 +174,6 @@ def _build_prompt(
 class TabataKettlebellGenerator:
     """Generates structured tabata kettlebell workouts using Gemini AI."""
 
-    WARMUP_SECONDS = 180  # 3 minute warmup
     ROUND_REST_SECONDS = 60  # 60s rest between rounds
 
     def __init__(self, api_key: str = None):
@@ -278,9 +273,6 @@ class TabataKettlebellGenerator:
         work_sec, rest_sec = _protocol_seconds(protocol)
 
         title = str(raw.get("title") or "Tabata Kettlebell Workout")[:80]
-        warmup_raw = raw.get("warmup") or {}
-        warmup_name = str(warmup_raw.get("name") or "Primer Flow")[:60]
-        warmup_cue = str(warmup_raw.get("cue") or "Loosen up — hips, shoulders, spine.")[:140]
 
         # Get rounds, pad/trim to exact shape
         ai_rounds: List[Dict[str, Any]] = list(raw.get("rounds") or [])
@@ -290,17 +282,7 @@ class TabataKettlebellGenerator:
 
         segments: List[Dict[str, Any]] = []
 
-        # Warmup segment (single block)
-        segments.append({
-            "name": warmup_name,
-            "segment_type": "warmup",
-            "duration_seconds": self.WARMUP_SECONDS,
-            "exercise": "",
-            "cue": warmup_cue,
-            "side": None,
-            "round_index": 0,
-            "interval_index": 0,
-        })
+        # No warmup — athlete is assumed already warmed up. Jump straight into Round 1.
 
         for r_idx, rnd in enumerate(ai_rounds):
             round_name = str(rnd.get("round_name") or f"Round {r_idx + 1}")[:60]

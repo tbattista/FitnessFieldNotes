@@ -31,7 +31,6 @@
   const LENGTH_KEY = 'tabataKBLength';
 
   // Fixed timing constants (must match backend generator)
-  const WARMUP_SECONDS = 180;
   const ROUND_REST_SECONDS = 60;
   const MIN_ROUNDS = 1;
   const MAX_ROUNDS = 12;
@@ -114,29 +113,32 @@
 
   /**
    * Compute total workout seconds from current inputs.
-   * total = warmup + rounds * (intervals * (work + rest)) + (rounds - 1) * round_rest
+   * No warmup — user is assumed to be already warmed up.
+   * total = rounds * (intervals * (work + rest)) + (rounds - 1) * round_rest
    */
   function computeTotalSeconds(protocol, rounds, intervalsPerRound) {
     const { work, rest } = protocolSeconds(protocol);
     const roundLen = intervalsPerRound * (work + rest);
     const roundRests = Math.max(0, rounds - 1) * ROUND_REST_SECONDS;
-    return WARMUP_SECONDS + rounds * roundLen + roundRests;
+    return rounds * roundLen + roundRests;
   }
 
   /**
-   * For a preset length (minutes), compute the largest integer rounds count
-   * whose total time is ≤ presetMinutes * 60. Guarantees alignment to whole
-   * rounds — so "~20 min" never cuts a round off mid-way.
+   * For a preset length (minutes), compute the smallest integer rounds count
+   * whose total time is >= presetMinutes * 60. We always go OVER the preset
+   * (never under) so the user gets a complete workout.
+   *
+   * Solve r such that r*roundLen + (r-1)*roundRest >= target
+   *   => r*(roundLen + roundRest) >= target + roundRest
+   *   => r >= (target + roundRest) / (roundLen + roundRest)
    */
   function roundsForPresetLength(protocol, intervalsPerRound, presetMinutes) {
     const target = presetMinutes * 60;
     const { work, rest } = protocolSeconds(protocol);
     const roundLen = intervalsPerRound * (work + rest);
-    // warmup + r*roundLen + (r-1)*roundRest ≤ target
-    // => r*(roundLen + roundRest) ≤ target - warmup + roundRest
-    const numerator = target - WARMUP_SECONDS + ROUND_REST_SECONDS;
+    const numerator = target + ROUND_REST_SECONDS;
     const denom = roundLen + ROUND_REST_SECONDS;
-    let r = Math.floor(numerator / denom);
+    let r = Math.ceil(numerator / denom);
     if (r < MIN_ROUNDS) r = MIN_ROUNDS;
     if (r > MAX_ROUNDS) r = MAX_ROUNDS;
     return r;
@@ -649,8 +651,9 @@
     const { work, rest } = protocolSeconds(selectedProtocol);
     els.totalTimeHelper.textContent =
       `Total: ${totalMin}m ${String(totalSec).padStart(2, '0')}s  ·  ` +
-      `warmup 3:00 + ${selectedRounds} × ${selectedIntervalsPerRound}·(${work}+${rest}s)` +
-      (selectedRounds > 1 ? ` + ${selectedRounds - 1} × 1:00 round rest` : '');
+      `${selectedRounds} × ${selectedIntervalsPerRound}·(${work}+${rest}s)` +
+      (selectedRounds > 1 ? ` + ${selectedRounds - 1} × 1:00 round rest` : '') +
+      '  ·  (no warmup — assume already warmed up)';
   }
 
   function setProtocol(value) {

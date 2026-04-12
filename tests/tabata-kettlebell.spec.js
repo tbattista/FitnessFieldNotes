@@ -107,14 +107,16 @@ test.describe('Tabata Kettlebell Page', () => {
     // Pick the 20-minute preset
     await page.locator('.tk-length-btn[data-minutes="20"]').click();
 
-    // For 20/10 × 8 intervals: roundLen = 8×30 = 240s
-    // Available = (1200 - 180 + 60) = 1080; denom = 240+60 = 300
-    // Expected rounds = floor(1080 / 300) = 3
+    // For 20/10 × 8 intervals: roundLen = 8×30 = 240s, roundRest = 60s
+    // No warmup. Round UP to hit ≥ 1200s:
+    //   r = ceil((1200 + 60) / (240 + 60)) = ceil(1260/300) = ceil(4.2) = 5
+    // 4 rounds = 4×240 + 3×60 = 1140s (19 min) — too short
+    // 5 rounds = 5×240 + 4×60 = 1440s (24 min) — goes over, pick this
     const roundsText = await page.locator('#roundsDisplay').textContent();
-    expect(parseInt((roundsText || '').trim(), 10)).toBe(3);
+    expect(parseInt((roundsText || '').trim(), 10)).toBe(5);
 
-    // Helper should mention "3 ×" rounds
-    await expect(page.locator('#totalTimeHelper')).toContainText('3 ×');
+    // Helper should mention "5 ×" rounds
+    await expect(page.locator('#totalTimeHelper')).toContainText('5 ×');
   });
 
   test('rounds stepper manual adjust deselects length presets', async ({ page }) => {
@@ -152,10 +154,10 @@ test.describe('Tabata Kettlebell Page', () => {
 
     const afterRounds = parseInt((await page.locator('#roundsDisplay').textContent() || '0').trim(), 10);
 
-    // 20/10 × 4 intervals: roundLen = 4×30 = 120s
-    // Available = (1800 - 180 + 60) = 1680; denom = 120+60 = 180
-    // Expected = floor(1680 / 180) = 9
-    expect(afterRounds).toBe(9);
+    // 20/10 × 4 intervals: roundLen = 4×30 = 120s, roundRest = 60s
+    // No warmup. Round UP to hit ≥ 1800s:
+    //   r = ceil((1800 + 60) / (120 + 60)) = ceil(1860/180) = ceil(10.33) = 11
+    expect(afterRounds).toBe(11);
     expect(afterRounds).not.toBe(beforeRounds);
 
     // localStorage persisted
@@ -178,13 +180,15 @@ test.describe('Tabata Kettlebell Page', () => {
     await expect(page.locator('.tk-protocol-btn[data-value="40/20"]')).toHaveClass(/active/);
   });
 
-  test('session restore — paused session shows current segment (warmup)', async ({ page }) => {
+  test('session restore — paused session shows current work segment', async ({ page }) => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Plan: warmup 180s + 4 intervals × (work 20 + rest 10) = 300s total.
-    // Started 30s ago, paused now → should still be in the warmup segment
-    // with ~150s remaining.
+    // Plan: 4 intervals × (work 20 + rest 10) = 120s total. No warmup.
+    // Started 35s ago, paused now →
+    //   0-20s:  Work 1 (Swings)
+    //   20-30s: Rest
+    //   30-50s: Work 2 (Goblet Squat)  ← 35s elapsed is 5s into Work 2, 15s remaining
     const now = Date.now();
     const fakeSession = {
       workoutPlan: {
@@ -193,10 +197,9 @@ test.describe('Tabata Kettlebell Page', () => {
         focus_areas: ['core'],
         rounds: 1,
         intervals_per_round: 4,
-        total_seconds: 300,
-        estimated_calories: 60,
+        total_seconds: 120,
+        estimated_calories: 30,
         segments: [
-          { name: 'Warmup', segment_type: 'warmup', duration_seconds: 180, cue: 'Get loose' },
           { name: 'Work 1', exercise: 'Swings', segment_type: 'work', duration_seconds: 20, round_index: 1, interval_index: 0, cue: 'Go' },
           { name: 'Rest', segment_type: 'rest', duration_seconds: 10, round_index: 1, interval_index: 0, cue: 'Breathe' },
           { name: 'Work 2', exercise: 'Goblet Squat', segment_type: 'work', duration_seconds: 20, round_index: 1, interval_index: 1, cue: 'Squat' },
@@ -207,7 +210,7 @@ test.describe('Tabata Kettlebell Page', () => {
           { name: 'Rest', segment_type: 'rest', duration_seconds: 10, round_index: 1, interval_index: 3, cue: 'Done' },
         ],
       },
-      workoutStartedAt: new Date(now - 30000).toISOString(),
+      workoutStartedAt: new Date(now - 35000).toISOString(),
       pausedAt: new Date(now).toISOString(),
       timerRunning: false,
       savedAt: now,
@@ -225,16 +228,16 @@ test.describe('Tabata Kettlebell Page', () => {
     if (!workoutVisible) return; // Auth not available — skip
 
     await expect(page.locator('#workoutTitle')).toContainText('Restore Test');
-    // Warmup segment label is uppercased in #segmentName
-    await expect(page.locator('#segmentName')).toContainText('WARMUP');
-    await expect(page.locator('#currentExerciseName')).toContainText('Warmup');
+    // Should be in Work 2 (Goblet Squat). Segment type label is uppercased.
+    await expect(page.locator('#segmentName')).toContainText('WORK');
+    await expect(page.locator('#currentExerciseName')).toContainText('Goblet Squat');
 
-    // Remaining ~150s (allow ±5s)
+    // Remaining ~15s (allow ±3s for test timing wobble)
     const segTime = (await page.locator('#segmentTime').textContent() || '').trim();
     const [m, s] = segTime.split(':').map(Number);
     const remaining = m * 60 + s;
-    expect(remaining).toBeGreaterThan(145);
-    expect(remaining).toBeLessThan(155);
+    expect(remaining).toBeGreaterThan(12);
+    expect(remaining).toBeLessThan(18);
 
     // Resume button visible (was paused)
     await expect(page.locator('#resumeBtn')).toBeVisible();
@@ -245,49 +248,56 @@ test.describe('Tabata Kettlebell Page', () => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');
 
-    // Set protocol 20/10, select two focus areas, length 10 → rounds=2
+    // Set protocol 20/10, select two focus areas, length 10
     await page.locator('.tk-protocol-btn[data-value="20/10"]').click();
     await page.locator('#intervalsPerRoundSelect').selectOption('8');
     await page.locator('.tk-focus-btn[data-value="core"]').click();
     await page.locator('.tk-focus-btn[data-value="upper_body"]').click();
     await page.locator('.tk-length-btn[data-minutes="10"]').click();
 
-    // For 20/10 × 8 at 10 min:
-    // roundLen = 240; available = (600 - 180 + 60) = 480; denom = 300
-    // floor(480 / 300) = 1, but min = 1, so rounds = 1.
-    // Actually 1 round → check display before asserting on payload.
+    // For 20/10 × 8 at 10 min (no warmup):
+    //   r = ceil((600 + 60) / (240 + 60)) = ceil(660/300) = ceil(2.2) = 3
+    // Read from DOM to stay robust.
     const rounds = parseInt((await page.locator('#roundsDisplay').textContent() || '0').trim(), 10);
 
     let capturedBody = null;
     await page.route('**/api/v3/tabata-kettlebell/generate', async (route) => {
       capturedBody = route.request().postDataJSON();
 
-      // Build a minimal but well-formed plan response. 1 round × 8 intervals
-      // of 20/10 protocol. Total = 180 (warmup) + 8×30 = 420s.
-      const segments = [
-        { name: 'Warmup', segment_type: 'warmup', duration_seconds: 180, cue: 'Get warm' },
-      ];
-      for (let i = 0; i < (rounds * 8); i++) {
-        segments.push({
-          name: `Work ${i + 1}`,
-          exercise: 'Swings',
-          segment_type: 'work',
-          duration_seconds: 20,
-          round_index: Math.floor(i / 8) + 1,
-          interval_index: i % 8,
-          cue: 'Go',
-        });
-        segments.push({
-          name: 'Rest',
-          segment_type: 'rest',
-          duration_seconds: 10,
-          round_index: Math.floor(i / 8) + 1,
-          interval_index: i % 8,
-          cue: 'Breathe',
-        });
+      // Build a minimal but well-formed plan response (no warmup).
+      const segments = [];
+      for (let r = 0; r < rounds; r++) {
+        for (let i = 0; i < 8; i++) {
+          segments.push({
+            name: `Work ${r + 1}-${i + 1}`,
+            exercise: 'Swings',
+            segment_type: 'work',
+            duration_seconds: 20,
+            round_index: r + 1,
+            interval_index: i,
+            cue: 'Go',
+          });
+          segments.push({
+            name: 'Rest',
+            segment_type: 'rest',
+            duration_seconds: 10,
+            round_index: r + 1,
+            interval_index: i,
+            cue: 'Breathe',
+          });
+        }
+        if (r < rounds - 1) {
+          segments.push({
+            name: 'Round Rest',
+            segment_type: 'round_rest',
+            duration_seconds: 60,
+            round_index: r + 1,
+            interval_index: 8,
+            cue: 'Shake it out',
+          });
+        }
       }
-      // Round rests between rounds (none for 1 round)
-      const totalSeconds = 180 + rounds * 8 * 30 + Math.max(0, rounds - 1) * 60;
+      const totalSeconds = rounds * 8 * 30 + Math.max(0, rounds - 1) * 60;
 
       await route.fulfill({
         status: 200,
