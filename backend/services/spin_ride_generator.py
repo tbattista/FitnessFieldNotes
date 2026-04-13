@@ -463,17 +463,42 @@ class SpinRideGenerator:
                 if seg["segment_type"] == "all_out":
                     seg["segment_type"] = "sprint"
 
-        # Fix timing mismatch by adjusting the last segment
+        # The prompt says a ride should never END on an all_out. If the model
+        # violated this, convert the trailing all_out to a sprint so the
+        # timing-mismatch fix below is free to resize it without blowing past
+        # the 45s all-out cap.
+        if segments and segments[-1]["segment_type"] == "all_out":
+            last = segments[-1]
+            last["segment_type"] = "sprint"
+            if last["name"].lower().startswith("all out") or last["name"].lower().startswith("all-out"):
+                last["name"] = "Final Sprint"
+            logger.info("Converted trailing all_out segment to sprint (rides must not end on an all-out)")
+
+        # Fix timing mismatch by adjusting a non-all-out segment so we never
+        # inflate an all_out past the 45s hard cap. Walk backwards from the
+        # end to find the last segment we can safely resize.
         actual_total = sum(s["duration_seconds"] for s in segments)
         if actual_total != target_seconds:
             diff = target_seconds - actual_total
-            last = segments[-1]
-            adjusted = last["duration_seconds"] + diff
-            if adjusted >= 15:
-                last["duration_seconds"] = adjusted
-                logger.info(f"Adjusted last segment by {diff}s to match target duration")
+            adjust_idx = len(segments) - 1
+            while adjust_idx >= 0 and segments[adjust_idx]["segment_type"] == "all_out":
+                adjust_idx -= 1
+            if adjust_idx >= 0:
+                target_seg = segments[adjust_idx]
+                adjusted = target_seg["duration_seconds"] + diff
+                if adjusted >= 15:
+                    target_seg["duration_seconds"] = adjusted
+                    logger.info(
+                        f"Adjusted segment '{target_seg['name']}' (idx {adjust_idx}) "
+                        f"by {diff}s to match target duration"
+                    )
+                else:
+                    logger.warning(f"Spin ride timing off by {diff}s, couldn't fix cleanly")
             else:
-                logger.warning(f"Spin ride timing off by {diff}s, couldn't fix cleanly")
+                logger.warning(
+                    f"Spin ride timing off by {diff}s but all segments are all_outs; "
+                    "refusing to adjust and violate the all-out duration cap"
+                )
 
         # Ensure top-level fields
         plan["title"] = str(plan.get("title", f"{duration_minutes}-Minute Spin Ride"))[:80]
