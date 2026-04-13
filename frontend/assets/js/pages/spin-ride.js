@@ -101,6 +101,9 @@
       difficultyButtons: $('difficultyButtons'),
       difficultyDescription: $('difficultyDescription'),
       generateBtn: $('generateBtn'),
+      rideSummaryValue: $('rideSummaryValue'),
+      rideSummarySub: $('rideSummarySub'),
+      ctaHint: document.querySelector('.sr-cta-hint'),
       recoveryGearInput: $('recoveryGearInput'),
       maxGearInput: $('maxGearInput'),
       bikeGearsSaveBtn: $('bikeGearsSaveBtn'),
@@ -681,7 +684,35 @@
   // ── Init ───────────────────────────────────────────────────────────────
 
   function refreshGenerateButtonState() {
-    els.generateBtn.disabled = getSelectedDuration() === null;
+    const hasDuration = getSelectedDuration() !== null;
+    els.generateBtn.disabled = !hasDuration;
+    if (els.ctaHint) {
+      els.ctaHint.textContent = hasDuration ? '' : 'Pick a duration to continue';
+    }
+    updateSummaryCard();
+  }
+
+  /**
+   * Update the setup-screen summary card with the current duration, difficulty,
+   * all-outs, and gear mapping. Called whenever any input changes.
+   */
+  function updateSummaryCard() {
+    if (!els.rideSummaryValue || !els.rideSummarySub) return;
+    const duration = getSelectedDuration();
+    if (duration === null) {
+      els.rideSummaryValue.textContent = '—';
+      els.rideSummarySub.textContent = 'choose a duration';
+      return;
+    }
+    els.rideSummaryValue.textContent = `${duration} min`;
+
+    const difficulty = getSelectedDifficulty() || 'moderate';
+    const difficultyLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+    const allOutsLabel = getIncludeAllOuts() ? 'all-outs on' : 'efforts only';
+    const gearLabel = bikeGears
+      ? `gears ${bikeGears.min}–${bikeGears.max}`
+      : 'default 1-10';
+    els.rideSummarySub.textContent = `${difficultyLabel} · ${allOutsLabel} · ${gearLabel}`;
   }
 
   function getIncludeAllOuts() {
@@ -758,6 +789,7 @@
         try {
           localStorage.setItem(INCLUDE_ALL_OUTS_KEY, value ? '1' : '0');
         } catch (err) { /* ignore */ }
+        updateSummaryCard();
       });
     }
 
@@ -770,6 +802,7 @@
         try {
           localStorage.setItem(DIFFICULTY_KEY, btn.dataset.value);
         } catch (err) { /* ignore */ }
+        updateSummaryCard();
       });
     }
 
@@ -795,6 +828,7 @@
         saveBikeGears(min, max);
         bikeGears = { min, max };
         updateBikeGearsStatus();
+        updateSummaryCard();
         // If a ride is loaded, re-render so it picks up the new mapping.
         if (ridePlan && segments.length) {
           renderSegmentList();
@@ -809,6 +843,7 @@
         els.recoveryGearInput.value = '';
         els.maxGearInput.value = '';
         els.bikeGearsStatus.textContent = 'Using default 1-10 resistance scale.';
+        updateSummaryCard();
         if (ridePlan && segments.length) {
           renderSegmentList();
           updateSegmentDisplay();
@@ -882,6 +917,9 @@
       const savedDifficulty = localStorage.getItem(DIFFICULTY_KEY);
       if (savedDifficulty) setSelectedDifficulty(savedDifficulty);
     } catch (e) { /* ignore */ }
+
+    // Prime the summary card + CTA hint from the restored preferences
+    refreshGenerateButtonState();
 
     const isAuth = await waitForAuth();
     if (!isAuth) {
