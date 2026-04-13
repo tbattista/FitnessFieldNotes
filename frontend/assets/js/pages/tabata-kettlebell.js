@@ -69,7 +69,7 @@
       setsDisplay: $('setsDisplay'),
       setsDownBtn: $('setsDownBtn'),
       setsUpBtn: $('setsUpBtn'),
-      roundsPerSetSelect: $('roundsPerSetSelect'),
+      roundsPerSetButtons: $('roundsPerSetButtons'),
       totalTimeHelper: $('totalTimeHelper'),
       generateBtn: $('generateBtn'),
 
@@ -741,7 +741,9 @@
 
   function setRoundsPerSet(n) {
     selectedRoundsPerSet = n;
-    els.roundsPerSetSelect.value = String(n);
+    els.roundsPerSetButtons.querySelectorAll('.tk-rounds-btn').forEach((b) => {
+      b.classList.toggle('active', parseInt(b.dataset.value, 10) === n);
+    });
     try { localStorage.setItem(ROUNDS_PER_SET_KEY, String(n)); } catch (e) { /* ignore */ }
     // Re-align sets to preset length if a preset is active
     const activePreset = els.lengthButtons.querySelector('.tk-length-btn.active');
@@ -778,8 +780,10 @@
     els.setsDownBtn.addEventListener('click', () => adjustSets(-1));
     els.setsUpBtn.addEventListener('click', () => adjustSets(1));
 
-    els.roundsPerSetSelect.addEventListener('change', () => {
-      const n = parseInt(els.roundsPerSetSelect.value, 10);
+    els.roundsPerSetButtons.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tk-rounds-btn');
+      if (!btn) return;
+      const n = parseInt(btn.dataset.value, 10);
       if (!Number.isNaN(n)) setRoundsPerSet(n);
     });
 
@@ -833,7 +837,9 @@
     els.lengthButtons.querySelectorAll('.tk-length-btn').forEach((b) => {
       b.classList.toggle('active', parseInt(b.dataset.minutes, 10) === selectedLength);
     });
-    els.roundsPerSetSelect.value = String(selectedRoundsPerSet);
+    els.roundsPerSetButtons.querySelectorAll('.tk-rounds-btn').forEach((b) => {
+      b.classList.toggle('active', parseInt(b.dataset.value, 10) === selectedRoundsPerSet);
+    });
 
     selectedSets = setsForPresetLength(selectedProtocol, selectedRoundsPerSet, selectedLength);
     updateSetsDisplay();

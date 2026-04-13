@@ -59,7 +59,7 @@
     <!-- Spin Ride CSS (reused base layout) -->
     <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409f" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412b" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412c" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -176,20 +176,26 @@
                     <span class="tk-total-sub">choose a length</span>
                   </div>
 
-                  <!-- Compact advanced row — de-emphasized but available -->
-                  <div class="tk-advanced-row d-flex align-items-center gap-2 flex-wrap">
-                    <span class="tk-advanced-label">Sets</span>
-                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="-1" id="setsDownBtn" aria-label="Fewer sets">−</button>
-                    <span class="tk-sets-display" id="setsDisplay">5</span>
-                    <button class="btn btn-sm btn-outline-secondary tk-set-adjust" data-delta="1" id="setsUpBtn" aria-label="More sets">+</button>
-                    <span class="tk-advanced-label ms-3">Rounds / set</span>
-                    <select class="form-select form-select-sm tk-rounds-select" id="roundsPerSetSelect" aria-label="Rounds per set">
-                      <option value="4">4</option>
-                      <option value="6">6</option>
-                      <option value="8" selected>8</option>
-                      <option value="10">10</option>
-                      <option value="12">12</option>
-                    </select>
+                  <!-- Sets stepper -->
+                  <div class="tk-control-block">
+                    <div class="tk-control-label">Sets</div>
+                    <div class="tk-sets-stepper">
+                      <button class="btn btn-outline-primary btn-lg tk-set-adjust" data-delta="-1" id="setsDownBtn" aria-label="Fewer sets">−</button>
+                      <span class="tk-sets-display" id="setsDisplay">5</span>
+                      <button class="btn btn-outline-primary btn-lg tk-set-adjust" data-delta="1" id="setsUpBtn" aria-label="More sets">+</button>
+                    </div>
+                  </div>
+
+                  <!-- Rounds per set (button chips) -->
+                  <div class="tk-control-block">
+                    <div class="tk-control-label">Rounds per set</div>
+                    <div class="d-flex flex-wrap gap-2" id="roundsPerSetButtons">
+                      <button class="btn btn-outline-primary btn-lg tk-rounds-btn" data-value="4">4</button>
+                      <button class="btn btn-outline-primary btn-lg tk-rounds-btn" data-value="6">6</button>
+                      <button class="btn btn-outline-primary btn-lg tk-rounds-btn active" data-value="8">8</button>
+                      <button class="btn btn-outline-primary btn-lg tk-rounds-btn" data-value="10">10</button>
+                      <button class="btn btn-outline-primary btn-lg tk-rounds-btn" data-value="12">12</button>
+                    </div>
                   </div>
                   <p class="tk-advanced-hint">Classic Tabata = 8 rounds per set · no warmup included</p>
                 </div>
@@ -376,6 +382,6 @@
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412b"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412c"></script>
   </body>
 </html>

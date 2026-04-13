@@ -103,7 +103,7 @@ test.describe('Tabata Kettlebell Page', () => {
 
     // Ensure protocol = 20/10, rounds per set = 8 (defaults)
     await page.locator('.tk-protocol-btn[data-value="20/10"]').click();
-    await page.locator('#roundsPerSetSelect').selectOption('8');
+    await page.locator('.tk-rounds-btn[data-value="8"]').click();
 
     // Pick the 20-minute preset
     await page.locator('.tk-length-btn[data-minutes="20"]').click();
@@ -152,7 +152,7 @@ test.describe('Tabata Kettlebell Page', () => {
     const beforeSets = parseInt((await page.locator('#setsDisplay').textContent() || '0').trim(), 10);
 
     // Switch rounds-per-set to 4
-    await page.locator('#roundsPerSetSelect').selectOption('4');
+    await page.locator('.tk-rounds-btn[data-value="4"]').click();
 
     const afterSets = parseInt((await page.locator('#setsDisplay').textContent() || '0').trim(), 10);
 
@@ -252,7 +252,7 @@ test.describe('Tabata Kettlebell Page', () => {
 
     // Set protocol 20/10, select two focus areas, length 10
     await page.locator('.tk-protocol-btn[data-value="20/10"]').click();
-    await page.locator('#roundsPerSetSelect').selectOption('8');
+    await page.locator('.tk-rounds-btn[data-value="8"]').click();
     await page.locator('.tk-focus-btn[data-value="core"]').click();
     await page.locator('.tk-focus-btn[data-value="upper_body"]').click();
     await page.locator('.tk-length-btn[data-minutes="10"]').click();

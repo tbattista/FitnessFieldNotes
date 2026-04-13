@@ -190,26 +190,87 @@
   color: var(--bs-secondary-color, #9ca3af);
 }
 
-/* ── Advanced row (sets stepper + rounds-per-set select) ── */
-.tk-advanced-row {
-  padding: 0.5rem 0.25rem;
+/* ── Control blocks (sets stepper + rounds-per-set chips) ── */
+.tk-control-block {
+  margin-top: 1rem;
 }
 
-.tk-advanced-label {
-  font-size: 0.75rem;
-  font-weight: 600;
+.tk-control-label {
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   color: var(--gs-gray-500, #64748b);
+  margin-bottom: 0.5rem;
+}
+
+[data-bs-theme="dark"] .tk-control-label {
+  color: var(--bs-secondary-color, #9ca3af);
+}
+
+/* Sets stepper: big − [ 5 ] + row */
+.tk-sets-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tk-set-adjust {
+  min-width: 3.25rem;
+  height: 3.25rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tk-set-adjust:disabled {
+  opacity: 0.4;
+}
+
+.tk-sets-display {
+  font-size: 2rem;
+  font-weight: 800;
+  min-width: 3rem;
+  text-align: center;
+  color: var(--gs-primary, #C97C5D);
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+[data-bs-theme="dark"] .tk-sets-display {
+  color: var(--gs-primary, #C97C5D);
+}
+
+/* Rounds-per-set chips — reuse the length button look */
+.tk-rounds-btn {
+  min-width: 70px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tk-rounds-btn.active {
+  background-color: var(--gs-primary, #C97C5D) !important;
+  border-color: var(--gs-primary, #C97C5D) !important;
+  color: #fff !important;
+}
+
+[data-bs-theme="dark"] .tk-rounds-btn.active {
+  background-color: var(--gs-primary, #C97C5D) !important;
+  border-color: var(--gs-primary, #C97C5D) !important;
+  color: #fff !important;
 }
 
 .tk-advanced-hint {
   font-size: 0.72rem;
   color: var(--gs-gray-500, #64748b);
-  margin: 0.25rem 0 0 0.25rem;
+  margin: 0.75rem 0 0 0;
 }
 
-[data-bs-theme="dark"] .tk-advanced-label,
 [data-bs-theme="dark"] .tk-advanced-hint {
   color: var(--bs-secondary-color, #9ca3af);
 }
