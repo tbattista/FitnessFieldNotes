@@ -147,7 +147,7 @@ CRITICAL:
 - Focus on the user's requested focus areas: {focus_summary}
 - Protocol is {protocol} ({work_label} work / {rest_label} rest).
 - Total Sets: {sets_count}. Rounds per Set: {rounds_per_set}.
-"""
+{exercise_constraints}"""
 
 
 @dataclass
@@ -170,10 +170,30 @@ def _build_prompt(
     focus_areas: List[str],
     sets: int,
     rounds_per_set: int,
+    include_exercises: List[str] | None = None,
+    exclude_exercises: List[str] | None = None,
 ) -> str:
     """Build the system prompt injecting the user's chosen workout parameters."""
     work, rest = _protocol_seconds(protocol)
     focus_summary = ", ".join(focus_areas).replace("_", " ")
+
+    # Build exercise-constraint block. Each line is optional — only included
+    # when the user has picked something. Kept short so the AI treats them as
+    # hard constraints rather than suggestions.
+    constraint_lines: List[str] = []
+    if include_exercises:
+        inc = ", ".join(include_exercises)
+        constraint_lines.append(
+            f"- MUST include each of these exercises at least once across the "
+            f"workout: {inc}. Spread them across different sets if possible."
+        )
+    if exclude_exercises:
+        exc = ", ".join(exclude_exercises)
+        constraint_lines.append(
+            f"- Do NOT use any of these exercises under any circumstances: "
+            f"{exc}. Pick alternatives from the focus-area library."
+        )
+    exercise_constraints = ("\n".join(constraint_lines) + "\n") if constraint_lines else ""
 
     return _BASE_PROMPT.format(
         sets_count=sets,
@@ -182,6 +202,7 @@ def _build_prompt(
         work_label=f"{work}s",
         rest_label=f"{rest}s",
         focus_summary=focus_summary,
+        exercise_constraints=exercise_constraints,
     )
 
 
@@ -215,6 +236,8 @@ class TabataKettlebellGenerator:
         focus_areas: List[str],
         sets: int,
         rounds_per_set: int = 8,
+        include_exercises: List[str] | None = None,
+        exclude_exercises: List[str] | None = None,
     ) -> Dict[str, Any]:
         """
         Generate a tabata kettlebell workout plan.
@@ -224,6 +247,8 @@ class TabataKettlebellGenerator:
             focus_areas: list of focus area keys (upper_body, lower_body, etc.)
             sets: number of Tabata sets (1-12)
             rounds_per_set: rounds per set (default 8 — classic Tabata)
+            include_exercises: optional list of exercises the AI must use
+            exclude_exercises: optional list of exercises the AI must skip
 
         Returns:
             Dict matching TabataKettlebellPlan schema.
@@ -232,15 +257,28 @@ class TabataKettlebellGenerator:
             from google.genai import types
 
             client = self._get_client()
+            include_exercises = include_exercises or []
+            exclude_exercises = exclude_exercises or []
             system_instruction = _build_prompt(
-                protocol, focus_areas, sets, rounds_per_set
+                protocol, focus_areas, sets, rounds_per_set,
+                include_exercises=include_exercises,
+                exclude_exercises=exclude_exercises,
             )
             focus_human = ", ".join(a.replace("_", " ") for a in focus_areas)
-            user_prompt = (
+            user_prompt_parts = [
                 f"Program a {protocol} tabata kettlebell workout with exactly {sets} "
-                f"Sets of {rounds_per_set} Rounds each. Focus areas: {focus_human}. "
-                f"Return JSON only."
-            )
+                f"Sets of {rounds_per_set} Rounds each. Focus areas: {focus_human}."
+            ]
+            if include_exercises:
+                user_prompt_parts.append(
+                    f"MUST include: {', '.join(include_exercises)}."
+                )
+            if exclude_exercises:
+                user_prompt_parts.append(
+                    f"NEVER use: {', '.join(exclude_exercises)}."
+                )
+            user_prompt_parts.append("Return JSON only.")
+            user_prompt = " ".join(user_prompt_parts)
 
             response = client.models.generate_content(
                 model=self.config.model,

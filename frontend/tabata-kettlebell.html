@@ -59,7 +59,7 @@
     <!-- Spin Ride CSS (reused base layout) -->
     <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409f" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412c" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412d" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -198,6 +198,33 @@
                     </div>
                   </div>
                   <p class="tk-advanced-hint">Classic Tabata = 8 rounds per set · no warmup included</p>
+                </div>
+
+                <!-- Fine-tune exercises (optional, collapsible) -->
+                <div class="tk-finetune" id="finetuneBlock">
+                  <button type="button" class="tk-finetune-toggle" id="finetuneToggleBtn"
+                          aria-expanded="false" aria-controls="finetunePanel">
+                    <span class="tk-finetune-label">
+                      <i class="bx bx-slider-alt"></i>
+                      Fine tune exercises
+                      <span class="tk-finetune-optional">optional</span>
+                    </span>
+                    <span class="tk-finetune-summary" id="finetuneSummary"></span>
+                    <i class="bx bx-chevron-down tk-finetune-chevron"></i>
+                  </button>
+                  <div class="tk-finetune-panel d-none" id="finetunePanel">
+                    <p class="tk-finetune-hint">
+                      Tap once to <strong class="tk-include-text">include</strong>,
+                      again to <strong class="tk-exclude-text">exclude</strong>,
+                      a third time to clear.
+                    </p>
+                    <div class="tk-exercise-grid" id="exerciseGrid">
+                      <!-- chips injected by tabata-kettlebell.js -->
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link tk-finetune-reset" id="finetuneResetBtn">
+                      Reset all
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Sticky CTA bar (mobile) / inline CTA (desktop) -->
@@ -382,6 +409,6 @@
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412c"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412d"></script>
   </body>
 </html>

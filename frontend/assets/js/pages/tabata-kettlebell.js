@@ -29,6 +29,38 @@
   const SETS_KEY = 'tabataKBSets';
   const ROUNDS_PER_SET_KEY = 'tabataKBRoundsPerSet';
   const LENGTH_KEY = 'tabataKBLength';
+  const INCLUDE_EX_KEY = 'tabataKBIncludeExercises';
+  const EXCLUDE_EX_KEY = 'tabataKBExcludeExercises';
+
+  // Greatest-hits list of kettlebell movements offered for include/exclude
+  // in the "Fine tune" section. Kept short so the chip grid stays scannable
+  // on mobile. Canonical names match the exercise library in the backend
+  // generator prompt so the AI recognizes them as-is.
+  const EXERCISE_CHIPS = [
+    { id: 'two_hand_swing',       label: 'Swing (2H)',     name: 'Two-Hand KB Swing' },
+    { id: 'one_arm_swing',        label: 'Swing (1-arm)',  name: 'Single-Arm KB Swing' },
+    { id: 'goblet_squat',         label: 'Goblet Squat',   name: 'KB Goblet Squat' },
+    { id: 'front_squat',          label: 'Front Squat',    name: 'KB Front Squat' },
+    { id: 'kb_lunge',             label: 'Lunge',          name: 'KB Lunge' },
+    { id: 'kb_clean',             label: 'Clean',          name: 'KB Clean' },
+    { id: 'clean_and_press',      label: 'Clean & Press',  name: 'KB Clean and Press' },
+    { id: 'kb_snatch',            label: 'Snatch',         name: 'KB Snatch' },
+    { id: 'strict_press',         label: 'Strict Press',   name: 'KB Strict Press' },
+    { id: 'push_press',           label: 'Push Press',     name: 'KB Push Press' },
+    { id: 'thruster',             label: 'Thruster',       name: 'KB Thruster' },
+    { id: 'single_arm_row',       label: 'Row',            name: 'KB Single-Arm Row' },
+    { id: 'renegade_row',         label: 'Renegade Row',   name: 'KB Renegade Row' },
+    { id: 'high_pull',            label: 'High Pull',      name: 'KB High Pull' },
+    { id: 'kb_halo',              label: 'Halo',           name: 'KB Halo' },
+    { id: 'turkish_get_up',       label: 'Get-Up',         name: 'KB Turkish Get-Up' },
+    { id: 'kb_windmill',          label: 'Windmill',       name: 'KB Windmill' },
+    { id: 'russian_twist',        label: 'Russian Twist',  name: 'KB Russian Twist' },
+    { id: 'figure_8',             label: 'Figure 8',       name: 'KB Figure 8' },
+    { id: 'kb_burpee',            label: 'KB Burpee',      name: 'KB Burpee with Clean' },
+  ];
+
+  // Map from chip id → the actual exercise name sent to the backend
+  const EXERCISE_BY_ID = Object.fromEntries(EXERCISE_CHIPS.map((c) => [c.id, c.name]));
 
   // Fixed timing constants (must match backend generator)
   //
@@ -48,6 +80,8 @@
   let selectedSets = 5;
   let selectedRoundsPerSet = 8;
   let selectedLength = 20; // preset minutes
+  // Chip id → 'include' | 'exclude'. Absent = neutral.
+  let exercisePrefs = {};
 
   // ── DOM refs ───────────────────────────────────────────────────────────
 
@@ -76,6 +110,11 @@
       totalValue: document.querySelector('#totalTimeHelper .tk-total-value'),
       totalSub: document.querySelector('#totalTimeHelper .tk-total-sub'),
       ctaHint: document.querySelector('.tk-cta-hint'),
+      finetuneToggleBtn: $('finetuneToggleBtn'),
+      finetunePanel: $('finetunePanel'),
+      finetuneSummary: $('finetuneSummary'),
+      finetuneResetBtn: $('finetuneResetBtn'),
+      exerciseGrid: $('exerciseGrid'),
 
       workoutTitle: $('workoutTitle'),
       workoutMeta: $('workoutMeta'),
@@ -594,6 +633,8 @@
         focus_areas: Array.from(selectedFocus),
         sets: selectedSets,
         rounds_per_set: selectedRoundsPerSet,
+        include_exercises: getIncludedExerciseNames(),
+        exclude_exercises: getExcludedExerciseNames(),
       };
 
       const response = await fetch('/api/v3/tabata-kettlebell/generate', {
@@ -739,6 +780,99 @@
     els.setsUpBtn.disabled = selectedSets >= MAX_SETS;
   }
 
+  // ── Fine-tune exercises ────────────────────────────────────────────────
+
+  function renderExerciseChips() {
+    if (!els.exerciseGrid) return;
+    els.exerciseGrid.innerHTML = EXERCISE_CHIPS.map((chip) => {
+      const state = exercisePrefs[chip.id]; // 'include' | 'exclude' | undefined
+      const stateClass = state ? ` ${state}` : '';
+      const iconName = state === 'exclude' ? 'bx-minus' : 'bx-plus';
+      return `<button type="button" class="tk-exercise-chip${stateClass}" data-chip="${chip.id}">
+        <i class="bx ${iconName} tk-chip-icon"></i>${chip.label}
+      </button>`;
+    }).join('');
+  }
+
+  function cycleExerciseState(chipId) {
+    const current = exercisePrefs[chipId];
+    if (!current) {
+      exercisePrefs[chipId] = 'include';
+    } else if (current === 'include') {
+      exercisePrefs[chipId] = 'exclude';
+    } else {
+      delete exercisePrefs[chipId];
+    }
+    saveExercisePrefs();
+    renderExerciseChips();
+    updateFinetuneSummary();
+  }
+
+  function resetExercisePrefs() {
+    exercisePrefs = {};
+    saveExercisePrefs();
+    renderExerciseChips();
+    updateFinetuneSummary();
+  }
+
+  function saveExercisePrefs() {
+    const includes = [];
+    const excludes = [];
+    for (const [id, state] of Object.entries(exercisePrefs)) {
+      if (state === 'include') includes.push(id);
+      else if (state === 'exclude') excludes.push(id);
+    }
+    try {
+      localStorage.setItem(INCLUDE_EX_KEY, JSON.stringify(includes));
+      localStorage.setItem(EXCLUDE_EX_KEY, JSON.stringify(excludes));
+    } catch (e) { /* ignore */ }
+  }
+
+  function loadExercisePrefs() {
+    exercisePrefs = {};
+    try {
+      const inc = JSON.parse(localStorage.getItem(INCLUDE_EX_KEY) || '[]');
+      const exc = JSON.parse(localStorage.getItem(EXCLUDE_EX_KEY) || '[]');
+      if (Array.isArray(inc)) inc.forEach((id) => { if (EXERCISE_BY_ID[id]) exercisePrefs[id] = 'include'; });
+      if (Array.isArray(exc)) exc.forEach((id) => { if (EXERCISE_BY_ID[id]) exercisePrefs[id] = 'exclude'; });
+    } catch (e) { /* ignore */ }
+  }
+
+  function getIncludedExerciseNames() {
+    return Object.entries(exercisePrefs)
+      .filter(([, state]) => state === 'include')
+      .map(([id]) => EXERCISE_BY_ID[id])
+      .filter(Boolean);
+  }
+
+  function getExcludedExerciseNames() {
+    return Object.entries(exercisePrefs)
+      .filter(([, state]) => state === 'exclude')
+      .map(([id]) => EXERCISE_BY_ID[id])
+      .filter(Boolean);
+  }
+
+  function updateFinetuneSummary() {
+    if (!els.finetuneSummary) return;
+    const inc = getIncludedExerciseNames().length;
+    const exc = getExcludedExerciseNames().length;
+    const parts = [];
+    if (inc) parts.push(`${inc} include`);
+    if (exc) parts.push(`${exc} exclude`);
+    els.finetuneSummary.textContent = parts.join(' · ');
+    if (els.finetuneResetBtn) {
+      els.finetuneResetBtn.classList.toggle('d-none', inc === 0 && exc === 0);
+    }
+  }
+
+  function toggleFinetunePanel() {
+    if (!els.finetuneToggleBtn || !els.finetunePanel) return;
+    const expanded = els.finetuneToggleBtn.getAttribute('aria-expanded') === 'true';
+    const next = !expanded;
+    els.finetuneToggleBtn.setAttribute('aria-expanded', String(next));
+    els.finetunePanel.classList.toggle('d-none', !next);
+  }
+
   function setRoundsPerSet(n) {
     selectedRoundsPerSet = n;
     els.roundsPerSetButtons.querySelectorAll('.tk-rounds-btn').forEach((b) => {
@@ -786,6 +920,21 @@
       const n = parseInt(btn.dataset.value, 10);
       if (!Number.isNaN(n)) setRoundsPerSet(n);
     });
+
+    // Fine-tune panel toggle + chip click + reset
+    if (els.finetuneToggleBtn) {
+      els.finetuneToggleBtn.addEventListener('click', toggleFinetunePanel);
+    }
+    if (els.exerciseGrid) {
+      els.exerciseGrid.addEventListener('click', (e) => {
+        const chip = e.target.closest('.tk-exercise-chip');
+        if (!chip) return;
+        cycleExerciseState(chip.dataset.chip);
+      });
+    }
+    if (els.finetuneResetBtn) {
+      els.finetuneResetBtn.addEventListener('click', resetExercisePrefs);
+    }
 
     els.generateBtn.addEventListener('click', () => {
       if (!els.generateBtn.disabled) generateWorkout();
@@ -844,6 +993,12 @@
     selectedSets = setsForPresetLength(selectedProtocol, selectedRoundsPerSet, selectedLength);
     updateSetsDisplay();
     updateTotalTimeHelper();
+
+    // Fine-tune exercise preferences (persisted across sessions)
+    loadExercisePrefs();
+    renderExerciseChips();
+    updateFinetuneSummary();
+
     refreshGenerateButtonState();
   }
 

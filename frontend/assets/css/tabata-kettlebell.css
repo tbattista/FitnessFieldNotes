@@ -280,6 +280,197 @@
   min-width: 110px;
 }
 
+/* ── Fine-tune exercises (collapsible) ────── */
+.tk-finetune {
+  margin: 1.25rem 0 1rem;
+  max-width: 640px;
+}
+
+.tk-finetune-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--bs-border-color, #d1d5db);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--gs-gray-700, #334155);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.tk-finetune-toggle:hover {
+  border-color: var(--gs-primary, #C97C5D);
+  background: rgba(201, 124, 93, 0.04);
+}
+
+.tk-finetune-toggle[aria-expanded="true"] {
+  border-style: solid;
+  border-color: var(--gs-primary, #C97C5D);
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.tk-finetune-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tk-finetune-label i {
+  font-size: 1.1rem;
+  color: var(--gs-primary, #C97C5D);
+}
+
+.tk-finetune-optional {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gs-gray-500, #64748b);
+  margin-left: 0.25rem;
+}
+
+.tk-finetune-summary {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gs-primary, #C97C5D);
+  margin-left: auto;
+  margin-right: 0.5rem;
+}
+
+.tk-finetune-summary:empty {
+  display: none;
+}
+
+.tk-finetune-chevron {
+  font-size: 1.25rem;
+  color: var(--gs-gray-500, #64748b);
+  transition: transform 0.2s ease;
+}
+
+.tk-finetune-toggle[aria-expanded="true"] .tk-finetune-chevron {
+  transform: rotate(180deg);
+}
+
+.tk-finetune-panel {
+  border: 1px solid var(--gs-primary, #C97C5D);
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+  padding: 0.75rem 1rem 1rem;
+  background: rgba(201, 124, 93, 0.03);
+}
+
+.tk-finetune-hint {
+  font-size: 0.75rem;
+  color: var(--gs-gray-500, #64748b);
+  margin: 0 0 0.75rem 0;
+}
+
+.tk-include-text { color: var(--gs-success, #8CBF9F); }
+.tk-exclude-text { color: var(--gs-danger, #D66A6A); }
+
+.tk-exercise-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tk-exercise-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #fff;
+  border: 1px solid var(--bs-border-color, #d1d5db);
+  color: var(--gs-gray-700, #334155);
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.tk-exercise-chip:hover {
+  border-color: var(--gs-primary, #C97C5D);
+}
+
+.tk-exercise-chip .tk-chip-icon {
+  font-size: 0.9rem;
+  opacity: 0;
+  width: 0;
+  transition: opacity 0.15s ease, width 0.15s ease;
+}
+
+.tk-exercise-chip.include,
+.tk-exercise-chip.exclude {
+  font-weight: 600;
+}
+
+.tk-exercise-chip.include .tk-chip-icon,
+.tk-exercise-chip.exclude .tk-chip-icon {
+  opacity: 1;
+  width: 0.9rem;
+}
+
+.tk-exercise-chip.include {
+  background: var(--gs-success, #8CBF9F);
+  border-color: var(--gs-success, #8CBF9F);
+  color: #fff;
+}
+
+.tk-exercise-chip.exclude {
+  background: var(--gs-danger, #D66A6A);
+  border-color: var(--gs-danger, #D66A6A);
+  color: #fff;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.tk-finetune-reset {
+  margin-top: 0.5rem;
+  padding: 0;
+  font-size: 0.75rem;
+  color: var(--gs-gray-500, #64748b);
+  text-decoration: none;
+}
+
+.tk-finetune-reset:hover {
+  color: var(--gs-primary, #C97C5D);
+  text-decoration: underline;
+}
+
+.tk-finetune-reset.d-none { display: none; }
+
+[data-bs-theme="dark"] .tk-finetune-toggle {
+  color: var(--bs-body-color, #e4e6eb);
+}
+
+[data-bs-theme="dark"] .tk-exercise-chip {
+  background: var(--bs-body-bg, #23272b);
+  color: var(--bs-body-color, #e4e6eb);
+  border-color: var(--bs-border-color, #3a3f47);
+}
+
+[data-bs-theme="dark"] .tk-exercise-chip.include {
+  background: var(--gs-success, #8CBF9F);
+  border-color: var(--gs-success, #8CBF9F);
+  color: #0f172a;
+}
+
+[data-bs-theme="dark"] .tk-exercise-chip.exclude {
+  background: var(--gs-danger, #D66A6A);
+  border-color: var(--gs-danger, #D66A6A);
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .tk-finetune-panel {
+  background: rgba(201, 124, 93, 0.07);
+}
+
 /* ── CTA bar (sticky on mobile, inline on desktop) ── */
 .tk-cta-bar {
   margin-top: 1rem;

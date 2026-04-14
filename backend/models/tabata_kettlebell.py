@@ -49,6 +49,16 @@ class GenerateTabataKettlebellRequest(BaseModel):
         le=12,
         description="Rounds per set. One round = one work interval + one rest interval. Default 8 (classic tabata).",
     )
+    include_exercises: List[str] = Field(
+        default_factory=list,
+        max_length=20,
+        description="Exercise names the workout MUST include at least once each.",
+    )
+    exclude_exercises: List[str] = Field(
+        default_factory=list,
+        max_length=20,
+        description="Exercise names the workout must NOT use.",
+    )
 
 
 class TabataKettlebellSegment(BaseModel):
