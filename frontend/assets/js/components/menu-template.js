@@ -63,7 +63,7 @@ function getMenuHTML(activePage = 'home') {
 
                 <li class="menu-item ${isSpinRide ? 'active' : ''}"${isSpinRide ? ' aria-current="page"' : ''}>
                     <a href="spin-ride.html" class="menu-link">
-                        <i class="menu-icon tf-icons bx ${isSpinRide ? 'bxs-cycling' : 'bx-cycling'}"></i>
+                        <i class="menu-icon tf-icons bx bx-cycling"></i>
                         <div class="text-truncate">Spin Ride</div>
                     </a>
                 </li>

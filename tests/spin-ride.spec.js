@@ -81,6 +81,16 @@ test.describe('Spin Ride Page', () => {
     await expect(page.locator('.bx-cycling')).toBeAttached();
   });
 
+  test('sidebar Spin Ride menu item shows cycling icon when active', async ({ page }) => {
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+
+    const activeItem = page.locator('.menu-item.active', { hasText: 'Spin Ride' });
+    await expect(activeItem).toBeVisible();
+    await expect(activeItem.locator('i.menu-icon.bx-cycling')).toBeVisible();
+  });
+
   test('ride timer UI elements exist but are hidden initially', async ({ page }) => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');
