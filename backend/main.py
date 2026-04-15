@@ -190,6 +190,20 @@ async def serve_programs():
             status_code=404
         )
 
+@app.get("/program-schedule-builder", response_class=HTMLResponse)
+@app.get("/program-schedule-builder.html", response_class=HTMLResponse)
+async def serve_program_schedule_builder():
+    """Serve the Program Schedule Builder page"""
+    try:
+        with open("frontend/program-schedule-builder.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Program Schedule Builder page not found</h1>",
+            status_code=404
+        )
+
+
 @app.get("/workouts", response_class=HTMLResponse)
 @app.get("/workout-builder", response_class=HTMLResponse)
 @app.get("/workout-builder.html", response_class=HTMLResponse)

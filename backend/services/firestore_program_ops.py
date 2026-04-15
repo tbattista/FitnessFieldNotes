@@ -34,7 +34,11 @@ class FirestoreProgramOps:
                 difficulty_level=program_request.difficulty_level,
                 tags=program_request.tags,
                 tracker_enabled=getattr(program_request, 'tracker_enabled', False),
-                tracker_goal=getattr(program_request, 'tracker_goal', None)
+                tracker_goal=getattr(program_request, 'tracker_goal', None),
+                schedule_type=getattr(program_request, 'schedule_type', 'flat') or 'flat',
+                schedule=getattr(program_request, 'schedule', None) or [],
+                weeks_in_cycle=getattr(program_request, 'weeks_in_cycle', 1) or 1,
+                start_date=getattr(program_request, 'start_date', None)
             )
 
             # Save to Firestore

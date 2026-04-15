@@ -1,9 +1,19 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional, List, Literal
+from datetime import datetime, date
 from uuid import uuid4
 
 from .template import WorkoutTemplate
+
+
+class ProgramScheduleEntry(BaseModel):
+    """A single slot in a weekly program schedule."""
+
+    workout_id: str = Field(..., description="ID of the workout template")
+    week_number: int = Field(..., ge=1, description="1-indexed week within the program cycle")
+    day_of_week: int = Field(..., ge=0, le=6, description="0=Mon..6=Sun")
+    custom_name: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = Field(default=None, max_length=500)
 
 
 class ProgramWorkout(BaseModel):
@@ -104,6 +114,27 @@ class Program(BaseModel):
         description="Whether this is the currently active/pinned program"
     )
 
+    # Scheduled/Weekly program builder
+    schedule_type: Literal["flat", "weekly"] = Field(
+        default="flat",
+        description="'flat' = legacy ordered list, 'weekly' = scheduled week grid"
+    )
+    schedule: List[ProgramScheduleEntry] = Field(
+        default_factory=list,
+        description="Weekly schedule entries (used when schedule_type='weekly')"
+    )
+    weeks_in_cycle: int = Field(
+        default=1,
+        ge=1,
+        le=52,
+        description="Number of weeks in the schedule cycle before it repeats"
+    )
+    start_date: Optional[str] = Field(
+        default=None,
+        description="ISO date (YYYY-MM-DD) when the user starts this program",
+        example="2026-04-15"
+    )
+
 
 class CreateProgramRequest(BaseModel):
     """Request model for creating a new program"""
@@ -115,6 +146,10 @@ class CreateProgramRequest(BaseModel):
     tags: List[str] = Field(default_factory=list, max_items=10)
     tracker_enabled: bool = Field(default=False, description="Enable habit-style tracker")
     tracker_goal: Optional[str] = Field(default=None, description="Frequency goal e.g. '3/week'")
+    schedule_type: Optional[Literal["flat", "weekly"]] = Field(default="flat")
+    schedule: Optional[List[ProgramScheduleEntry]] = Field(default=None)
+    weeks_in_cycle: Optional[int] = Field(default=1, ge=1, le=52)
+    start_date: Optional[str] = Field(default=None)
 
 class UpdateProgramRequest(BaseModel):
     """Request model for updating a program"""
@@ -129,6 +164,10 @@ class UpdateProgramRequest(BaseModel):
     tracker_goal: Optional[str] = Field(None, description="Frequency goal e.g. '3/week'")
     is_active: Optional[bool] = Field(None, description="Set as active/pinned program")
     started_at: Optional[datetime] = Field(None, description="When user started the program")
+    schedule_type: Optional[Literal["flat", "weekly"]] = Field(None)
+    schedule: Optional[List[ProgramScheduleEntry]] = Field(None)
+    weeks_in_cycle: Optional[int] = Field(None, ge=1, le=52)
+    start_date: Optional[str] = Field(None)
 
 class AddWorkoutToProgramRequest(BaseModel):
     """Request model for adding a workout to a program"""

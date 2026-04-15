@@ -799,6 +799,37 @@ class FirestoreSessionOps:
                         logger.warning(f"Failed orphan session query batch: {str(e)}")
                         continue
 
+            # Query 3: orphan sessions matched by workout_name. Fallback for the
+            # ID-drift case — program.workouts[].workout_id points at a stale id
+            # but the user is still completing workouts with the same name.
+            if program_workout_names:
+                unique_names = list({n for n in program_workout_names if n})
+                BATCH = 30
+                for i in range(0, len(unique_names), BATCH):
+                    batch_names = unique_names[i:i + BATCH]
+                    try:
+                        name_ref = (self.db.collection('users')
+                                    .document(user_id)
+                                    .collection('workout_sessions')
+                                    .where('workout_name', 'in', batch_names)
+                                    .where('status', '==', 'completed')
+                                    .limit(limit))
+                        for doc in name_ref.stream():
+                            try:
+                                session_data = doc.to_dict()
+                                existing_pid = session_data.get('program_id')
+                                # Only credit if unlinked, or already this program
+                                if existing_pid and existing_pid != program_id:
+                                    continue
+                                session = WorkoutSession(**session_data)
+                                sessions_by_id.setdefault(session.id, session)
+                            except Exception as e:
+                                logger.warning(f"Failed to parse name-matched session {doc.id}: {str(e)}")
+                                continue
+                    except Exception as e:
+                        logger.warning(f"Failed name-match session query batch: {str(e)}")
+                        continue
+
             sessions = list(sessions_by_id.values())
             # Sort by completed_at desc, missing values last
             sessions.sort(
@@ -818,14 +849,16 @@ class FirestoreSessionOps:
         user_id: str,
         program_id: str,
         program_name: str,
-        program_workout_ids: List[str]
+        program_workout_ids: List[str],
+        program_workout_names: Optional[List[str]] = None
     ) -> dict:
         """Compute program progress stats from completed sessions"""
         try:
             sessions = await self.get_program_sessions(
                 user_id,
                 program_id,
-                program_workout_ids=program_workout_ids
+                program_workout_ids=program_workout_ids,
+                program_workout_names=program_workout_names
             )
 
             # Build stats

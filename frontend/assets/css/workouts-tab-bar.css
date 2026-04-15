@@ -23,9 +23,9 @@
 
 .workouts-tab-bar .nav-link {
     color: var(--gs-gray-500);
-    font-size: 0.875rem;
-    font-weight: 500;
-    padding: 0.625rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
     border: none;
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
@@ -37,8 +37,8 @@
 }
 
 .workouts-tab-bar .nav-link i {
-    font-size: 1rem;
-    vertical-align: -1px;
+    font-size: 1.125rem;
+    vertical-align: -2px;
 }
 
 /* ============================================
@@ -104,8 +104,9 @@
     }
 
     .workouts-tab-bar .nav-link {
-        padding: 0.5rem 0.5rem;
-        font-size: 0.8125rem;
+        padding: 0.625rem 0.5rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
     }
 }
 

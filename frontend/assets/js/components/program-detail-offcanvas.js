@@ -196,6 +196,19 @@ class ProgramDetailOffcanvas {
             html += `<p class="text-muted mb-2">${this._escapeHtml(program.description)}</p>`;
         }
 
+        // Schedule builder entry point
+        const isScheduled = program.schedule_type === 'weekly';
+        const scheduleUrl = `program-schedule-builder.html?programId=${encodeURIComponent(program.id)}`;
+        const scheduleLabel = isScheduled ? 'Edit schedule' : 'Convert to scheduled';
+        const scheduleIcon = isScheduled ? 'bx-calendar-edit' : 'bx-calendar-plus';
+        html += `
+            <div class="mt-2 mb-2">
+                <a href="${scheduleUrl}" class="btn btn-sm btn-outline-primary">
+                    <i class="bx ${scheduleIcon} me-1"></i>${scheduleLabel}
+                </a>
+            </div>
+        `;
+
         html += '</div>';
 
         // --- Collapsible Details section ---

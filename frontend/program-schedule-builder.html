@@ -1,0 +1,180 @@
+<!doctype html>
+<html
+  lang="en"
+  class="layout-menu-fixed layout-compact"
+  data-assets-path="/static/assets/"
+  data-template="vertical-menu-template-free">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+
+    <title>Program Schedule - Fitness Field Notes</title>
+    <meta name="description" content="Build a weekly schedule for your training program" />
+
+    <link rel="icon" type="image/svg+xml" href="/static/assets/img/favicon/favicon.svg" />
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#C97C5D">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="/static/assets/vendor/fonts/iconify-icons.css" />
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="/static/assets/vendor/css/core.css" />
+    <link rel="stylesheet" href="/static/assets/css/demo.css" />
+    <link rel="stylesheet" href="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+
+    <link rel="stylesheet" href="/static/assets/css/ffn-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/workouts-tab-bar.css" />
+    <link rel="stylesheet" href="/static/assets/css/components.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/calendar-view.css" />
+    <link rel="stylesheet" href="/static/assets/css/program-schedule-builder.css?v=1.0.0" />
+
+    <script src="/static/assets/vendor/js/helpers.js"></script>
+    <script src="/static/assets/js/config.js"></script>
+    <script src="/static/assets/js/services/theme-manager.js"></script>
+    <script>
+      (function() {
+        if (window.innerWidth >= 992) document.documentElement.classList.add('desktop-view');
+        else document.documentElement.classList.add('mobile-view');
+      })();
+    </script>
+    <script src="/static/assets/js/app-config.js"></script>
+    <script type="module" src="/static/assets/js/firebase-loader.js"></script>
+  </head>
+
+  <body>
+    <div class="layout-wrapper layout-content-navbar">
+      <div class="layout-container">
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme"></aside>
+
+        <div class="layout-page">
+          <div class="content-wrapper">
+            <div class="container-xxl flex-grow-1 container-p-y">
+
+              <div id="alertContainer" class="mb-3"></div>
+
+              <!-- Header -->
+              <div class="d-flex align-items-center mb-3">
+                <a href="programs.html" class="btn btn-icon btn-text-secondary me-2" aria-label="Back">
+                  <i class="bx bx-arrow-back"></i>
+                </a>
+                <div class="flex-grow-1 min-w-0">
+                  <h4 class="mb-0 text-truncate" id="psb-program-name">Program Schedule</h4>
+                  <small class="text-muted" id="psb-program-meta"></small>
+                </div>
+                <button id="psb-save-btn" class="btn btn-primary btn-sm ms-2" disabled>
+                  <i class="bx bx-save me-1"></i>Save
+                </button>
+              </div>
+
+              <!-- Meta bar: weeks, start date -->
+              <div class="row g-2 mb-3 psb-meta-bar">
+                <div class="col-6 col-md-4">
+                  <label class="form-label small mb-1">Start date</label>
+                  <input type="date" id="psb-start-date" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="form-label small mb-1">Weeks in cycle</label>
+                  <input type="number" id="psb-weeks-in-cycle" class="form-control form-control-sm" min="1" max="12" value="1">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label small mb-1">Duration (weeks)</label>
+                  <input type="number" id="psb-duration-weeks" class="form-control form-control-sm" min="1" max="52">
+                </div>
+              </div>
+
+              <!-- Tabs -->
+              <ul class="nav nav-pills flex-wrap mb-3" role="tablist">
+                <li class="nav-item">
+                  <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#psb-tab-grid" type="button">
+                    <i class="bx bx-grid-alt me-1"></i>Week Grid
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link" data-bs-toggle="tab" data-bs-target="#psb-tab-calendar" type="button">
+                    <i class="bx bx-calendar me-1"></i>Calendar
+                  </button>
+                </li>
+              </ul>
+
+              <div class="tab-content">
+                <!-- Week Grid -->
+                <div class="tab-pane fade show active" id="psb-tab-grid">
+                  <div id="psb-week-grid-host" class="psb-week-grid-host"></div>
+                  <div class="text-center mt-3">
+                    <button id="psb-add-week-btn" class="btn btn-outline-primary btn-sm">
+                      <i class="bx bx-plus me-1"></i>Add week
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Calendar -->
+                <div class="tab-pane fade" id="psb-tab-calendar">
+                  <div id="psb-calendar-host" class="psb-calendar-host"></div>
+                  <div id="psb-adherence-summary" class="mt-3"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workout Picker Modal -->
+    <div class="modal fade" id="psb-workout-picker-modal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Pick a workout</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-0">
+            <div class="p-3 border-bottom sticky-top bg-body">
+              <input type="text" id="psb-picker-search" class="form-control form-control-sm" placeholder="Search workouts...">
+            </div>
+            <div id="psb-picker-list" class="list-group list-group-flush"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core JS -->
+    <script src="/static/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="/static/assets/vendor/libs/popper/popper.js"></script>
+    <script src="/static/assets/vendor/js/bootstrap.js"></script>
+    <script src="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="/static/assets/vendor/js/menu.js"></script>
+
+    <script src="/static/assets/js/components/menu-template.js"></script>
+    <script src="/static/assets/js/components/navbar-template.js"></script>
+    <script src="/static/assets/js/components/auth-modals-template.js"></script>
+    <script src="/static/assets/js/services/menu-injection-service.js"></script>
+    <script src="/static/assets/js/services/navbar-injection-service.js"></script>
+    <script src="/static/assets/js/main.js"></script>
+
+    <!-- Firebase + data manager -->
+    <script src="/static/assets/js/firebase/firebase-init.js"></script>
+    <script src="/static/assets/js/firebase/auth-service.js"></script>
+    <script src="/static/assets/js/firebase/auth-ui.js"></script>
+    <script src="/static/assets/js/firebase/data-manager-program-ops.js"></script>
+    <script src="/static/assets/js/firebase/data-manager-workout-ops.js"></script>
+    <script src="/static/assets/js/firebase/data-manager.js"></script>
+
+    <!-- Calendar View (reused from workout history) -->
+    <script src="/static/assets/js/components/calendar-view.js"></script>
+
+    <!-- Schedule Builder components -->
+    <script src="/static/assets/js/components/program-week-grid.js?v=1.0.0"></script>
+    <script src="/static/assets/js/pages/program-schedule-builder-page.js?v=1.0.0"></script>
+  </body>
+</html>

@@ -1,0 +1,238 @@
+/* Program Schedule Builder styles */
+
+.psb-meta-bar .form-label {
+    font-weight: 500;
+}
+
+/* ---------- Week Grid ---------- */
+.psb-week-grid-host {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pwg-root {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pwg-week {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.pwg-week-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.pwg-week-label {
+    font-weight: 600;
+    color: var(--bs-secondary);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.pwg-days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.375rem;
+}
+
+.pwg-day {
+    position: relative;
+    border: 1px dashed var(--bs-border-color);
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.375rem;
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    background: var(--bs-tertiary-bg);
+}
+
+.pwg-day:hover,
+.pwg-day:focus-visible {
+    border-color: var(--bs-primary);
+    outline: none;
+}
+
+.pwg-day--filled {
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--bs-primary) 40%, transparent);
+}
+
+.pwg-day-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+}
+
+.pwg-day-body {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 0;
+}
+
+.pwg-chip {
+    font-size: 0.75rem;
+    line-height: 1.1;
+    text-align: center;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+    padding: 0 0.125rem;
+    color: var(--bs-body-color);
+}
+
+.pwg-plus {
+    font-size: 1.25rem;
+    color: var(--bs-secondary);
+    opacity: 0.5;
+}
+
+.pwg-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.pwg-remove:hover {
+    background: var(--bs-danger);
+    color: #fff;
+    border-color: var(--bs-danger);
+}
+
+/* Mobile: stack days vertically if grid gets too cramped */
+@media (max-width: 480px) {
+    .pwg-days {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.25rem;
+    }
+    .pwg-day {
+        min-height: 64px;
+        padding: 0.375rem 0.25rem;
+    }
+    .pwg-chip {
+        font-size: 0.65rem;
+        -webkit-line-clamp: 2;
+    }
+}
+
+/* ---------- Calendar ---------- */
+.psb-calendar-host {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.psb-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.psb-cal-day-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--bs-secondary);
+    text-align: center;
+    font-weight: 600;
+    padding: 0.25rem 0;
+}
+
+.psb-cal-cell {
+    position: relative;
+    min-height: 60px;
+    padding: 0.25rem;
+    border-radius: 0.375rem;
+    background: var(--bs-tertiary-bg);
+    display: flex;
+    flex-direction: column;
+}
+
+.psb-cal-cell--blank {
+    background: transparent;
+}
+
+.psb-cal-cell--scheduled {
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bs-primary) 30%, transparent);
+}
+
+.psb-cal-cell--completed {
+    background: color-mix(in srgb, var(--bs-success) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bs-success) 40%, transparent);
+}
+
+.psb-cal-date {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+}
+
+.psb-cal-slot {
+    margin-top: auto;
+    font-size: 0.7rem;
+    line-height: 1.1;
+    color: var(--bs-body-color);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.psb-cal-slot-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.psb-cal-check {
+    color: var(--bs-success);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+    .psb-cal-cell {
+        min-height: 48px;
+        padding: 0.125rem;
+    }
+    .psb-cal-date {
+        font-size: 0.65rem;
+    }
+    .psb-cal-slot-name {
+        display: none;
+    }
+}

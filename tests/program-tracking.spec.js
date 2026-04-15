@@ -145,4 +145,26 @@ test.describe('Program Tracking Feature', () => {
     expect(detected).toBe('explicit-prog-id');
   });
 
+  test('home card never displays a raw workout- id as the Next label', async ({ page }) => {
+    // Regression test for Bug A: the "Your Program" card used to fall back to
+    // the raw workout_id (e.g. "workout-1e3c1017") when the workout couldn't
+    // be looked up by custom_name. After the fix, the fallback chain should
+    // be custom_name -> workout.name -> "Workout" — never the raw id.
+    await page.goto(`${BASE}/`);
+    await page.waitForTimeout(2500);
+
+    const card = page.locator('.whats-next-card');
+    if (await card.count() === 0) {
+      test.skip(); // No program card rendered in current state
+      return;
+    }
+    const text = (await card.first().textContent()) || '';
+    // If a "Next:" line is present, its value must not be a raw workout- id
+    const match = text.match(/Next:\s*([^\n·]+?)(?:\s+·|\s*$)/);
+    if (match) {
+      const nextValue = match[1].trim();
+      expect(nextValue).not.toMatch(/^workout-[a-z0-9-]{6,}$/i);
+    }
+  });
+
 });

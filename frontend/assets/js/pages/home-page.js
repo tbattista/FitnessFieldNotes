@@ -204,70 +204,90 @@
         // 2. Check for active program (stored in localStorage, synced with API)
         const activeProgramId = localStorage.getItem('ffn_active_program_id');
         if (activeProgramId) {
-            // Try to load the active program's next workout
             try {
                 const programs = await window.dataManager?.getPrograms?.({ pageSize: 100 });
                 const activeProgram = (programs || []).find(p => p.id === activeProgramId);
-                if (activeProgram && activeProgram.workouts?.length > 0) {
-                    // Find next workout: first one not completed in last 7 days
-                    const nextWorkout = activeProgram.workouts[0]; // Simple: show first workout
+                if (activeProgram) {
+                    const allWorkouts = await window.dataManager?.getWorkouts?.({ pageSize: 500 }).catch(() => []);
 
-                    // Resolve real workout name instead of falling back to the raw ID.
-                    // ProgramWorkout only stores workout_id + optional custom_name — we
-                    // need to look up the underlying workout to get its display name.
-                    let workoutName = nextWorkout.custom_name;
-                    if (!workoutName) {
-                        try {
-                            const allWorkouts = await window.dataManager?.getWorkouts?.({ pageSize: 500 });
+                    // Scheduled (weekly) program path
+                    if (activeProgram.schedule_type === 'weekly'
+                        && Array.isArray(activeProgram.schedule)
+                        && activeProgram.schedule.length > 0) {
+                        const next = _computeNextScheduledSlot(activeProgram);
+                        if (next) {
+                            const match = (allWorkouts || []).find(w => w.id === next.workout_id);
+                            const workoutName = next.custom_name || match?.name || 'Workout';
+                            const progressHtml = await _buildWeeklyProgressHtml(activeProgramId);
+
+                            container.innerHTML = `
+                                <div class="card whats-next-card">
+                                    <div class="card-body py-3 px-3">
+                                        <small class="text-muted text-uppercase fw-semibold">Your Program</small>
+                                        <h6 class="fw-bold mt-1 mb-1">${escapeHtml(activeProgram.name)}</h6>
+                                        ${progressHtml}
+                                        <p class="text-muted small mb-2">Next: ${escapeHtml(workoutName)} <span class="text-muted">· ${escapeHtml(next.whenLabel)}</span></p>
+                                        <a href="workout-mode.html?id=${next.workout_id}&programId=${activeProgramId}" class="btn btn-primary btn-sm">
+                                            <i class="bx bx-play me-1"></i>Start Workout
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                            return;
+                        }
+                    }
+
+                    // Flat program path (legacy)
+                    if (activeProgram.workouts?.length > 0) {
+                        const nextWorkout = activeProgram.workouts[0];
+                        let workoutName = nextWorkout.custom_name;
+                        if (!workoutName) {
                             const match = (allWorkouts || []).find(w => w.id === nextWorkout.workout_id);
                             workoutName = match?.name || 'Workout';
-                        } catch (_) {
-                            workoutName = 'Workout';
                         }
-                    }
 
-                    // Try to load progress for the mini stats
-                    let progressHtml = '';
-                    try {
-                        if (window.authService?.isUserAuthenticated()) {
-                            const token = await window.authService.getIdToken();
-                            if (token) {
-                                const url = window.config.api.getUrl(`/api/v3/firebase/programs/${activeProgramId}/progress`);
-                                const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                                if (resp.ok) {
-                                    const progress = await resp.json();
-                                    const pct = Math.round(progress.completion_percentage || 0);
-                                    const streak = progress.current_streak || 0;
-                                    progressHtml = `
-                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                            <div class="progress flex-grow-1" style="height: 5px;">
-                                                <div class="progress-bar bg-${pct >= 100 ? 'success' : 'primary'}" style="width: ${pct}%"></div>
+                        let progressHtml = '';
+                        try {
+                            if (window.authService?.isUserAuthenticated()) {
+                                const token = await window.authService.getIdToken();
+                                if (token) {
+                                    const url = window.config.api.getUrl(`/api/v3/firebase/programs/${activeProgramId}/progress`);
+                                    const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                                    if (resp.ok) {
+                                        const progress = await resp.json();
+                                        const pct = Math.round(progress.completion_percentage || 0);
+                                        const streak = progress.current_streak || 0;
+                                        progressHtml = `
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <div class="progress flex-grow-1" style="height: 5px;">
+                                                    <div class="progress-bar bg-${pct >= 100 ? 'success' : 'primary'}" style="width: ${pct}%"></div>
+                                                </div>
+                                                <small class="text-muted">${progress.total_sessions} sessions</small>
+                                                ${streak > 0 ? `<span class="badge bg-label-warning" style="font-size: 0.65rem;"><i class="bx bx-flame"></i>${streak}d</span>` : ''}
                                             </div>
-                                            <small class="text-muted">${progress.total_sessions} sessions</small>
-                                            ${streak > 0 ? `<span class="badge bg-label-warning" style="font-size: 0.65rem;"><i class="bx bx-flame"></i>${streak}d</span>` : ''}
-                                        </div>
-                                    `;
+                                        `;
+                                    }
                                 }
                             }
+                        } catch (progressErr) {
+                            // Silently fail - progress is optional enhancement
                         }
-                    } catch (progressErr) {
-                        // Silently fail - progress is optional enhancement
-                    }
 
-                    container.innerHTML = `
-                        <div class="card whats-next-card">
-                            <div class="card-body py-3 px-3">
-                                <small class="text-muted text-uppercase fw-semibold">Your Program</small>
-                                <h6 class="fw-bold mt-1 mb-1">${escapeHtml(activeProgram.name)}</h6>
-                                ${progressHtml}
-                                <p class="text-muted small mb-2">Next: ${escapeHtml(workoutName)}</p>
-                                <a href="workout-mode.html?id=${nextWorkout.workout_id}&programId=${activeProgramId}" class="btn btn-primary btn-sm">
-                                    <i class="bx bx-play me-1"></i>Start Workout
-                                </a>
+                        container.innerHTML = `
+                            <div class="card whats-next-card">
+                                <div class="card-body py-3 px-3">
+                                    <small class="text-muted text-uppercase fw-semibold">Your Program</small>
+                                    <h6 class="fw-bold mt-1 mb-1">${escapeHtml(activeProgram.name)}</h6>
+                                    ${progressHtml}
+                                    <p class="text-muted small mb-2">Next: ${escapeHtml(workoutName)}</p>
+                                    <a href="workout-mode.html?id=${nextWorkout.workout_id}&programId=${activeProgramId}" class="btn btn-primary btn-sm">
+                                        <i class="bx bx-play me-1"></i>Start Workout
+                                    </a>
+                                </div>
                             </div>
-                        </div>
-                    `;
-                    return;
+                        `;
+                        return;
+                    }
                 }
             } catch (e) {
                 console.warn('Could not load active program:', e);
@@ -287,6 +307,76 @@
                 </div>
             </div>
         `;
+    }
+
+    // --- Weekly Program Helpers ---
+
+    // Find the next scheduled slot on or after today, based on start_date + schedule.
+    // Skips today's slot if it's already in the past for today (simple heuristic: today
+    // counts if it's scheduled, regardless of time).
+    function _computeNextScheduledSlot(program) {
+        if (!program || !Array.isArray(program.schedule) || program.schedule.length === 0) return null;
+        if (!program.start_date) return null;
+
+        const start = new Date(program.start_date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const duration = program.duration_weeks || program.weeks_in_cycle || 1;
+        const weeksInCycle = program.weeks_in_cycle || 1;
+
+        const daysSinceStart = Math.floor((today - start) / 86400000);
+        const todayWeekIdx = daysSinceStart >= 0 ? Math.floor(daysSinceStart / 7) : 0;
+        const todayDow = daysSinceStart >= 0 ? (daysSinceStart % 7) : -1;
+
+        // Walk forward week by week looking for scheduled slots
+        for (let wi = Math.max(0, todayWeekIdx); wi < duration; wi++) {
+            const cycleWeek = (wi % weeksInCycle) + 1;
+            const slots = program.schedule
+                .filter(e => e.week_number === cycleWeek)
+                .sort((a, b) => a.day_of_week - b.day_of_week);
+            for (const slot of slots) {
+                // Skip slots before today's day-of-week in the current week
+                if (wi === todayWeekIdx && slot.day_of_week < todayDow) continue;
+                const slotDate = new Date(start);
+                slotDate.setDate(slotDate.getDate() + wi * 7 + slot.day_of_week);
+                const delta = Math.round((slotDate - today) / 86400000);
+                let whenLabel;
+                if (delta === 0) whenLabel = 'Today';
+                else if (delta === 1) whenLabel = 'Tomorrow';
+                else if (delta > 1 && delta < 7) whenLabel = `In ${delta} days`;
+                else whenLabel = slotDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return { ...slot, whenLabel };
+            }
+        }
+        return null;
+    }
+
+    async function _buildWeeklyProgressHtml(programId) {
+        try {
+            if (!window.authService?.isUserAuthenticated()) return '';
+            const token = await window.authService.getIdToken();
+            if (!token) return '';
+            const url = window.config.api.getUrl(`/api/v3/firebase/programs/${programId}/adherence`);
+            const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!resp.ok) return '';
+            const a = await resp.json();
+            if (a.schedule_type !== 'weekly') return '';
+            const pct = a.adherence_percentage || 0;
+            const currentWeek = a.weeks?.find(w => w.week_index === a.current_week);
+            const thisWeekLabel = currentWeek
+                ? `${currentWeek.completed_count}/${currentWeek.scheduled_count} this week`
+                : `${a.total_completed}/${a.total_scheduled} total`;
+            return `
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="progress flex-grow-1" style="height: 5px;">
+                        <div class="progress-bar bg-${pct >= 80 ? 'success' : 'primary'}" style="width: ${pct}%"></div>
+                    </div>
+                    <small class="text-muted">${thisWeekLabel}</small>
+                </div>
+            `;
+        } catch (_) {
+            return '';
+        }
     }
 
     // --- Greeting ---

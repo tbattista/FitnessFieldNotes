@@ -5,7 +5,8 @@ Handles program CRUD, workout associations, and multi-page document generation
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
+from datetime import date, timedelta
 import logging
 from ..models import (
     Program, CreateProgramRequest, UpdateProgramRequest,
@@ -534,11 +535,26 @@ async def get_program_progress_firebase(
 
         program_workout_ids = [pw.workout_id for pw in (program.workouts or [])]
 
+        # Resolve real workout names so tracking survives workout-id drift
+        # (duplicate/recreate scenarios). We collect both the underlying
+        # workout's .name and any custom_name the user set in the program.
+        program_workout_names: List[str] = []
+        for pw in (program.workouts or []):
+            if getattr(pw, 'custom_name', None):
+                program_workout_names.append(pw.custom_name)
+            try:
+                w = await firestore_data_service.get_workout(user_id, pw.workout_id)
+                if w and getattr(w, 'name', None):
+                    program_workout_names.append(w.name)
+            except Exception:
+                pass
+
         progress = await firestore_data_service.get_program_progress(
             user_id=user_id,
             program_id=program_id,
             program_name=program.name,
-            program_workout_ids=program_workout_ids
+            program_workout_ids=program_workout_ids,
+            program_workout_names=program_workout_names
         )
 
         return ProgramProgressResponse(**progress)
@@ -548,6 +564,163 @@ async def get_program_progress_firebase(
     except Exception as e:
         logger.error(f"Error getting program progress: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting program progress: {str(e)}")
+
+
+def _compute_program_adherence(program, sessions, session_name_matches_workout):
+    """Compute week-by-week adherence for a scheduled (weekly) program.
+
+    Uses loose / credit-the-week matching: a scheduled slot counts as completed
+    if there's any completed session in the same calendar week with a matching
+    workout_id OR matching workout_name.
+    """
+    if program.schedule_type != 'weekly' or not program.schedule or not program.start_date:
+        return {
+            "schedule_type": getattr(program, 'schedule_type', 'flat'),
+            "weeks": [],
+            "current_week": 0,
+            "total_scheduled": 0,
+            "total_completed": 0,
+            "adherence_percentage": 0.0,
+        }
+
+    try:
+        start = date.fromisoformat(program.start_date)
+    except Exception:
+        return {
+            "schedule_type": "weekly",
+            "weeks": [],
+            "current_week": 0,
+            "total_scheduled": 0,
+            "total_completed": 0,
+            "adherence_percentage": 0.0,
+        }
+
+    duration_weeks = program.duration_weeks or program.weeks_in_cycle or 1
+    weeks_in_cycle = program.weeks_in_cycle or 1
+
+    # Bucket completed sessions by ISO (year, week)
+    sessions_by_week: Dict[Tuple[int, int], list] = {}
+    for s in sessions:
+        ts = getattr(s, 'completed_at', None) or getattr(s, 'started_at', None)
+        if not ts or not hasattr(ts, 'isocalendar'):
+            continue
+        iso_y, iso_w, _ = ts.isocalendar()
+        sessions_by_week.setdefault((iso_y, iso_w), []).append(s)
+
+    weeks_out = []
+    for wi in range(duration_weeks):
+        week_start = start + timedelta(days=wi * 7)
+        iso_y, iso_w, _ = week_start.isocalendar()
+        cycle_week = (wi % weeks_in_cycle) + 1
+        week_slots = [e for e in program.schedule if e.week_number == cycle_week]
+        week_sessions = sessions_by_week.get((iso_y, iso_w), [])
+
+        entries = []
+        for slot in week_slots:
+            matched_id = None
+            for sess in week_sessions:
+                if getattr(sess, 'workout_id', None) == slot.workout_id:
+                    matched_id = sess.id
+                    break
+                # Name fallback: same-named workout done in the same week
+                if slot.custom_name and getattr(sess, 'workout_name', None) == slot.custom_name:
+                    matched_id = sess.id
+                    break
+                if session_name_matches_workout(sess, slot.workout_id):
+                    matched_id = sess.id
+                    break
+            entries.append({
+                "workout_id": slot.workout_id,
+                "day_of_week": slot.day_of_week,
+                "custom_name": slot.custom_name,
+                "completed": matched_id is not None,
+                "session_id": matched_id,
+            })
+
+        weeks_out.append({
+            "week_index": wi + 1,
+            "week_start": week_start.isoformat(),
+            "scheduled_count": len(week_slots),
+            "completed_count": sum(1 for e in entries if e["completed"]),
+            "entries": entries,
+        })
+
+    total_scheduled = sum(w["scheduled_count"] for w in weeks_out)
+    total_completed = sum(w["completed_count"] for w in weeks_out)
+
+    today = date.today()
+    days_since_start = (today - start).days
+    if days_since_start < 0:
+        current_week = 0
+    else:
+        current_week = min(duration_weeks, days_since_start // 7 + 1)
+
+    return {
+        "schedule_type": "weekly",
+        "start_date": program.start_date,
+        "weeks_in_cycle": weeks_in_cycle,
+        "duration_weeks": duration_weeks,
+        "weeks": weeks_out,
+        "current_week": current_week,
+        "total_scheduled": total_scheduled,
+        "total_completed": total_completed,
+        "adherence_percentage": round(
+            (total_completed / total_scheduled * 100) if total_scheduled else 0, 1
+        ),
+    }
+
+
+@firebase_router.get("/{program_id}/adherence")
+async def get_program_adherence_firebase(
+    program_id: str,
+    current_user: Optional[dict] = Depends(get_current_user_optional)
+):
+    """Return week-by-week adherence for a scheduled (weekly) program.
+
+    Uses ISO-week loose matching so the user gets credit for a scheduled
+    workout as long as they completed a matching workout somewhere in the
+    same calendar week.
+    """
+    try:
+        user_id = extract_user_id(current_user)
+        if not user_id or not firebase_service.is_available():
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        program = await firestore_data_service.get_program(user_id, program_id)
+        if not program:
+            raise HTTPException(status_code=404, detail="Program not found")
+
+        # Resolve workout names for the ID-drift fallback
+        workout_id_to_names: Dict[str, List[str]] = {}
+        program_workout_names: List[str] = []
+        schedule_workout_ids = list({e.workout_id for e in (program.schedule or [])})
+        for wid in schedule_workout_ids:
+            try:
+                w = await firestore_data_service.get_workout(user_id, wid)
+                if w and getattr(w, 'name', None):
+                    workout_id_to_names.setdefault(wid, []).append(w.name)
+                    program_workout_names.append(w.name)
+            except Exception:
+                pass
+
+        sessions = await firestore_data_service.get_program_sessions(
+            user_id=user_id,
+            program_id=program_id,
+            program_workout_ids=schedule_workout_ids,
+            program_workout_names=program_workout_names,
+        )
+
+        def _session_name_matches_workout(sess, workout_id: str) -> bool:
+            names = workout_id_to_names.get(workout_id) or []
+            return getattr(sess, 'workout_name', None) in names
+
+        return _compute_program_adherence(program, sessions, _session_name_matches_workout)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting program adherence: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting program adherence: {str(e)}")
 
 
 @firebase_router.delete("/{program_id}")
