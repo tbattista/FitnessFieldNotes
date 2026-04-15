@@ -353,4 +353,29 @@ test.describe('Tabata Kettlebell Page', () => {
     await expect(header).toContainText('Tabata Kettlebell');
     await expect(page.locator('.bx-dumbbell')).toBeAttached();
   });
+
+  test('total card sits above the CTA (not inside step 3) and CTA is inline (not fixed)', async ({ page }) => {
+    // Mobile viewport — this is where the CTA used to be position:fixed.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${BASE}/tabata-kettlebell`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForSelector('#selectState', { state: 'attached' });
+
+    // Total card is NOT a descendant of any .spin-step
+    const totalInsideStep = await page.locator('#selectState .spin-step #totalTimeHelper').count();
+    expect(totalInsideStep).toBe(0);
+
+    // Total card appears before the CTA bar in the document (inside selectState)
+    const order = await page.evaluate(() => {
+      const total = document.querySelector('#selectState #totalTimeHelper');
+      const cta = document.querySelector('#selectState .tk-cta-bar');
+      if (!total || !cta) return `missing:${!!total},${!!cta}`;
+      return total.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING ? 'before' : 'after';
+    });
+    expect(order).toBe('before');
+
+    // CTA bar is NOT position:fixed on mobile
+    const ctaPosition = await page.locator('#selectState .tk-cta-bar').evaluate(el => getComputedStyle(el).position);
+    expect(ctaPosition).not.toBe('fixed');
+  });
 });

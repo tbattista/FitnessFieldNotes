@@ -697,4 +697,22 @@ test.describe('Spin Ride Page', () => {
     const after = await page.evaluate(() => sessionStorage.getItem('spinRideSession'));
     expect(after).toBeNull();
   });
+
+  test('CTA bar is inline at the bottom (not fixed) on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const ctaPosition = await page.locator('.sr-cta-bar').evaluate(el => getComputedStyle(el).position);
+    expect(ctaPosition).not.toBe('fixed');
+
+    // Summary card still precedes the CTA bar
+    const order = await page.evaluate(() => {
+      const summary = document.querySelector('.sr-total-card');
+      const cta = document.querySelector('.sr-cta-bar');
+      if (!summary || !cta) return null;
+      return summary.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING ? 'before' : 'after';
+    });
+    expect(order).toBe('before');
+  });
 });

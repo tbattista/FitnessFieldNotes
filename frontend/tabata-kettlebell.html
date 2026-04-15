@@ -57,9 +57,9 @@
     <link rel="stylesheet" href="/static/assets/css/design-system.css" />
 
     <!-- Spin Ride CSS (reused base layout) -->
-    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260409f" />
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260415a" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260412d" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260415a" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -170,12 +170,6 @@
                     <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="45">~45 min</button>
                   </div>
 
-                  <!-- Total card — the star of step 3 -->
-                  <div class="tk-total-card" id="totalTimeHelper">
-                    <span class="tk-total-value">—</span>
-                    <span class="tk-total-sub">choose a length</span>
-                  </div>
-
                   <!-- Sets stepper -->
                   <div class="tk-control-block">
                     <div class="tk-control-label">Sets</div>
@@ -227,7 +221,13 @@
                   </div>
                 </div>
 
-                <!-- Sticky CTA bar (mobile) / inline CTA (desktop) -->
+                <!-- Total card — summary of the setup -->
+                <div class="tk-total-card" id="totalTimeHelper">
+                  <span class="tk-total-value">—</span>
+                  <span class="tk-total-sub">choose a length</span>
+                </div>
+
+                <!-- Inline CTA bar -->
                 <div class="tk-cta-bar">
                   <button class="btn btn-primary btn-lg tk-cta-btn" id="generateBtn" disabled>
                     <i class="bx bx-bolt-circle me-1"></i>Generate Workout

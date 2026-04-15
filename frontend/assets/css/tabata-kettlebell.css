@@ -2,16 +2,9 @@
    Tabata Kettlebell - Overrides on top of spin-ride.css
    ============================================ */
 
-/* Hide the global Log Session FAB on this page (the sticky CTA replaces it) */
+/* Hide the global Log Session FAB on this page (the inline CTA replaces it) */
 .tabata-kettlebell-page .global-log-fab {
   display: none !important;
-}
-
-/* Leave room below the content so the sticky mobile CTA never covers anything */
-@media (max-width: 991.98px) {
-  .tabata-kettlebell-page .content-wrapper {
-    padding-bottom: 7rem;
-  }
 }
 
 /* ── Hero / Page Header ───────────────────── */
@@ -154,7 +147,7 @@
   color: #fff !important;
 }
 
-/* ── Total card (prominent total time readout) ── */
+/* ── Total card (summary above the CTA — mirrors .sr-total-card) ── */
 .tk-total-card {
   display: flex;
   align-items: baseline;
@@ -164,7 +157,8 @@
   border-left: 3px solid var(--gs-primary, #C97C5D);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
-  margin-bottom: 0.75rem;
+  margin: 1rem 0 0.75rem;
+  max-width: 560px;
 }
 
 .tk-total-value {
@@ -471,7 +465,7 @@
   background: rgba(201, 124, 93, 0.07);
 }
 
-/* ── CTA bar (sticky on mobile, inline on desktop) ── */
+/* ── CTA bar (inline at the bottom of the setup flow) ── */
 .tk-cta-bar {
   margin-top: 1rem;
   margin-bottom: 1.5rem;
@@ -479,6 +473,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: 0.25rem;
+  max-width: 560px;
 }
 
 .tk-cta-btn {
@@ -502,27 +497,6 @@
 
 [data-bs-theme="dark"] .tk-cta-hint {
   color: var(--bs-secondary-color, #9ca3af);
-}
-
-/* Mobile: pin the CTA to the bottom of the viewport so it's always one tap away */
-@media (max-width: 991.98px) {
-  .tk-cta-bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0;
-    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
-    background: var(--bs-body-bg, #fff);
-    border-top: 1px solid var(--bs-border-color, #e2e8f0);
-    box-shadow: 0 -6px 18px -12px rgba(0, 0, 0, 0.18);
-    z-index: 1020;
-  }
-
-  [data-bs-theme="dark"] .tk-cta-bar {
-    background: var(--bs-body-bg, #23272b);
-    border-top-color: var(--bs-border-color, #3a3f47);
-  }
 }
 
 /* Tighter spacing between protocol / focus / length rows on small screens */
