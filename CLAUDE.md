@@ -20,6 +20,8 @@ After completing any task that modifies code, always provide a ready-to-use git 
 git add . && git commit -m "type: brief description of changes"
 ```
 
+**Auto-push to main:** When the user asks you to commit and push, run the commit and then push directly to `main` (`git push origin main`). If the push is rejected because the remote has new commits, run `git pull --rebase origin main` and push again. Do not create branches or PRs unless explicitly asked.
+
 **Commit types:**
 - `feat:` - New feature
 - `fix:` - Bug fix
