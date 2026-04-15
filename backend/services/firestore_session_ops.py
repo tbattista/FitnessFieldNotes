@@ -725,7 +725,8 @@ class FirestoreSessionOps:
         user_id: str,
         program_id: str,
         limit: int = 200,
-        program_workout_ids: Optional[List[str]] = None
+        program_workout_ids: Optional[List[str]] = None,
+        program_workout_names: Optional[List[str]] = None
     ) -> List[Any]:
         """Get all completed sessions for a program.
 
@@ -734,6 +735,10 @@ class FirestoreSessionOps:
           2. Orphan sessions (no program_id set) whose workout_id is in the
              program's workout list. This retroactively attributes historical
              sessions that were logged before program auto-linking worked.
+          3. Orphan sessions whose workout_name matches one of the program's
+             workout names. This catches the ID-drift case where a user
+             recreated/duplicated a workout so the program's stored workout_id
+             no longer matches the id on actually-completed sessions.
         """
         if not self.is_available():
             return []

@@ -211,7 +211,20 @@
                 if (activeProgram && activeProgram.workouts?.length > 0) {
                     // Find next workout: first one not completed in last 7 days
                     const nextWorkout = activeProgram.workouts[0]; // Simple: show first workout
-                    const workoutName = nextWorkout.custom_name || nextWorkout.workout_id;
+
+                    // Resolve real workout name instead of falling back to the raw ID.
+                    // ProgramWorkout only stores workout_id + optional custom_name — we
+                    // need to look up the underlying workout to get its display name.
+                    let workoutName = nextWorkout.custom_name;
+                    if (!workoutName) {
+                        try {
+                            const allWorkouts = await window.dataManager?.getWorkouts?.({ pageSize: 500 });
+                            const match = (allWorkouts || []).find(w => w.id === nextWorkout.workout_id);
+                            workoutName = match?.name || 'Workout';
+                        } catch (_) {
+                            workoutName = 'Workout';
+                        }
+                    }
 
                     // Try to load progress for the mini stats
                     let progressHtml = '';
@@ -707,6 +720,30 @@
             const workouts = homeWorkouts.length ? homeWorkouts : await loadWorkouts();
             await renderWhatsNextCard(workouts);
         } catch (e) { /* ignore */ }
+    });
+
+    // Refresh the program card whenever the home tab becomes visible again
+    // (e.g. user finishes a workout in workout-mode.html and navigates back).
+    // Without this, progress.total_sessions stays stale until a hard reload.
+    async function _refreshWhatsNextCard() {
+        try {
+            const container = document.getElementById('whatsNextCard');
+            if (!container) return;
+            const workouts = homeWorkouts.length ? homeWorkouts : await loadWorkouts();
+            await renderWhatsNextCard(workouts);
+        } catch (_) { /* ignore */ }
+    }
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') _refreshWhatsNextCard();
+    });
+    window.addEventListener('pageshow', (e) => {
+        // bfcache restore or normal navigation back
+        if (e.persisted) _refreshWhatsNextCard();
+    });
+    // Also listen for the existing session-state-changed event so we update
+    // immediately without waiting for a tab switch.
+    window.addEventListener('sessionStateChanged', (e) => {
+        if (e?.detail?.type === 'completed') _refreshWhatsNextCard();
     });
 
     // Expose on window for cross-module access and onclick handlers

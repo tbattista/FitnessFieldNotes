@@ -1,5 +1,5 @@
 /* ============================================
-   Spin Ride - AI Interval Timer
+   Spin Ride - Interval Timer
    ============================================ */
 
 /* Hide the global Log Session FAB on the spin ride page */
@@ -28,31 +28,6 @@
   margin: 0.25rem 0 0 0;
   font-size: 0.875rem;
   color: var(--gs-gray-500, #64748b);
-}
-
-.sr-ai-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--gs-primary, #C97C5D);
-  background: rgba(201, 124, 93, 0.12);
-  border: 1px solid rgba(201, 124, 93, 0.35);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  line-height: 1;
-}
-
-.sr-ai-badge i {
-  font-size: 0.85rem;
-}
-
-[data-bs-theme="dark"] .sr-ai-badge {
-  background: rgba(201, 124, 93, 0.18);
-  border-color: rgba(201, 124, 93, 0.5);
 }
 
 /* ── Summary card (above the CTA) ───────── */

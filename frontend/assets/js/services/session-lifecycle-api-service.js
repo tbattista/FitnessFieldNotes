@@ -487,7 +487,8 @@ class SessionLifecycleApiService {
                 workout_id: currentSession.workoutId,
                 workout_name: currentSession.workoutName,
                 started_at: currentSession.startedAt.toISOString(),
-                session_mode: currentSession.sessionMode || 'timed'
+                session_mode: currentSession.sessionMode || 'timed',
+                ...(currentSession.programId ? { program_id: currentSession.programId } : {})
             })
         });
 

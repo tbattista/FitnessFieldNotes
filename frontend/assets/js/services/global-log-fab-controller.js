@@ -25,7 +25,7 @@
         },
         {
             icon: 'bx-camera',
-            title: 'Quick Log / AI Import',
+            title: 'Quick Log / Import',
             description: 'Photo, screenshot, or describe it',
             action: () => {
                 if (window.createUniversalLogger) {

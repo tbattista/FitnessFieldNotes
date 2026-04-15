@@ -78,7 +78,7 @@ test.describe('Spin Ride Page', () => {
     // Left-justified h5 header with icon, matching other pages
     const header = page.locator('h5').first();
     await expect(header).toContainText('Spin Ride');
-    await expect(page.locator('.bx-cycling')).toBeAttached();
+    await expect(page.locator('.sr-hero-icon.bx-cycling')).toBeAttached();
   });
 
   test('sidebar Spin Ride menu item shows cycling icon when active', async ({ page }) => {

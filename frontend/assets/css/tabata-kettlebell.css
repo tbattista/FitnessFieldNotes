@@ -30,31 +30,6 @@
   color: var(--gs-gray-500, #64748b);
 }
 
-.tk-ai-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--gs-primary, #C97C5D);
-  background: rgba(201, 124, 93, 0.12);
-  border: 1px solid rgba(201, 124, 93, 0.35);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  line-height: 1;
-}
-
-.tk-ai-badge i {
-  font-size: 0.85rem;
-}
-
-[data-bs-theme="dark"] .tk-ai-badge {
-  background: rgba(201, 124, 93, 0.18);
-  border-color: rgba(201, 124, 93, 0.5);
-}
-
 /* ── Segment type colors (timer ring) ─────── */
 .spin-timer-progress.type-work       { stroke: var(--gs-primary, #C97C5D); }
 .spin-timer-progress.type-rest       { stroke: var(--gs-success, #8CBF9F); }
