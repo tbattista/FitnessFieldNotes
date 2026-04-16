@@ -2,10 +2,16 @@
 # https://fitnessfieldnotes.com
 
 User-agent: *
+
+# Public pages - explicitly allowed
 Allow: /
-Allow: /launch
 Allow: /public-workouts
 Allow: /share/
+Allow: /privacy.html
+Allow: /terms.html
+
+# Allow public workout templates (shared via workout-builder with share_id)
+Allow: /workout-builder.html?share_id
 
 # Block authenticated app pages from indexing
 Disallow: /workout-builder
@@ -13,12 +19,37 @@ Disallow: /workout-mode
 Disallow: /workout-database
 Disallow: /workout-history
 Disallow: /exercise-database
+Disallow: /exercise-edit
 Disallow: /programs
+Disallow: /program-manager
+Disallow: /program-schedule-builder
 Disallow: /profile
+Disallow: /settings
 Disallow: /dashboard
+Disallow: /activity-log
 Disallow: /feedback-voting
 Disallow: /feedback-admin
 Disallow: /api/
+
+# Block duplicate .html variants of clean URL pages (canonical versions are without .html)
+Disallow: /index.html
+Disallow: /public-workouts.html
+Disallow: /launch
+
+# Block demo/experimental pages
+Disallow: /workout-sessions-demo
+Disallow: /exercise-history-demo
+Disallow: /spin-ride
+Disallow: /tabata-kettlebell
+Disallow: /builder.html
+
+# Block auth pages
+Disallow: /auth-login-basic.html
+Disallow: /auth-register-basic.html
+Disallow: /auth-forgot-password-basic.html
+
+# Block static assets directory from indexing
+Disallow: /static/
 
 # Sitemap location
 Sitemap: https://fitnessfieldnotes.com/sitemap.xml

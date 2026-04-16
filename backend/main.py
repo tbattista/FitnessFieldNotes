@@ -5,7 +5,7 @@ Slim FastAPI application with modular router architecture
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import os
@@ -165,9 +165,8 @@ else:
 # Serve HTML pages
 
 @app.get("/", response_class=HTMLResponse)
-@app.get("/index.html", response_class=HTMLResponse)
 async def serve_home():
-    """Serve the Ghost Gym home/dashboard page"""
+    """Serve the home/dashboard page"""
     try:
         with open("frontend/index.html", "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
@@ -176,6 +175,11 @@ async def serve_home():
             content="<h1>Home page not found</h1><p>Please ensure frontend/index.html exists</p>",
             status_code=404
         )
+
+@app.get("/index.html")
+async def redirect_index_html():
+    """Redirect /index.html to / (canonical URL) for SEO"""
+    return RedirectResponse(url="/", status_code=301)
 
 @app.get("/programs", response_class=HTMLResponse)
 @app.get("/programs.html", response_class=HTMLResponse)
@@ -349,7 +353,6 @@ async def serve_activity_log():
         )
 
 @app.get("/public-workouts", response_class=HTMLResponse)
-@app.get("/public-workouts.html", response_class=HTMLResponse)
 async def serve_public_workouts():
     """Serve the Public Workouts (Discover) page"""
     try:
@@ -360,6 +363,11 @@ async def serve_public_workouts():
             content="<h1>Public Workouts not found</h1><p>Please ensure frontend/public-workouts.html exists</p>",
             status_code=404
         )
+
+@app.get("/public-workouts.html")
+async def redirect_public_workouts_html():
+    """Redirect .html variant to clean URL for SEO"""
+    return RedirectResponse(url="/public-workouts", status_code=301)
 
 @app.get("/dashboard", response_class=HTMLResponse)
 @app.get("/dashboard.html", response_class=HTMLResponse)
@@ -462,12 +470,11 @@ async def serve_tabata_kettlebell():
             status_code=404
         )
 
-@app.get("/launch", response_class=HTMLResponse)
-@app.get("/launch.html", response_class=HTMLResponse)
+@app.get("/launch")
+@app.get("/launch.html")
 async def serve_launch_page():
-    """Serve the launch/landing page (same as index.html)"""
-    with open("frontend/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    """Redirect /launch to / (canonical URL) for SEO - avoids duplicate content"""
+    return RedirectResponse(url="/", status_code=301)
 
 @app.get("/share/{token}", response_class=HTMLResponse)
 async def serve_share_page(token: str):
@@ -475,6 +482,16 @@ async def serve_share_page(token: str):
     try:
         with open("frontend/share.html", "r", encoding="utf-8") as f:
             html_content = f.read()
+
+        # Set canonical URL for this specific share page
+        base_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "fitnessfieldnotes.com")
+        base_url = f"https://{base_url}" if not base_url.startswith("http") else base_url
+        canonical_url = f"{base_url}/share/{html.escape(token)}"
+        html_content = re.sub(
+            r'<link rel="canonical" href="[^"]*"',
+            f'<link rel="canonical" href="{canonical_url}"',
+            html_content
+        )
 
         # Try to fetch workout data for dynamic meta tags
         try:
