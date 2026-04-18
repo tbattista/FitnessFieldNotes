@@ -138,13 +138,21 @@
     top: 1rem;
 }
 
-/* PR section in sidebar: vertical scrollable list */
+/* ============================================
+   PR SIDEBAR: vertical scrollable, row layout
+   ============================================ */
+.desktop-history-sidebar .pr-chips-container {
+    overflow: visible;
+    margin-bottom: 0;
+}
+
 .desktop-history-sidebar .pr-chips-scroll {
     flex-direction: column;
     overflow-x: visible;
     overflow-y: auto;
     scroll-snap-type: none;
-    max-height: 340px;
+    max-height: 400px;
+    padding-bottom: 0.5rem;
     scrollbar-width: thin;
     scrollbar-color: rgba(0,0,0,0.12) transparent;
 }
@@ -159,13 +167,57 @@
     border-radius: 4px;
 }
 
-.desktop-history-sidebar .pr-chips-container {
-    overflow: visible;
-}
-
+/* Row layout: [image | name+value+date] via CSS Grid */
 .desktop-history-sidebar .pr-chip {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    grid-template-rows: auto auto auto;
+    column-gap: 0.625rem;
+    row-gap: 0;
+    align-items: center;
     min-width: 0;
     white-space: normal;
+    padding: 0.5rem 0.625rem;
+}
+
+/* Media spans all rows in the left column */
+.desktop-history-sidebar .pr-chip-gif,
+.desktop-history-sidebar .pr-chip-activity-icon {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    width: 48px;
+    height: 48px;
+    align-self: center;
+    border-radius: 0.375rem;
+}
+
+.desktop-history-sidebar .pr-chip-activity-icon {
+    font-size: 1.5rem;
+}
+
+/* Text content in the right column */
+.desktop-history-sidebar .pr-chip-top {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.desktop-history-sidebar .pr-chip .pr-chip-value {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.desktop-history-sidebar .pr-chip .pr-chip-date {
+    grid-column: 2;
+    grid-row: 3;
+    font-size: 0.7rem;
+}
+
+.desktop-history-sidebar .pr-chip .pr-chip-name {
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ============================================
