@@ -134,8 +134,6 @@
 .desktop-history-sidebar {
     flex: 1 1 0%;
     min-width: 0;
-    position: sticky;
-    top: 1rem;
 }
 
 /* ============================================
@@ -149,22 +147,8 @@
 .desktop-history-sidebar .pr-chips-scroll {
     flex-direction: column;
     overflow-x: visible;
-    overflow-y: auto;
+    overflow-y: visible;
     scroll-snap-type: none;
-    max-height: 400px;
-    padding-bottom: 0.5rem;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0,0,0,0.12) transparent;
-}
-
-.desktop-history-sidebar .pr-chips-scroll::-webkit-scrollbar {
-    width: 4px;
-    height: 0;
-}
-
-.desktop-history-sidebar .pr-chips-scroll::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.12);
-    border-radius: 4px;
 }
 
 /* Row layout: [image | name+value+date] via CSS Grid */
