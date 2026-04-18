@@ -78,6 +78,73 @@ test.describe('PR Section Reordering', () => {
     }
   });
 
+  test('mobile action cards (Add/Reorder) render at end of PR scroll', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+
+    await page.evaluate(() => {
+      const state = window.ffn && window.ffn.workoutHistory;
+      if (!state) return;
+      state.personalRecords.clear();
+      state.prRecordIds = [];
+      const mockPRs = [
+        { id: 'weight_bench', exercise_name: 'Bench Press', value: '225', value_unit: 'lbs', pr_type: 'weight' },
+        { id: 'weight_squat', exercise_name: 'Squat', value: '315', value_unit: 'lbs', pr_type: 'weight' },
+      ];
+      mockPRs.forEach(pr => state.personalRecords.set(pr.id, pr));
+      window.renderPRSection();
+    });
+    await page.waitForTimeout(200);
+
+    // Both action cards should be in the DOM inside the scroll container
+    const scrollSelector = '#prChipsScroll';
+    const scrollCount = await page.locator(scrollSelector).count();
+    if (scrollCount === 0) return; // PR container may be hidden without auth — skip
+
+    const addCard = page.locator(`${scrollSelector} .pr-action-card-add`);
+    const reorderCard = page.locator(`${scrollSelector} .pr-action-card-reorder`);
+    expect(await addCard.count()).toBe(1);
+    expect(await reorderCard.count()).toBe(1);
+
+    // Action cards should come AFTER the last PR chip in DOM order
+    const order = await page.locator(`${scrollSelector} > *`).evaluateAll(els =>
+      els.map(el => el.className)
+    );
+    const lastChipIdx = order.map(c => c.includes('pr-chip') && !c.includes('pr-action-card')).lastIndexOf(true);
+    const addIdx = order.findIndex(c => c.includes('pr-action-card-add'));
+    expect(addIdx).toBeGreaterThan(lastChipIdx);
+  });
+
+  test('Add action card triggers showAddPRModal', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+
+    await page.evaluate(() => {
+      const state = window.ffn && window.ffn.workoutHistory;
+      if (!state) return;
+      state.personalRecords.clear();
+      state.prRecordIds = [];
+      state.personalRecords.set('weight_bench', {
+        id: 'weight_bench', exercise_name: 'Bench Press', value: '225', value_unit: 'lbs', pr_type: 'weight'
+      });
+      // Spy on showAddPRModal
+      window.__addModalCalled = 0;
+      const original = window.showAddPRModal;
+      window.showAddPRModal = () => { window.__addModalCalled += 1; };
+      window.renderPRSection();
+      // Restore after 1 tick so handlers keep the stub
+      setTimeout(() => { /* keep stub for test */ }, 0);
+    });
+    await page.waitForTimeout(200);
+
+    const addCard = page.locator('#prChipsScroll .pr-action-card-add');
+    if (await addCard.count() === 0) return;
+    await addCard.click();
+
+    const called = await page.evaluate(() => window.__addModalCalled || 0);
+    expect(called).toBeGreaterThan(0);
+  });
+
   test('reorder mode toggles chip appearance', async ({ page }) => {
     await page.goto(`${BASE}/workout-history.html`);
     await waitForAppReady(page);
