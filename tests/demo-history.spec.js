@@ -3,32 +3,48 @@ import { test, expect } from '@playwright/test';
 test.describe('Demo Account History Tab', () => {
   test.setTimeout(60000);
 
-  test('history tab loads without weight_change.toFixed error', async ({ page }) => {
-    // Collect console errors
+  test('history page loads workout sessions for demo user', async ({ page }) => {
     const errors = [];
     page.on('pageerror', (err) => errors.push(err.message));
 
+    // Sign in as demo user
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.goto('/');
 
-    // Wait for demo sign-in and dashboard
     const dashboard = page.locator('#authenticatedDashboard');
     await expect(dashboard).toBeVisible({ timeout: 25000 });
 
-    // The History tab should be visible and active by default
-    const historyTab = page.locator('text=History').first();
-    await expect(historyTab).toBeVisible({ timeout: 10000 });
-    await historyTab.click();
+    // Go directly to history page
+    await page.goto('/workout-history.html');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(8000);
 
-    // Wait for history content to load - should NOT show error state
-    await page.waitForTimeout(5000);
+    // Content should be visible (not error or empty state)
+    const contentVisible = await page.locator('#historyContent').isVisible().catch(() => false);
+    const errorVisible = await page.locator('#historyErrorState').isVisible().catch(() => false);
 
-    // Verify no "Error Loading History" message is shown
-    const errorHeading = page.locator('text=Error Loading History');
-    await expect(errorHeading).toHaveCount(0);
+    expect(errorVisible).toBe(false);
+    expect(contentVisible).toBe(true);
 
-    // Verify no toFixed errors occurred
+    // Should have workout sessions loaded (not just cardio)
+    const apiState = await page.evaluate(() => {
+      const state = window.ffn?.workoutHistory;
+      const workoutSessions = (state?.sessions || []).filter(s => s._sessionType === 'strength');
+      return {
+        total: state?.sessions?.length || 0,
+        workout: workoutSessions.length,
+      };
+    });
+
+    expect(apiState.total).toBeGreaterThan(0);
+    expect(apiState.workout).toBeGreaterThan(0);
+
+    // Session entries should be rendered in the DOM
+    const sessionEntries = await page.locator('.session-entry').count();
+    expect(sessionEntries).toBeGreaterThan(0);
+
+    // No page errors
     const toFixedErrors = errors.filter((e) => e.includes('toFixed'));
     expect(toFixedErrors).toHaveLength(0);
   });

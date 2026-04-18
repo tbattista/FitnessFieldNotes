@@ -65,6 +65,16 @@ class ExercisePerformance(BaseModel):
     # Metadata
     order_index: int = Field(..., ge=0, description="Position in workout (0-based)")
 
+    @field_validator('weight', 'previous_weight', 'weight_change', 'original_weight', 'original_sets', 'original_reps', mode='before')
+    @classmethod
+    def coerce_to_string(cls, v):
+        """Coerce numeric values to strings for backward compatibility with Firestore data."""
+        if v is None:
+            return v
+        if isinstance(v, (int, float)):
+            return str(v)
+        return v
+
 
 class SessionNote(BaseModel):
     """Inline note within a workout session (session-only, not saved to templates)"""
