@@ -139,6 +139,12 @@
 /* ============================================
    PR SIDEBAR: vertical scrollable, row layout
    ============================================ */
+/* Remove all overflow clipping from PR ancestors in the sidebar */
+.desktop-history-sidebar .pr-chips-collapsible {
+    max-height: none;
+    overflow: visible;
+}
+
 .desktop-history-sidebar .pr-chips-container {
     overflow: visible;
     margin-bottom: 0;
@@ -146,8 +152,7 @@
 
 .desktop-history-sidebar .pr-chips-scroll {
     flex-direction: column;
-    overflow-x: visible;
-    overflow-y: visible;
+    overflow: visible;
     scroll-snap-type: none;
 }
 
