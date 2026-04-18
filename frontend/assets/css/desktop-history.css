@@ -138,11 +138,25 @@
     top: 1rem;
 }
 
-/* PR section in sidebar: stack cards vertically instead of horizontal scroll */
+/* PR section in sidebar: vertical scrollable list */
 .desktop-history-sidebar .pr-chips-scroll {
     flex-direction: column;
     overflow-x: visible;
+    overflow-y: auto;
     scroll-snap-type: none;
+    max-height: 340px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.12) transparent;
+}
+
+.desktop-history-sidebar .pr-chips-scroll::-webkit-scrollbar {
+    width: 4px;
+    height: 0;
+}
+
+.desktop-history-sidebar .pr-chips-scroll::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.12);
+    border-radius: 4px;
 }
 
 .desktop-history-sidebar .pr-chips-container {
