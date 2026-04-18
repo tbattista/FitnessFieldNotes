@@ -1,8 +1,12 @@
 /**
  * Ghost Gym - Workout History Calendar
- * Calendar view initialization, date filtering, day detail offcanvas,
- * range selection, and quick presets
- * @version 2.0.0
+ * Calendar view initialization, date filtering, inline session display,
+ * range selection, and quick presets.
+ *
+ * All selections (single day, range, presets) render sessions inline
+ * using the same createSessionEntry() renderer from workout-history-sessions.js.
+ *
+ * @version 3.0.0
  */
 
 /* ============================================
@@ -11,7 +15,6 @@
 
 /**
  * Initialize the history calendar view
- * Shows only sessions for the selected workout
  */
 function initHistoryCalendar() {
   const sessions = window.ffn.workoutHistory.sessions;
@@ -30,7 +33,7 @@ function initHistoryCalendar() {
     window.calendarView = window.ffn.workoutHistory.calendarView;
   }
 
-  // Set the session data (already filtered by workout)
+  // Set the session data
   window.ffn.workoutHistory.calendarView.setSessionData(sessions);
 
   // Initialize presets
@@ -44,9 +47,7 @@ function initHistoryCalendar() {
    ============================================ */
 
 /**
- * Handle calendar day click - show day detail offcanvas
- * In All Mode: shows bottom sheet with day's sessions, also filters History tab
- * In Single Workout Mode: scrolls to session
+ * Handle calendar day click - set date filter and show sessions inline
  */
 function handleCalendarDayClick(dateKey, daySessions) {
   const isAllMode = window.ffn.workoutHistory.isAllMode;
@@ -54,14 +55,10 @@ function handleCalendarDayClick(dateKey, daySessions) {
   // Clear any active preset highlight
   clearPresetHighlight();
 
-  // Clear inline range sessions if showing
-  hideCalendarRangeSessions();
-
   if (isAllMode) {
-    // Set filter for History tab (so switching tabs shows filtered view)
+    // Set filter and render sessions inline below calendar
     setDateFilter(dateKey);
-    // Show bottom sheet with day's workouts
-    showDayDetailOffcanvas(dateKey, daySessions);
+    renderCalendarSessions(dateKey, null, daySessions);
     return;
   }
 
@@ -78,100 +75,7 @@ function handleCalendarDayClick(dateKey, daySessions) {
 function handleCalendarRangeSelect(startDate, endDate, sessions) {
   clearPresetHighlight();
   setDateRangeFilter(startDate, endDate);
-  renderCalendarRangeSessions(startDate, endDate, sessions);
-}
-
-/* ============================================
-   DAY DETAIL BOTTOM SHEET
-   ============================================ */
-
-/**
- * Show bottom sheet offcanvas with a day's workout details
- */
-function showDayDetailOffcanvas(dateKey, daySessions) {
-  // Format the date for display
-  const [year, month, day] = dateKey.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  const formattedDate = date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  });
-
-  // Build session cards
-  let bodyHtml = '';
-  if (daySessions.length === 0) {
-    bodyHtml = `
-      <div class="text-center py-4">
-        <i class="bx bx-calendar-x display-4 text-muted"></i>
-        <p class="mt-3 text-muted mb-0">No workouts on this day</p>
-      </div>
-    `;
-  } else {
-    bodyHtml = daySessions.map(session => {
-      const duration = session.duration_minutes
-        ? `${session.duration_minutes} min`
-        : '';
-      const exerciseCount = (session.exercises_performed || []).length;
-      const exerciseLabel = exerciseCount === 1 ? '1 exercise' : `${exerciseCount} exercises`;
-      const isCardio = session._sessionType === 'cardio';
-      const iconClass = isCardio ? 'bx-cycling' : 'bx-dumbbell';
-      const typeBadge = isCardio ? 'Cardio' : 'Strength';
-
-      return `
-        <div class="day-session-card card mb-2">
-          <div class="card-body">
-            <div class="d-flex align-items-start justify-content-between">
-              <div class="day-session-info">
-                <div class="day-session-name">
-                  <i class="bx ${iconClass} me-1"></i>
-                  ${escapeHtml(session.workout_name || 'Workout')}
-                </div>
-                <div class="day-session-meta mt-1">
-                  ${duration ? `<i class="bx bx-time-five me-1"></i>${duration}` : ''}
-                  ${duration && exerciseCount ? ' &bull; ' : ''}
-                  ${exerciseCount ? `<i class="bx bx-list-ul me-1"></i>${exerciseLabel}` : ''}
-                </div>
-              </div>
-              <span class="badge bg-label-${isCardio ? 'info' : 'success'} day-session-badge">${typeBadge}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  const offcanvasId = 'calendarDayDetailOffcanvas';
-  const offcanvasHtml = `
-    <div class="offcanvas offcanvas-bottom calendar-day-offcanvas" tabindex="-1"
-         id="${offcanvasId}" aria-labelledby="${offcanvasId}Label"
-         data-bs-scroll="false">
-      <div class="offcanvas-header">
-        <h6 class="offcanvas-title" id="${offcanvasId}Label">
-          <i class="bx bx-calendar me-2"></i>${formattedDate}
-          ${daySessions.length > 0 ? `<span class="text-muted ms-2 fw-normal" style="font-size: 0.85rem;">${daySessions.length} session${daySessions.length !== 1 ? 's' : ''}</span>` : ''}
-        </h6>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-      </div>
-      <div class="offcanvas-body">
-        ${bodyHtml}
-      </div>
-    </div>
-  `;
-
-  // Use offcanvasManager if available, otherwise create manually
-  if (window.offcanvasManager) {
-    window.offcanvasManager.create(offcanvasId, offcanvasHtml);
-  } else {
-    // Fallback: insert and show manually
-    const existing = document.getElementById(offcanvasId);
-    if (existing) existing.remove();
-    document.body.insertAdjacentHTML('beforeend', offcanvasHtml);
-    const el = document.getElementById(offcanvasId);
-    const offcanvas = new bootstrap.Offcanvas(el);
-    el.addEventListener('hidden.bs.offcanvas', () => el.remove());
-    offcanvas.show();
-  }
+  renderCalendarSessions(startDate, endDate, sessions);
 }
 
 /* ============================================
@@ -179,18 +83,16 @@ function showDayDetailOffcanvas(dateKey, daySessions) {
    ============================================ */
 
 /**
- * Set date filter and re-render sessions
+ * Set single-date filter and re-render History tab sessions
  * @param {string} dateKey - Date in 'YYYY-MM-DD' format
  */
 function setDateFilter(dateKey) {
   const state = window.ffn.workoutHistory;
   state.dateFilter = dateKey;
-  state.currentPage = 1; // Reset pagination
+  state.currentPage = 1;
 
-  // Update date filter indicator
   updateDateFilterIndicator(dateKey);
 
-  // Re-render sessions
   if (typeof renderSessionHistory === 'function') {
     renderSessionHistory();
   }
@@ -236,10 +138,10 @@ function clearDateFilter() {
     indicator.style.display = 'none';
   }
 
-  // Hide inline range sessions
-  hideCalendarRangeSessions();
+  // Hide inline calendar sessions
+  hideCalendarSessions();
 
-  // Re-render sessions
+  // Re-render History tab sessions
   if (typeof renderSessionHistory === 'function') {
     renderSessionHistory();
   }
@@ -256,124 +158,103 @@ function updateDateFilterIndicator(filter) {
   if (!indicator || !label) return;
 
   if (typeof filter === 'string') {
-    // Single date
     const [year, month, day] = filter.split('-').map(Number);
     const date = new Date(year, month - 1, day);
-    const options = { weekday: 'long', month: 'long', day: 'numeric' };
-    label.textContent = date.toLocaleDateString('en-US', options);
+    label.textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   } else if (filter && filter.start && filter.end) {
-    // Date range
     const [sy, sm, sd] = filter.start.split('-').map(Number);
     const [ey, em, ed] = filter.end.split('-').map(Number);
     const startDate = new Date(sy, sm - 1, sd);
     const endDate = new Date(ey, em - 1, ed);
     const fmt = { month: 'short', day: 'numeric' };
-    const startStr = startDate.toLocaleDateString('en-US', fmt);
-    const endStr = endDate.toLocaleDateString('en-US', fmt);
-    label.textContent = `${startStr} – ${endStr}`;
+    label.textContent = `${startDate.toLocaleDateString('en-US', fmt)} – ${endDate.toLocaleDateString('en-US', fmt)}`;
   }
 
   indicator.style.display = 'flex';
 }
 
 /* ============================================
-   INLINE RANGE SESSION RENDERING
+   INLINE SESSION RENDERING (Calendar Tab)
+   Reuses createSessionEntry() from
+   workout-history-sessions.js
    ============================================ */
 
 /**
- * Render sessions for a date range inline below the calendar
+ * Render sessions inline below the calendar.
+ * Used for both single-day and range selections.
+ *
+ * @param {string} startDate - Start date 'YYYY-MM-DD'
+ * @param {string|null} endDate - End date 'YYYY-MM-DD' (null = single day)
+ * @param {Array} sessions - Filtered sessions to display
  */
-function renderCalendarRangeSessions(startDate, endDate, sessions) {
+function renderCalendarSessions(startDate, endDate, sessions) {
   const container = document.getElementById('calendarRangeSessionList');
   if (!container) return;
 
-  // Format dates for header
+  // Format header label
   const [sy, sm, sd] = startDate.split('-').map(Number);
-  const [ey, em, ed] = endDate.split('-').map(Number);
   const startFmt = new Date(sy, sm - 1, sd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const endFmt = new Date(ey, em - 1, ed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  let headerLabel;
+  if (endDate && endDate !== startDate) {
+    const [ey, em, ed] = endDate.split('-').map(Number);
+    const endFmt = new Date(ey, em - 1, ed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    headerLabel = `${startFmt} – ${endFmt}`;
+  } else {
+    // Single day - use full format
+    headerLabel = new Date(sy, sm - 1, sd).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
 
   if (sessions.length === 0) {
     container.innerHTML = `
       <div class="calendar-range-session-list">
-        <div class="range-session-header">
-          ${startFmt} – ${endFmt}
-        </div>
+        <div class="range-session-header">${headerLabel}</div>
         <div class="text-center py-4">
           <i class="bx bx-calendar-x display-4 text-muted"></i>
-          <p class="mt-3 text-muted mb-0">No workouts in this range</p>
+          <p class="mt-3 text-muted mb-0">No workouts${endDate ? ' in this range' : ' on this day'}</p>
         </div>
       </div>
     `;
-  } else {
-    // Sort sessions by date descending
-    const sorted = [...sessions].sort((a, b) => {
-      return new Date(b.completed_at || b.started_at) - new Date(a.completed_at || a.started_at);
-    });
-
-    // Group by date for clean display
-    const groups = {};
-    sorted.forEach(session => {
-      const dateStr = session.completed_at || session.started_at;
-      const date = new Date(dateStr);
-      const dayKey = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      if (!groups[dayKey]) groups[dayKey] = [];
-      groups[dayKey].push(session);
-    });
-
-    let html = `
-      <div class="calendar-range-session-list">
-        <div class="range-session-header d-flex justify-content-between align-items-center">
-          <span>${startFmt} – ${endFmt}</span>
-          <span class="text-muted" style="font-size: 0.8rem;">${sessions.length} session${sessions.length !== 1 ? 's' : ''}</span>
-        </div>
-    `;
-
-    Object.entries(groups).forEach(([dayLabel, daySessions]) => {
-      html += `<div class="range-day-group mt-2">`;
-      html += `<div class="text-muted small fw-semibold mb-1">${dayLabel}</div>`;
-
-      daySessions.forEach(session => {
-        const duration = session.duration_minutes ? `${session.duration_minutes} min` : '';
-        const exerciseCount = (session.exercises_performed || []).length;
-        const isCardio = session._sessionType === 'cardio';
-        const iconClass = isCardio ? 'bx-cycling' : 'bx-dumbbell';
-
-        html += `
-          <div class="day-session-card card mb-2">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="day-session-info flex-grow-1">
-                  <div class="day-session-name">
-                    <i class="bx ${iconClass} me-1"></i>
-                    ${escapeHtml(session.workout_name || 'Workout')}
-                  </div>
-                  <div class="day-session-meta mt-1">
-                    ${duration ? `<i class="bx bx-time-five me-1"></i>${duration}` : ''}
-                    ${duration && exerciseCount ? ' &bull; ' : ''}
-                    ${exerciseCount ? `${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}` : ''}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-
-      html += `</div>`;
-    });
-
-    html += `</div>`;
-    container.innerHTML = html;
+    container.removeAttribute('style');
+    return;
   }
 
-  container.style.display = 'block';
+  // Sort descending by date
+  const sorted = [...sessions].sort((a, b) => {
+    return new Date(b.completed_at || b.started_at) - new Date(a.completed_at || a.started_at);
+  });
+
+  // Temporarily force isAllMode so createSessionEntry shows workout names
+  const state = window.ffn.workoutHistory;
+  const origAllMode = state.isAllMode;
+  state.isAllMode = true;
+
+  let html = `
+    <div class="calendar-range-session-list">
+      <div class="range-session-header d-flex justify-content-between align-items-center">
+        <span>${headerLabel}</span>
+        <span class="text-muted" style="font-size: 0.8rem;">
+          ${sessions.length} session${sessions.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <div class="session-list">
+        ${sorted.map(session => createSessionEntry(session)).join('')}
+      </div>
+    </div>
+  `;
+
+  // Restore original mode
+  state.isAllMode = origAllMode;
+
+  container.innerHTML = html;
+  // Use block on mobile, flex-friendly on desktop
+  container.style.display = '';
+  container.removeAttribute('style');
 }
 
 /**
- * Hide the inline range session list
+ * Hide the inline calendar session list
  */
-function hideCalendarRangeSessions() {
+function hideCalendarSessions() {
   const container = document.getElementById('calendarRangeSessionList');
   if (container) {
     container.style.display = 'none';
@@ -414,12 +295,11 @@ function applyCalendarPreset(preset) {
   const today = new Date();
   let start, end;
 
-  // Calculate the date key for today
   const todayKey = calendarView.formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
   switch (preset) {
     case 'this-week': {
-      const dayOfWeek = today.getDay(); // 0 = Sunday
+      const dayOfWeek = today.getDay();
       const startDate = new Date(today);
       startDate.setDate(today.getDate() - dayOfWeek);
       start = calendarView.formatDateKey(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
@@ -469,10 +349,10 @@ function applyCalendarPreset(preset) {
   calendarView.navigateToDate(start);
   calendarView.setSelection(start, end);
 
-  // Get sessions in range and render
+  // Get sessions in range and render inline
   const rangeSessions = calendarView.getSessionsInRange(start, end);
   setDateRangeFilter(start, end);
-  renderCalendarRangeSessions(start, end, rangeSessions);
+  renderCalendarSessions(start, end, rangeSessions);
 }
 
 /**
@@ -492,11 +372,10 @@ function toggleRangeMode() {
     toggle.classList.toggle('active', newMode);
   }
 
-  // Clear preset highlight when entering custom mode
   if (newMode) {
     clearPresetHighlight();
     state.dateRangePreset = 'custom';
-    hideCalendarRangeSessions();
+    hideCalendarSessions();
   } else {
     state.dateRangePreset = null;
   }
@@ -515,20 +394,18 @@ function clearPresetHighlight() {
    EXPORTS
    ============================================ */
 
-// Export to window for backwards compatibility
 window.initHistoryCalendar = initHistoryCalendar;
 window.handleCalendarDayClick = handleCalendarDayClick;
 window.handleCalendarRangeSelect = handleCalendarRangeSelect;
-window.showDayDetailOffcanvas = showDayDetailOffcanvas;
 window.setDateFilter = setDateFilter;
 window.setDateRangeFilter = setDateRangeFilter;
 window.clearDateFilter = clearDateFilter;
 window.updateDateFilterIndicator = updateDateFilterIndicator;
-window.renderCalendarRangeSessions = renderCalendarRangeSessions;
-window.hideCalendarRangeSessions = hideCalendarRangeSessions;
+window.renderCalendarSessions = renderCalendarSessions;
+window.hideCalendarSessions = hideCalendarSessions;
 window.initCalendarPresets = initCalendarPresets;
 window.applyCalendarPreset = applyCalendarPreset;
 window.toggleRangeMode = toggleRangeMode;
 window.clearPresetHighlight = clearPresetHighlight;
 
-console.log('📦 Workout History Calendar module loaded (v2.0.0)');
+console.log('📦 Workout History Calendar module loaded (v3.0.0)');

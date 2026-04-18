@@ -190,9 +190,9 @@ function resetSessionFilters() {
     indicator.style.display = 'none';
   }
 
-  // Hide inline range sessions
-  if (typeof hideCalendarRangeSessions === 'function') {
-    hideCalendarRangeSessions();
+  // Hide inline calendar sessions
+  if (typeof hideCalendarSessions === 'function') {
+    hideCalendarSessions();
   }
 
   renderSessionHistory();

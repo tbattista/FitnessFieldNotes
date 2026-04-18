@@ -67,13 +67,28 @@
 }
 
 /* ============================================
-   CALENDAR TAB — full-width, centered
+   CALENDAR TAB — side-by-side layout
    ============================================ */
-.desktop-calendar-fullwidth {
-    max-width: 600px;
+.desktop-calendar-layout {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
 }
 
-.desktop-calendar-fullwidth .calendar-panel {
+.desktop-calendar-left {
+    flex: 0 0 auto;
+    width: 420px;
+    min-width: 360px;
+}
+
+.desktop-calendar-right {
+    flex: 1 1 0%;
+    min-width: 0;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.desktop-calendar-layout .calendar-panel {
     border: 1px solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
     padding: 1rem 1.25rem;
@@ -81,7 +96,7 @@
 }
 
 /* Larger calendar cells on desktop */
-.desktop-calendar-fullwidth .calendar-grid .calendar-day {
+.desktop-calendar-layout .calendar-grid .calendar-day {
     min-height: 48px;
     font-size: 0.9375rem;
 }
@@ -162,7 +177,7 @@
     border-color: var(--gs-gray-200);
 }
 
-[data-bs-theme="dark"] .desktop-calendar-fullwidth .calendar-panel {
+[data-bs-theme="dark"] .desktop-calendar-layout .calendar-panel {
     border-color: var(--gs-gray-200);
 }
 

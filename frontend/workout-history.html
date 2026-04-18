@@ -376,32 +376,35 @@
                     <!-- Calendar Tab -->
                     <div class="tab-pane fade" id="desktopCalendarTabPane" role="tabpanel"
                          aria-labelledby="desktop-calendar-tab" tabindex="0">
-                      <div class="desktop-calendar-fullwidth mt-3">
-                        <div class="calendar-panel" id="desktopHistoryCalendarCard">
-                          <div class="calendar-panel-header">
-                            <button id="desktopPrevMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
-                              <i class="bx bx-chevron-left"></i>
-                            </button>
-                            <span id="desktopCurrentMonth" class="fw-medium">January 2026</span>
-                            <button id="desktopNextMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
-                              <i class="bx bx-chevron-right"></i>
-                            </button>
-                          </div>
-                          <div id="desktopCalendarGrid" class="calendar-grid">
-                            <div class="text-center py-3">
-                              <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Loading calendar...</span>
+                      <div class="desktop-calendar-layout mt-3">
+                        <!-- Left: Calendar -->
+                        <div class="desktop-calendar-left">
+                          <div class="calendar-panel" id="desktopHistoryCalendarCard">
+                            <div class="calendar-panel-header">
+                              <button id="desktopPrevMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
+                                <i class="bx bx-chevron-left"></i>
+                              </button>
+                              <span id="desktopCurrentMonth" class="fw-medium">January 2026</span>
+                              <button id="desktopNextMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
+                                <i class="bx bx-chevron-right"></i>
+                              </button>
+                            </div>
+                            <div id="desktopCalendarGrid" class="calendar-grid">
+                              <div class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                  <span class="visually-hidden">Loading calendar...</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <!-- Range Presets -->
-                          <div class="calendar-range-presets" id="desktopCalendarRangePresets">
-                            <!-- Rendered by JS -->
+                            <!-- Range Presets -->
+                            <div class="calendar-range-presets" id="desktopCalendarRangePresets">
+                              <!-- Rendered by JS -->
+                            </div>
                           </div>
                         </div>
-                        <!-- Inline Range Session List -->
-                        <div id="desktopCalendarRangeSessionList" style="display: none;">
-                          <!-- Rendered by JS when range is selected -->
+                        <!-- Right: Session List -->
+                        <div class="desktop-calendar-right" id="desktopCalendarRangeSessionList" style="display: none;">
+                          <!-- Rendered by JS when date/range is selected -->
                         </div>
                       </div>
                     </div>

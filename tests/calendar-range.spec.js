@@ -168,15 +168,15 @@ test.describe('Calendar Range Selection & Day Detail', () => {
 
     const exports = await page.evaluate(() => ({
       initHistoryCalendar: typeof window.initHistoryCalendar === 'function',
-      showDayDetailOffcanvas: typeof window.showDayDetailOffcanvas === 'function',
+      renderCalendarSessions: typeof window.renderCalendarSessions === 'function',
       setDateFilter: typeof window.setDateFilter === 'function',
       setDateRangeFilter: typeof window.setDateRangeFilter === 'function',
       clearDateFilter: typeof window.clearDateFilter === 'function',
       initCalendarPresets: typeof window.initCalendarPresets === 'function',
       applyCalendarPreset: typeof window.applyCalendarPreset === 'function',
       toggleRangeMode: typeof window.toggleRangeMode === 'function',
-      renderCalendarRangeSessions: typeof window.renderCalendarRangeSessions === 'function',
-      hideCalendarRangeSessions: typeof window.hideCalendarRangeSessions === 'function'
+      renderCalendarSessions: typeof window.renderCalendarSessions === 'function',
+      hideCalendarSessions: typeof window.hideCalendarSessions === 'function'
     }));
 
     Object.entries(exports).forEach(([name, exists]) => {
