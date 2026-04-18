@@ -289,6 +289,21 @@ async function renderPRSection() {
   const reorderBtnLabel = _prReorderMode ? 'Done' : 'Reorder';
   const reorderBtnTitle = _prReorderMode ? 'Save order' : 'Reorder PRs';
 
+  // Mobile-only action cards appended to end of scrollable PR list
+  const actionCards = `
+    <div class="pr-action-card pr-action-card-add" onclick="showAddPRModal()"
+         role="button" tabindex="0" title="Add a PR for any exercise" aria-label="Add PR">
+      <i class="bx bx-plus"></i>
+      <span>Add</span>
+    </div>
+    <div class="pr-action-card pr-action-card-reorder${_prReorderMode ? ' active' : ''}"
+         onclick="togglePRReorderMode()" role="button" tabindex="0"
+         title="${reorderBtnTitle}" aria-label="${reorderBtnLabel} PRs">
+      <i class="bx ${_prReorderMode ? 'bx-check' : 'bx-sort'}"></i>
+      <span>${reorderBtnLabel}</span>
+    </div>
+  `;
+
   container.innerHTML = `
     <div class="pr-section-header">
       <span class="pr-section-label">
@@ -310,6 +325,7 @@ async function renderPRSection() {
       <div class="pr-chips-container">
         <div class="pr-chips-scroll" id="prChipsScroll">
           ${chips}
+          ${actionCards}
         </div>
       </div>
     </div>

@@ -301,6 +301,67 @@
 }
 
 /* ============================================
+   Mobile Action Cards (Add / Reorder at end of PR scroll)
+   ============================================ */
+
+.pr-action-card {
+  display: none; /* Shown only on mobile via rule below */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  min-width: 80px;
+  background: var(--bs-card-bg, #fff);
+  border: 1px dashed var(--bs-border-color, #dee2e6);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color, #6c757d);
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.pr-action-card i {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.pr-action-card:hover,
+.pr-action-card:focus-visible {
+  background-color: var(--bs-tertiary-bg, #f0f0f0);
+  color: var(--bs-body-color);
+  border-color: var(--bs-body-color);
+  outline: none;
+}
+
+.pr-action-card-add:hover,
+.pr-action-card-add:focus-visible {
+  border-color: var(--bs-primary, #696cff);
+  color: var(--bs-primary, #696cff);
+}
+
+.pr-action-card-reorder.active {
+  background-color: var(--bs-warning, #ffab00);
+  border-style: solid;
+  border-color: var(--bs-warning, #ffab00);
+  color: #000;
+}
+
+/* Show action cards only on mobile; hide header Add/Reorder buttons on mobile */
+html:not(.desktop-view) .pr-action-card {
+  display: flex;
+}
+
+html:not(.desktop-view) .pr-section-header .pr-add-btn,
+html:not(.desktop-view) .pr-section-header .pr-reorder-btn {
+  display: none;
+}
+
+/* ============================================
    Dark Theme
    ============================================ */
 
