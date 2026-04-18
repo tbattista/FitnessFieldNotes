@@ -142,9 +142,41 @@
     font-size: 0.875rem;
 }
 
-/* Limit session list width for readability */
-[data-view="desktop"] #desktopHistoryTabPane {
-    max-width: 900px;
+/* ============================================
+   HISTORY TAB — 2:1 side-by-side layout
+   ============================================ */
+.desktop-history-layout {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.desktop-history-main {
+    flex: 2 1 0%;
+    min-width: 0;
+}
+
+.desktop-history-sidebar {
+    flex: 1 1 0%;
+    min-width: 0;
+    position: sticky;
+    top: 1rem;
+}
+
+/* PR section in sidebar: stack cards vertically instead of horizontal scroll */
+.desktop-history-sidebar .pr-chips-scroll {
+    flex-direction: column;
+    overflow-x: visible;
+    scroll-snap-type: none;
+}
+
+.desktop-history-sidebar .pr-chips-container {
+    overflow: visible;
+}
+
+.desktop-history-sidebar .pr-chip {
+    min-width: 0;
+    white-space: normal;
 }
 
 /* ============================================
@@ -158,6 +190,10 @@
     .desktop-history-tabs-wrapper .history-tabs .nav-link {
         font-size: 0.875rem;
         padding: 0.625rem 1rem;
+    }
+
+    .desktop-history-layout {
+        gap: 1rem;
     }
 }
 

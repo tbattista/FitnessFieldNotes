@@ -345,7 +345,7 @@
                     <div class="tab-pane fade show active" id="desktopHistoryTabPane" role="tabpanel"
                          aria-labelledby="desktop-history-tab" tabindex="0">
 
-                      <!-- Stats Summary Bar -->
+                      <!-- Stats Summary Bar (full width above the 2-col layout) -->
                       <div class="desktop-stats-bar mb-3" id="desktopStatisticsCards">
                         <!-- Stats rendered by JS -->
                       </div>
@@ -361,14 +361,21 @@
                         </button>
                       </div>
 
-                      <!-- Personal Records Section (Desktop - History tab only) -->
-                      <div id="desktopPrSectionContainer" style="display: none;">
-                        <!-- PR section rendered by JS -->
-                      </div>
+                      <!-- 2:1 Side-by-side layout -->
+                      <div class="desktop-history-layout">
+                        <!-- Left: Session History (2fr) -->
+                        <div class="desktop-history-main">
+                          <div id="desktopSessionHistoryContainer">
+                            <!-- Sessions rendered by JS -->
+                          </div>
+                        </div>
 
-                      <!-- Session History Container -->
-                      <div id="desktopSessionHistoryContainer">
-                        <!-- Sessions rendered by JS -->
+                        <!-- Right: Personal Records (1fr) -->
+                        <div class="desktop-history-sidebar">
+                          <div id="desktopPrSectionContainer" style="display: none;">
+                            <!-- PR section rendered by JS -->
+                          </div>
+                        </div>
                       </div>
 
                     </div>

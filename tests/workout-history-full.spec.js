@@ -247,9 +247,9 @@ test.describe('Workout History', () => {
     const tabsWrapper = desktopPage.locator('.desktop-history-tabs-wrapper');
     await expect(tabsWrapper).toBeAttached();
 
-    // No sidebar layout (old 2-column design should be gone)
+    // PR sidebar exists in the 2:1 layout
     const sidebar = desktopPage.locator('.desktop-history-sidebar');
-    await expect(sidebar).toHaveCount(0);
+    await expect(sidebar).toBeAttached();
 
     await context.close();
   });
