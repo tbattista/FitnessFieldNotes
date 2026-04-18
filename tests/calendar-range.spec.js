@@ -13,14 +13,6 @@ test.describe('Calendar Range Selection & Day Detail', () => {
     await expect(presets.first()).toBeAttached();
   });
 
-  test('calendar range session list container exists in DOM', async ({ page }) => {
-    await page.goto(`${BASE}/workout-history.html`);
-    await waitForAppReady(page);
-
-    const container = page.locator('#calendarRangeSessionList, #desktopCalendarRangeSessionList');
-    await expect(container.first()).toBeAttached();
-  });
-
   test('CalendarView class has selection methods', async ({ page }) => {
     await page.goto(`${BASE}/workout-history.html`);
     await waitForAppReady(page);
@@ -168,15 +160,13 @@ test.describe('Calendar Range Selection & Day Detail', () => {
 
     const exports = await page.evaluate(() => ({
       initHistoryCalendar: typeof window.initHistoryCalendar === 'function',
-      renderCalendarSessions: typeof window.renderCalendarSessions === 'function',
       setDateFilter: typeof window.setDateFilter === 'function',
       setDateRangeFilter: typeof window.setDateRangeFilter === 'function',
       clearDateFilter: typeof window.clearDateFilter === 'function',
       initCalendarPresets: typeof window.initCalendarPresets === 'function',
       applyCalendarPreset: typeof window.applyCalendarPreset === 'function',
       toggleRangeMode: typeof window.toggleRangeMode === 'function',
-      renderCalendarSessions: typeof window.renderCalendarSessions === 'function',
-      hideCalendarSessions: typeof window.hideCalendarSessions === 'function'
+      clearPresetHighlight: typeof window.clearPresetHighlight === 'function'
     }));
 
     Object.entries(exports).forEach(([name, exists]) => {

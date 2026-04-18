@@ -190,11 +190,6 @@ function resetSessionFilters() {
     indicator.style.display = 'none';
   }
 
-  // Hide inline calendar sessions
-  if (typeof hideCalendarSessions === 'function') {
-    hideCalendarSessions();
-  }
-
   renderSessionHistory();
 }
 

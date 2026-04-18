@@ -137,13 +137,6 @@
                         </button>
                       </li>
                       <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab"
-                                data-bs-target="#calendarTabPane" type="button" role="tab"
-                                aria-controls="calendarTabPane" aria-selected="false">
-                          <i class="bx bx-calendar me-1"></i>Calendar
-                        </button>
-                      </li>
-                      <li class="nav-item" role="presentation">
                         <button class="nav-link" id="exercises-tab" data-bs-toggle="tab"
                                 data-bs-target="#exercisesTabPane" type="button" role="tab"
                                 aria-controls="exercisesTabPane" aria-selected="false">
@@ -193,44 +186,44 @@
                     <p class="text-muted small mb-0" id="workoutDescription"></p>
                   </div>
 
-                  <!-- Tab Content (Calendar Panel only) -->
+                  <!-- Tab Content -->
                   <div class="tab-content" id="historyTabContent">
-                    <!-- History Tab (empty - just hides calendar) -->
+                    <!-- History Tab -->
                     <div class="tab-pane fade show active" id="historyTabPane" role="tabpanel"
                          aria-labelledby="history-tab" tabindex="0">
-                    </div>
 
-                    <!-- Calendar Tab -->
-                    <div class="tab-pane fade" id="calendarTabPane" role="tabpanel"
-                         aria-labelledby="calendar-tab" tabindex="0">
-                      <div class="calendar-panel mb-3 mt-3" id="historyCalendarCard">
-                        <!-- Month Navigation -->
-                        <div class="calendar-panel-header">
-                          <button id="historyPrevMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
-                            <i class="bx bx-chevron-left"></i>
-                          </button>
-                          <span id="historyCurrentMonth" class="fw-medium">January 2026</span>
-                          <button id="historyNextMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
-                            <i class="bx bx-chevron-right"></i>
-                          </button>
-                        </div>
-                        <!-- Calendar Grid -->
-                        <div id="historyCalendarGrid" class="calendar-grid">
-                          <div class="text-center py-3">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                              <span class="visually-hidden">Loading calendar...</span>
+                      <!-- Collapsible Calendar (mobile) -->
+                      <div class="mobile-calendar-toggle mb-3">
+                        <button class="btn btn-sm btn-outline-secondary w-100" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#mobileCalendarCollapse"
+                                aria-expanded="false" aria-controls="mobileCalendarCollapse"
+                                id="mobileCalendarToggleBtn">
+                          <i class="bx bx-calendar me-1"></i>Calendar
+                          <i class="bx bx-chevron-down ms-1 mobile-calendar-chevron"></i>
+                        </button>
+                      </div>
+                      <div class="collapse" id="mobileCalendarCollapse">
+                        <div class="calendar-panel mb-3" id="historyCalendarCard">
+                          <div class="calendar-panel-header">
+                            <button id="historyPrevMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
+                              <i class="bx bx-chevron-left"></i>
+                            </button>
+                            <span id="historyCurrentMonth" class="fw-medium">January 2026</span>
+                            <button id="historyNextMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
+                              <i class="bx bx-chevron-right"></i>
+                            </button>
+                          </div>
+                          <div id="historyCalendarGrid" class="calendar-grid">
+                            <div class="text-center py-3">
+                              <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading calendar...</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <!-- Range Presets -->
-                        <div class="calendar-range-presets" id="calendarRangePresets">
-                          <!-- Rendered by JS -->
+                          <div class="calendar-range-presets" id="calendarRangePresets"></div>
                         </div>
                       </div>
-                      <!-- Inline Range Session List -->
-                      <div id="calendarRangeSessionList" style="display: none;">
-                        <!-- Rendered by JS when range is selected -->
-                      </div>
+
                     </div>
 
                     <!-- Exercises Tab -->
@@ -311,7 +304,7 @@
                     <p class="text-muted small mb-0" id="desktopWorkoutDescription"></p>
                   </div>
 
-                  <!-- Tab Navigation (3 tabs at top, like mobile) -->
+                  <!-- Tab Navigation (2 tabs on desktop - calendar is in sidebar) -->
                   <div class="history-tabs-wrapper desktop-history-tabs-wrapper">
                     <ul class="nav nav-tabs history-tabs mb-0" id="desktopHistoryTabs" role="tablist">
                       <li class="nav-item" role="presentation">
@@ -319,13 +312,6 @@
                                 data-bs-target="#desktopHistoryTabPane" type="button" role="tab"
                                 aria-controls="desktopHistoryTabPane" aria-selected="true">
                           <i class="bx bx-history me-1"></i>History
-                        </button>
-                      </li>
-                      <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="desktop-calendar-tab" data-bs-toggle="tab"
-                                data-bs-target="#desktopCalendarTabPane" type="button" role="tab"
-                                aria-controls="desktopCalendarTabPane" aria-selected="false">
-                          <i class="bx bx-calendar me-1"></i>Calendar
                         </button>
                       </li>
                       <li class="nav-item" role="presentation">
@@ -370,23 +356,10 @@
                           </div>
                         </div>
 
-                        <!-- Right: Personal Records (1fr) -->
+                        <!-- Right: Calendar + PRs sidebar (1fr) -->
                         <div class="desktop-history-sidebar">
-                          <div id="desktopPrSectionContainer" style="display: none;">
-                            <!-- PR section rendered by JS -->
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-
-                    <!-- Calendar Tab -->
-                    <div class="tab-pane fade" id="desktopCalendarTabPane" role="tabpanel"
-                         aria-labelledby="desktop-calendar-tab" tabindex="0">
-                      <div class="desktop-calendar-layout mt-3">
-                        <!-- Left: Calendar -->
-                        <div class="desktop-calendar-left">
-                          <div class="calendar-panel" id="desktopHistoryCalendarCard">
+                          <!-- Calendar (always visible on desktop) -->
+                          <div class="calendar-panel mb-3" id="desktopHistoryCalendarCard">
                             <div class="calendar-panel-header">
                               <button id="desktopPrevMonth" class="btn btn-sm btn-icon btn-outline-secondary rounded-circle">
                                 <i class="bx bx-chevron-left"></i>
@@ -403,17 +376,16 @@
                                 </div>
                               </div>
                             </div>
-                            <!-- Range Presets -->
-                            <div class="calendar-range-presets" id="desktopCalendarRangePresets">
-                              <!-- Rendered by JS -->
-                            </div>
+                            <div class="calendar-range-presets" id="desktopCalendarRangePresets"></div>
+                          </div>
+
+                          <!-- Personal Records -->
+                          <div id="desktopPrSectionContainer" style="display: none;">
+                            <!-- PR section rendered by JS -->
                           </div>
                         </div>
-                        <!-- Right: Session List -->
-                        <div class="desktop-calendar-right" id="desktopCalendarRangeSessionList" style="display: none;">
-                          <!-- Rendered by JS when date/range is selected -->
-                        </div>
                       </div>
+
                     </div>
 
                     <!-- Exercises Tab -->
@@ -475,14 +447,12 @@
           ['historyNextMonth',       'desktopNextMonth'],
           ['historyCalendarCard',    'desktopHistoryCalendarCard'],
           ['calendarRangePresets',   'desktopCalendarRangePresets'],
-          ['calendarRangeSessionList','desktopCalendarRangeSessionList'],
           ['statisticsCards',        'desktopStatisticsCards'],
           ['exercisePerformanceContainer', 'desktopExercisePerformanceContainer'],
           ['exerciseTabContainer',   'desktopExerciseTabContainer'],
           ['exerciseOverviewCardWrapper', 'desktopExerciseOverviewCardWrapper'],
           ['historyTabs',            'desktopHistoryTabs'],
           ['history-tab',            'desktop-history-tab'],
-          ['calendar-tab',           'desktop-calendar-tab'],
           ['exercises-tab',          'desktop-exercises-tab']
         ];
         _swaps.forEach(function(pair) {

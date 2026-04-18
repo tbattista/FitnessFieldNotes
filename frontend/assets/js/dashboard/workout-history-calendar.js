@@ -47,35 +47,29 @@ function initHistoryCalendar() {
    ============================================ */
 
 /**
- * Handle calendar day click - set date filter and show sessions inline
+ * Handle calendar day click - filters the main session list
  */
 function handleCalendarDayClick(dateKey, daySessions) {
   const isAllMode = window.ffn.workoutHistory.isAllMode;
 
-  // Clear any active preset highlight
   clearPresetHighlight();
 
   if (isAllMode) {
-    // Set filter and render sessions inline below calendar
     setDateFilter(dateKey);
-    renderCalendarSessions(dateKey, null, daySessions);
     return;
   }
 
-  // In Single Workout mode, scroll to session (original behavior)
-  if (daySessions.length === 0) {
-    return;
-  }
+  // In Single Workout mode, scroll to session
+  if (daySessions.length === 0) return;
   scrollToSession(daySessions[0].id);
 }
 
 /**
- * Handle range selection complete
+ * Handle range selection complete - filters the main session list
  */
 function handleCalendarRangeSelect(startDate, endDate, sessions) {
   clearPresetHighlight();
   setDateRangeFilter(startDate, endDate);
-  renderCalendarSessions(startDate, endDate, sessions);
 }
 
 /* ============================================
@@ -138,10 +132,7 @@ function clearDateFilter() {
     indicator.style.display = 'none';
   }
 
-  // Hide inline calendar sessions
-  hideCalendarSessions();
-
-  // Re-render History tab sessions
+  // Re-render session list
   if (typeof renderSessionHistory === 'function') {
     renderSessionHistory();
   }
@@ -171,95 +162,6 @@ function updateDateFilterIndicator(filter) {
   }
 
   indicator.style.display = 'flex';
-}
-
-/* ============================================
-   INLINE SESSION RENDERING (Calendar Tab)
-   Reuses createSessionEntry() from
-   workout-history-sessions.js
-   ============================================ */
-
-/**
- * Render sessions inline below the calendar.
- * Used for both single-day and range selections.
- *
- * @param {string} startDate - Start date 'YYYY-MM-DD'
- * @param {string|null} endDate - End date 'YYYY-MM-DD' (null = single day)
- * @param {Array} sessions - Filtered sessions to display
- */
-function renderCalendarSessions(startDate, endDate, sessions) {
-  const container = document.getElementById('calendarRangeSessionList');
-  if (!container) return;
-
-  // Format header label
-  const [sy, sm, sd] = startDate.split('-').map(Number);
-  const startFmt = new Date(sy, sm - 1, sd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  let headerLabel;
-  if (endDate && endDate !== startDate) {
-    const [ey, em, ed] = endDate.split('-').map(Number);
-    const endFmt = new Date(ey, em - 1, ed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    headerLabel = `${startFmt} – ${endFmt}`;
-  } else {
-    // Single day - use full format
-    headerLabel = new Date(sy, sm - 1, sd).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  }
-
-  if (sessions.length === 0) {
-    container.innerHTML = `
-      <div class="calendar-range-session-list">
-        <div class="range-session-header">${headerLabel}</div>
-        <div class="text-center py-4">
-          <i class="bx bx-calendar-x display-4 text-muted"></i>
-          <p class="mt-3 text-muted mb-0">No workouts${endDate ? ' in this range' : ' on this day'}</p>
-        </div>
-      </div>
-    `;
-    container.removeAttribute('style');
-    return;
-  }
-
-  // Sort descending by date
-  const sorted = [...sessions].sort((a, b) => {
-    return new Date(b.completed_at || b.started_at) - new Date(a.completed_at || a.started_at);
-  });
-
-  // Temporarily force isAllMode so createSessionEntry shows workout names
-  const state = window.ffn.workoutHistory;
-  const origAllMode = state.isAllMode;
-  state.isAllMode = true;
-
-  let html = `
-    <div class="calendar-range-session-list">
-      <div class="range-session-header d-flex justify-content-between align-items-center">
-        <span>${headerLabel}</span>
-        <span class="text-muted" style="font-size: 0.8rem;">
-          ${sessions.length} session${sessions.length !== 1 ? 's' : ''}
-        </span>
-      </div>
-      <div class="session-list">
-        ${sorted.map(session => createSessionEntry(session)).join('')}
-      </div>
-    </div>
-  `;
-
-  // Restore original mode
-  state.isAllMode = origAllMode;
-
-  container.innerHTML = html;
-  // Use block on mobile, flex-friendly on desktop
-  container.style.display = '';
-  container.removeAttribute('style');
-}
-
-/**
- * Hide the inline calendar session list
- */
-function hideCalendarSessions() {
-  const container = document.getElementById('calendarRangeSessionList');
-  if (container) {
-    container.style.display = 'none';
-    container.innerHTML = '';
-  }
 }
 
 /* ============================================
@@ -349,10 +251,8 @@ function applyCalendarPreset(preset) {
   calendarView.navigateToDate(start);
   calendarView.setSelection(start, end);
 
-  // Get sessions in range and render inline
-  const rangeSessions = calendarView.getSessionsInRange(start, end);
+  // Set filter - main session list re-renders automatically
   setDateRangeFilter(start, end);
-  renderCalendarSessions(start, end, rangeSessions);
 }
 
 /**
@@ -375,7 +275,6 @@ function toggleRangeMode() {
   if (newMode) {
     clearPresetHighlight();
     state.dateRangePreset = 'custom';
-    hideCalendarSessions();
   } else {
     state.dateRangePreset = null;
   }
@@ -401,8 +300,6 @@ window.setDateFilter = setDateFilter;
 window.setDateRangeFilter = setDateRangeFilter;
 window.clearDateFilter = clearDateFilter;
 window.updateDateFilterIndicator = updateDateFilterIndicator;
-window.renderCalendarSessions = renderCalendarSessions;
-window.hideCalendarSessions = hideCalendarSessions;
 window.initCalendarPresets = initCalendarPresets;
 window.applyCalendarPreset = applyCalendarPreset;
 window.toggleRangeMode = toggleRangeMode;

@@ -8,13 +8,11 @@ test.describe('Workout History', () => {
     await page.goto(`${BASE}/workout-history.html`);
     await waitForAppReady(page);
 
-    // Three tabs should exist
+    // Two tabs: History and Exercise Stats (calendar is inline)
     const historyTab = page.locator('#history-tab');
-    const calendarTab = page.locator('#calendar-tab');
     const exercisesTab = page.locator('#exercises-tab');
 
     await expect(historyTab).toBeAttached();
-    await expect(calendarTab).toBeAttached();
     await expect(exercisesTab).toBeAttached();
   });
 
@@ -33,16 +31,16 @@ test.describe('Workout History', () => {
     await mobilePage.waitForLoadState('networkidle');
     await mobilePage.waitForTimeout(2000);
 
-    // Tabs exist in DOM even if content is hidden (requires auth/data to show)
-    const calendarTab = mobilePage.locator('#calendar-tab');
+    // History and Exercise Stats tabs exist
     const exercisesTab = mobilePage.locator('#exercises-tab');
-
-    await expect(calendarTab).toBeAttached();
     await expect(exercisesTab).toBeAttached();
 
-    // Tab panes exist in DOM
-    await expect(mobilePage.locator('#calendarTabPane')).toBeAttached();
+    // Exercise Stats tab pane exists
     await expect(mobilePage.locator('#exercisesTabPane')).toBeAttached();
+
+    // Calendar is a collapsible section, not a tab
+    const calendarCollapse = mobilePage.locator('#mobileCalendarCollapse');
+    await expect(calendarCollapse).toBeAttached();
 
     await context.close();
   });
@@ -223,50 +221,41 @@ test.describe('Workout History', () => {
     await expect(cssLink).toBeAttached();
   });
 
-  test('desktop view has 3 tabs at top (History, Calendar, Exercise Stats)', async ({ browser }) => {
+  test('desktop view has 2 tabs (History, Exercise Stats) with calendar in sidebar', async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const desktopPage = await context.newPage();
     await desktopPage.goto(`${BASE}/workout-history.html`);
     await desktopPage.waitForLoadState('networkidle');
     await desktopPage.waitForTimeout(2000);
 
-    // Desktop view should have 3 tab buttons in the desktop tabs wrapper
-    // (content is hidden until auth, so check DOM attachment not visibility)
+    // Desktop has 2 tabs (calendar merged into sidebar)
     const historyTab = desktopPage.locator('.desktop-history-tabs-wrapper #history-tab');
-    const calendarTab = desktopPage.locator('.desktop-history-tabs-wrapper #calendar-tab');
     const exercisesTab = desktopPage.locator('.desktop-history-tabs-wrapper #exercises-tab');
 
     await expect(historyTab).toBeAttached();
-    await expect(calendarTab).toBeAttached();
     await expect(exercisesTab).toBeAttached();
-
-    // History tab should be active by default
     await expect(historyTab).toHaveClass(/active/);
 
-    // Tab navigation wrapper exists in desktop view DOM
-    const tabsWrapper = desktopPage.locator('.desktop-history-tabs-wrapper');
-    await expect(tabsWrapper).toBeAttached();
-
-    // PR sidebar exists in the 2:1 layout
+    // Sidebar with calendar exists in the 2:1 layout
     const sidebar = desktopPage.locator('.desktop-history-sidebar');
     await expect(sidebar).toBeAttached();
+
+    // Calendar grid is in the sidebar
+    const calendarGrid = desktopPage.locator('.desktop-history-sidebar #historyCalendarGrid');
+    await expect(calendarGrid).toBeAttached();
 
     await context.close();
   });
 
-  test('desktop tab panes exist for all 3 tabs', async ({ browser }) => {
+  test('desktop tab panes exist for History and Exercise Stats', async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const desktopPage = await context.newPage();
     await desktopPage.goto(`${BASE}/workout-history.html`);
     await desktopPage.waitForLoadState('networkidle');
     await desktopPage.waitForTimeout(2000);
 
-    // Tab panes should exist in DOM
     await expect(desktopPage.locator('#desktopHistoryTabPane')).toBeAttached();
-    await expect(desktopPage.locator('#desktopCalendarTabPane')).toBeAttached();
     await expect(desktopPage.locator('#desktopExercisesTabPane')).toBeAttached();
-
-    // History tab pane should be active by default
     await expect(desktopPage.locator('#desktopHistoryTabPane')).toHaveClass(/active/);
 
     await context.close();

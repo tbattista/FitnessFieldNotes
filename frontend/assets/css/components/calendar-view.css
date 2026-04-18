@@ -242,6 +242,26 @@
 }
 
 /* ============================================
+   MOBILE CALENDAR TOGGLE
+   ============================================ */
+
+.mobile-calendar-toggle .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 0.5rem;
+}
+
+.mobile-calendar-chevron {
+    transition: transform 0.2s ease;
+}
+
+[aria-expanded="true"] .mobile-calendar-chevron {
+    transform: rotate(180deg);
+}
+
+/* ============================================
    RANGE PRESETS & TOGGLE
    ============================================ */
 
@@ -307,16 +327,6 @@
     background-color: rgba(201, 124, 93, 0.1);
     border-color: var(--gs-primary, #C97C5D);
     color: var(--gs-primary, #C97C5D);
-}
-
-/* Inline range session list */
-.calendar-range-session-list .range-session-header {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--gs-primary-text, #1f2937);
-    padding: 0.75rem 0 0.5rem;
-    border-bottom: 1px solid var(--gs-border, #e2e8f0);
-    margin-bottom: 0.5rem;
 }
 
 /* ============================================
@@ -418,11 +428,6 @@
     background-color: rgba(201, 124, 93, 0.2);
     border-color: var(--gs-primary, #C97C5D);
     color: #e8a88a;
-}
-
-[data-bs-theme="dark"] .calendar-range-session-list .range-session-header {
-    color: var(--gs-primary-text-dark, #f8fafc);
-    border-color: var(--gs-border-dark, #334155);
 }
 
 [data-bs-theme="dark"] .day-session-item {
