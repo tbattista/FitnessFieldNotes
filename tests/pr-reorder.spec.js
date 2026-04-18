@@ -115,6 +115,43 @@ test.describe('PR Section Reordering', () => {
     expect(addIdx).toBeGreaterThan(lastChipIdx);
   });
 
+  test('Reorder action card opens reorder offcanvas with vertical list', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+
+    await page.evaluate(() => {
+      const state = window.ffn && window.ffn.workoutHistory;
+      if (!state) return;
+      state.personalRecords.clear();
+      state.prRecordIds = [];
+      const mockPRs = [
+        { id: 'weight_bench', exercise_name: 'Bench Press', value: '225', value_unit: 'lbs', pr_type: 'weight' },
+        { id: 'weight_squat', exercise_name: 'Squat', value: '315', value_unit: 'lbs', pr_type: 'weight' },
+        { id: 'weight_deadlift', exercise_name: 'Deadlift', value: '405', value_unit: 'lbs', pr_type: 'weight' },
+      ];
+      mockPRs.forEach(pr => state.personalRecords.set(pr.id, pr));
+      window.renderPRSection();
+    });
+    await page.waitForTimeout(200);
+
+    const fn = await page.evaluate(() => typeof window.openPRReorderOffcanvas === 'function');
+    expect(fn).toBe(true);
+
+    const reorderCard = page.locator('#prChipsScroll .pr-action-card-reorder');
+    if (await reorderCard.count() === 0) return;
+    await reorderCard.click();
+
+    // Offcanvas should appear with a vertical list of PRs
+    const offcanvas = page.locator('#prReorderOffcanvas');
+    await expect(offcanvas).toBeVisible({ timeout: 3000 });
+
+    const items = page.locator('#prReorderList .pr-reorder-item');
+    expect(await items.count()).toBe(3);
+
+    // Save button is present
+    await expect(page.locator('#prReorderSaveBtn')).toBeVisible();
+  });
+
   test('Add action card triggers showAddPRModal', async ({ page }) => {
     await page.goto(`${BASE}/workout-history.html`);
     await waitForAppReady(page);

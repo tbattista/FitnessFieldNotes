@@ -289,18 +289,19 @@ async function renderPRSection() {
   const reorderBtnLabel = _prReorderMode ? 'Done' : 'Reorder';
   const reorderBtnTitle = _prReorderMode ? 'Save order' : 'Reorder PRs';
 
-  // Mobile-only action cards appended to end of scrollable PR list
+  // Mobile-only action cards appended to end of scrollable PR list.
+  // On mobile, Reorder opens a vertical offcanvas (easier than horizontal drag).
   const actionCards = `
     <div class="pr-action-card pr-action-card-add" onclick="showAddPRModal()"
          role="button" tabindex="0" title="Add a PR for any exercise" aria-label="Add PR">
       <i class="bx bx-plus"></i>
       <span>Add</span>
     </div>
-    <div class="pr-action-card pr-action-card-reorder${_prReorderMode ? ' active' : ''}"
-         onclick="togglePRReorderMode()" role="button" tabindex="0"
-         title="${reorderBtnTitle}" aria-label="${reorderBtnLabel} PRs">
-      <i class="bx ${_prReorderMode ? 'bx-check' : 'bx-sort'}"></i>
-      <span>${reorderBtnLabel}</span>
+    <div class="pr-action-card pr-action-card-reorder"
+         onclick="openPRReorderOffcanvas()" role="button" tabindex="0"
+         title="Reorder PRs" aria-label="Reorder PRs">
+      <i class="bx bx-sort"></i>
+      <span>Reorder</span>
     </div>
   `;
 
@@ -385,6 +386,115 @@ async function _savePROrder(recordIds) {
     console.error('Error saving PR order:', error);
     if (window.showToast) window.showToast('Failed to save PR order', 'danger');
   }
+}
+
+/**
+ * Open a bottom-sheet offcanvas for reordering PRs vertically.
+ * Uses SortableJS so drags work reliably on mobile without competing
+ * with horizontal scroll. Saves order on Save, discards on Cancel/close.
+ */
+function openPRReorderOffcanvas() {
+  if (!window.offcanvasManager) {
+    // Fall back to inline reorder mode if offcanvas unavailable
+    return togglePRReorderMode();
+  }
+
+  const state = window.ffn.workoutHistory;
+  const records = Array.from(state.personalRecords.values());
+  if (records.length === 0) return;
+
+  const orderedRecords = _getOrderedRecords(records, state.prRecordIds);
+
+  const listItems = orderedRecords.map(pr => {
+    const media = _lookupGifUrl(pr.exercise_name);
+    let mediaHtml = '';
+    if (media && media.type === 'gif') {
+      mediaHtml = `<img src="${escapeHtml(media.url)}" alt="" class="pr-reorder-item-gif" loading="lazy" onerror="this.style.display='none'">`;
+    } else if (media && media.type === 'icon') {
+      mediaHtml = `<div class="pr-reorder-item-icon"><i class="${escapeHtml(media.className)}"></i></div>`;
+    } else {
+      mediaHtml = `<div class="pr-reorder-item-icon"><i class="bx bxs-trophy"></i></div>`;
+    }
+
+    return `
+      <li class="pr-reorder-item" data-pr-id="${escapeHtml(pr.id)}">
+        <i class="bx bx-grid-vertical pr-reorder-handle" aria-hidden="true"></i>
+        ${mediaHtml}
+        <div class="pr-reorder-item-info">
+          <span class="pr-reorder-item-name">${escapeHtml(pr.exercise_name)}</span>
+          <span class="pr-reorder-item-value">${escapeHtml(pr.value)} ${escapeHtml(pr.value_unit)}</span>
+        </div>
+      </li>
+    `;
+  }).join('');
+
+  const offcanvasHtml = `
+    <div class="offcanvas offcanvas-bottom offcanvas-bottom-base" tabindex="-1"
+         id="prReorderOffcanvas" aria-labelledby="prReorderOffcanvasLabel"
+         data-bs-scroll="false" style="height: 85vh;">
+      <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title" id="prReorderOffcanvasLabel">
+          <i class="bx bx-sort me-2"></i>Reorder PRs
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body p-0 d-flex flex-column">
+        <div class="p-3 pb-2 border-bottom">
+          <p class="text-muted small mb-0">Drag items to reorder. Tap Save when finished.</p>
+        </div>
+        <div class="flex-grow-1" style="overflow-y: auto;">
+          <ul class="pr-reorder-list" id="prReorderList">
+            ${listItems}
+          </ul>
+        </div>
+      </div>
+      <div class="offcanvas-footer border-top p-3">
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="offcanvas">
+            <i class="bx bx-x me-1"></i>Cancel
+          </button>
+          <button type="button" class="btn btn-primary flex-fill" id="prReorderSaveBtn">
+            <i class="bx bx-check me-1"></i>Save
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  window.offcanvasManager.create('prReorderOffcanvas', offcanvasHtml, (offcanvas, element) => {
+    const list = element.querySelector('#prReorderList');
+    const saveBtn = element.querySelector('#prReorderSaveBtn');
+
+    let sortable = null;
+    if (window.Sortable && list) {
+      sortable = window.Sortable.create(list, {
+        animation: 150,
+        handle: '.pr-reorder-handle',
+        draggable: '.pr-reorder-item',
+        ghostClass: 'pr-reorder-item-ghost',
+        chosenClass: 'pr-reorder-item-chosen',
+        dragClass: 'pr-reorder-item-drag',
+        forceFallback: true,
+        fallbackTolerance: 5,
+      });
+    }
+
+    let saved = false;
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const items = list.querySelectorAll('.pr-reorder-item[data-pr-id]');
+        const newOrder = Array.from(items).map(el => el.dataset.prId);
+        saved = true;
+        await _savePROrder(newOrder);
+        renderPRSection();
+        window.offcanvasManager.hide('prReorderOffcanvas');
+      });
+    }
+
+    element.addEventListener('hidden.bs.offcanvas', () => {
+      if (sortable) sortable.destroy();
+    }, { once: true });
+  });
 }
 
 /**
@@ -1008,6 +1118,7 @@ window.renderPRSection = renderPRSection;
 window.editPRValue = editPRValue;
 window.togglePRSection = togglePRSection;
 window.togglePRReorderMode = togglePRReorderMode;
+window.openPRReorderOffcanvas = openPRReorderOffcanvas;
 window.showAddPRModal = showAddPRModal;
 
 console.log('Workout History PR Section module loaded (v4.0.0)');
