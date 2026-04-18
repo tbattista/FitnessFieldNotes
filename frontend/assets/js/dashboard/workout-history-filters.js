@@ -86,14 +86,22 @@ function applySessionFilters(sessions) {
     });
   }
 
-  // Filter by date
+  // Filter by date (single date or range)
   if (dateFilter) {
     filtered = filtered.filter(session => {
       const dateStr = session.completed_at || session.started_at;
       if (!dateStr) return false;
       const date = new Date(dateStr);
       const sessionDateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      return sessionDateKey === dateFilter;
+
+      if (typeof dateFilter === 'string') {
+        // Single date filter
+        return sessionDateKey === dateFilter;
+      } else if (dateFilter.start && dateFilter.end) {
+        // Range filter
+        return sessionDateKey >= dateFilter.start && sessionDateKey <= dateFilter.end;
+      }
+      return true;
     });
   }
 
@@ -157,17 +165,34 @@ function cycleSessionSort() {
  * Reset all session filters to defaults
  */
 function resetSessionFilters() {
-  window.ffn.workoutHistory.sessionFilter = 'all';
-  window.ffn.workoutHistory.workoutTypeFilters = [];
-  window.ffn.workoutHistory.sessionSort = 'date-desc';
-  window.ffn.workoutHistory.currentPage = 1;
-  window.ffn.workoutHistory.pageSize = 20;
-  window.ffn.workoutHistory.dateFilter = null;
+  const state = window.ffn.workoutHistory;
+  state.sessionFilter = 'all';
+  state.workoutTypeFilters = [];
+  state.sessionSort = 'date-desc';
+  state.currentPage = 1;
+  state.pageSize = 20;
+  state.dateFilter = null;
+  state.dateRangePreset = null;
+
+  // Clear calendar selection
+  if (state.calendarView) {
+    state.calendarView.clearSelection();
+  }
+
+  // Clear preset highlights
+  if (typeof clearPresetHighlight === 'function') {
+    clearPresetHighlight();
+  }
 
   // Hide date filter indicator
   const indicator = document.getElementById('dateFilterIndicator');
   if (indicator) {
     indicator.style.display = 'none';
+  }
+
+  // Hide inline range sessions
+  if (typeof hideCalendarRangeSessions === 'function') {
+    hideCalendarRangeSessions();
   }
 
   renderSessionHistory();

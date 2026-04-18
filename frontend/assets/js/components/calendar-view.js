@@ -12,9 +12,16 @@ class CalendarView {
         this.currentMonth = options.startMonth || new Date();
         this.sessions = [];
         this.onDayClick = options.onDayClick || (() => {});
+        this.onRangeSelect = options.onRangeSelect || (() => {});
         this.monthLabelId = options.monthLabelId || 'currentMonth';
         this.prevButtonId = options.prevButtonId || 'prevMonth';
         this.nextButtonId = options.nextButtonId || 'nextMonth';
+
+        // Selection state
+        this.selectedDate = null;      // Single-day selection (YYYY-MM-DD)
+        this.rangeMode = false;        // Whether range selection is active
+        this.selectedStart = null;     // Range start (YYYY-MM-DD)
+        this.selectedEnd = null;       // Range end (YYYY-MM-DD)
 
         this.init();
     }
@@ -147,13 +154,28 @@ class CalendarView {
             const daySessions = sessionMap.get(dateKey) || [];
             const hasWorkout = daySessions.length > 0;
             const isToday = this.isToday(year, month, day, today);
-            const isSelected = false; // Could track selected state
+
+            // Selection state
+            const isSelected = this.selectedDate === dateKey;
+            const isRangeStart = this.selectedStart === dateKey && this.selectedEnd;
+            const isRangeEnd = this.selectedEnd === dateKey;
+            const isInRange = this.isInRange(dateKey);
 
             const completedCount = daySessions.filter(s => s.status === 'completed').length;
             const partialCount = daySessions.length - completedCount;
 
+            const cellClasses = [
+                'calendar-cell',
+                isToday ? 'today' : '',
+                hasWorkout ? 'has-workout' : '',
+                isSelected ? 'selected' : '',
+                isRangeStart ? 'range-start' : '',
+                isRangeEnd ? 'range-end' : '',
+                isInRange ? 'in-range' : ''
+            ].filter(Boolean).join(' ');
+
             html += `
-                <div class="calendar-cell ${isToday ? 'today' : ''} ${hasWorkout ? 'has-workout' : ''}"
+                <div class="${cellClasses}"
                      data-date="${dateKey}"
                      onclick="window.calendarView.handleDayClick('${dateKey}')">
                     <span class="day-number">${day}</span>
@@ -252,17 +274,118 @@ class CalendarView {
     }
 
     /**
-     * Handle day click
+     * Handle day click - supports single-day and range selection
      */
     handleDayClick(dateKey) {
-        const daySessions = this.sessions.filter(s => {
+        const daySessions = this.getSessionsForDate(dateKey);
+
+        if (this.rangeMode) {
+            // Range selection mode
+            if (!this.selectedStart || (this.selectedStart && this.selectedEnd)) {
+                // First click or reset: set start
+                this.selectedStart = dateKey;
+                this.selectedEnd = null;
+                this.selectedDate = null;
+                this.render();
+            } else {
+                // Second click: set end
+                let start = this.selectedStart;
+                let end = dateKey;
+                // Swap if end < start
+                if (end < start) {
+                    [start, end] = [end, start];
+                }
+                this.selectedStart = start;
+                this.selectedEnd = end;
+                this.selectedDate = null;
+                this.render();
+                // Notify with all sessions in range
+                const rangeSessions = this.getSessionsInRange(start, end);
+                this.onRangeSelect(start, end, rangeSessions);
+            }
+        } else {
+            // Single-day selection
+            this.selectedDate = dateKey;
+            this.selectedStart = null;
+            this.selectedEnd = null;
+            this.render();
+            this.onDayClick(dateKey, daySessions);
+        }
+    }
+
+    /**
+     * Check if a date key falls within the selected range (exclusive of endpoints)
+     */
+    isInRange(dateKey) {
+        if (!this.selectedStart || !this.selectedEnd) return false;
+        return dateKey > this.selectedStart && dateKey < this.selectedEnd;
+    }
+
+    /**
+     * Programmatically set a date range selection
+     */
+    setSelection(start, end) {
+        this.selectedDate = null;
+        this.selectedStart = start;
+        this.selectedEnd = end;
+        this.render();
+    }
+
+    /**
+     * Clear all selection state
+     */
+    clearSelection() {
+        this.selectedDate = null;
+        this.selectedStart = null;
+        this.selectedEnd = null;
+        this.render();
+    }
+
+    /**
+     * Set range mode on/off
+     */
+    setRangeMode(enabled) {
+        this.rangeMode = enabled;
+        if (!enabled) {
+            this.selectedStart = null;
+            this.selectedEnd = null;
+        }
+        this.render();
+    }
+
+    /**
+     * Get sessions for a specific date
+     */
+    getSessionsForDate(dateKey) {
+        return this.sessions.filter(s => {
             const dateStr = s.completed_at || s.started_at;
             if (!dateStr) return false;
             const date = new Date(dateStr);
             return this.formatDateKey(date.getFullYear(), date.getMonth(), date.getDate()) === dateKey;
         });
+    }
 
-        this.onDayClick(dateKey, daySessions);
+    /**
+     * Get all sessions within a date range (inclusive)
+     */
+    getSessionsInRange(start, end) {
+        return this.sessions.filter(s => {
+            const dateStr = s.completed_at || s.started_at;
+            if (!dateStr) return false;
+            const date = new Date(dateStr);
+            const key = this.formatDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+            return key >= start && key <= end;
+        });
+    }
+
+    /**
+     * Navigate to the month containing a given date key
+     */
+    navigateToDate(dateKey) {
+        const [year, month] = dateKey.split('-').map(Number);
+        this.currentMonth = new Date(year, month - 1, 1);
+        this.updateMonthLabel();
+        this.render();
     }
 
     /**

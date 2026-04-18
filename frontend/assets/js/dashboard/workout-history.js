@@ -52,8 +52,10 @@ window.ffn.workoutHistory = {
   pageSize: 20,      // 10, 20, 50, or 'all'
   currentPage: 1,    // Current page number
 
-  // Date filter (calendar click)
-  dateFilter: null,  // null or 'YYYY-MM-DD' string
+  // Date filter (calendar click or range selection)
+  dateFilter: null,      // null, 'YYYY-MM-DD' string, or { start, end } object
+  dateRangeMode: false,  // Whether custom range selection is active
+  dateRangePreset: null, // 'this-week' | 'last-7' | 'this-month' | 'last-30' | 'custom' | null
 
   // Exercise Tab (All Sessions mode)
   allExerciseGroups: [],
