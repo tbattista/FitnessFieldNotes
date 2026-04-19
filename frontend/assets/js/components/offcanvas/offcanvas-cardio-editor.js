@@ -243,11 +243,11 @@ export function createCardioEditor(config) {
 
             </div>
             <div class="offcanvas-footer border-top p-3">
-                <div class="d-flex gap-2 workout-builder-buttons">
+                <div class="d-flex gap-2 cardio-editor-buttons">
                     <button type="button" class="btn btn-primary flex-fill" id="cardioSaveBtn-${id}">
                         <i class="bx bx-save me-1"></i>Save
                     </button>
-                    <button type="button" class="btn btn-label-secondary flex-fill" data-bs-dismiss="offcanvas">
+                    <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="offcanvas">
                         Cancel
                     </button>
                     ${onDelete ? `<button type="button" class="btn btn-outline-danger flex-fill" id="cardioDeleteBtn-${id}">
