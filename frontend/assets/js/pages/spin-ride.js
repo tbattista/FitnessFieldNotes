@@ -555,6 +555,7 @@
     const actualMinutes = Math.round(actualSeconds / 60);
     const segmentsCompleted = Math.min(currentSegmentIndex + 1, segments.length);
     const allCompleted = currentSegmentIndex >= segments.length;
+    const startedAtIso = rideStartedAt ? rideStartedAt.toISOString() : new Date().toISOString();
 
     // Build summary
     const summaryText = allCompleted
@@ -564,36 +565,76 @@
 
     showState('finishedState');
 
-    // Save as cardio activity
-    try {
-      if (window.universalLogService && window.universalLogService.saveCardio) {
-        const notesLines = [
-          `Spin Ride: ${ridePlan.title}`,
-          `Difficulty: ${ridePlan.difficulty}`,
-          `Segments: ${segmentsCompleted}/${segments.length}`,
-        ];
-        // Include segment summary
-        segments.slice(0, segmentsCompleted).forEach((seg) => {
-          notesLines.push(`  ${seg.name}: R${seg.resistance}, ${seg.rpm_low}-${seg.rpm_high}rpm, ${formatTime(seg.duration_seconds)}`);
-        });
+    // Build notes once — shared between confirm and fallback paths.
+    const notesLines = [
+      `Spin Ride: ${ridePlan.title}`,
+      `Difficulty: ${ridePlan.difficulty}`,
+      `Segments: ${segmentsCompleted}/${segments.length}`,
+    ];
+    segments.slice(0, segmentsCompleted).forEach((seg) => {
+      notesLines.push(`  ${seg.name}: R${seg.resistance}, ${seg.rpm_low}-${seg.rpm_high}rpm, ${formatTime(seg.duration_seconds)}`);
+    });
+    const notes = notesLines.join('\n').substring(0, 500);
 
-        await window.universalLogService.saveCardio({
-          activity_type: 'cycling',
-          activity_name: ridePlan.title,
-          duration_minutes: actualMinutes || 1,
-          calories: ridePlan.estimated_calories || null,
-          notes: notesLines.join('\n').substring(0, 500),
-          sessionDate: rideStartedAt ? rideStartedAt.toISOString() : new Date().toISOString(),
-        });
-
-        els.finishedSaveStatus.textContent = 'Activity saved to your log.';
-      } else {
-        els.finishedSaveStatus.textContent = 'Could not save — log service not available.';
+    const saveCardio = async (durationMinutes, calories) => {
+      if (!window.universalLogService || !window.universalLogService.saveCardio) {
+        throw new Error('Log service not available');
       }
-    } catch (err) {
-      console.error('Failed to save spin ride activity:', err);
-      els.finishedSaveStatus.textContent = `Save failed: ${err.message}`;
+      await window.universalLogService.saveCardio({
+        activity_type: 'cycling',
+        activity_name: ridePlan.title,
+        duration_minutes: durationMinutes || 1,
+        calories: calories || null,
+        notes,
+        sessionDate: startedAtIso,
+      });
+    };
+
+    // If the unified offcanvas factory isn't on the page, fall back to the
+    // previous auto-save behavior so we never silently lose the activity.
+    const factory = window.UnifiedOffcanvasFactory;
+    if (!factory || !factory.createCompleteWorkout) {
+      try {
+        await saveCardio(actualMinutes, ridePlan.estimated_calories);
+        els.finishedSaveStatus.textContent = 'Activity saved to your log.';
+      } catch (err) {
+        console.error('Failed to save spin ride activity:', err);
+        els.finishedSaveStatus.textContent = `Save failed: ${err.message}`;
+      }
+      return;
     }
+
+    // Show the same "Session Complete" offcanvas used by workouts so the user
+    // can confirm duration and enter calories before the activity is logged.
+    els.finishedSaveStatus.textContent = 'Confirm below to save this ride to your log.';
+
+    const offcanvas = factory.createCompleteWorkout({
+      workoutName: ridePlan.title,
+      minutes: actualMinutes,
+      totalExercises: segments.length,
+      isBuildMode: false,
+    }, async (durationMinutes, _templateOpts, sessionCalories) => {
+      try {
+        const finalDuration = durationMinutes || actualMinutes;
+        const finalCalories = sessionCalories ?? ridePlan.estimated_calories;
+        await saveCardio(finalDuration, finalCalories);
+        els.finishedSaveStatus.textContent = 'Activity saved to your log.';
+      } catch (err) {
+        console.error('Failed to save spin ride activity:', err);
+        els.finishedSaveStatus.textContent = `Save failed: ${err.message}`;
+        throw err;
+      }
+    });
+
+    // Prefill calories with the AI estimate so users can accept/adjust it.
+    setTimeout(() => {
+      const caloriesInput = document.getElementById('sessionCaloriesInput');
+      if (caloriesInput && ridePlan.estimated_calories) {
+        caloriesInput.value = ridePlan.estimated_calories;
+      }
+    }, 50);
+
+    return offcanvas;
   }
 
   // ── Generate Ride ──────────────────────────────────────────────────────

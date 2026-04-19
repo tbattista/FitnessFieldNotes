@@ -698,6 +698,85 @@ test.describe('Spin Ride Page', () => {
     expect(after).toBeNull();
   });
 
+  test('finishing a ride opens the workout-style confirm offcanvas with calories input', async ({ page }) => {
+    // Intercept the cardio save so we can verify the confirmed values were sent.
+    let savedBody = null;
+    await page.route('**/api/v3/cardio-sessions', async (route) => {
+      savedBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'test-cardio-1' }),
+      });
+    });
+
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+
+    // Seed a paused ride so the End button is visible and we can trigger finishRide.
+    const now = Date.now();
+    const fakeSession = {
+      ridePlan: {
+        title: 'Confirm Offcanvas Test',
+        duration_minutes: 10,
+        total_seconds: 600,
+        difficulty: 'moderate',
+        estimated_calories: 140,
+        segments: [
+          { name: 'Warmup', segment_type: 'warmup', duration_seconds: 180, resistance: 3, rpm_low: 80, rpm_high: 90, cue: 'Easy' },
+          { name: 'Push', segment_type: 'climb', duration_seconds: 240, resistance: 7, rpm_low: 70, rpm_high: 80, cue: 'Climb' },
+          { name: 'Cooldown', segment_type: 'cooldown', duration_seconds: 180, resistance: 2, rpm_low: 70, rpm_high: 80, cue: 'Done' },
+        ],
+      },
+      rideStartedAt: new Date(now - 300000).toISOString(),
+      pausedAt: new Date(now).toISOString(),
+      timerRunning: false,
+      savedAt: now,
+    };
+    await page.evaluate((session) => {
+      sessionStorage.setItem('spinRideSession', JSON.stringify(session));
+    }, fakeSession);
+
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(4000);
+
+    const rideVisible = await page.locator('#rideState').isVisible();
+    if (!rideVisible) return; // Auth not available — skip
+
+    // Wait for the factory module to register on window.
+    await page.waitForFunction(() => !!window.UnifiedOffcanvasFactory?.createCompleteWorkout, { timeout: 5000 });
+
+    // Click End to trigger finishRide → should open the completion offcanvas.
+    await page.locator('#endBtn').click();
+
+    const offcanvas = page.locator('#completeWorkoutOffcanvas');
+    await expect(offcanvas).toBeVisible({ timeout: 3000 });
+
+    // Header and stats reflect the ride
+    await expect(offcanvas.locator('.session-complete-header h5')).toContainText('Confirm Offcanvas Test');
+    // Calories input exists and is prefilled with the plan's estimate
+    const caloriesInput = offcanvas.locator('#sessionCaloriesInput');
+    await expect(caloriesInput).toBeVisible();
+    await expect(caloriesInput).toHaveValue('140');
+
+    // Finished state should be waiting in the background with "confirm to save" copy.
+    await expect(page.locator('#finishedSaveStatus')).toContainText(/confirm/i);
+
+    // User edits calories and confirms.
+    await caloriesInput.fill('275');
+    await offcanvas.locator('#confirmCompleteBtn').click();
+
+    // Offcanvas should close, status should update, and the saved body should
+    // carry the edited calories.
+    await expect(offcanvas).not.toBeVisible({ timeout: 3000 });
+    await expect(page.locator('#finishedSaveStatus')).toContainText('Activity saved to your log.');
+
+    expect(savedBody).not.toBeNull();
+    expect(savedBody.activity_type).toBe('cycling');
+    expect(savedBody.calories).toBe(275);
+  });
+
   test('CTA bar is inline at the bottom (not fixed) on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${BASE}/spin-ride`);
