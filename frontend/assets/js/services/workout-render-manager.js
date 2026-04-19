@@ -505,7 +505,7 @@ class WorkoutRenderManager {
                         </div>
                         <div class="workout-header-actions">
                             <button class="workout-edit-btn${isCompleted ? ' edit-locked' : ''}"
-                                    onclick="this.closest('.workout-card')?.dispatchEvent(new CustomEvent('enterActivityEditMode', { bubbles: false })); event.stopPropagation();"
+                                    onclick="window.workoutModeController?.handleEditActivity?.('${escapedName}', ${index}); event.stopPropagation();"
                                     aria-label="${isCompleted ? 'Editing locked - uncomplete to edit' : 'Edit activity'}"
                                     title="${isCompleted ? 'Uncomplete to edit' : 'Edit activity'}">
                                 <i class="bx ${isCompleted ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
@@ -636,7 +636,7 @@ class WorkoutRenderManager {
                     </button>
                 `}
                 <button class="workout-menu-item${isCompleted ? ' disabled' : ''}"
-                        onclick="this.closest('.workout-card')?.dispatchEvent(new CustomEvent('enterActivityEditMode', { bubbles: false })); event.stopPropagation();"${isCompleted ? ' disabled' : ''}>
+                        onclick="window.workoutModeController?.handleEditActivity?.('${escaped}', ${index}); event.stopPropagation();"${isCompleted ? ' disabled' : ''}>
                     <i class="bx ${isCompleted ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
                     ${isCompleted ? 'Edit (uncomplete first)' : 'Edit activity'}
                 </button>
