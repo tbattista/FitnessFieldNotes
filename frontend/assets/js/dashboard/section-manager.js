@@ -141,6 +141,61 @@ const SectionManager = {
     },
 
     /**
+     * Add a new tabata section with sane default config (classic 20/10, 8 rounds).
+     * Unlike other named sections, tabata sections seed one empty exercise so the
+     * builder immediately shows an "Add Exercise" card rather than an empty placeholder —
+     * matches user expectation that a new tabata block already has room for work.
+     */
+    addTabataSection() {
+        const container = document.getElementById('exerciseGroups');
+        if (!container) return;
+
+        const sectionId = `section-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        const exerciseId = `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        const defaults = (window.TabataSegmentExpander && window.TabataSegmentExpander.DEFAULTS) || {
+            work_seconds: 20,
+            rest_seconds: 10,
+            rounds: 8,
+            set_rest_after_seconds: 60,
+            exercise_mode: 'rotation',
+        };
+
+        const section = {
+            section_id: sectionId,
+            type: 'tabata',
+            name: 'Tabata',
+            description: null,
+            config: { ...defaults },
+            exercises: [{
+                exercise_id: exerciseId,
+                name: '',
+                alternates: [],
+                sets: '', reps: '', rest: '',
+                default_weight: null,
+                default_weight_unit: 'lbs'
+            }]
+        };
+
+        const sectionEl = window.SectionRenderer.createSectionElement(section);
+        container.appendChild(sectionEl);
+
+        window.SectionSortable.ensureSortable(container, sectionEl.querySelector('.section-exercises'), true);
+
+        setTimeout(() => {
+            if (window.openExerciseGroupEditor) {
+                window.openExerciseGroupEditor(exerciseId);
+            }
+        }, 100);
+
+        if (window.markEditorDirty) window.markEditorDirty();
+
+        sectionEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        return { sectionId, exerciseId };
+    },
+
+    /**
      * Add an exercise to an existing section.
      * Replaces old ExerciseGroupManager.addToBlock(blockId).
      */
@@ -323,6 +378,21 @@ const SectionManager = {
                 return;
             }
 
+            // Tabata exercise-mode toggle (rotation/circuit)
+            const modeBtn = e.target.closest('.tabata-mode-btn');
+            if (modeBtn) {
+                const group = modeBtn.closest('.tabata-config-mode');
+                if (group) {
+                    group.querySelectorAll('.tabata-mode-btn').forEach((b) => {
+                        const active = b === modeBtn;
+                        b.classList.toggle('active', active);
+                        b.setAttribute('aria-checked', String(active));
+                    });
+                }
+                if (window.markEditorDirty) window.markEditorDirty();
+                return;
+            }
+
             // Placeholder click to add exercise (empty named sections)
             const placeholder = e.target.closest('.section-placeholder');
             if (placeholder) {
@@ -342,9 +412,11 @@ const SectionManager = {
             }
         });
 
-        // Mark dirty on name/description blur
+        // Mark dirty on name/description/tabata-config blur or input
         container.addEventListener('blur', (e) => {
-            if (e.target.matches('.section-name-input') || e.target.matches('.section-description-input')) {
+            if (e.target.matches('.section-name-input')
+                || e.target.matches('.section-description-input')
+                || e.target.matches('.tabata-config-input')) {
                 if (window.markEditorDirty) window.markEditorDirty();
             }
         }, true); // useCapture for blur

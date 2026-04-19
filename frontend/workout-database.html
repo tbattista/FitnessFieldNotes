@@ -174,13 +174,34 @@
                   <span class="filter-badge badge bg-primary ms-1" id="filterBadge" style="display: none;">0</span>
                 </button>
 
-                <!-- Create Button -->
-                <button class="btn btn-primary workout-toolbar-btn"
-                        type="button"
-                        onclick="window.location.href='/workout-builder.html?new=true'">
-                  <i class="bx bx-plus"></i>
-                  <span class="create-label">New</span>
-                </button>
+                <!-- Create Button (split: new standard or tabata workout) -->
+                <div class="btn-group workout-toolbar-btn" role="group">
+                  <button class="btn btn-primary"
+                          type="button"
+                          onclick="window.location.href='/workout-builder.html?new=true'">
+                    <i class="bx bx-plus"></i>
+                    <span class="create-label">New</span>
+                  </button>
+                  <button type="button"
+                          class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                          aria-label="More new workout options">
+                    <span class="visually-hidden">Toggle new workout options</span>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <a class="dropdown-item" href="/workout-builder.html?new=true">
+                        <i class="bx bx-dumbbell me-2"></i>New Workout
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="/workout-builder.html?new=true&amp;mode=tabata">
+                        <i class="bx bx-time-five me-2"></i>New Tabata Workout
+                      </a>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               <!-- Favorites Section (mobile only) -->

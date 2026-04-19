@@ -96,6 +96,7 @@
       finishedState: $('finishedState'),
       authRequired: $('authRequired'),
       errorState: $('errorState'),
+      audioHint: $('audioHint'),
 
       protocolButtons: $('protocolButtons'),
       focusButtons: $('focusButtons'),
@@ -352,7 +353,10 @@
       if (seg.segment_type === 'work' || seg.segment_type === 'rest' || seg.segment_type === 'set_rest') {
         els.segmentSet.textContent = `${seg.set_index || 1}/${workoutPlan.sets}`;
         if (seg.segment_type === 'work' || seg.segment_type === 'rest') {
-          els.segmentRound.textContent = `${(seg.round_index || 0) + 1}/${workoutPlan.rounds_per_set}`;
+          // User-built workouts: rounds-per-section varies, so prefer the
+          // segment's own section_rounds when available.
+          const denom = seg.section_rounds || workoutPlan.rounds_per_set;
+          els.segmentRound.textContent = `${(seg.round_index || 0) + 1}/${denom}`;
         } else {
           els.segmentRound.textContent = '—';
         }
@@ -382,9 +386,21 @@
 
   function populateWorkoutUI() {
     els.workoutTitle.textContent = workoutPlan.title;
-    const focusText = (workoutPlan.focus_areas || []).map((f) => f.replace(/_/g, ' ')).join(' · ');
     const totalMin = Math.round(workoutPlan.total_seconds / 60);
-    els.workoutMeta.textContent = `${workoutPlan.protocol} · ${workoutPlan.sets} sets × ${workoutPlan.rounds_per_set} rounds · ${totalMin} min · ${focusText}`;
+    if (workoutPlan.is_user_built) {
+      // User-built tabata workouts don't have a single protocol / focus area —
+      // show section + round counts instead so the meta line is still useful.
+      const sections = workoutPlan.sets || 0;
+      const workCount = (workoutPlan.segments || []).filter((s) => s.segment_type === 'work').length;
+      const bits = [];
+      if (sections > 0) bits.push(`${sections} section${sections !== 1 ? 's' : ''}`);
+      if (workCount > 0) bits.push(`${workCount} work interval${workCount !== 1 ? 's' : ''}`);
+      bits.push(`${totalMin} min`);
+      els.workoutMeta.textContent = bits.join(' · ');
+    } else {
+      const focusText = (workoutPlan.focus_areas || []).map((f) => f.replace(/_/g, ' ')).join(' · ');
+      els.workoutMeta.textContent = `${workoutPlan.protocol} · ${workoutPlan.sets} sets × ${workoutPlan.rounds_per_set} rounds · ${totalMin} min · ${focusText}`;
+    }
     renderSegmentList();
   }
 
@@ -530,6 +546,8 @@
 
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 
+    if (els.audioHint) els.audioHint.hidden = true;
+
     els.startBtn.classList.add('d-none');
     els.pauseBtn.classList.remove('d-none');
     els.endBtn.classList.remove('d-none');
@@ -589,16 +607,23 @@
 
     try {
       if (window.universalLogService && window.universalLogService.saveCardio) {
-        const notesLines = [
-          `Tabata Kettlebell: ${workoutPlan.title}`,
-          `Protocol: ${workoutPlan.protocol}`,
-          `Focus: ${(workoutPlan.focus_areas || []).join(', ')}`,
-          `Sets: ${workoutPlan.sets} × ${workoutPlan.rounds_per_set} rounds`,
-          `Rounds completed: ${completedRounds}/${totalRounds}`,
-        ];
+        const isUserBuilt = !!workoutPlan.is_user_built;
+        const notesLines = isUserBuilt
+          ? [
+              `Tabata: ${workoutPlan.title}`,
+              `Sections: ${workoutPlan.sets}`,
+              `Rounds completed: ${completedRounds}/${totalRounds}`,
+            ]
+          : [
+              `Tabata Kettlebell: ${workoutPlan.title}`,
+              `Protocol: ${workoutPlan.protocol}`,
+              `Focus: ${(workoutPlan.focus_areas || []).join(', ')}`,
+              `Sets: ${workoutPlan.sets} × ${workoutPlan.rounds_per_set} rounds`,
+              `Rounds completed: ${completedRounds}/${totalRounds}`,
+            ];
 
         await window.universalLogService.saveCardio({
-          activity_type: 'kettlebell',
+          activity_type: isUserBuilt ? 'workout' : 'kettlebell',
           activity_name: workoutPlan.title,
           duration_minutes: actualMinutes || 1,
           calories: workoutPlan.estimated_calories || null,
@@ -683,6 +708,10 @@
     stopTimer();
     releaseWakeLock();
     clearSession();
+    // For a user-built workout, "New Workout" should take the user back to
+    // their library rather than dropping into the AI protocol picker they
+    // never used — that picker isn't the entrypoint for this flow.
+    const wasUserBuilt = !!(workoutPlan && workoutPlan.is_user_built);
     workoutPlan = null;
     segments = [];
     segmentOffsets = [];
@@ -691,6 +720,10 @@
     totalRemaining = 0;
     workoutStartedAt = null;
     pausedAt = null;
+    if (wasUserBuilt) {
+      window.location.href = '/workout-database.html';
+      return;
+    }
     showState('selectState');
   }
 
@@ -1025,6 +1058,66 @@
     });
   }
 
+  /**
+   * Load a saved user-built tabata workout, expand it into segments,
+   * and drop straight into the workoutState (skipping the protocol picker).
+   */
+  async function loadUserBuiltWorkout(workoutId) {
+    if (!window.TabataSegmentExpander) {
+      els.errorMessage.textContent = 'Tabata runtime missing — please refresh.';
+      showState('errorState');
+      return;
+    }
+    showState('generatingState');
+    try {
+      const headers = {};
+      if (window.authService && window.authService.currentUser) {
+        const token = await window.authService.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch(`/api/v3/firebase/workouts/${encodeURIComponent(workoutId)}`, { headers });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: 'Workout not found' }));
+        throw new Error(err.detail || `Server error: ${response.status}`);
+      }
+      const workout = await response.json();
+      if (!workout || !Array.isArray(workout.sections)) {
+        throw new Error('This workout has no sections to run.');
+      }
+
+      const expanded = window.TabataSegmentExpander.expandWorkoutToSegments(workout);
+      if (!expanded.segments || expanded.segments.length === 0) {
+        throw new Error('This workout has no tabata sections with exercises.');
+      }
+
+      workoutPlan = expanded;
+      segments = expanded.segments;
+      computeSegmentOffsets();
+      currentSegmentIndex = 0;
+      segmentRemaining = segments[0].duration_seconds;
+      totalRemaining = workoutPlan.total_seconds;
+      workoutStartedAt = null;
+      pausedAt = null;
+
+      populateWorkoutUI();
+      updateSegmentDisplay();
+
+      els.startBtn.classList.remove('d-none');
+      els.pauseBtn.classList.add('d-none');
+      els.resumeBtn.classList.add('d-none');
+      els.endBtn.classList.add('d-none');
+
+      if (els.audioHint) els.audioHint.hidden = false;
+
+      showState('workoutState');
+      saveSession(false);
+    } catch (err) {
+      console.error('Failed to load user-built tabata workout:', err);
+      els.errorMessage.textContent = err.message || 'Could not load this workout.';
+      showState('errorState');
+    }
+  }
+
   async function init() {
     cacheDom();
     bindEvents();
@@ -1033,6 +1126,14 @@
     const isAuth = await waitForAuth();
     if (!isAuth) {
       showState('authRequired');
+      return;
+    }
+
+    // If the URL points us at a saved tabata workout, skip the AI flow entirely.
+    const urlWorkoutId = new URLSearchParams(window.location.search).get('workout_id');
+    if (urlWorkoutId) {
+      clearSession(); // don't resurrect an AI session over a saved workout
+      await loadUserBuiltWorkout(urlWorkoutId);
       return;
     }
 

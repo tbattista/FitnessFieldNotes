@@ -169,8 +169,11 @@
                         <div class="mb-3">
                           <div class="card">
                             <div class="card-body" style="padding: 1rem 1.25rem;">
-                              <div class="mb-2">
+                              <div class="mb-2 d-flex align-items-center gap-2">
                                 <input type="text" class="form-control" id="workoutName" required maxlength="100" placeholder="Workout Name">
+                                <span id="workoutTypeBadge" class="badge bg-label-primary d-none" title="Tabata workout">
+                                  <i class="bx bx-time-five"></i> Tabata
+                                </span>
                               </div>
                               <div class="d-flex gap-2">
                                 <div class="mobile-metadata-field flex-fill">
@@ -846,10 +849,25 @@
             }
         }
         
+        // Tabata builder mode — wire the badge, add-section label, and state
+        // flag synchronously at DOMContentLoaded so it's in place before any
+        // auth / Firebase work. Everything here is purely local UI state.
+        document.addEventListener('DOMContentLoaded', function () {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') !== 'tabata') return;
+            window.ffn = window.ffn || {};
+            window.ffn.workoutBuilder = window.ffn.workoutBuilder || {};
+            window.ffn.workoutBuilder.workoutType = 'tabata';
+            const badge = document.getElementById('workoutTypeBadge');
+            if (badge) badge.classList.remove('d-none');
+            const addBtn = document.getElementById('addExerciseGroupBtnVisible');
+            if (addBtn) addBtn.innerHTML = '<i class="bx bx-time-five me-1"></i>Add Tabata Section';
+        });
+
         // Initialize page using component system
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('📄 Workouts Page - DOM Ready');
-            
+
             // Wait for Firebase to be ready
             if (!window.firebaseReady) {
                 await new Promise(resolve => {
@@ -873,6 +891,12 @@
             const shareToken = urlParams.get('share_token');
             const urlWorkoutId = urlParams.get('id');
             const localStorageWorkoutId = localStorage.getItem('currentEditingWorkoutId');
+
+            // Keep tabata mode sticky through the rest of init (the synchronous
+            // DOMContentLoaded handler above has already wired the UI).
+            if (urlParams.get('mode') === 'tabata' && window.ffn?.workoutBuilder) {
+                window.ffn.workoutBuilder.workoutType = 'tabata';
+            }
             // sessionStorage removed - all navigation now uses URL parameters
             
             const loadingState = document.getElementById('workoutEditorLoadingState');

@@ -200,7 +200,9 @@ class RecentWorkoutsManager {
 
   startAgain(workoutId) {
     if (workoutId) {
-      window.location.href = `workout-mode.html?id=${workoutId}`;
+      window.location.href = window.getWorkoutStartUrl
+        ? window.getWorkoutStartUrl(workoutId)
+        : `workout-mode.html?id=${workoutId}`;
     }
   }
 

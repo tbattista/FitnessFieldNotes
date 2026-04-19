@@ -152,13 +152,17 @@ const FormDataCollector = {
             });
 
             if (exercises.length > 0) {
-                sections.push({
+                const entry = {
                     section_id: sectionId,
                     type: sectionType,
                     name: name,
                     description: description,
                     exercises: exercises
-                });
+                };
+                if (sectionType === 'tabata' && window.SectionDataCollector?._collectTabataConfig) {
+                    entry.config = window.SectionDataCollector._collectTabataConfig(sectionEl);
+                }
+                sections.push(entry);
             }
         });
 

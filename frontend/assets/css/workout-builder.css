@@ -669,3 +669,123 @@ button {
 [data-bs-theme="dark"] .builder-fab {
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
 }
+
+/* ========================================================================
+   Tabata Sections (builder)
+   ======================================================================== */
+
+.workout-section.section-tabata {
+    border-left: 3px solid var(--bs-primary);
+}
+
+.section-tabata-config {
+    padding: 0.5rem 0.75rem 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: color-mix(in srgb, var(--bs-primary) 4%, transparent);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.tabata-config-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.tabata-config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    margin: 0;
+    min-width: 0;
+}
+
+.tabata-config-label {
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+}
+
+.tabata-config-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.tabata-config-input {
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    padding-right: 1.25rem;
+}
+
+.tabata-config-unit {
+    position: absolute;
+    right: 0.4rem;
+    font-size: 0.7rem;
+    color: var(--bs-secondary);
+    pointer-events: none;
+}
+
+.tabata-config-mode {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 2px;
+    border-radius: var(--bs-border-radius);
+    background: var(--bs-tertiary-bg);
+    align-self: flex-end;
+}
+
+.tabata-mode-btn {
+    border: none;
+    background: transparent;
+    color: var(--bs-secondary);
+    font-size: 0.8rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: calc(var(--bs-border-radius) - 2px);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.tabata-mode-btn:hover {
+    color: var(--bs-body-color);
+}
+
+.tabata-mode-btn.active {
+    background: var(--bs-primary);
+    color: var(--bs-white);
+}
+
+@media (max-width: 575.98px) {
+    .tabata-config-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .section-tabata-config {
+        gap: 0.5rem;
+    }
+    .tabata-config-mode {
+        width: 100%;
+        justify-content: stretch;
+    }
+    .tabata-mode-btn {
+        flex: 1 1 0;
+    }
+}
+
+/* Honor reduced-motion preference for tabata-related transitions */
+@media (prefers-reduced-motion: reduce) {
+    .tabata-mode-btn {
+        transition: none;
+    }
+    .workout-section.section-tabata {
+        animation: none !important;
+        transition: none !important;
+    }
+}

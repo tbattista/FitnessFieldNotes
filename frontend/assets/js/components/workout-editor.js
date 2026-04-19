@@ -28,6 +28,18 @@ function loadWorkoutIntoEditor(workoutId) {
     window.ffn.workoutBuilder.isEditing = true;
     window.ffn.workoutBuilder.isDirty = false;
     window.ffn.workoutBuilder.currentWorkout = { ...workout };
+    window.ffn.workoutBuilder.workoutType = workout.workout_type || 'standard';
+
+    // Reflect tabata mode in the header (badge + button label)
+    const _badge = document.getElementById('workoutTypeBadge');
+    const _addBtn = document.getElementById('addExerciseGroupBtnVisible');
+    if (window.ffn.workoutBuilder.workoutType === 'tabata') {
+        if (_badge) _badge.classList.remove('d-none');
+        if (_addBtn) _addBtn.innerHTML = '<i class="bx bx-time-five me-1"></i>Add Tabata Section';
+    } else {
+        if (_badge) _badge.classList.add('d-none');
+        if (_addBtn) _addBtn.innerHTML = '<i class="bx bx-plus me-1"></i>Add Exercise';
+    }
 
     // Persist workout ID to localStorage for page refresh recovery
     try {
@@ -190,13 +202,44 @@ async function createNewWorkoutInEditor() {
                 default_weight_unit: 'lbs'
             }];
 
+        const isTabataMode = window.ffn?.workoutBuilder?.workoutType === 'tabata';
+
+        // For tabata workouts, seed one tabata section instead of a standard
+        // exercise group so the user lands on the timing config immediately.
+        const tabataDefaults = (window.TabataSegmentExpander && window.TabataSegmentExpander.DEFAULTS) || {
+            work_seconds: 20, rest_seconds: 10, rounds: 8,
+            set_rest_after_seconds: 60, exercise_mode: 'rotation',
+        };
+        const sections = isTabataMode ? [{
+            section_id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            type: 'tabata',
+            name: 'Tabata',
+            description: null,
+            config: { ...tabataDefaults },
+            exercises: cartExercises.length > 0
+                ? cartExercises.map((ex, i) => ({
+                    exercise_id: `ex-${Date.now()}-${i}`,
+                    name: ex.name, alternates: [],
+                    sets: '', reps: '', rest: '',
+                    default_weight: null, default_weight_unit: 'lbs'
+                }))
+                : [{
+                    exercise_id: `ex-${Date.now()}`,
+                    name: '', alternates: [],
+                    sets: '', reps: '', rest: '',
+                    default_weight: null, default_weight_unit: 'lbs'
+                }]
+        }] : undefined;
+
         const newWorkoutData = {
-            name: `New Workout - ${timestamp}`,
+            name: `${isTabataMode ? 'New Tabata Workout' : 'New Workout'} - ${timestamp}`,
             description: '',
             tags: [],
+            workout_type: isTabataMode ? 'tabata' : 'standard',
             exercise_groups: exerciseGroups,
             template_notes: []
         };
+        if (sections) newWorkoutData.sections = sections;
 
         // Save to database
         const savedWorkout = await window.dataManager.createWorkout(newWorkoutData);

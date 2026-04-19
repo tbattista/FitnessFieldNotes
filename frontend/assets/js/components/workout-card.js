@@ -278,13 +278,15 @@ class WorkoutCard {
         const workoutData = this.workout.workout_data || this.workout;
         const name = workoutData.name || this.workout.name || 'Untitled Workout';
         const isArchived = workoutData.is_archived || false;
+        const isTabata = (workoutData.workout_type || this.workout.workout_type) === 'tabata';
 
         // Add left padding when in delete mode to accommodate checkbox
         const paddingLeft = this.config.deleteMode ? 'padding-left: 32px;' : '';
         const archivedBadge = isArchived ? ' <span class="badge bg-label-secondary badge-sm ms-1"><i class="bx bx-archive bx-xs"></i> Archived</span>' : '';
+        const tabataBadge = isTabata ? ' <span class="badge bg-label-primary badge-sm ms-1" title="Tabata workout"><i class="bx bx-time-five bx-xs"></i> Tabata</span>' : '';
 
         return `
-            <h5 class="card-title mb-2" style="${paddingLeft}">${this._escapeHtml(name)}${archivedBadge}</h5>
+            <h5 class="card-title mb-2" style="${paddingLeft}">${this._escapeHtml(name)}${tabataBadge}${archivedBadge}</h5>
         `;
     }
     
@@ -840,6 +842,35 @@ class WorkoutCard {
 
 // Export for global use
 window.WorkoutCard = WorkoutCard;
+
+/**
+ * Pick the right "start" URL for a workout: tabata workouts run in the
+ * Tabata Kettlebell timer page, everything else in the regular workout-mode page.
+ *
+ * Accepts either a workout object or a workout id (string). When given an id,
+ * looks the workout up in window.ffn.workouts so callers that only have an id
+ * can still route correctly without being rewritten.
+ */
+window.getWorkoutStartUrl = function (workoutOrId, extraQuery = '') {
+    if (!workoutOrId) return 'workout-mode.html';
+
+    let workout = workoutOrId;
+    let id;
+    if (typeof workoutOrId === 'string') {
+        id = workoutOrId;
+        workout = (window.ffn?.workouts || []).find((w) => w.id === id) || null;
+    } else {
+        const data = workoutOrId.workout_data || workoutOrId;
+        id = workoutOrId.id || data.id;
+    }
+
+    const data = workout ? (workout.workout_data || workout) : null;
+    const isTabata = data && (data.workout_type || workout.workout_type) === 'tabata';
+    const sep = extraQuery ? `&${extraQuery}` : '';
+    return isTabata
+        ? `tabata-kettlebell.html?workout_id=${id}${sep}`
+        : `workout-mode.html?id=${id}${sep}`;
+};
 
 // Export for module use
 if (typeof module !== 'undefined' && module.exports) {

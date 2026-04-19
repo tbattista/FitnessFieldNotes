@@ -114,12 +114,19 @@ async function saveWorkoutFromEditor(silent = false) {
     // Check if we're in sections mode
     const useSections = window.SectionManager && window.SectionManager.isSectionsMode();
 
+    // Preserve workout_type across save: prefer the builder state (set by URL
+    // ?mode=tabata or by loadWorkoutIntoEditor), fall back to the loaded workout.
+    const workoutType = window.ffn?.workoutBuilder?.workoutType
+        || window.ffn?.workoutBuilder?.currentWorkout?.workout_type
+        || 'standard';
+
     const workoutData = {
         name: document.getElementById('workoutName').value.trim(),
         description: document.getElementById('workoutDescription').value.trim(),
         tags: document.getElementById('workoutTags').value
             .split(',').map(t => t.trim()).filter(t => t),
         exercise_groups: collectExerciseGroups(),
+        workout_type: workoutType,
         template_notes: templateNotes
     };
 

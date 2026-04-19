@@ -80,18 +80,47 @@
                 });
 
                 if (exercises.length > 0) {
-                    sections.push({
+                    const entry = {
                         section_id: sectionId,
                         type: sectionType,
                         name: name,
                         description: description,
                         exercises: exercises
-                    });
+                    };
+                    if (sectionType === 'tabata') {
+                        entry.config = this._collectTabataConfig(sectionEl);
+                    }
+                    sections.push(entry);
                 }
             });
 
             console.log('📦 Collected', sections.length, 'sections');
             return sections;
+        },
+
+        /**
+         * Read tabata config from the section header's config strip.
+         * Falls back to defaults so a partially-filled section still round-trips.
+         */
+        _collectTabataConfig(sectionEl) {
+            const defaults = (window.TabataSegmentExpander && window.TabataSegmentExpander.DEFAULTS) || {
+                work_seconds: 20, rest_seconds: 10, rounds: 8,
+                set_rest_after_seconds: 60, exercise_mode: 'rotation',
+            };
+            const read = (key, fallback) => {
+                const input = sectionEl.querySelector(`.tabata-config-input[data-key="${key}"]`);
+                const n = parseInt(input?.value, 10);
+                return Number.isFinite(n) ? n : fallback;
+            };
+            const modeBtn = sectionEl.querySelector('.tabata-mode-btn.active');
+            const mode = modeBtn?.dataset?.value === 'circuit' ? 'circuit' : 'rotation';
+            return {
+                work_seconds: Math.max(1, read('work_seconds', defaults.work_seconds)),
+                rest_seconds: Math.max(0, read('rest_seconds', defaults.rest_seconds)),
+                rounds: Math.max(1, read('rounds', defaults.rounds)),
+                set_rest_after_seconds: Math.max(0, read('set_rest_after_seconds', defaults.set_rest_after_seconds)),
+                exercise_mode: mode,
+            };
         }
     };
 

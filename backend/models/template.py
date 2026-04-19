@@ -63,6 +63,16 @@ class WorkoutTemplate(BaseModel):
         description="Sections-based layout (new format). If present, takes precedence over exercise_groups."
     )
 
+    workout_type: str = Field(
+        default="standard",
+        description=(
+            "Workout type. 'standard' for regular strength/hybrid workouts. "
+            "'tabata' for interval workouts whose sections carry a tabata config "
+            "(work_seconds, rest_seconds, rounds, set_rest_after_seconds, exercise_mode) "
+            "and are run by the Tabata timer page."
+        )
+    )
+
     template_notes: List[TemplateNote] = Field(
         default_factory=list,
         description="Inline notes within the workout template (permanent)"
@@ -119,6 +129,7 @@ class CreateWorkoutRequest(BaseModel):
     description: Optional[str] = Field(default="", max_length=500)
     exercise_groups: List[ExerciseGroup] = Field(default_factory=list)
     sections: Optional[List[WorkoutSection]] = Field(default=None)
+    workout_type: str = Field(default="standard")
     template_notes: List[TemplateNote] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list, max_items=10)
 
@@ -129,6 +140,7 @@ class UpdateWorkoutRequest(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     exercise_groups: Optional[List[ExerciseGroup]] = Field(None)
     sections: Optional[List[WorkoutSection]] = Field(default=None)
+    workout_type: Optional[str] = Field(None)
     template_notes: Optional[List[TemplateNote]] = Field(default=None)
     tags: Optional[List[str]] = Field(None, max_items=10)
 

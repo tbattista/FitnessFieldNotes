@@ -492,3 +492,17 @@
     flex: 1 1 calc(50% - 0.5rem);
   }
 }
+
+/* Audio hint — subtle helper shown once above the Start button. */
+.tk-audio-hint {
+  opacity: 0.85;
+}
+
+/* Honor reduced-motion preference: disable progress-arc + segment-row
+   transitions so the UI doesn't feel "jumpy" for users who opt out of motion. */
+@media (prefers-reduced-motion: reduce) {
+  .spin-timer-progress,
+  .spin-segment-row {
+    transition: none !important;
+  }
+}

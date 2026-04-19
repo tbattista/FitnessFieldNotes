@@ -50,6 +50,13 @@
                 sectionEl.insertAdjacentHTML('beforeend', this._createSectionHeaderHtml(section));
             }
 
+            // Tabata sections carry a config strip (work / rest / rounds / set_rest / mode)
+            // directly under the header. Values live on the DOM and are harvested by
+            // SectionDataCollector at save time.
+            if (section.type === 'tabata') {
+                sectionEl.insertAdjacentHTML('beforeend', this._createTabataConfigHtml(section));
+            }
+
             // Exercise container — always a direct child of .workout-section
             const exercisesEl = document.createElement('div');
             exercisesEl.className = 'section-exercises';
@@ -189,6 +196,70 @@
             <div class="section-description-area" style="display: ${hasDescription ? 'block' : 'none'};">
                 <textarea class="section-description-input" placeholder="Add notes..."
                           maxlength="500">${description}</textarea>
+            </div>`;
+        },
+
+        /**
+         * Tabata config strip (sits under the section header). Values are read
+         * from the DOM at save time by SectionDataCollector; no JS state.
+         */
+        _createTabataConfigHtml(section) {
+            const defaults = (window.TabataSegmentExpander && window.TabataSegmentExpander.DEFAULTS) || {
+                work_seconds: 20, rest_seconds: 10, rounds: 8,
+                set_rest_after_seconds: 60, exercise_mode: 'rotation',
+            };
+            const cfg = (section && section.config) || {};
+            const work = cfg.work_seconds ?? defaults.work_seconds;
+            const rest = cfg.rest_seconds ?? defaults.rest_seconds;
+            const rounds = cfg.rounds ?? defaults.rounds;
+            const setRest = cfg.set_rest_after_seconds ?? defaults.set_rest_after_seconds;
+            const mode = cfg.exercise_mode === 'circuit' ? 'circuit' : 'rotation';
+
+            return `
+            <div class="section-tabata-config" data-role="tabata-config">
+                <div class="tabata-config-grid">
+                    <label class="tabata-config-field">
+                        <span class="tabata-config-label">Work</span>
+                        <span class="tabata-config-input-wrap">
+                            <input type="number" min="1" max="999" class="form-control form-control-sm tabata-config-input"
+                                   data-key="work_seconds" value="${work}">
+                            <span class="tabata-config-unit">s</span>
+                        </span>
+                    </label>
+                    <label class="tabata-config-field">
+                        <span class="tabata-config-label">Rest</span>
+                        <span class="tabata-config-input-wrap">
+                            <input type="number" min="0" max="999" class="form-control form-control-sm tabata-config-input"
+                                   data-key="rest_seconds" value="${rest}">
+                            <span class="tabata-config-unit">s</span>
+                        </span>
+                    </label>
+                    <label class="tabata-config-field">
+                        <span class="tabata-config-label">Rounds</span>
+                        <input type="number" min="1" max="99" class="form-control form-control-sm tabata-config-input"
+                               data-key="rounds" value="${rounds}">
+                    </label>
+                    <label class="tabata-config-field">
+                        <span class="tabata-config-label">Set rest</span>
+                        <span class="tabata-config-input-wrap">
+                            <input type="number" min="0" max="999" class="form-control form-control-sm tabata-config-input"
+                                   data-key="set_rest_after_seconds" value="${setRest}">
+                            <span class="tabata-config-unit">s</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="tabata-config-mode" role="radiogroup" aria-label="Exercise mode">
+                    <button type="button" class="tabata-mode-btn ${mode === 'rotation' ? 'active' : ''}"
+                            data-key="exercise_mode" data-value="rotation"
+                            role="radio" aria-checked="${mode === 'rotation'}">
+                        Rotation
+                    </button>
+                    <button type="button" class="tabata-mode-btn ${mode === 'circuit' ? 'active' : ''}"
+                            data-key="exercise_mode" data-value="circuit"
+                            role="radio" aria-checked="${mode === 'circuit'}">
+                        Circuit
+                    </button>
+                </div>
             </div>`;
         }
     };

@@ -284,6 +284,12 @@
                     <!-- Cue -->
                     <p class="text-center text-muted fst-italic small mb-3" id="segmentCue"></p>
 
+                    <!-- First-run audio hint — shown once before the first Start click,
+                         reminding users the timer uses beeps for work/rest transitions. -->
+                    <p class="text-center text-muted small mb-2 tk-audio-hint" id="audioHint" hidden>
+                      <i class="bx bx-volume-full me-1"></i>Keep audio on — beeps mark each work/rest transition.
+                    </p>
+
                     <!-- Controls -->
                     <div class="d-flex justify-content-center gap-2 mb-4" id="workoutControls">
                       <button class="btn btn-success btn-lg" id="startBtn">
@@ -405,7 +411,10 @@
     <!-- Offcanvas Manager -->
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
+    <!-- Shared segment expander (user-built tabata workouts) -->
+    <script src="/static/assets/js/services/tabata-segment-expander.js?v=1.0.0"></script>
+
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260412d"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260419a"></script>
   </body>
 </html>

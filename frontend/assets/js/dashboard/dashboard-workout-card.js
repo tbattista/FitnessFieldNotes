@@ -150,8 +150,10 @@ class DashboardWorkoutCard {
     if (this.options.onStart) {
       this.options.onStart(this.workout);
     } else {
-      // Default: navigate to workout mode
-      window.location.href = `workout-mode.html?id=${this.workout.id}`;
+      // Default: navigate to workout mode (tabata workouts route to the timer page)
+      window.location.href = window.getWorkoutStartUrl
+        ? window.getWorkoutStartUrl(this.workout)
+        : `workout-mode.html?id=${this.workout.id}`;
     }
   }
   

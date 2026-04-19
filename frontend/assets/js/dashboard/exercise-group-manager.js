@@ -11,9 +11,13 @@
 
 const ExerciseGroupManager = {
 
-    /** Route to SectionManager.addStandardSection() */
+    /** Route to SectionManager.addStandardSection() — or addTabataSection() in tabata mode. */
     add() {
-        if (window.SectionManager) {
+        if (!window.SectionManager) return;
+        const isTabataMode = window.ffn?.workoutBuilder?.workoutType === 'tabata';
+        if (isTabataMode && window.SectionManager.addTabataSection) {
+            window.SectionManager.addTabataSection();
+        } else {
             window.SectionManager.addStandardSection();
         }
     },

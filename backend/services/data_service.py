@@ -50,6 +50,7 @@ class DataService:
             exercise_groups=workout_request.exercise_groups,
             tags=workout_request.tags,
             sections=workout_request.sections if hasattr(workout_request, 'sections') else None,
+            workout_type=getattr(workout_request, 'workout_type', 'standard') or 'standard',
             template_notes=workout_request.template_notes if hasattr(workout_request, 'template_notes') else []
         )
 

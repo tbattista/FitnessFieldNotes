@@ -715,7 +715,9 @@ function editWorkout(workoutId) {
  */
 function doWorkout(workoutId) {
     console.log('🏋️ Starting workout:', workoutId);
-    window.location.href = `workout-mode.html?id=${workoutId}`;
+    window.location.href = window.getWorkoutStartUrl
+        ? window.getWorkoutStartUrl(workoutId)
+        : `workout-mode.html?id=${workoutId}`;
 }
 
 /**
