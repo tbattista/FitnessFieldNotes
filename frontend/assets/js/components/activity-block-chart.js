@@ -69,13 +69,48 @@
             const blocks = days.map(day => {
                 const hasWorkout = day.sessions.length > 0;
                 const isToday = day.date.getTime() === today.getTime();
+                const count = day.sessions.length;
+                const label = this.formatDateLabel(day.date);
                 const classes = ['activity-block'];
                 if (hasWorkout) classes.push('has-workout');
                 if (isToday) classes.push('today');
-                return `<div class="${classes.join(' ')}"></div>`;
+                return `<div class="${classes.join(' ')}" data-tip="${label} — ${count} workout${count !== 1 ? 's' : ''}"></div>`;
             }).join('');
 
-            this.container.innerHTML = `<div class="activity-block-grid">${blocks}<span class="activity-block-label">Last ${this.daysToShow}</span></div>`;
+            this.container.innerHTML = `<div class="activity-block-grid">${blocks}<span class="activity-block-label">Last ${this.daysToShow}</span></div><div class="activity-block-tooltip" id="${this.container.id}Tooltip"></div>`;
+            this.attachTooltipListeners();
+        }
+
+        attachTooltipListeners() {
+            const grid = this.container.querySelector('.activity-block-grid');
+            const tooltip = this.container.querySelector('.activity-block-tooltip');
+            if (!grid || !tooltip) return;
+
+            grid.addEventListener('pointerenter', (e) => {
+                if (!e.target.classList.contains('activity-block')) return;
+                tooltip.textContent = e.target.dataset.tip;
+                tooltip.classList.add('visible');
+                this.positionTooltip(e.target, tooltip);
+            }, true);
+
+            grid.addEventListener('pointerleave', (e) => {
+                if (!e.target.classList.contains('activity-block')) return;
+                tooltip.classList.remove('visible');
+            }, true);
+        }
+
+        positionTooltip(block, tooltip) {
+            const containerRect = this.container.getBoundingClientRect();
+            const blockRect = block.getBoundingClientRect();
+            const tipWidth = tooltip.offsetWidth;
+            let left = blockRect.left - containerRect.left + blockRect.width / 2 - tipWidth / 2;
+            left = Math.max(0, Math.min(left, containerRect.width - tipWidth));
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${blockRect.top - containerRect.top - tooltip.offsetHeight - 6}px`;
+        }
+
+        formatDateLabel(date) {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
 
         formatDateKey(date) {
