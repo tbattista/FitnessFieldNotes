@@ -203,7 +203,7 @@ export function createCompleteWorkout(data, onConfirm) {
                     </div>
                     <div class="session-stat editable" title="Click to enter calories burned">
                         <div class="session-stat-label">
-                            <i class="bx bx-flame"></i>
+                            <i class="bx bx-bxs-flame"></i>
                             <span>Calories</span>
                         </div>
                         <div class="session-stat-value">
