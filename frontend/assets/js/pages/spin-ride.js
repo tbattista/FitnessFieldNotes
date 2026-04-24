@@ -631,6 +631,14 @@
       const caloriesInput = document.getElementById('sessionCaloriesInput');
       if (caloriesInput && ridePlan.estimated_calories) {
         caloriesInput.value = ridePlan.estimated_calories;
+        const unitLabel = caloriesInput.nextElementSibling;
+        if (unitLabel && unitLabel.tagName === 'SPAN') {
+          unitLabel.textContent = 'cal (est.)';
+        }
+        const statRow = caloriesInput.closest('.session-stat');
+        if (statRow) {
+          statRow.title = 'AI-estimated calories — tap to adjust';
+        }
       }
     }, 50);
 
