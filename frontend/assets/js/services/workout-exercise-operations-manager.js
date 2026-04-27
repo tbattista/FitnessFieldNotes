@@ -443,8 +443,8 @@ class WorkoutExerciseOperationsManager {
                         }
                     }
 
-                    // Add exercise as a new group to the workout template
-                    this._addExerciseGroupToWorkout({
+                    // Add exercise as a new group to the workout template (persists to backend)
+                    await this._addExerciseGroupToWorkout({
                         name: newExerciseName,
                         sets: groupData.sets || '3',
                         reps: groupData.reps || '12',
@@ -511,8 +511,8 @@ class WorkoutExerciseOperationsManager {
             window.UnifiedOffcanvasFactory.createCardioEditor({
                 groupId,
                 cardioConfig: {},
-                onSave: (updatedCardioConfig) => {
-                    this._addActivityGroupToWorkout(updatedCardioConfig);
+                onSave: async (updatedCardioConfig) => {
+                    await this._addActivityGroupToWorkout(updatedCardioConfig);
                     this.onRenderWorkout();
 
                     const Registry = window.ActivityTypeRegistry;
@@ -623,7 +623,7 @@ class WorkoutExerciseOperationsManager {
      * @param {Object} cardioConfig - Cardio config from the editor
      * @private
      */
-    _addActivityGroupToWorkout(cardioConfig) {
+    async _addActivityGroupToWorkout(cardioConfig) {
         const workout = this.onGetCurrentWorkout();
         if (!workout) {
             console.error('❌ Cannot add activity: no current workout');
@@ -643,6 +643,10 @@ class WorkoutExerciseOperationsManager {
 
         workout.exercise_groups.push(newGroup);
         console.log(`✅ Added activity "${cardioConfig.activity_type}" to workout`);
+
+        // Persist to backend so the activity survives page reload / session resume.
+        // Without this, the in-memory addition is lost when the workout is re-fetched.
+        await this._persistWorkoutTemplate(workout);
     }
 
     /**
@@ -651,7 +655,7 @@ class WorkoutExerciseOperationsManager {
      * @param {number|null} insertAtIndex - Optional index to insert at (null = append)
      * @private
      */
-    _addExerciseGroupToWorkout(exerciseData, insertAtIndex = null) {
+    async _addExerciseGroupToWorkout(exerciseData, insertAtIndex = null) {
         const workout = this.onGetCurrentWorkout();
         if (!workout) {
             console.error('❌ Cannot add exercise: no current workout');
@@ -679,6 +683,30 @@ class WorkoutExerciseOperationsManager {
         }
 
         console.log(`✅ Added exercise "${exerciseData.name}" to workout (index: ${insertAtIndex ?? 'end'})`);
+
+        // Persist to backend so the exercise survives page reload / session resume.
+        // Without this, the in-memory addition is lost when the workout is re-fetched.
+        await this._persistWorkoutTemplate(workout);
+    }
+
+    /**
+     * Persist the current workout template to the backend.
+     * Used after adding exercises / activities in workout mode so additions
+     * survive a navigation away and resume.
+     * @param {Object} workout - Current workout (with mutated exercise_groups)
+     * @private
+     */
+    async _persistWorkoutTemplate(workout) {
+        if (!workout?.id || !this.dataManager?.updateWorkout) return;
+        try {
+            workout.modified_date = new Date().toISOString();
+            await this.dataManager.updateWorkout(workout.id, workout);
+            console.log('💾 Workout template persisted to backend');
+        } catch (error) {
+            // Don't throw — the in-memory state is still correct for this session.
+            // Resume after navigation may lose this addition, but the user can re-add.
+            console.error('❌ Failed to persist workout template:', error);
+        }
     }
 
     /**

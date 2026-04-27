@@ -391,9 +391,12 @@ class WorkoutLifecycleManager {
             const lastPageActive = new Date(persistedSession.lastPageActive || persistedSession.lastUpdated);
             const minutesSincePageActive = (Date.now() - lastPageActive.getTime()) / (1000 * 60);
             
-            // Auto-resume threshold: 2 minutes
-            // If user was away briefly (< 2 min), auto-resume silently without showing offcanvas
-            const AUTO_RESUME_THRESHOLD_MINUTES = 2;
+            // Auto-resume threshold: 60 minutes (1 hour)
+            // If user was away less than an hour, auto-resume silently without showing offcanvas.
+            // The "Resume / Start Fresh" prompt only appears for sessions that have been idle 1+ hours,
+            // since briefer absences (lock screen, tab switch, brief navigation) are almost always
+            // a continuation of the same workout.
+            const AUTO_RESUME_THRESHOLD_MINUTES = 60;
             
             if (minutesSincePageActive < AUTO_RESUME_THRESHOLD_MINUTES) {
                 // User was away briefly - auto-resume silently
