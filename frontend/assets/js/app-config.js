@@ -97,4 +97,16 @@
 
     console.log('✅ Fitness Field Notes app config loaded');
     console.log('🔗 API Base URL:', window.config.api.baseUrl);
+
+    // Register service worker (PWA engagement signal — keeps iOS from
+    // evicting Firebase Auth's IndexedDB storage after 7 days). Skipped on
+    // localhost HTTP since SW requires a secure context (HTTPS or localhost
+    // both qualify, but we still gate registration behind support detection).
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+                .then((reg) => console.log('✅ Service worker registered, scope:', reg.scope))
+                .catch((err) => console.warn('⚠️ Service worker registration failed:', err));
+        });
+    }
 })();

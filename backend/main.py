@@ -145,7 +145,28 @@ async def serve_manifest():
     except FileNotFoundError:
         return Response(content="{}", media_type="application/manifest+json")
 
-logger.info("✅ SEO routes registered (robots.txt, sitemap.xml, llms.txt, manifest.json)")
+@app.get("/service-worker.js")
+async def serve_service_worker():
+    """Serve the PWA service worker from the site root.
+
+    Must be served from / (not /static/) so its scope covers the whole app.
+    The SW exists primarily to keep iOS from evicting Firebase Auth's
+    IndexedDB storage after 7 days of inactivity.
+    """
+    try:
+        with open("frontend/service-worker.js", "r", encoding="utf-8") as f:
+            return Response(
+                content=f.read(),
+                media_type="application/javascript",
+                headers={
+                    "Service-Worker-Allowed": "/",
+                    "Cache-Control": "no-cache, max-age=0",
+                },
+            )
+    except FileNotFoundError:
+        return Response(content="", media_type="application/javascript", status_code=404)
+
+logger.info("✅ SEO routes registered (robots.txt, sitemap.xml, llms.txt, manifest.json, service-worker.js)")
 
 # Create necessary directories
 os.makedirs("backend/uploads", exist_ok=True)

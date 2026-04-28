@@ -38,6 +38,9 @@
         const { initializeApp } = await importWithRetry('https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js');
         const {
             getAuth,
+            setPersistence,
+            indexedDBLocalPersistence,
+            browserLocalPersistence,
             signInWithEmailAndPassword,
             createUserWithEmailAndPassword,
             signInWithPopup,
@@ -73,7 +76,22 @@
         const app = initializeApp(window.config.firebase);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
+
+        // Explicit persistence: prefer IndexedDB (survives iOS PWA storage pressure
+        // better than localStorage), fall back to localStorage if IDB is unavailable
+        // (e.g. private mode). Without this, iOS PWAs can sign users out unexpectedly
+        // when ITP evicts storage after 7 days of inactivity.
+        try {
+            await setPersistence(auth, indexedDBLocalPersistence);
+        } catch (persistenceError) {
+            console.warn('⚠️ IndexedDB persistence unavailable, falling back to localStorage:', persistenceError);
+            try {
+                await setPersistence(auth, browserLocalPersistence);
+            } catch (fallbackError) {
+                console.warn('⚠️ Auth persistence could not be set:', fallbackError);
+            }
+        }
+
         // Make Firebase services available globally
         window.firebaseApp = app;
         window.firebaseAuth = auth;
