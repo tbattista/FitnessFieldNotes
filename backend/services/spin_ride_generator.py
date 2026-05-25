@@ -7,9 +7,15 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
+
+# Non-all-out segments are capped at this duration. The prompt has said
+# "30-240 seconds" forever, but nothing enforced it — see the 10:15 Final
+# Sprint bug. _split_long_segment below rewrites any segment that exceeds
+# this cap into a sequence with real recovery and pace variety.
+MAX_NON_ALL_OUT_SECONDS = 240
 
 # ── System prompt ─────────────────────────────────────────────────────────
 
@@ -269,10 +275,160 @@ def _all_out_count_for_duration(duration_minutes: int) -> tuple[int, int]:
     return (5, 10)
 
 
+def _split_long_segment(seg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Rewrite an oversized non-all-out segment into a sequence whose durations
+    sum to the original, inserting real recovery + pace variety based on the
+    segment type. Returns the split segments in order.
+
+    If the segment is already <= MAX_NON_ALL_OUT_SECONDS, returns [seg]
+    unchanged. all_out segments are never split here (their cap is handled
+    separately in _normalize_plan).
+    """
+    duration = int(seg.get("duration_seconds", 0))
+    seg_type = seg.get("segment_type", "flat")
+
+    if seg_type == "all_out" or duration <= MAX_NON_ALL_OUT_SECONDS:
+        return [seg]
+
+    base_name = str(seg.get("name", "Interval"))
+    base_resistance = int(seg.get("resistance", 5))
+    base_rpm_low = int(seg.get("rpm_low", 80))
+    base_rpm_high = int(seg.get("rpm_high", 100))
+    base_cue = str(seg.get("cue", ""))
+
+    def _seg(name: str, segment_type: str, dur: int, resistance: int,
+             rpm_low: int, rpm_high: int, cue: str) -> Dict[str, Any]:
+        return {
+            "name": name[:50],
+            "segment_type": segment_type,
+            "duration_seconds": max(15, dur),
+            "resistance": max(1, min(10, resistance)),
+            "rpm_low": max(50, min(130, rpm_low)),
+            "rpm_high": max(50, min(130, rpm_high)),
+            "cue": cue[:120],
+        }
+
+    # Variety templates per type. Each returns (work_dur, recovery_dur,
+    # recovery_resistance, recovery_rpm_low, recovery_rpm_high, variety_delta).
+    # variety_delta is added to resistance (or RPM for sprints) on alternating
+    # work chunks so the rider feels a real change, not a copy-paste.
+    if seg_type == "climb":
+        work_chunk = 200
+        recovery_chunk = 45
+        recovery_r = 2
+        recovery_rpm = (75, 85)
+        variety_kind = "resistance"
+    elif seg_type == "sprint":
+        work_chunk = 180
+        recovery_chunk = 30
+        recovery_r = 2
+        recovery_rpm = (70, 80)
+        variety_kind = "rpm"
+    elif seg_type == "flat":
+        # For flats, inject a brief surge instead of pure recovery so the
+        # ride doesn't drop energy mid-flat.
+        work_chunk = 180
+        recovery_chunk = 30
+        recovery_r = min(10, base_resistance + 2)
+        recovery_rpm = (base_rpm_low, base_rpm_high)
+        variety_kind = "resistance"
+    elif seg_type == "warmup":
+        # Warmups rarely need recovery breaks — just chunk them so the
+        # validator stays happy.
+        chunks: List[Dict[str, Any]] = []
+        remaining = duration
+        idx = 1
+        total_chunks = (duration + MAX_NON_ALL_OUT_SECONDS - 1) // MAX_NON_ALL_OUT_SECONDS
+        while remaining > 0:
+            take = min(MAX_NON_ALL_OUT_SECONDS, remaining)
+            # If the next iteration would leave less than the minimum, fold it in.
+            if 0 < remaining - take < 30:
+                take = remaining
+            chunks.append(_seg(
+                f"{base_name} {idx}/{total_chunks}" if total_chunks > 1 else base_name,
+                "warmup", take, base_resistance, base_rpm_low, base_rpm_high, base_cue,
+            ))
+            remaining -= take
+            idx += 1
+        return chunks
+    else:
+        # recovery / unknown — just chunk without variety
+        chunks = []
+        remaining = duration
+        idx = 1
+        while remaining > 0:
+            take = min(MAX_NON_ALL_OUT_SECONDS, remaining)
+            if 0 < remaining - take < 30:
+                take = remaining
+            chunks.append(_seg(
+                f"{base_name} {idx}", seg_type, take,
+                base_resistance, base_rpm_low, base_rpm_high, base_cue,
+            ))
+            remaining -= take
+            idx += 1
+        return chunks
+
+    # Common path: climb / sprint / flat — alternate work + recovery (or surge),
+    # with a small pace shift on every other work chunk for variety.
+    out: List[Dict[str, Any]] = []
+    remaining = duration
+    work_idx = 0
+    while remaining > 0:
+        # Work chunk
+        take = min(work_chunk, remaining)
+        # If a tiny tail would be left, fold it in (but never above the cap).
+        if 0 < remaining - take < 30:
+            take = min(MAX_NON_ALL_OUT_SECONDS, remaining)
+
+        delta = 1 if work_idx % 2 == 1 else 0
+        if variety_kind == "resistance":
+            r = max(1, min(10, base_resistance + (delta if work_idx > 0 else 0)))
+            rpm_lo, rpm_hi = base_rpm_low, base_rpm_high
+        else:  # rpm variety for sprints
+            r = base_resistance
+            shift = (5 if work_idx % 2 == 1 else 0)
+            rpm_lo = max(50, min(130, base_rpm_low + shift))
+            rpm_hi = max(50, min(130, base_rpm_high + shift))
+
+        out.append(_seg(
+            f"{base_name} {work_idx + 1}",
+            seg_type, take, r, rpm_lo, rpm_hi, base_cue,
+        ))
+        remaining -= take
+        work_idx += 1
+
+        # Recovery / surge between work chunks — only if enough remains for
+        # ANOTHER meaningful (>=30s) work chunk after the recovery. Otherwise
+        # we'd leave a sub-30s tail that fails the validator.
+        if remaining >= recovery_chunk + 30:
+            rec_take = min(recovery_chunk, remaining)
+            if seg_type == "flat":
+                # surge mid-flat
+                out.append(_seg(
+                    "Surge", "flat", rec_take, recovery_r,
+                    recovery_rpm[0], recovery_rpm[1], "Push the pace briefly",
+                ))
+            else:
+                out.append(_seg(
+                    "Recovery", "recovery", rec_take, recovery_r,
+                    recovery_rpm[0], recovery_rpm[1], "Easy spin, breathe",
+                ))
+            remaining -= rec_take
+
+    # Don't let the split end on a recovery — preserves the "end on a working
+    # effort" rule. Swap with the prior work chunk if needed.
+    if len(out) >= 2 and out[-1]["segment_type"] == "recovery":
+        out[-1], out[-2] = out[-2], out[-1]
+
+    return out
+
+
 def _build_prompt(
     include_all_outs: bool,
     duration_minutes: int,
     difficulty: str | None = None,
+    examples: List[Dict[str, Any]] | None = None,
 ) -> str:
     """Build the system prompt, injecting difficulty profile and optional all-out rules."""
     if include_all_outs:
@@ -297,12 +453,45 @@ def _build_prompt(
         resolved_difficulty, _DIFFICULTY_PROFILES["moderate"]
     )
 
-    return _BASE_PROMPT.format(
+    prompt = _BASE_PROMPT.format(
         all_out_segment_type=all_out_segment_type,
         all_out_rules=all_out_rules,
         difficulty_instructions=difficulty_instructions,
         difficulty_value=resolved_difficulty,
     )
+
+    if examples:
+        prompt += _format_examples_section(examples)
+
+    return prompt
+
+
+def _format_examples_section(examples: List[Dict[str, Any]]) -> str:
+    """Render highly-rated user-approved rides as a few-shot examples block."""
+    lines = [
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "HIGHLY-RATED EXAMPLES (real rides users loved)",
+        "═══════════════════════════════════════════════════════════════════",
+        "Below are rides at this duration/difficulty that real users rated 4-5 stars",
+        "and that have been curated for quality. Use them as inspiration for pacing,",
+        "segment selection, and energy curve. Do NOT copy them verbatim — vary the",
+        "names, cues, and exact durations.",
+        "",
+    ]
+    for i, ex in enumerate(examples, start=1):
+        title = str(ex.get("title", "Untitled"))
+        d_min = ex.get("duration_minutes", "?")
+        d_diff = ex.get("difficulty", "?")
+        lines.append(f"Example {i}: \"{title}\" ({d_min} min, {d_diff})")
+        for j, seg in enumerate(ex.get("segments", []), start=1):
+            lines.append(
+                f"  {j}. {seg.get('name','?')} — {seg.get('segment_type','?')}, "
+                f"R{seg.get('resistance','?')}, RPM {seg.get('rpm_low','?')}-"
+                f"{seg.get('rpm_high','?')}, {seg.get('duration_seconds','?')}s"
+            )
+        lines.append("")
+    return "\n".join(lines)
 
 
 @dataclass
@@ -356,14 +545,23 @@ class SpinRideGenerator:
         """
         try:
             from google.genai import types
+            from .spin_ride_validator import validate_spin_ride_plan
+            from .spin_ride_examples import fetch_top_examples
 
             client = self._get_client()
             target_seconds = duration_minutes * 60
-
-            system_instruction = _build_prompt(include_all_outs, duration_minutes, difficulty)
-
             resolved_difficulty = difficulty or "moderate"
-            user_prompt_parts = [
+
+            # Pull up to 2 admin-approved, highly-rated rides at this
+            # duration/difficulty to inject as few-shot examples. Returns []
+            # when no curated data exists yet — prompt is unchanged in that case.
+            examples = fetch_top_examples(duration_minutes, resolved_difficulty, limit=2)
+
+            system_instruction = _build_prompt(
+                include_all_outs, duration_minutes, difficulty, examples=examples,
+            )
+
+            base_user_parts = [
                 f"Generate a {duration_minutes}-minute spin bike ride at {resolved_difficulty} difficulty.",
                 f"Total seconds must be exactly {target_seconds}.",
                 f"Follow the {resolved_difficulty.upper()} difficulty profile exactly — use the resistance ranges, recovery ratios, and energy curve specified.",
@@ -371,33 +569,64 @@ class SpinRideGenerator:
             ]
             if include_all_outs:
                 lo, hi = _all_out_count_for_duration(duration_minutes)
-                user_prompt_parts.append(
+                base_user_parts.append(
                     f"Include {lo} to {hi} all_out segments following hard efforts."
                 )
-            prompt = " ".join(user_prompt_parts)
 
-            response = client.models.generate_content(
-                model=self.config.model,
-                contents=[prompt],
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    response_mime_type="application/json",
-                    temperature=self.config.temperature,
-                    max_output_tokens=self.config.max_output_tokens,
-                ),
-            )
+            def _call_ai(extra_parts: List[str] | None = None) -> Dict[str, Any]:
+                parts = list(base_user_parts)
+                if extra_parts:
+                    parts.extend(extra_parts)
+                prompt = " ".join(parts)
+                response = client.models.generate_content(
+                    model=self.config.model,
+                    contents=[prompt],
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        response_mime_type="application/json",
+                        temperature=self.config.temperature,
+                        max_output_tokens=self.config.max_output_tokens,
+                    ),
+                )
+                response_text = response.text.strip()
+                logger.info(f"Gemini spin ride response length: {len(response_text)} chars")
+                return json.loads(response_text)
 
-            response_text = response.text.strip()
-            logger.info(f"Gemini spin ride response length: {len(response_text)} chars")
-            parsed = json.loads(response_text)
-
-            # Validate and fix segment timing
+            parsed = _call_ai()
             parsed = self._normalize_plan(parsed, duration_minutes, include_all_outs, difficulty)
+
+            # Validate against the full rule set. The normalizer should have
+            # handled the common violations, but the validator is the safety
+            # net + audit log.
+            result = validate_spin_ride_plan(parsed, include_all_outs=include_all_outs)
+            if not result.ok:
+                logger.warning(
+                    f"Spin ride failed validation after normalize "
+                    f"({len(result.errors)} error(s)): {result.errors}. Retrying once."
+                )
+                retry_parts = [
+                    "Your previous attempt violated these rules — fix them:",
+                    "; ".join(result.errors) + ".",
+                    "Regenerate from scratch with the violations corrected.",
+                ]
+                try:
+                    parsed = _call_ai(retry_parts)
+                    parsed = self._normalize_plan(parsed, duration_minutes, include_all_outs, difficulty)
+                    retry_result = validate_spin_ride_plan(parsed, include_all_outs=include_all_outs)
+                    if not retry_result.ok:
+                        logger.warning(
+                            f"Spin ride still has {len(retry_result.errors)} error(s) "
+                            f"after retry: {retry_result.errors}. Returning best-effort plan."
+                        )
+                    else:
+                        logger.info("Spin ride retry produced a valid plan.")
+                except Exception as retry_err:
+                    logger.error(f"Spin ride retry failed: {retry_err}. Returning original.", exc_info=True)
+
             return parsed
 
         except json.JSONDecodeError as e:
             logger.error(f"Spin ride generator: AI returned invalid JSON: {e}")
-            logger.error(f"Raw response: {response_text[:500] if 'response_text' in dir() else 'N/A'}")
             raise ValueError("AI returned an unexpected format — please try again")
         except Exception as e:
             logger.error(f"Spin ride generator error: {type(e).__name__}: {e}", exc_info=True)
@@ -474,6 +703,22 @@ class SpinRideGenerator:
                 last["name"] = "Final Sprint"
             logger.info("Converted trailing all_out segment to sprint (rides must not end on an all-out)")
 
+        # Split any non-all-out segment that exceeds the 240s cap into a
+        # sequence with real recovery + pace variety. This is the core fix
+        # for the "10:15 Final Sprint" bug.
+        split_segments: List[Dict[str, Any]] = []
+        for seg in segments:
+            if seg["segment_type"] != "all_out" and seg["duration_seconds"] > MAX_NON_ALL_OUT_SECONDS:
+                pieces = _split_long_segment(seg)
+                logger.info(
+                    f"Split oversized {seg['segment_type']} segment "
+                    f"'{seg['name']}' ({seg['duration_seconds']}s) into {len(pieces)} pieces"
+                )
+                split_segments.extend(pieces)
+            else:
+                split_segments.append(seg)
+        segments = split_segments
+
         # Fix timing mismatch by adjusting a non-all-out segment so we never
         # inflate an all_out past the 45s hard cap. Walk backwards from the
         # end to find the last segment we can safely resize.
@@ -492,6 +737,15 @@ class SpinRideGenerator:
                         f"Adjusted segment '{target_seg['name']}' (idx {adjust_idx}) "
                         f"by {diff}s to match target duration"
                     )
+                    # If growing the segment pushed it past the cap, split again.
+                    if (target_seg["segment_type"] != "all_out"
+                            and target_seg["duration_seconds"] > MAX_NON_ALL_OUT_SECONDS):
+                        pieces = _split_long_segment(target_seg)
+                        segments = segments[:adjust_idx] + pieces + segments[adjust_idx + 1:]
+                        logger.info(
+                            f"Re-split adjusted segment after timing fix "
+                            f"into {len(pieces)} pieces"
+                        )
                 else:
                     logger.warning(f"Spin ride timing off by {diff}s, couldn't fix cleanly")
             else:

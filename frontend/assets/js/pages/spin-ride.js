@@ -142,6 +142,11 @@
       finishedSummary: $('finishedSummary'),
       finishedSaveStatus: $('finishedSaveStatus'),
       finishedNewRideBtn: $('finishedNewRideBtn'),
+      rideFeedbackWidget: $('rideFeedbackWidget'),
+      rideFeedbackStars: $('rideFeedbackStars'),
+      rideFeedbackComment: $('rideFeedbackComment'),
+      rideFeedbackSubmitBtn: $('rideFeedbackSubmitBtn'),
+      rideFeedbackStatus: $('rideFeedbackStatus'),
       errorMessage: $('errorMessage'),
       errorRetryBtn: $('errorRetryBtn'),
     };
@@ -630,6 +635,92 @@
     finishRide();
   }
 
+  // ── Ride Feedback Widget ───────────────────────────────────────────────
+
+  function setupRideFeedbackWidget(context) {
+    const widget = els.rideFeedbackWidget;
+    const starsContainer = els.rideFeedbackStars;
+    const commentEl = els.rideFeedbackComment;
+    const submitBtn = els.rideFeedbackSubmitBtn;
+    const statusEl = els.rideFeedbackStatus;
+    if (!widget || !starsContainer || !submitBtn) return;
+
+    // Reset widget state every time finishRide runs (handles "Start Another Ride").
+    widget.classList.remove('d-none');
+    if (commentEl) {
+      commentEl.value = '';
+      commentEl.disabled = false;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submit feedback';
+    if (statusEl) statusEl.textContent = 'Optional — helps tune future rides.';
+
+    let selectedRating = 0;
+    const starButtons = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
+
+    function paintStars(active) {
+      starButtons.forEach((btn) => {
+        const r = parseInt(btn.dataset.rating, 10);
+        const icon = btn.querySelector('i');
+        if (!icon) return;
+        const filled = r <= active;
+        icon.classList.toggle('bx-star', !filled);
+        icon.classList.toggle('bxs-star', filled);
+        icon.classList.toggle('text-warning', filled);
+        btn.setAttribute('aria-checked', String(r === active));
+      });
+    }
+
+    starButtons.forEach((btn) => {
+      // Re-bind safely by cloning to drop any prior listeners from a previous ride.
+      const fresh = btn.cloneNode(true);
+      btn.parentNode.replaceChild(fresh, btn);
+    });
+    const refreshedStars = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
+    refreshedStars.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedRating = parseInt(btn.dataset.rating, 10) || 0;
+        paintStars(selectedRating);
+        submitBtn.disabled = selectedRating < 1;
+      });
+    });
+
+    // Replace the submit button to drop any previous click handler.
+    const freshSubmit = submitBtn.cloneNode(true);
+    submitBtn.parentNode.replaceChild(freshSubmit, submitBtn);
+    els.rideFeedbackSubmitBtn = freshSubmit;
+
+    freshSubmit.addEventListener('click', async () => {
+      if (selectedRating < 1) return;
+      freshSubmit.disabled = true;
+      freshSubmit.textContent = 'Submitting…';
+      try {
+        if (!window.spinRideFeedbackService) {
+          throw new Error('Feedback service not loaded');
+        }
+        await window.spinRideFeedbackService.submit({
+          ridePlan: context.ridePlan,
+          rating: selectedRating,
+          comment: commentEl ? commentEl.value : '',
+          segmentsCompleted: context.segmentsCompleted,
+          actualSeconds: context.actualSeconds,
+          includeAllOuts: context.includeAllOuts,
+        });
+        if (statusEl) statusEl.textContent = 'Thanks — feedback submitted.';
+        freshSubmit.textContent = 'Submitted';
+        if (commentEl) commentEl.disabled = true;
+        refreshedStars.forEach((b) => { b.disabled = true; });
+      } catch (err) {
+        console.error('Spin ride feedback submission failed:', err);
+        if (statusEl) statusEl.textContent = `Couldn't submit: ${err.message}`;
+        freshSubmit.disabled = false;
+        freshSubmit.textContent = 'Try again';
+      }
+    });
+
+    paintStars(0);
+  }
+
   // ── Finish Ride ────────────────────────────────────────────────────────
 
   async function finishRide() {
@@ -651,6 +742,12 @@
     els.finishedSummary.textContent = summaryText;
 
     showState('finishedState');
+    setupRideFeedbackWidget({
+      ridePlan,
+      segmentsCompleted,
+      actualSeconds,
+      includeAllOuts: getIncludeAllOuts(),
+    });
 
     // Build notes once — shared between confirm and fallback paths.
     const notesLines = [

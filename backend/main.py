@@ -304,6 +304,19 @@ async def serve_feedback_admin():
             status_code=404
         )
 
+@app.get("/spin-ride-feedback-admin", response_class=HTMLResponse)
+@app.get("/spin-ride-feedback-admin.html", response_class=HTMLResponse)
+async def serve_spin_ride_feedback_admin():
+    """Serve the Spin Ride Feedback Admin page (admin review of user ratings)."""
+    try:
+        with open("frontend/spin-ride-feedback-admin.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Spin Ride Feedback Admin not found</h1><p>Please ensure frontend/spin-ride-feedback-admin.html exists</p>",
+            status_code=404
+        )
+
 @app.get("/feedback-voting", response_class=HTMLResponse)
 @app.get("/feedback-voting.html", response_class=HTMLResponse)
 async def serve_feedback_voting():

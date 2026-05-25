@@ -15,7 +15,7 @@ Rules checked:
 - segment_type is one of the allowed values
 - no "cooldown" segments (prompt forbids cool-downs)
 - resistance in 1..10, rpm in 50..130, rpm_low <= rpm_high
-- duration_seconds in 15..600
+- non-all-out duration_seconds in 30..240 (matches the prompt's segment cap)
 - all_out duration <= 60s HARD CAP, 15..45s SOFT CAP
 - first segment is a warmup
 - ride does not start OR end with an all_out
@@ -39,6 +39,12 @@ ALL_OUT_HARD_MAX_SECONDS = 60
 # Soft rule from the prompt: all-outs should be 15-45s.
 ALL_OUT_SOFT_MIN_SECONDS = 15
 ALL_OUT_SOFT_MAX_SECONDS = 45
+
+# Non-all-out segments are capped to keep intervals interesting and prevent
+# the AI's "one giant climb" failure mode (see the 10:15 sprint screenshot
+# that motivated this validator tightening).
+NON_ALL_OUT_MIN_SECONDS = 30
+NON_ALL_OUT_MAX_SECONDS = 240
 
 
 def _all_out_count_for_duration(duration_minutes: int) -> tuple[int, int]:
@@ -142,6 +148,20 @@ def validate_spin_ride_plan(
         if not isinstance(duration, int) or duration < 15 or duration > 600:
             result.add_error(f"{label}: duration_seconds must be int in 15..600, got {duration!r}")
             duration = 0  # Don't crash the sum.
+        else:
+            # Per-type tightening so the validator agrees with the prompt
+            # and rejects the "one giant climb" failure mode.
+            if seg_type != "all_out":
+                if duration > NON_ALL_OUT_MAX_SECONDS:
+                    result.add_error(
+                        f"{label}: non-all-out duration {duration}s exceeds the "
+                        f"{NON_ALL_OUT_MAX_SECONDS}s cap"
+                    )
+                elif duration < NON_ALL_OUT_MIN_SECONDS:
+                    result.add_warning(
+                        f"{label}: non-all-out duration {duration}s is below the "
+                        f"{NON_ALL_OUT_MIN_SECONDS}s soft minimum"
+                    )
         running_total += duration
 
         resistance = seg.get("resistance")

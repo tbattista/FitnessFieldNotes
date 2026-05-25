@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html
+  lang="en"
+  class="layout-menu-fixed layout-compact"
+  data-assets-path="/static/assets/"
+  data-template="vertical-menu-template-free">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+    <title>Spin Ride Feedback Admin - Fitness Field Notes</title>
+    <meta name="description" content="Admin dashboard for reviewing spin ride feedback" />
+
+    <link rel="icon" type="image/svg+xml" href="/static/assets/img/favicon/favicon.svg" />
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#C97C5D">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="/static/assets/vendor/fonts/iconify-icons.css" />
+    <link rel="stylesheet" href="/static/assets/vendor/css/core.css" />
+    <link rel="stylesheet" href="/static/assets/css/demo.css" />
+    <link rel="stylesheet" href="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <link rel="stylesheet" href="/static/assets/css/ffn-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
+    <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
+
+    <script src="/static/assets/vendor/js/helpers.js"></script>
+    <script src="/static/assets/js/config.js"></script>
+    <script src="/static/assets/js/services/theme-manager.js"></script>
+    <script src="/static/assets/js/app-config.js"></script>
+    <script type="module" src="/static/assets/js/firebase-loader.js"></script>
+  </head>
+
+  <body>
+    <div class="layout-wrapper layout-content-navbar">
+      <div class="layout-container">
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+          <!-- Menu will be injected by menu-injection-service.js -->
+        </aside>
+
+        <div class="layout-page">
+          <div class="content-wrapper">
+            <div class="container-xxl flex-grow-1 container-p-y">
+
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4 class="mb-1">
+                    <i class="bx bx-cycling me-2 text-primary"></i>
+                    Spin Ride Feedback Admin
+                  </h4>
+                  <p class="text-muted mb-0">Review user ratings and curate good examples for AI prompt injection.</p>
+                </div>
+                <button class="btn btn-primary" id="refreshBtn">
+                  <i class="bx bx-refresh me-1"></i>Refresh
+                </button>
+              </div>
+
+              <div class="card mb-3">
+                <div class="card-body py-3">
+                  <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <label class="text-muted small mb-0 me-2">Filter:</label>
+                    <select id="filterSelect" class="form-select form-select-sm" style="max-width: 220px;">
+                      <option value="all">All feedback</option>
+                      <option value="unreviewed" selected>Unreviewed only</option>
+                      <option value="low">Low ratings (1-2★)</option>
+                      <option value="good">Marked as good example</option>
+                    </select>
+                    <span id="feedbackCount" class="text-muted small ms-auto">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="loadingState" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="text-muted small mt-2">Loading feedback…</p>
+              </div>
+
+              <div id="emptyState" class="text-center py-5 d-none">
+                <i class="bx bx-message-square-x display-3 text-muted"></i>
+                <p class="text-muted mt-2">No feedback matches this filter.</p>
+              </div>
+
+              <div id="feedbackList"></div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="layout-overlay layout-menu-toggle"></div>
+    </div>
+
+    <!-- Core JS -->
+    <script src="/static/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="/static/assets/vendor/libs/popper/popper.js"></script>
+    <script src="/static/assets/vendor/js/bootstrap.js"></script>
+    <script src="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="/static/assets/vendor/js/menu.js"></script>
+
+    <script src="/static/assets/js/components/menu-template.js"></script>
+    <script src="/static/assets/js/components/navbar-template.js"></script>
+    <script src="/static/assets/js/components/auth-modals-template.js"></script>
+
+    <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/universal-log-service.js"></script>
+    <script type="module" src="/static/assets/js/components/offcanvas/offcanvas-universal-logger.js"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
+    <script src="/static/assets/js/services/navbar-injection-service.js"></script>
+
+    <script src="/static/assets/js/services/feedback-injection-service.js"></script>
+    <script src="/static/assets/js/main.js?v=20260216"></script>
+
+    <script src="/static/assets/js/firebase/firebase-init.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-service.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-ui.js?v=20251020-03"></script>
+
+    <script src="/static/assets/js/services/spin-ride-feedback-admin-service.js?v=20260525"></script>
+
+    <script>
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function formatStars(n) {
+        const stars = [];
+        for (let i = 1; i <= 5; i++) {
+          stars.push(`<i class="bx ${i <= n ? 'bxs-star text-warning' : 'bx-star text-muted'}"></i>`);
+        }
+        return stars.join('');
+      }
+
+      function formatTimestamp(ts) {
+        if (!ts) return '—';
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toLocaleString();
+      }
+
+      function formatSecs(s) {
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        return `${m}:${String(r).padStart(2, '0')}`;
+      }
+
+      function renderSegmentRow(seg) {
+        return `<tr>
+          <td>${escapeHtml(seg.name)}</td>
+          <td><span class="badge bg-label-secondary">${escapeHtml(seg.segment_type)}</span></td>
+          <td>R${seg.resistance}</td>
+          <td>${seg.rpm_low}-${seg.rpm_high}</td>
+          <td>${formatSecs(seg.duration_seconds)}</td>
+        </tr>`;
+      }
+
+      function renderItem(item) {
+        const plan = item.ridePlanSnapshot || {};
+        const segments = Array.isArray(plan.segments) ? plan.segments : [];
+        const segHtml = segments.map(renderSegmentRow).join('');
+        const reviewedBadge = item.adminReviewed
+          ? `<span class="badge bg-success ms-2">Reviewed${item.goodExample ? ' ★ Good' : ''}</span>`
+          : '<span class="badge bg-warning ms-2">Unreviewed</span>';
+        const userId = (item.metadata && item.metadata.userEmail) || (item.metadata && item.metadata.userId) || 'anonymous';
+
+        return `
+          <div class="card mb-3" data-id="${escapeHtml(item.id)}">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                  <div class="mb-1" style="font-size: 1.25rem;">${formatStars(item.rating)}</div>
+                  <h6 class="mb-0">${escapeHtml(plan.title || '(no title)')}</h6>
+                  <small class="text-muted">
+                    ${escapeHtml(plan.duration_minutes || '?')} min ·
+                    ${escapeHtml(plan.difficulty || '?')} ·
+                    ${segments.length} segments ·
+                    ${escapeHtml(userId)} ·
+                    ${formatTimestamp(item.createdAt)}
+                    ${reviewedBadge}
+                  </small>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn btn-outline-success js-mark-good">★ Good example</button>
+                  <button type="button" class="btn btn-outline-secondary js-mark-bad">Mark reviewed</button>
+                </div>
+              </div>
+
+              ${item.comment ? `<div class="alert alert-light mt-3 mb-2"><strong>Comment:</strong> ${escapeHtml(item.comment)}</div>` : ''}
+
+              <details class="mt-2">
+                <summary class="text-muted small" style="cursor: pointer;">View ${segments.length} segments</summary>
+                <div class="table-responsive mt-2">
+                  <table class="table table-sm mb-0">
+                    <thead><tr><th>Name</th><th>Type</th><th>R</th><th>RPM</th><th>Duration</th></tr></thead>
+                    <tbody>${segHtml}</tbody>
+                  </table>
+                </div>
+              </details>
+            </div>
+          </div>`;
+      }
+
+      async function loadList() {
+        const filter = document.getElementById('filterSelect').value;
+        document.getElementById('loadingState').classList.remove('d-none');
+        document.getElementById('emptyState').classList.add('d-none');
+        const list = document.getElementById('feedbackList');
+        list.innerHTML = '';
+        try {
+          const items = await window.spinRideFeedbackAdminService.loadFeedback({ filter });
+          document.getElementById('loadingState').classList.add('d-none');
+          document.getElementById('feedbackCount').textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
+          if (items.length === 0) {
+            document.getElementById('emptyState').classList.remove('d-none');
+            return;
+          }
+          list.innerHTML = items.map(renderItem).join('');
+
+          list.querySelectorAll('[data-id]').forEach((card) => {
+            const id = card.dataset.id;
+            card.querySelector('.js-mark-good').addEventListener('click', async () => {
+              await window.spinRideFeedbackAdminService.markReviewed(id, true);
+              loadList();
+            });
+            card.querySelector('.js-mark-bad').addEventListener('click', async () => {
+              await window.spinRideFeedbackAdminService.markReviewed(id, false);
+              loadList();
+            });
+          });
+        } catch (err) {
+          console.error(err);
+          document.getElementById('loadingState').classList.add('d-none');
+          alert(`Failed to load feedback: ${err.message}`);
+        }
+      }
+
+      async function init() {
+        if (!window.firebaseReady) {
+          await new Promise((r) => window.addEventListener('firebaseReady', r, { once: true }));
+        }
+        const ok = await window.spinRideFeedbackAdminService.checkAdminAccess();
+        if (!ok) return;
+        document.getElementById('refreshBtn').addEventListener('click', loadList);
+        document.getElementById('filterSelect').addEventListener('change', loadList);
+        loadList();
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    </script>
+  </body>
+</html>
