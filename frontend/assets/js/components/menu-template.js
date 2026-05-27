@@ -17,6 +17,7 @@ function getMenuHTML(activePage = 'home') {
     const isExercises = activePage === 'exercise-database';
     const isSpinRide = activePage === 'spin-ride';
     const isTabataKettlebell = activePage === 'tabata-kettlebell';
+    const isWorkoutStudio = activePage === 'workout-studio';
 
     return `
         <nav aria-label="Main navigation">
@@ -59,6 +60,13 @@ function getMenuHTML(activePage = 'home') {
 
                 <li class="menu-header small text-uppercase">
                     <span class="menu-header-text">Lab Projects</span>
+                </li>
+
+                <li class="menu-item ${isWorkoutStudio ? 'active' : ''}"${isWorkoutStudio ? ' aria-current="page"' : ''}>
+                    <a href="workout-studio.html" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-list-plus"></i>
+                        <div class="text-truncate">Workout Studio <span class="badge bg-label-primary ms-1" style="font-size:0.65rem;">New</span></div>
+                    </a>
                 </li>
 
                 <li class="menu-item ${isSpinRide ? 'active' : ''}"${isSpinRide ? ' aria-current="page"' : ''}>

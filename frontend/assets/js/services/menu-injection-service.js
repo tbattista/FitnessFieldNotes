@@ -157,6 +157,7 @@ class MenuInjectionService {
         if (filename.includes('exercise-edit')) return 'exercise-database';
 
         // Lab Projects
+        if (filename.includes('workout-studio')) return 'workout-studio';
         if (filename.includes('spin-ride')) return 'spin-ride';
         if (filename.includes('tabata-kettlebell')) return 'tabata-kettlebell';
 
