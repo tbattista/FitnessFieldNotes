@@ -239,6 +239,19 @@ async def serve_workout_builder():
             status_code=404
         )
 
+@app.get("/workout-studio", response_class=HTMLResponse)
+@app.get("/workout-studio.html", response_class=HTMLResponse)
+async def serve_workout_studio():
+    """Serve the Workout Studio page (unified selection-first builder, Phase 1)"""
+    try:
+        with open("frontend/workout-studio.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Workout Studio page not found</h1><p>Please ensure frontend/workout-studio.html exists</p>",
+            status_code=404
+        )
+
 @app.get("/exercise-database", response_class=HTMLResponse)
 @app.get("/exercise-database.html", response_class=HTMLResponse)
 async def serve_exercise_database():
