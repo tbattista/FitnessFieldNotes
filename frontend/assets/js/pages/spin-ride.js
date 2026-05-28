@@ -698,9 +698,23 @@
     const widget = els.rideFeedbackWidget;
     const starsContainer = els.rideFeedbackStars;
     const commentEl = els.rideFeedbackComment;
-    const submitBtn = els.rideFeedbackSubmitBtn;
     const statusEl = els.rideFeedbackStatus;
-    if (!widget || !starsContainer || !submitBtn) return;
+    if (!widget || !starsContainer || !els.rideFeedbackSubmitBtn) return;
+
+    // Clone the stars + submit button FIRST to drop any listeners left
+    // attached from a previous ride. Capturing references before cloning
+    // would leave us holding detached nodes — clicks would update DOM the
+    // user never sees.
+    Array.from(starsContainer.querySelectorAll('.ride-feedback-star')).forEach((btn) => {
+      btn.parentNode.replaceChild(btn.cloneNode(true), btn);
+    });
+    const oldSubmit = els.rideFeedbackSubmitBtn;
+    const submitBtn = oldSubmit.cloneNode(true);
+    oldSubmit.parentNode.replaceChild(submitBtn, oldSubmit);
+    els.rideFeedbackSubmitBtn = submitBtn;
+
+    // Now query the fresh nodes — these are the ones in the DOM.
+    const starButtons = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
 
     // Reset widget state every time finishRide runs (handles "Start Another Ride").
     widget.classList.remove('d-none');
@@ -713,7 +727,6 @@
     if (statusEl) statusEl.textContent = 'Optional — helps tune future rides.';
 
     let selectedRating = 0;
-    const starButtons = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
 
     function paintStars(active) {
       starButtons.forEach((btn) => {
@@ -729,12 +742,6 @@
     }
 
     starButtons.forEach((btn) => {
-      // Re-bind safely by cloning to drop any prior listeners from a previous ride.
-      const fresh = btn.cloneNode(true);
-      btn.parentNode.replaceChild(fresh, btn);
-    });
-    const refreshedStars = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
-    refreshedStars.forEach((btn) => {
       btn.addEventListener('click', () => {
         selectedRating = parseInt(btn.dataset.rating, 10) || 0;
         paintStars(selectedRating);
@@ -742,15 +749,10 @@
       });
     });
 
-    // Replace the submit button to drop any previous click handler.
-    const freshSubmit = submitBtn.cloneNode(true);
-    submitBtn.parentNode.replaceChild(freshSubmit, submitBtn);
-    els.rideFeedbackSubmitBtn = freshSubmit;
-
-    freshSubmit.addEventListener('click', async () => {
+    submitBtn.addEventListener('click', async () => {
       if (selectedRating < 1) return;
-      freshSubmit.disabled = true;
-      freshSubmit.textContent = 'Submitting…';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
       try {
         if (!window.spinRideFeedbackService) {
           throw new Error('Feedback service not loaded');
@@ -764,14 +766,14 @@
           includeAllOuts: context.includeAllOuts,
         });
         if (statusEl) statusEl.textContent = 'Thanks — feedback submitted.';
-        freshSubmit.textContent = 'Submitted';
+        submitBtn.textContent = 'Submitted';
         if (commentEl) commentEl.disabled = true;
-        refreshedStars.forEach((b) => { b.disabled = true; });
+        starButtons.forEach((b) => { b.disabled = true; });
       } catch (err) {
         console.error('Spin ride feedback submission failed:', err);
         if (statusEl) statusEl.textContent = `Couldn't submit: ${err.message}`;
-        freshSubmit.disabled = false;
-        freshSubmit.textContent = 'Try again';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Try again';
       }
     });
 
@@ -1289,6 +1291,10 @@
   }
 
   // ── Bootstrap ──────────────────────────────────────────────────────────
+
+  // Test-only hook for exercising the feedback widget without going
+  // through the auth-gated ride flow. Read by tests/spin-ride-feedback.spec.js.
+  window.__spinRideTestHooks = { setupRideFeedbackWidget };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
