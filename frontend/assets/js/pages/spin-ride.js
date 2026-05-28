@@ -31,9 +31,15 @@
   const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 from SVG viewBox
   const SESSION_KEY = 'spinRideSession';
   const BIKE_GEARS_KEY = 'spinRideBikeGears';
+  const BIKE_RPM_KEY = 'spinRideBikeRpm';
   const INCLUDE_ALL_OUTS_KEY = 'spinRideIncludeAllOuts';
   const DIFFICULTY_KEY = 'spinRideDifficulty';
   const WINDOW_MODE_KEY = 'spinRideWindowMode';
+
+  // The AI's RPM range — anything it outputs maps from this interval onto
+  // the user's configured min/max when RPM mapping is enabled.
+  const AI_RPM_MIN = 50;
+  const AI_RPM_MAX = 130;
 
   // Number of upcoming segments visible in windowed mode (kept in sync with
   // the adjacent-sibling chains in spin-ride.css).
@@ -92,6 +98,48 @@
     return Math.round(gear);
   }
 
+  // ── Bike RPM mapping ───────────────────────────────────────────────────
+  // Mirrors the gear mapping above: the AI emits RPM values in 50..130, and
+  // the user can remap that range onto whatever min/max their bike reads.
+  // Stored in localStorage so it persists across sessions/devices.
+
+  let bikeRpm = null; // { min: number, max: number } or null
+
+  function loadBikeRpm() {
+    try {
+      const raw = localStorage.getItem(BIKE_RPM_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (typeof data.min === 'number' && typeof data.max === 'number' && data.max > data.min) {
+        return data;
+      }
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function saveBikeRpm(min, max) {
+    try {
+      localStorage.setItem(BIKE_RPM_KEY, JSON.stringify({ min, max }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearBikeRpm() {
+    try { localStorage.removeItem(BIKE_RPM_KEY); } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Map an AI RPM value (50..130) onto the user's configured range via
+   * linear interpolation. Returns the rounded mapped RPM, or null if no
+   * mapping is configured.
+   */
+  function mapRpm(rpm) {
+    if (!bikeRpm) return null;
+    const clamped = Math.max(AI_RPM_MIN, Math.min(AI_RPM_MAX, Number(rpm) || AI_RPM_MIN));
+    const span = AI_RPM_MAX - AI_RPM_MIN;
+    const mapped = bikeRpm.min + ((clamped - AI_RPM_MIN) / span) * (bikeRpm.max - bikeRpm.min);
+    return Math.round(mapped);
+  }
+
   // ── DOM refs ───────────────────────────────────────────────────────────
 
   const $ = (id) => document.getElementById(id);
@@ -120,6 +168,11 @@
       bikeGearsSaveBtn: $('bikeGearsSaveBtn'),
       bikeGearsClearBtn: $('bikeGearsClearBtn'),
       bikeGearsStatus: $('bikeGearsStatus'),
+      lowRpmInput: $('lowRpmInput'),
+      maxRpmInput: $('maxRpmInput'),
+      bikeRpmSaveBtn: $('bikeRpmSaveBtn'),
+      bikeRpmClearBtn: $('bikeRpmClearBtn'),
+      bikeRpmStatus: $('bikeRpmStatus'),
       segmentResistanceLabel: $('segmentResistanceLabel'),
       segmentResistanceSuffix: $('segmentResistanceSuffix'),
       rideTitle: $('rideTitle'),
@@ -246,10 +299,12 @@
     const dur = formatTime(seg.duration_seconds);
     const gear = mapResistanceToGear(seg.resistance);
     const resistanceLabel = gear !== null ? `G${gear}` : `R${seg.resistance}`;
+    const rpmLow = mapRpm(seg.rpm_low) ?? seg.rpm_low;
+    const rpmHigh = mapRpm(seg.rpm_high) ?? seg.rpm_high;
     return `<div class="spin-segment-row" data-index="${i}">
       <span class="spin-segment-type-dot type-${seg.segment_type}"></span>
       <span class="spin-segment-name">${seg.name}</span>
-      <span class="spin-segment-meta">${resistanceLabel} &middot; ${seg.rpm_low}-${seg.rpm_high}rpm &middot; ${dur}</span>
+      <span class="spin-segment-meta">${resistanceLabel} &middot; ${rpmLow}-${rpmHigh}rpm &middot; ${dur}</span>
     </div>`;
   }
 
@@ -328,9 +383,11 @@
       els.segmentResistanceSuffix.textContent = '/10';
     }
 
-    els.segmentRpm.textContent = seg.rpm_low === seg.rpm_high
-      ? `${seg.rpm_low}`
-      : `${seg.rpm_low}-${seg.rpm_high}`;
+    const displayRpmLow = mapRpm(seg.rpm_low) ?? seg.rpm_low;
+    const displayRpmHigh = mapRpm(seg.rpm_high) ?? seg.rpm_high;
+    els.segmentRpm.textContent = displayRpmLow === displayRpmHigh
+      ? `${displayRpmLow}`
+      : `${displayRpmLow}-${displayRpmHigh}`;
     els.segmentCue.textContent = seg.cue || '';
     els.totalElapsed.textContent = formatTime(getElapsedSeconds());
 
@@ -756,7 +813,9 @@
       `Segments: ${segmentsCompleted}/${segments.length}`,
     ];
     segments.slice(0, segmentsCompleted).forEach((seg) => {
-      notesLines.push(`  ${seg.name}: R${seg.resistance}, ${seg.rpm_low}-${seg.rpm_high}rpm, ${formatTime(seg.duration_seconds)}`);
+      const noteRpmLow = mapRpm(seg.rpm_low) ?? seg.rpm_low;
+      const noteRpmHigh = mapRpm(seg.rpm_high) ?? seg.rpm_high;
+      notesLines.push(`  ${seg.name}: R${seg.resistance}, ${noteRpmLow}-${noteRpmHigh}rpm, ${formatTime(seg.duration_seconds)}`);
     });
     const notes = notesLines.join('\n').substring(0, 500);
 
@@ -989,6 +1048,15 @@
     }
   }
 
+  function updateBikeRpmStatus() {
+    if (!els.bikeRpmStatus) return;
+    if (bikeRpm) {
+      els.bikeRpmStatus.textContent = `Mapped: AI RPM ${AI_RPM_MIN}–${AI_RPM_MAX} → your ${bikeRpm.min}–${bikeRpm.max}.`;
+    } else {
+      els.bikeRpmStatus.textContent = '';
+    }
+  }
+
   function bindEvents() {
     // Duration preset buttons
     els.durationButtons.addEventListener('click', (e) => {
@@ -1084,6 +1152,42 @@
       });
     }
 
+    // Bike RPM save / clear (mirrors gear save / clear above)
+    if (els.bikeRpmSaveBtn) {
+      els.bikeRpmSaveBtn.addEventListener('click', () => {
+        const min = parseInt(els.lowRpmInput.value, 10);
+        const max = parseInt(els.maxRpmInput.value, 10);
+        if (Number.isNaN(min) || Number.isNaN(max) || min < 1 || max < 1) {
+          els.bikeRpmStatus.textContent = 'Enter both RPMs as positive numbers.';
+          return;
+        }
+        if (max <= min) {
+          els.bikeRpmStatus.textContent = 'Max RPM must be higher than low RPM.';
+          return;
+        }
+        saveBikeRpm(min, max);
+        bikeRpm = { min, max };
+        updateBikeRpmStatus();
+        if (ridePlan && segments.length) {
+          renderSegmentList();
+          updateSegmentDisplay();
+        }
+      });
+    }
+    if (els.bikeRpmClearBtn) {
+      els.bikeRpmClearBtn.addEventListener('click', () => {
+        clearBikeRpm();
+        bikeRpm = null;
+        els.lowRpmInput.value = '';
+        els.maxRpmInput.value = '';
+        els.bikeRpmStatus.textContent = `Using AI RPM range ${AI_RPM_MIN}-${AI_RPM_MAX}.`;
+        if (ridePlan && segments.length) {
+          renderSegmentList();
+          updateSegmentDisplay();
+        }
+      });
+    }
+
     // Ride controls
     els.startBtn.addEventListener('click', onStart);
     els.pauseBtn.addEventListener('click', onPause);
@@ -1146,6 +1250,14 @@
       if (els.maxGearInput) els.maxGearInput.value = bikeGears.max;
     }
     updateBikeGearsStatus();
+
+    // Load saved bike-RPM mapping and prefill the setup form.
+    bikeRpm = loadBikeRpm();
+    if (bikeRpm) {
+      if (els.lowRpmInput) els.lowRpmInput.value = bikeRpm.min;
+      if (els.maxRpmInput) els.maxRpmInput.value = bikeRpm.max;
+    }
+    updateBikeRpmStatus();
 
     // Restore include-all-outs preference
     try {
