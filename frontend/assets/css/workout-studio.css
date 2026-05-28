@@ -417,6 +417,175 @@
   100% { background: rgba(0, 0, 0, 0.035); }
 }
 
+/* -------------------- Views + iOS-style push transition -------------------- */
+.studio-view {
+  transition: transform 0.28s ease, opacity 0.2s ease;
+  will-change: transform, opacity;
+}
+.studio[data-view="select"]   .studio-view-select   { transform: translateX(0); }
+.studio[data-view="select"]   .studio-view-organize { display: none; }
+.studio[data-view="organize"] .studio-view-select   { display: none; }
+.studio[data-view="organize"] .studio-view-organize { transform: translateX(0); }
+
+/* Initial slide-in direction when switching views (cosmetic, JS may toggle classes) */
+.studio-view-organize.is-incoming { transform: translateX(20px); opacity: 0; }
+.studio-view-organize.is-active   { transform: translateX(0);    opacity: 1; }
+
+/* -------------------- Page 2: Organize -------------------- */
+.studio-organize-name {
+  margin: 0.75rem 0.25rem 0.5rem;
+}
+.studio-organize-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.studio-organize-name-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+.studio-organize-name-input:focus {
+  outline: none;
+  border-color: var(--bs-primary);
+}
+
+.studio-organize-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 1rem 0.25rem 0.5rem;
+}
+.studio-organize-count {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+}
+
+.studio-organize-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.studio-org-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 12px;
+}
+.studio-org-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.studio-org-row-name {
+  font-size: 0.98rem;
+  font-weight: 600;
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+.studio-org-row-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.studio-org-row-remove:hover { background: rgba(0, 0, 0, 0.12); }
+
+.studio-org-fields {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+.studio-org-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.studio-org-field-label {
+  font-size: 0.7rem;
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+.studio-org-field-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+.studio-org-field-input:focus {
+  outline: none;
+  border-color: var(--bs-primary);
+}
+
+.studio-organize-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--bs-secondary-color);
+}
+.studio-organize-empty .bx { font-size: 2.5rem; opacity: 0.6; }
+
+.studio-organize-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.5rem 0.25rem 0;
+}
+.studio-organize-actions .btn { font-weight: 600; }
+
+.studio-organize-status {
+  margin: 0.75rem 0.25rem;
+  min-height: 22px;
+  font-size: 0.88rem;
+  color: var(--bs-secondary-color);
+}
+.studio-organize-status.is-error { color: var(--bs-danger); }
+.studio-organize-status.is-success { color: var(--bs-success); }
+
+/* Dark mode adjustments for new Page 2 elements */
+html[data-bs-theme="dark"] .studio-org-row,
+html[data-bs-theme="dark"] .studio-org-row-remove {
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-bs-theme="dark"] .studio-org-row-remove:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .studio-organize-name-input,
+html[data-bs-theme="dark"] .studio-org-field-input {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 /* -------------------- Empty / loading states -------------------- */
 .studio-empty {
   display: flex;
@@ -442,6 +611,8 @@
   z-index: 40;
   width: min(560px, calc(100% - 2rem));
 }
+/* Floating CTA is only meaningful on Page 1 */
+.studio[data-view="organize"] .studio-cta { display: none !important; }
 .studio-cta-btn {
   width: 100%;
   height: 52px;

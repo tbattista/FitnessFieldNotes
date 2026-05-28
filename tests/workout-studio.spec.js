@@ -168,3 +168,141 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         expect(flexWrap).toBe('wrap');
     });
 });
+
+test.describe('Workout Studio — Page 2 (Organize)', () => {
+
+    async function addNFromGrid(page, n) {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+        const rows = page.locator('.studio-row');
+        for (let i = 0; i < n; i++) {
+            await rows.nth(i).locator('.studio-row-add').click();
+        }
+    }
+
+    test('Continue button navigates to Page 2 with one row per tray instance', async ({ page }) => {
+        await addNFromGrid(page, 3);
+
+        await expect(page.locator('#studioContinueCta')).toBeVisible();
+        await page.locator('#studioContinueBtn').click();
+
+        // View flips to organize
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        await expect(page.locator('#studioViewOrganize')).toBeVisible();
+        await expect(page.locator('#studioViewSelect')).toBeHidden();
+
+        // Floating CTA hides on Page 2 (Save action is in-flow)
+        await expect(page.locator('#studioContinueCta')).toBeHidden();
+
+        // One row per tray instance + default field values populated
+        await expect(page.locator('.studio-org-row')).toHaveCount(3);
+        const firstRow = page.locator('.studio-org-row').first();
+        await expect(firstRow.locator('input[data-field="sets"]')).toHaveValue('3');
+        await expect(firstRow.locator('input[data-field="reps"]')).toHaveValue('8-12');
+        await expect(firstRow.locator('input[data-field="rest"]')).toHaveValue('60s');
+        await expect(firstRow.locator('input[data-field="weight"]')).toHaveValue('');
+
+        // Count chip in section header
+        await expect(page.locator('#studioOrganizeCount')).toHaveText('3 exercises');
+    });
+
+    test('Back to selection returns to Page 1 with the tray intact', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+
+        await page.locator('#studioOrganizeBack').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(2);
+    });
+
+    test('header back button on Page 2 returns to Page 1 instead of leaving the studio', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+
+        await page.locator('#studioBackBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+    });
+
+    test('removing the last tray item from Page 2 bounces back to Page 1', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('.studio-org-row')).toHaveCount(1);
+
+        await page.locator('.studio-org-row-remove').first().click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+        await expect(page.locator('#studioTray')).toHaveAttribute('data-empty', 'true');
+    });
+
+    test('editing fields persists when navigating back and forward', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstRow = page.locator('.studio-org-row').first();
+        await firstRow.locator('input[data-field="sets"]').fill('5');
+        await firstRow.locator('input[data-field="reps"]').fill('5');
+        await firstRow.locator('input[data-field="weight"]').fill('185');
+        await firstRow.locator('input[data-field="rest"]').fill('120s');
+
+        await page.locator('#studioOrganizeBack').click();
+        await page.locator('#studioContinueBtn').click();
+
+        const reopened = page.locator('.studio-org-row').first();
+        await expect(reopened.locator('input[data-field="sets"]')).toHaveValue('5');
+        await expect(reopened.locator('input[data-field="reps"]')).toHaveValue('5');
+        await expect(reopened.locator('input[data-field="weight"]')).toHaveValue('185');
+        await expect(reopened.locator('input[data-field="rest"]')).toHaveValue('120s');
+    });
+
+    test('Save without a workout name shows a friendly error', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        // Don't fill the name input
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/name/i);
+        await expect(page.locator('#studioOrganizeStatus')).toHaveClass(/is-error/);
+    });
+
+    test('Save with valid input POSTs to /api/v3/workouts and shows success', async ({ page }) => {
+        let postedBody = null;
+
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-test-123', name: postedBody?.name || 'Unnamed' }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+
+        // Force the controller to take its raw-fetch fallback path so the POST
+        // is observable. window.dataManager has its own anonymous fallback
+        // (localStorage) that wouldn't hit the network.
+        await page.evaluate(() => { delete window.dataManager; });
+
+        await page.locator('#studioOrganizeName').fill('Studio Test Push Day');
+        await page.locator('.studio-org-row').first().locator('input[data-field="weight"]').fill('135');
+
+        await page.locator('#studioSaveBtn').click();
+
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+        await expect(page.locator('#studioOrganizeStatus')).toHaveClass(/is-success/);
+
+        expect(postedBody).toBeTruthy();
+        expect(postedBody.name).toBe('Studio Test Push Day');
+        expect(Array.isArray(postedBody.sections)).toBe(true);
+        expect(postedBody.sections.length).toBe(2);
+        expect(postedBody.sections[0].exercises[0].sets).toBe('3');
+        expect(postedBody.sections[0].exercises[0].default_weight).toBe('135');
+    });
+});

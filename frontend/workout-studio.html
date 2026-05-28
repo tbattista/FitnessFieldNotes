@@ -175,12 +175,43 @@
                 </div>
                 <!-- / View: Select -->
 
-                <!-- View: Page 2 (Organize) — placeholder for next commit -->
+                <!-- View: Page 2 (Organize) -->
                 <div class="studio-view studio-view-organize" id="studioViewOrganize" hidden>
-                  <div class="studio-empty">
-                    <i class="bx bx-list-ul"></i>
-                    <p>Page 2 (Organize &amp; Log) — coming in commit 2.</p>
+                  <div class="studio-organize-name">
+                    <label for="studioOrganizeName" class="studio-organize-label">Workout name</label>
+                    <input
+                      type="text"
+                      class="studio-organize-name-input"
+                      id="studioOrganizeName"
+                      placeholder="e.g. Push Day, Chest & Back, Leg Day"
+                      maxlength="100"
+                      autocomplete="off" />
                   </div>
+
+                  <div class="studio-organize-section-header">
+                    <h6 class="studio-section-title">Exercises</h6>
+                    <span class="studio-organize-count" id="studioOrganizeCount">0</span>
+                  </div>
+
+                  <div class="studio-organize-list" id="studioOrganizeList" role="list">
+                    <!-- Rows injected by controller from the tray -->
+                  </div>
+
+                  <div class="studio-organize-empty" id="studioOrganizeEmpty" hidden>
+                    <i class="bx bx-list-ul"></i>
+                    <p>No exercises selected yet — go back and add a few.</p>
+                  </div>
+
+                  <div class="studio-organize-actions">
+                    <button class="btn btn-outline-secondary" id="studioOrganizeBack" type="button">
+                      <i class="bx bx-arrow-back"></i> Back to selection
+                    </button>
+                    <button class="btn btn-primary" id="studioSaveBtn" type="button">
+                      <i class="bx bx-save"></i> Save Template
+                    </button>
+                  </div>
+
+                  <div class="studio-organize-status" id="studioOrganizeStatus" role="status" aria-live="polite"></div>
                 </div>
 
                 <!-- Floating CTA: Continue → Organize -->

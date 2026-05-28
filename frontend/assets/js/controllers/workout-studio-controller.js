@@ -20,6 +20,9 @@
 
   const FILTERS = ['all', 'recent', 'mine'];
   const LIST_LIMIT = 60;
+  const DEFAULT_SETS = '3';
+  const DEFAULT_REPS = '8-12';
+  const DEFAULT_REST = '60s';
 
   class WorkoutStudioController {
     constructor() {
@@ -33,6 +36,12 @@
       this.customExercises = [];
       this.favoriteIds = new Set();
       this._searchDebounceTimer = null;
+      this.currentView = 'select'; // 'select' | 'organize'
+      // Per-tray-instance editor state for Page 2:
+      //   key = instanceId, value = { sets, reps, rest, weight }
+      this.organizeState = new Map();
+      this.workoutName = '';
+      this._saveInFlight = false;
     }
 
     init() {
@@ -46,6 +55,7 @@
       this._bindFilters();
       this._bindQuickTiles();
       this._bindContinue();
+      this._bindOrganize();
 
       this._loadExercises().catch((err) => {
         console.error('[WorkoutStudio] Failed to load exercises:', err);
@@ -79,6 +89,17 @@
       this.dom.continueCta = document.getElementById('studioContinueCta');
       this.dom.continueBtn = document.getElementById('studioContinueBtn');
       this.dom.continueCount = document.getElementById('studioContinueCount');
+
+      // Page 2 (Organize) elements
+      this.dom.viewSelect = document.getElementById('studioViewSelect');
+      this.dom.viewOrganize = document.getElementById('studioViewOrganize');
+      this.dom.organizeNameInput = document.getElementById('studioOrganizeName');
+      this.dom.organizeList = document.getElementById('studioOrganizeList');
+      this.dom.organizeCount = document.getElementById('studioOrganizeCount');
+      this.dom.organizeEmpty = document.getElementById('studioOrganizeEmpty');
+      this.dom.organizeBackBtn = document.getElementById('studioOrganizeBack');
+      this.dom.saveBtn = document.getElementById('studioSaveBtn');
+      this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
     }
 
     _initTray() {
@@ -108,8 +129,12 @@
     _bindHeader() {
       if (this.dom.backBtn) {
         this.dom.backBtn.addEventListener('click', () => {
-          // Navigate back to the prior page (history.back when there is history,
-          // otherwise the dashboard).
+          // On Page 2, the header back button goes back to Page 1 instead of
+          // leaving the studio entirely.
+          if (this.currentView === 'organize') {
+            this._showView('select');
+            return;
+          }
           if (window.history.length > 1) {
             window.history.back();
           } else {
@@ -211,8 +236,251 @@
     _bindContinue() {
       if (!this.dom.continueBtn) return;
       this.dom.continueBtn.addEventListener('click', () => {
-        console.log('[WorkoutStudio] Continue tapped (Page 2 lands in next commit)');
+        if (!this.tray || this.tray.size() === 0) return;
+        this._showView('organize');
       });
+    }
+
+    _bindOrganize() {
+      if (this.dom.organizeBackBtn) {
+        this.dom.organizeBackBtn.addEventListener('click', () => this._showView('select'));
+      }
+
+      if (this.dom.organizeNameInput) {
+        this.dom.organizeNameInput.addEventListener('input', (e) => {
+          this.workoutName = String(e.target.value || '').trim();
+          this._syncHeaderName();
+        });
+      }
+
+      // Per-row field edits (delegated)
+      if (this.dom.organizeList) {
+        this.dom.organizeList.addEventListener('input', (e) => {
+          const input = e.target.closest('.studio-org-field-input');
+          if (!input) return;
+          const row = input.closest('.studio-org-row');
+          if (!row) return;
+          const instanceId = row.dataset.instanceId;
+          const field = input.dataset.field;
+          if (!instanceId || !field) return;
+          const state = this.organizeState.get(instanceId) || {};
+          state[field] = String(input.value || '');
+          this.organizeState.set(instanceId, state);
+        });
+
+        this.dom.organizeList.addEventListener('click', (e) => {
+          const removeBtn = e.target.closest('.studio-org-row-remove');
+          if (!removeBtn) return;
+          const row = removeBtn.closest('.studio-org-row');
+          if (!row || !this.tray) return;
+          const instanceId = row.dataset.instanceId;
+          this.tray.remove(instanceId);
+          // _onTrayChange will re-render Page 2 if we're still on it
+        });
+      }
+
+      if (this.dom.saveBtn) {
+        this.dom.saveBtn.addEventListener('click', () => this._handleSave());
+      }
+    }
+
+    _showView(view) {
+      if (view !== 'select' && view !== 'organize') return;
+      // Guard: can't open organize with an empty tray
+      if (view === 'organize' && (!this.tray || this.tray.size() === 0)) {
+        return;
+      }
+      this.currentView = view;
+      if (this.dom.studio) this.dom.studio.dataset.view = view;
+
+      // Toggle the `hidden` HTML attribute explicitly so the UA's
+      // display: none doesn't fight our CSS data-view rules.
+      if (this.dom.viewSelect)   this.dom.viewSelect.hidden   = view !== 'select';
+      if (this.dom.viewOrganize) this.dom.viewOrganize.hidden = view !== 'organize';
+
+      if (view === 'organize') {
+        this._renderOrganize();
+        if (this.dom.organizeNameInput && !this.dom.organizeNameInput.value && this.workoutName) {
+          this.dom.organizeNameInput.value = this.workoutName;
+        }
+        if (this.dom.organizeNameInput && !this.dom.organizeNameInput.value) {
+          setTimeout(() => this.dom.organizeNameInput.focus(), 150);
+        }
+      }
+      this._setStatus('', null);
+    }
+
+    _renderOrganize() {
+      if (!this.dom.organizeList || !this.tray) return;
+      const items = this.tray.getItems();
+      if (this.dom.organizeCount) {
+        this.dom.organizeCount.textContent = items.length === 1
+          ? '1 exercise'
+          : `${items.length} exercises`;
+      }
+      if (items.length === 0) {
+        this.dom.organizeList.innerHTML = '';
+        if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = false;
+        if (this.dom.saveBtn) this.dom.saveBtn.disabled = true;
+        return;
+      }
+      if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = true;
+      if (this.dom.saveBtn) this.dom.saveBtn.disabled = false;
+
+      this.dom.organizeList.innerHTML = items.map((it) => {
+        const state = this.organizeState.get(it.instanceId) || {};
+        const sets = state.sets ?? DEFAULT_SETS;
+        const reps = state.reps ?? DEFAULT_REPS;
+        const rest = state.rest ?? DEFAULT_REST;
+        const weight = state.weight ?? '';
+        // Persist defaults back so they're collected on save without user input
+        this.organizeState.set(it.instanceId, { sets, reps, rest, weight });
+        return this._renderOrganizeRow(it, { sets, reps, rest, weight });
+      }).join('');
+    }
+
+    _renderOrganizeRow(item, vals) {
+      const safeName = this._escape(item.name);
+      const escAttr = (s) => this._escape(s);
+      return `
+        <div class="studio-org-row" role="listitem" data-instance-id="${escAttr(item.instanceId)}">
+          <div class="studio-org-row-head">
+            <div class="studio-org-row-name">${safeName}</div>
+            <button class="studio-org-row-remove" type="button" aria-label="Remove ${safeName}">
+              <i class="bx bx-x"></i>
+            </button>
+          </div>
+          <div class="studio-org-fields">
+            <label class="studio-org-field">
+              <span class="studio-org-field-label">Sets</span>
+              <input type="text" class="studio-org-field-input" data-field="sets" value="${escAttr(vals.sets)}" inputmode="numeric" maxlength="6">
+            </label>
+            <label class="studio-org-field">
+              <span class="studio-org-field-label">Reps</span>
+              <input type="text" class="studio-org-field-input" data-field="reps" value="${escAttr(vals.reps)}" maxlength="16">
+            </label>
+            <label class="studio-org-field">
+              <span class="studio-org-field-label">Weight</span>
+              <input type="text" class="studio-org-field-input" data-field="weight" value="${escAttr(vals.weight)}" inputmode="decimal" maxlength="8">
+            </label>
+            <label class="studio-org-field">
+              <span class="studio-org-field-label">Rest</span>
+              <input type="text" class="studio-org-field-input" data-field="rest" value="${escAttr(vals.rest)}" maxlength="8">
+            </label>
+          </div>
+        </div>
+      `;
+    }
+
+    _escape(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    _syncHeaderName() {
+      const el = document.getElementById('studioWorkoutName');
+      if (!el) return;
+      el.textContent = this.workoutName || 'New Workout';
+    }
+
+    _buildSavePayload() {
+      const items = this.tray ? this.tray.getItems() : [];
+      const sections = items.map((it, idx) => {
+        const state = this.organizeState.get(it.instanceId) || {};
+        const ex = it.exercise || {};
+        return {
+          section_id: `section-${Date.now()}-${idx}`,
+          type: 'standard',
+          name: null,
+          exercises: [{
+            exercise_id: ex.id ? String(ex.id) : `ex-${idx}`,
+            name: it.name,
+            alternates: [],
+            sets: state.sets || DEFAULT_SETS,
+            reps: state.reps || DEFAULT_REPS,
+            rest: state.rest || DEFAULT_REST,
+            default_weight: state.weight || '',
+            default_weight_unit: 'lbs',
+            group_type: ex.group_type || 'standard',
+          }],
+        };
+      });
+
+      // Flatten to exercise_groups for backward compatibility, mirroring the
+      // shape produced by workout-editor-save-manager.js when sections mode
+      // is active.
+      const exercise_groups = sections.flatMap((s) => (s.exercises || []).map((e) => ({
+        group_id: e.exercise_id,
+        exercises: { a: e.name },
+        sets: e.sets,
+        reps: e.reps,
+        rest: e.rest,
+        default_weight: e.default_weight,
+        default_weight_unit: e.default_weight_unit,
+        group_type: e.group_type || 'standard',
+      })));
+
+      return {
+        name: this.workoutName,
+        description: '',
+        tags: [],
+        sections,
+        exercise_groups,
+        workout_type: 'standard',
+        template_notes: [],
+      };
+    }
+
+    async _handleSave() {
+      if (this._saveInFlight) return;
+      if (!this.tray || this.tray.size() === 0) {
+        this._setStatus('Add at least one exercise before saving.', 'error');
+        return;
+      }
+      if (!this.workoutName) {
+        this._setStatus('Give your workout a name first.', 'error');
+        if (this.dom.organizeNameInput) this.dom.organizeNameInput.focus();
+        return;
+      }
+
+      this._saveInFlight = true;
+      if (this.dom.saveBtn) this.dom.saveBtn.disabled = true;
+      this._setStatus('Saving…', null);
+
+      try {
+        const payload = this._buildSavePayload();
+        let saved;
+        if (window.dataManager && typeof window.dataManager.createWorkout === 'function') {
+          saved = await window.dataManager.createWorkout(payload);
+        } else {
+          // Fallback for environments without dataManager (e.g. anonymous tests)
+          const resp = await fetch('/api/v3/workouts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!resp.ok) throw new Error(`Save failed (${resp.status})`);
+          saved = await resp.json();
+        }
+        this._setStatus('Saved!', 'success');
+        console.log('[WorkoutStudio] Workout saved:', saved && saved.id);
+      } catch (err) {
+        console.error('[WorkoutStudio] Save failed:', err);
+        this._setStatus(`Could not save: ${err.message || 'unknown error'}`, 'error');
+      } finally {
+        this._saveInFlight = false;
+        if (this.dom.saveBtn) this.dom.saveBtn.disabled = false;
+      }
+    }
+
+    _setStatus(text, kind) {
+      if (!this.dom.organizeStatus) return;
+      this.dom.organizeStatus.textContent = text || '';
+      this.dom.organizeStatus.classList.toggle('is-error', kind === 'error');
+      this.dom.organizeStatus.classList.toggle('is-success', kind === 'success');
     }
 
     async _loadExercises() {
@@ -357,6 +625,24 @@
       }
       if (this.dom.continueCount) {
         this.dom.continueCount.textContent = n;
+      }
+
+      // Drop organize state for instances that no longer exist in the tray
+      if (this.organizeState.size > 0) {
+        const live = new Set(items.map((it) => it.instanceId));
+        for (const id of this.organizeState.keys()) {
+          if (!live.has(id)) this.organizeState.delete(id);
+        }
+      }
+
+      // Re-render Page 2 if we're on it. If the tray empties while on Page 2,
+      // bounce back to Page 1 to avoid a dead-end state.
+      if (this.currentView === 'organize') {
+        if (n === 0) {
+          this._showView('select');
+        } else {
+          this._renderOrganize();
+        }
       }
     }
   }
