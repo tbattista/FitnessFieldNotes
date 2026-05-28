@@ -126,11 +126,11 @@
                     </button>
                   </div>
 
-                  <!-- Tab strip: History | My Exercises | All Exercises -->
-                  <div class="studio-tabs" role="tablist" id="studioTabs">
-                    <button class="studio-tab is-active" role="tab" data-tab="history" id="studioTabHistory" aria-selected="true">History</button>
-                    <button class="studio-tab" role="tab" data-tab="mine" id="studioTabMine" aria-selected="false">My Exercises</button>
-                    <button class="studio-tab" role="tab" data-tab="all" id="studioTabAll" aria-selected="false">All Exercises</button>
+                  <!-- Filter chips: collapses the prior tabs into one list with filters -->
+                  <div class="studio-filter-chips" role="tablist" id="studioFilters">
+                    <button class="studio-filter-chip is-active" role="tab" data-filter="all" id="studioFilterAll" aria-selected="true" type="button">All</button>
+                    <button class="studio-filter-chip" role="tab" data-filter="recent" id="studioFilterRecent" aria-selected="false" type="button">Recent</button>
+                    <button class="studio-filter-chip" role="tab" data-filter="mine" id="studioFilterMine" aria-selected="false" type="button">Mine</button>
                   </div>
 
                   <!-- Quick-action tiles (Activity, Custom, Quick Add, Favorites) -->
@@ -153,9 +153,9 @@
                     </button>
                   </div>
 
-                  <!-- Section header (label + sort) -->
+                  <!-- Section header: title + sort -->
                   <div class="studio-section-header">
-                    <h6 class="studio-section-title" id="studioSectionTitle">Recent</h6>
+                    <h6 class="studio-section-title" id="studioSectionTitle">Exercises</h6>
                     <button class="studio-sort-chip" id="studioSortBtn" type="button">
                       <i class="bx bx-filter"></i>
                       <span id="studioSortLabel">Most Recent</span>

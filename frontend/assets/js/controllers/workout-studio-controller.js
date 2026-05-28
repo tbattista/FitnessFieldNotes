@@ -18,7 +18,7 @@
 (function () {
   'use strict';
 
-  const TABS = ['history', 'mine', 'all'];
+  const FILTERS = ['all', 'recent', 'mine'];
   const LIST_LIMIT = 60;
 
   class WorkoutStudioController {
@@ -26,7 +26,7 @@
       this.dom = {};
       this.tray = null;
       this.grid = null;
-      this.activeTab = 'history';
+      this.activeFilter = 'all';
       this.searchQuery = '';
       this.mode = 'plan'; // 'plan' | 'log'
       this.allExercises = [];
@@ -43,7 +43,7 @@
       this._initGrid();
       this._bindHeader();
       this._bindSearch();
-      this._bindTabs();
+      this._bindFilters();
       this._bindQuickTiles();
       this._bindContinue();
 
@@ -68,7 +68,7 @@
       this.dom.searchInput = document.getElementById('studioSearchInput');
       this.dom.searchClear = document.getElementById('studioSearchClear');
 
-      this.dom.tabs = document.querySelectorAll('.studio-tab');
+      this.dom.filterChips = document.querySelectorAll('.studio-filter-chip');
       this.dom.quickTiles = document.querySelectorAll('.studio-quick-tile');
 
       this.dom.sectionTitle = document.getElementById('studioSectionTitle');
@@ -167,28 +167,28 @@
       }
     }
 
-    _bindTabs() {
-      this.dom.tabs.forEach((tab) => {
-        tab.addEventListener('click', () => {
-          const next = tab.dataset.tab;
-          if (!TABS.includes(next)) return;
-          this._setActiveTab(next);
+    _bindFilters() {
+      this.dom.filterChips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const next = chip.dataset.filter;
+          if (!FILTERS.includes(next)) return;
+          this._setActiveFilter(next);
         });
       });
     }
 
-    _setActiveTab(tab) {
-      this.activeTab = tab;
-      this.dom.tabs.forEach((t) => {
-        const active = t.dataset.tab === tab;
-        t.classList.toggle('is-active', active);
-        t.setAttribute('aria-selected', active ? 'true' : 'false');
+    _setActiveFilter(filter) {
+      this.activeFilter = filter;
+      this.dom.filterChips.forEach((chip) => {
+        const active = chip.dataset.filter === filter;
+        chip.classList.toggle('is-active', active);
+        chip.setAttribute('aria-selected', active ? 'true' : 'false');
       });
       if (this.dom.sectionTitle) {
         this.dom.sectionTitle.textContent =
-          tab === 'history' ? 'Recent' :
-          tab === 'mine'    ? 'My Exercises' :
-                              'All Exercises';
+          filter === 'recent' ? 'Recent' :
+          filter === 'mine'   ? 'My Exercises' :
+                                'Exercises';
       }
       this._refreshList();
     }
@@ -200,9 +200,9 @@
           // Stubs in this commit; future commits wire these up.
           console.log(`[WorkoutStudio] Quick tile tapped: ${action} (handler coming soon)`);
           if (action === 'favorites') {
-            // Cheap shortcut already possible: switch to All and filter to favorites
-            // when favorites are loaded. For now, switch tab as a hint.
-            this._setActiveTab('mine');
+            // Cheap shortcut already possible: jump to the Mine filter, which
+            // includes favorites + custom exercises.
+            this._setActiveFilter('mine');
           }
         });
       });
@@ -230,7 +230,7 @@
 
       window.exerciseCacheService.on('customLoaded', () => {
         this.customExercises = window.exerciseCacheService.customExercises || [];
-        if (this.activeTab === 'mine') this._refreshList();
+        if (this.activeFilter === 'mine') this._refreshList();
       });
 
       // Favorites: loaded lazily — try to read from a global set if dashboard
@@ -243,10 +243,10 @@
 
     _refreshList() {
       if (!this.grid) return;
-      const rows = this._computeListForActiveTab();
+      const rows = this._computeListForActiveFilter();
       if (rows.length === 0) {
         this.grid.setExercises([]);
-        this._showEmpty(this._emptyMessageForTab());
+        this._showEmpty(this._emptyMessageForFilter());
         return;
       }
       this._hideEmpty();
@@ -254,13 +254,13 @@
       if (this.tray) this.grid.setCounts(this.tray.countsByExerciseId());
     }
 
-    _computeListForActiveTab() {
+    _computeListForActiveFilter() {
       const query = this.searchQuery;
       const usage = (window.exerciseCacheService && window.exerciseCacheService.usageData) || {};
 
       let pool;
-      switch (this.activeTab) {
-        case 'history': {
+      switch (this.activeFilter) {
+        case 'recent': {
           // Exercises with usage records, sorted by lastUsed desc.
           const usedIds = Object.keys(usage);
           const byId = new Map();
@@ -299,9 +299,9 @@
       }
 
       if (query && query.length >= 2 && window.exerciseCacheService) {
-        // Use the cache service's search if we're looking at the full catalog;
+        // Use the cache service's search when looking at the full catalog;
         // otherwise filter the in-memory pool by name/muscle/equipment substring.
-        if (this.activeTab === 'all') {
+        if (this.activeFilter === 'all') {
           return window.exerciseCacheService.searchExercises(query, { limit: LIST_LIMIT });
         }
         const q = query.toLowerCase();
@@ -314,13 +314,13 @@
       return pool.slice(0, LIST_LIMIT);
     }
 
-    _emptyMessageForTab() {
+    _emptyMessageForFilter() {
       if (this.searchQuery && this.searchQuery.length >= 2) {
         return `No exercises match "${this.searchQuery}".`;
       }
-      switch (this.activeTab) {
-        case 'history':
-          return 'No recent exercises yet — pick one from "All Exercises" to start building history.';
+      switch (this.activeFilter) {
+        case 'recent':
+          return 'No recent exercises yet — pick one from "All" to start building history.';
         case 'mine':
           return 'No custom or favorited exercises yet.';
         case 'all':
