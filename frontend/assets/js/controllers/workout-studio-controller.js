@@ -44,9 +44,12 @@
       this._saveInFlight = false;
       // Active filter selections by group (Set per group). Empty Sets = no filter.
       this.filters = {
+        personal: new Set(),    // 'favorites' | 'recent' | 'custom'
+        type: new Set(),        // 'strength' | 'activities'
         muscleGroup: new Set(),
         equipment: new Set(),
       };
+      this.allActivities = []; // populated from ActivityTypeRegistry on init
       // Pagination state — how many rows of the current filtered set we render.
       // Grows by LIST_PAGE_SIZE every time the infinite-scroll sentinel intersects
       // the viewport; resets on search or filter change.
@@ -580,9 +583,66 @@
 
       window.exerciseCacheService.on('customLoaded', () => {
         this.customExercises = window.exerciseCacheService.customExercises || [];
+        if (this.filters.personal.has('custom')) this._refreshList();
       });
 
+      // Load activity catalog from the existing registry (sync, no network)
+      this.allActivities = this._loadActivitiesAsRows();
+
       this._refreshList();
+
+      // Kick off favorites load in the background; refresh when it lands.
+      // Anonymous users have no favorites and the call is skipped.
+      this._loadFavorites().then(() => {
+        if (this.filters.personal.has('favorites')) this._refreshList();
+      });
+    }
+
+    _loadActivitiesAsRows() {
+      const reg = window.ActivityTypeRegistry;
+      if (!reg || typeof reg.getAll !== 'function') return [];
+      try {
+        return reg.getAll().map((a) => ({
+          id: `activity:${a.id}`,
+          name: a.name,
+          targetMuscleGroup: 'Cardio',
+          primaryEquipment: a.category ? this._titleCase(a.category) : 'Activity',
+          mechanics: 'Activity',
+          exerciseTier: 1,
+          isGlobal: true,
+          isActivity: true,
+          group_type: 'cardio',
+          _activityId: a.id,
+        }));
+      } catch (err) {
+        console.warn('[WorkoutStudio] Could not read activity registry:', err);
+        return [];
+      }
+    }
+
+    _titleCase(s) {
+      return String(s || '').replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    async _loadFavorites() {
+      try {
+        if (!window.dataManager || !window.dataManager.isUserAuthenticated()) {
+          return;
+        }
+        const token = await window.dataManager.getAuthToken();
+        const url = (window.getApiUrl && window.getApiUrl('/api/v3/users/me/favorites')) || '/api/v3/users/me/favorites';
+        const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!resp.ok) throw new Error(`favorites fetch ${resp.status}`);
+        const data = await resp.json();
+        const arr = Array.isArray(data && data.favorites) ? data.favorites : [];
+        const ids = arr.map((f) => String(f.exerciseId || f.exercise_id || f.id)).filter(Boolean);
+        window.ffn = window.ffn || {};
+        window.ffn.exercises = window.ffn.exercises || {};
+        window.ffn.exercises.favorites = new Set(ids);
+      } catch (err) {
+        // Anonymous or auth not ready — leave favorites empty silently
+        console.debug('[WorkoutStudio] Favorites not loaded:', err && err.message);
+      }
     }
 
     _refreshList() {
@@ -612,13 +672,35 @@
 
     _computeFilteredAll() {
       const query = this.searchQuery;
-      let pool;
-      if (query && query.length >= 2 && window.exerciseCacheService) {
-        // Search ranks the full catalog by relevance; we mirror that ceiling.
-        pool = window.exerciseCacheService.searchExercises(query, { limit: 2000 });
-      } else {
-        pool = this.allExercises;
+      const typeSet = this.filters.type;
+
+      // Source pool: exercises and/or activities, depending on the Type filter.
+      // Default (no Type chip selected) = exercises only.
+      const includeExercises = typeSet.size === 0 || typeSet.has('strength');
+      const includeActivities = typeSet.has('activities');
+
+      let pool = [];
+
+      if (includeExercises) {
+        let exercisePool;
+        if (query && query.length >= 2 && window.exerciseCacheService) {
+          exercisePool = window.exerciseCacheService.searchExercises(query, { limit: 2000 });
+        } else {
+          exercisePool = this.allExercises;
+        }
+        pool = pool.concat(exercisePool);
       }
+
+      if (includeActivities) {
+        const q = (query || '').toLowerCase();
+        const activityPool = this.allActivities.filter((a) => {
+          if (!query || query.length < 2) return true;
+          return (a.name || '').toLowerCase().includes(q) ||
+                 (a.primaryEquipment || '').toLowerCase().includes(q);
+        });
+        pool = pool.concat(activityPool);
+      }
+
       return this._applyFilters(pool);
     }
 
@@ -659,12 +741,17 @@
     _applyFilters(pool) {
       const muscleSet = this.filters.muscleGroup;
       const equipmentSet = this.filters.equipment;
-      if (muscleSet.size === 0 && equipmentSet.size === 0) return pool;
+      const personalSet = this.filters.personal;
+
+      if (muscleSet.size === 0 && equipmentSet.size === 0 && personalSet.size === 0) {
+        return pool;
+      }
 
       const matchesMuscle = (ex) => {
         if (muscleSet.size === 0) return true;
+        // Activities don't carry a muscle group; the muscle filter excludes them.
+        if (ex.isActivity) return false;
         const target = String(ex.targetMuscleGroup || '');
-        // Exact match OR substring (handles "Quadriceps" vs "Legs", etc.)
         if (muscleSet.has(target)) return true;
         for (const v of muscleSet) {
           if (target && target.toLowerCase().includes(v.toLowerCase())) return true;
@@ -673,6 +760,7 @@
       };
       const matchesEquipment = (ex) => {
         if (equipmentSet.size === 0) return true;
+        if (ex.isActivity) return false;
         const eq = String(ex.primaryEquipment || '');
         if (equipmentSet.has(eq)) return true;
         for (const v of equipmentSet) {
@@ -680,7 +768,18 @@
         }
         return false;
       };
-      return pool.filter((ex) => matchesMuscle(ex) && matchesEquipment(ex));
+      // Personal is OR-within-section: an exercise passes if it matches ANY
+      // selected personal chip.
+      const favSet = (window.ffn && window.ffn.exercises && window.ffn.exercises.favorites) || new Set();
+      const usage = (window.exerciseCacheService && window.exerciseCacheService.usageData) || {};
+      const matchesPersonal = (ex) => {
+        if (personalSet.size === 0) return true;
+        if (personalSet.has('favorites') && favSet.has(ex.id)) return true;
+        if (personalSet.has('recent') && usage[ex.id]) return true;
+        if (personalSet.has('custom') && ex.isGlobal === false) return true;
+        return false;
+      };
+      return pool.filter((ex) => matchesMuscle(ex) && matchesEquipment(ex) && matchesPersonal(ex));
     }
 
     _emptyMessage() {

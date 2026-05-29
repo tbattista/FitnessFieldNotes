@@ -284,6 +284,9 @@
   gap: 0.35rem;
 }
 .studio-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   background: transparent;
   border: 1px solid var(--bs-border-color);
   color: var(--bs-body-color);
@@ -294,6 +297,7 @@
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
+.studio-filter-chip .bx { font-size: 0.95rem; }
 .studio-filter-chip:hover { background: rgba(0, 0, 0, 0.04); }
 .studio-filter-chip.is-active {
   background: var(--bs-primary);

@@ -146,6 +146,31 @@
                   <!-- Inline filter panel (toggled by the Filter button) -->
                   <div class="studio-filter-panel" id="studioFilterPanel" hidden>
                     <div class="studio-filter-group">
+                      <span class="studio-filter-group-label">Personal</span>
+                      <div class="studio-filter-chips" data-group="personal">
+                        <button class="studio-filter-chip" type="button" data-value="favorites">
+                          <i class="bx bx-star"></i> Favorites
+                        </button>
+                        <button class="studio-filter-chip" type="button" data-value="recent">
+                          <i class="bx bx-history"></i> Recently used
+                        </button>
+                        <button class="studio-filter-chip" type="button" data-value="custom">
+                          <i class="bx bx-user"></i> Custom only
+                        </button>
+                      </div>
+                    </div>
+                    <div class="studio-filter-group">
+                      <span class="studio-filter-group-label">Type</span>
+                      <div class="studio-filter-chips" data-group="type">
+                        <button class="studio-filter-chip" type="button" data-value="strength">
+                          <i class="bx bx-dumbbell"></i> Strength
+                        </button>
+                        <button class="studio-filter-chip" type="button" data-value="activities">
+                          <i class="bx bx-run"></i> Activities
+                        </button>
+                      </div>
+                    </div>
+                    <div class="studio-filter-group">
                       <span class="studio-filter-group-label">Muscle group</span>
                       <div class="studio-filter-chips" data-group="muscleGroup">
                         <button class="studio-filter-chip" type="button" data-value="Chest">Chest</button>
@@ -266,6 +291,10 @@
     <script src="/static/assets/js/data/exercise-seed-data.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
     <script src="/static/assets/js/services/exercise-cache-service.js?v=20260226"></script>
+
+    <!-- Activity Type Registry (provides the Activities filter options) -->
+    <script src="/static/assets/js/services/activity-type-registry.js"></script>
+    <script src="/static/assets/js/services/activity-display-config.js"></script>
 
     <!-- Field controllers reused on the studio's Page 2 cards (morphing inline editors) -->
     <script src="/static/assets/js/controllers/weight-field-controller.js?v=20260528"></script>

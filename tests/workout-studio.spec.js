@@ -234,6 +234,69 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         expect(afterFilter).toBeLessThanOrEqual(60);
     });
 
+    test('Activities filter swaps the list to activity items from the registry', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioFilterBtn').click();
+        await page.locator('.studio-filter-chip[data-value="activities"]').click();
+        // Without Strength chip on, the pool becomes activities only
+        await page.locator('.studio-filter-chip[data-value="strength"]').click(); // toggle ON to also include strength
+        await page.locator('.studio-filter-chip[data-value="strength"]').click(); // toggle OFF again
+
+        // Expect at least one well-known activity to appear
+        const running = page.locator('.studio-row', { hasText: 'Running' }).first();
+        await expect(running).toBeVisible({ timeout: 5000 });
+    });
+
+    test('Personal: Custom only filters to user-created exercises', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        // Seed a fake custom exercise into the cache to make the filter assertable
+        // for anonymous test users (who otherwise have no custom exercises).
+        await page.evaluate(() => {
+            const svc = window.exerciseCacheService;
+            if (!svc) return;
+            svc.customExercises = (svc.customExercises || []).concat([{
+                id: 'test-custom-1',
+                name: 'Test Custom Exercise',
+                targetMuscleGroup: 'Chest',
+                primaryEquipment: 'Bodyweight',
+                isGlobal: false,
+            }]);
+            // The studio reads from exerciseCacheService.customExercises and merges
+            // them into the pool when Custom is filtered. Push the new one into the
+            // shared pool too so it shows up alongside the global catalog.
+            if (window.workoutStudio && window.workoutStudio.allExercises) {
+                window.workoutStudio.allExercises.push(svc.customExercises[svc.customExercises.length - 1]);
+            }
+        });
+
+        await page.locator('#studioFilterBtn').click();
+        await page.locator('.studio-filter-chip[data-value="custom"]').click();
+
+        const custom = page.locator('.studio-row', { hasText: 'Test Custom Exercise' });
+        await expect(custom).toBeVisible({ timeout: 5000 });
+
+        // No global exercises slipped through
+        const titles = await page.locator('.studio-row-title').allTextContents();
+        const onlyCustom = titles.every((t) => /Test Custom Exercise/i.test(t));
+        expect(onlyCustom).toBe(true);
+    });
+
+    test('Personal + Type filters compose correctly with badge count', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioFilterBtn').click();
+        await page.locator('.studio-filter-chip[data-value="favorites"]').click();
+        await page.locator('.studio-filter-chip[data-value="activities"]').click();
+        await page.locator('.studio-filter-chip[data-value="Chest"]').click();
+
+        await expect(page.locator('#studioFilterBadge')).toHaveText('3');
+    });
+
     test('Clear all resets every filter chip and the badge', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
