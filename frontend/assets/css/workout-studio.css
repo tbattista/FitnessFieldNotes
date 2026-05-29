@@ -242,6 +242,12 @@
   font-size: 0.7rem;
   font-weight: 700;
 }
+.studio-filter-chevron {
+  transition: transform 0.18s ease;
+}
+.studio-filter-btn[aria-expanded="true"] .studio-filter-chevron {
+  transform: rotate(180deg);
+}
 
 /* -------------------- Filter panel (inline, below section header) -------------------- */
 .studio-filter-panel {
@@ -252,6 +258,13 @@
   margin: 0 0.25rem 0.5rem;
   background: rgba(0, 0, 0, 0.035);
   border-radius: 12px;
+  /* Slide-down reveal when the Filter pill is tapped */
+  animation: studio-filter-panel-in 0.18s ease;
+  transform-origin: top;
+}
+@keyframes studio-filter-panel-in {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.96); }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); }
 }
 .studio-filter-group {
   display: flex;
