@@ -38,13 +38,15 @@ from .firestore_workout_ops import FirestoreWorkoutOps
 from .firestore_program_ops import FirestoreProgramOps
 from .firestore_session_ops import FirestoreSessionOps
 from .firestore_cardio_ops import FirestoreCardioOps
+from .firestore_spin_ride_ops import FirestoreSpinRideOps
 
 
 class FirestoreDataService(
     FirestoreWorkoutOps,
     FirestoreProgramOps,
     FirestoreSessionOps,
-    FirestoreCardioOps
+    FirestoreCardioOps,
+    FirestoreSpinRideOps
 ):
     """
     Firestore service composing all domain operations.

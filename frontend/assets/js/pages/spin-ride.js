@@ -16,6 +16,10 @@
   // timers stay correct across tab backgrounding, browser close, and reload.
 
   let ridePlan = null;
+  // If the current ride was launched from a saved history entry, this holds
+  // its document ID. On finish we bump the existing record's completion_count
+  // instead of creating a duplicate.
+  let savedRideId = null;
   let segments = [];
   let segmentOffsets = [];    // Cumulative start-time (seconds) of each segment
   let currentSegmentIndex = 0;
@@ -491,6 +495,7 @@
     try {
       const data = {
         ridePlan,
+        savedRideId,
         rideStartedAt: rideStartedAt ? rideStartedAt.toISOString() : null,
         pausedAt: pausedAt ? pausedAt.toISOString() : null,
         timerRunning: !!timerRunning,
@@ -524,6 +529,7 @@
 
   function restoreSession(data) {
     ridePlan = data.ridePlan;
+    savedRideId = data.savedRideId || null;
     segments = ridePlan.segments || [];
     computeSegmentOffsets();
 
@@ -792,6 +798,10 @@
     const actualMinutes = Math.round(actualSeconds / 60);
     const segmentsCompleted = Math.min(currentSegmentIndex + 1, segments.length);
     const allCompleted = currentSegmentIndex >= segments.length;
+
+    // Persist to personal history (fire-and-forget — never blocks the
+    // activity-log save flow or the rating widget).
+    persistRideToHistory(actualSeconds);
     const startedAtIso = rideStartedAt ? rideStartedAt.toISOString() : new Date().toISOString();
 
     // Build summary
@@ -893,6 +903,8 @@
   // ── Generate Ride ──────────────────────────────────────────────────────
 
   async function generateRide(durationMinutes) {
+    // A freshly generated plan is brand-new history, not a re-ride.
+    savedRideId = null;
     showState('generatingState');
 
     try {
@@ -965,6 +977,7 @@
     releaseWakeLock();
     clearSession();
     ridePlan = null;
+    savedRideId = null;
     segments = [];
     segmentOffsets = [];
     currentSegmentIndex = 0;
@@ -972,7 +985,113 @@
     totalRemaining = 0;
     rideStartedAt = null;
     pausedAt = null;
+    // Clear ?savedId from the URL so a "New ride" press doesn't re-trigger
+    // the saved-ride loader on the next reload.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('savedId')) {
+        url.searchParams.delete('savedId');
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch (e) { /* ignore */ }
     showState('selectState');
+  }
+
+  // ── Saved Ride History ─────────────────────────────────────────────────
+  //
+  // Auto-save every completed ride to the user's history so they can star
+  // favorites and re-ride them later. The two helpers below also handle the
+  // re-ride hand-off: when ?savedId=... is present, loadSavedRide() fetches
+  // the stored plan and drops straight into the ride state, skipping
+  // generation.
+
+  const SAVED_RIDES_API = '/api/v3/firebase/spin-rides';
+
+  async function authHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (window.authService && window.authService.currentUser) {
+      try {
+        const token = await window.authService.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      } catch (e) { /* ignore */ }
+    }
+    return headers;
+  }
+
+  async function persistRideToHistory(actualSeconds) {
+    if (!ridePlan) return;
+    try {
+      if (savedRideId) {
+        // Re-ride of an existing saved entry: bump completion + refresh timestamp.
+        await fetch(`${SAVED_RIDES_API}/${encodeURIComponent(savedRideId)}`, {
+          method: 'PATCH',
+          headers: await authHeaders(),
+          body: JSON.stringify({
+            increment_completion: true,
+            last_actual_seconds: actualSeconds,
+          }),
+        });
+      } else {
+        // Brand-new ride: save it to history.
+        const res = await fetch(SAVED_RIDES_API, {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({
+            plan: ridePlan,
+            last_actual_seconds: actualSeconds,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.id) savedRideId = data.id;
+        }
+      }
+    } catch (err) {
+      // Never block ride completion on history persistence.
+      console.warn('Failed to persist ride to history:', err);
+    }
+  }
+
+  async function loadSavedRide(rideId) {
+    try {
+      const res = await fetch(`${SAVED_RIDES_API}/${encodeURIComponent(rideId)}`, {
+        headers: await authHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data || !data.plan || !Array.isArray(data.plan.segments) || !data.plan.segments.length) {
+        throw new Error('Saved ride is missing its plan');
+      }
+
+      savedRideId = data.id;
+      ridePlan = data.plan;
+      segments = ridePlan.segments;
+
+      computeSegmentOffsets();
+      currentSegmentIndex = 0;
+      segmentRemaining = segments[0].duration_seconds;
+      totalRemaining = ridePlan.total_seconds;
+      rideStartedAt = null;
+      pausedAt = null;
+
+      populateRideUI();
+      updateSegmentDisplay();
+
+      // Reset controls — ride is loaded but not yet started.
+      els.startBtn.classList.remove('d-none');
+      els.pauseBtn.classList.add('d-none');
+      els.resumeBtn.classList.add('d-none');
+      els.endBtn.classList.add('d-none');
+
+      showState('rideState');
+      saveSession(false);
+      return true;
+    } catch (err) {
+      console.error('Failed to load saved ride:', err);
+      els.errorMessage.textContent = `Couldn't load saved ride: ${err.message}`;
+      showState('errorState');
+      return false;
+    }
   }
 
   // ── Init ───────────────────────────────────────────────────────────────
@@ -1281,10 +1400,21 @@
       return;
     }
 
-    // Restore in-progress ride if session exists
+    // Re-ride hand-off: ?savedId=... loads a stored plan and jumps straight
+    // to the ride screen, skipping the generator. An in-progress session in
+    // sessionStorage takes precedence so a refresh during a ride doesn't
+    // discard the user's progress.
+    const savedIdParam = (() => {
+      try { return new URLSearchParams(window.location.search).get('savedId'); }
+      catch (e) { return null; }
+    })();
+
     const saved = loadSession();
     if (saved && saved.ridePlan) {
       restoreSession(saved);
+    } else if (savedIdParam) {
+      const ok = await loadSavedRide(savedIdParam);
+      if (!ok) showState('selectState');
     } else {
       showState('selectState');
     }
