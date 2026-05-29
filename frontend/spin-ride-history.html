@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html
+  lang="en"
+  class="layout-menu-fixed layout-compact"
+  data-assets-path="/static/assets/"
+  data-template="vertical-menu-template-free">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+    <title>Spin History - Fitness Field Notes</title>
+    <meta name="description" content="Your saved AI-generated spin rides. Re-ride your favorites." />
+
+    <link rel="icon" type="image/svg+xml" href="/static/assets/img/favicon/favicon.svg" />
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#C97C5D">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="/static/assets/vendor/fonts/iconify-icons.css" />
+    <link rel="stylesheet" href="/static/assets/vendor/css/core.css" />
+    <link rel="stylesheet" href="/static/assets/css/demo.css" />
+    <link rel="stylesheet" href="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <link rel="stylesheet" href="/static/assets/css/ffn-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
+    <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
+
+    <script src="/static/assets/vendor/js/helpers.js"></script>
+    <script src="/static/assets/js/config.js"></script>
+    <script src="/static/assets/js/services/theme-manager.js"></script>
+    <script src="/static/assets/js/app-config.js"></script>
+    <script type="module" src="/static/assets/js/firebase-loader.js"></script>
+  </head>
+
+  <body>
+    <div class="layout-wrapper layout-content-navbar">
+      <div class="layout-container">
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+          <!-- Menu will be injected by menu-injection-service.js -->
+        </aside>
+
+        <div class="layout-page">
+          <div class="content-wrapper">
+            <div class="container-xxl flex-grow-1 container-p-y">
+
+              <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                  <h4 class="mb-1">
+                    <i class="bx bx-cycling me-2 text-primary"></i>
+                    Spin History
+                  </h4>
+                  <p class="text-muted mb-0">Re-ride a favorite or revisit any spin ride you've completed.</p>
+                </div>
+                <a href="spin-ride.html" class="btn btn-primary">
+                  <i class="bx bx-plus me-1"></i>New Ride
+                </a>
+              </div>
+
+              <div class="card mb-3">
+                <div class="card-body py-3">
+                  <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Filter rides">
+                      <button type="button" class="btn btn-outline-primary active" id="filterAllBtn" data-filter="all">
+                        All
+                      </button>
+                      <button type="button" class="btn btn-outline-primary" id="filterFavoritesBtn" data-filter="favorites">
+                        <i class="bx bxs-star me-1 text-warning"></i>Favorites only
+                      </button>
+                    </div>
+                    <span id="ridesCount" class="text-muted small ms-auto">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="authRequired" class="text-center py-5 d-none">
+                <i class="bx bx-lock-alt display-3 text-muted"></i>
+                <p class="mt-3 mb-1"><strong>Sign in to see your spin history</strong></p>
+                <p class="text-muted small">Rides you complete are auto-saved here so you can re-ride them.</p>
+              </div>
+
+              <div id="loadingState" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="text-muted small mt-2">Loading rides…</p>
+              </div>
+
+              <div id="emptyState" class="text-center py-5 d-none">
+                <i class="bx bx-cycling display-3 text-muted"></i>
+                <p class="mt-3 mb-1"><strong>No rides yet</strong></p>
+                <p class="text-muted small">
+                  Complete a spin ride and it'll show up here automatically.
+                </p>
+                <a href="spin-ride.html" class="btn btn-primary mt-2">
+                  <i class="bx bx-cycling me-1"></i>Start your first ride
+                </a>
+              </div>
+
+              <div id="errorState" class="text-center py-5 d-none">
+                <i class="bx bx-error-circle display-3 text-danger"></i>
+                <p class="mt-3 mb-1"><strong>Couldn't load rides</strong></p>
+                <p class="text-muted small" id="errorMessage">Something went wrong.</p>
+                <button type="button" class="btn btn-outline-primary mt-2" id="retryBtn">Try again</button>
+              </div>
+
+              <div id="ridesList"></div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="layout-overlay layout-menu-toggle"></div>
+    </div>
+
+    <!-- Core JS -->
+    <script src="/static/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="/static/assets/vendor/libs/popper/popper.js"></script>
+    <script src="/static/assets/vendor/js/bootstrap.js"></script>
+    <script src="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="/static/assets/vendor/js/menu.js"></script>
+
+    <script src="/static/assets/js/components/menu-template.js"></script>
+    <script src="/static/assets/js/components/navbar-template.js"></script>
+    <script src="/static/assets/js/components/auth-modals-template.js"></script>
+
+    <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/universal-log-service.js"></script>
+    <script type="module" src="/static/assets/js/components/offcanvas/offcanvas-universal-logger.js"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
+    <script src="/static/assets/js/services/navbar-injection-service.js"></script>
+
+    <script src="/static/assets/js/main.js?v=20260216"></script>
+
+    <script src="/static/assets/js/firebase/firebase-init.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-service.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-ui.js?v=20251020-03"></script>
+
+    <script src="/static/assets/js/pages/spin-ride-history.js?v=20260529"></script>
+  </body>
+</html>

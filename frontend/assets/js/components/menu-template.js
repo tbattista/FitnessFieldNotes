@@ -16,6 +16,7 @@ function getMenuHTML(activePage = 'home') {
     const isHistory = activePage === 'workout-history';
     const isExercises = activePage === 'exercise-database';
     const isSpinRide = activePage === 'spin-ride';
+    const isSpinRideHistory = activePage === 'spin-ride-history';
     const isTabataKettlebell = activePage === 'tabata-kettlebell';
 
     return `
@@ -65,6 +66,13 @@ function getMenuHTML(activePage = 'home') {
                     <a href="spin-ride.html" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-cycling"></i>
                         <div class="text-truncate">Spin Ride</div>
+                    </a>
+                </li>
+
+                <li class="menu-item ${isSpinRideHistory ? 'active' : ''}"${isSpinRideHistory ? ' aria-current="page"' : ''}>
+                    <a href="spin-ride-history.html" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-history"></i>
+                        <div class="text-truncate">Spin History</div>
                     </a>
                 </li>
 
