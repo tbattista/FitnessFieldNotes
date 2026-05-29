@@ -70,6 +70,7 @@
       this._bindContinue();
       this._bindOrganize();
       this._ensureSentinel();
+      this._ensureFloatingCountObserver();
 
       this._loadExercises().catch((err) => {
         console.error('[WorkoutStudio] Failed to load exercises:', err);
@@ -99,6 +100,8 @@
 
       this.dom.sectionTitle = document.getElementById('studioSectionTitle');
       this.dom.listCount = document.getElementById('studioListCount');
+      this.dom.floatingCount = document.getElementById('studioFloatingCount');
+      this.dom.floatingCountText = document.getElementById('studioFloatingCountText');
       this.dom.list = document.getElementById('studioList');
       this.dom.empty = document.getElementById('studioEmpty');
       this.dom.emptyText = document.getElementById('studioEmptyText');
@@ -587,6 +590,14 @@
         if (this.filters.personal.has('custom')) this._refreshList();
       });
 
+      // The cache service returns seed data instantly, then fetches the full
+      // catalog in the background. Re-render when the full data lands so the
+      // count jumps from ~139 to ~2,400+.
+      window.exerciseCacheService.on('fullDataLoaded', () => {
+        this.allExercises = window.exerciseCacheService.exercises || [];
+        this._refreshList();
+      });
+
       // Load activity catalog from the existing registry (sync, no network)
       this.allActivities = this._loadActivitiesAsRows();
 
@@ -675,20 +686,64 @@
 
     _updateListCount(rendered, total) {
       if (!this.dom.listCount) return;
-      if (total === 0) {
-        this.dom.listCount.textContent = '';
-        this.dom.listCount.classList.remove('is-hint');
-        return;
-      }
       const fmt = (n) => n.toLocaleString();
-      if (rendered >= total) {
-        this.dom.listCount.textContent = `${fmt(total)} total`;
-      } else {
-        this.dom.listCount.textContent = `${fmt(rendered)} of ${fmt(total)}`;
+      let label = '';
+      if (total > 0) {
+        label = rendered >= total
+          ? `${fmt(total)} total`
+          : `${fmt(rendered)} of ${fmt(total)}`;
       }
+
+      this.dom.listCount.textContent = label;
       // Subtle nudge: when the unfiltered pool is large, hint that filters help.
       const hasFilters = this._activeFilterCount() > 0 || (this.searchQuery && this.searchQuery.length >= 2);
-      this.dom.listCount.classList.toggle('is-hint', !hasFilters && total > 200);
+      this.dom.listCount.classList.toggle('is-hint', total > 200 && !hasFilters);
+
+      // Mirror into the floating pill (visibility itself is controlled by
+      // _ensureFloatingCountObserver, which watches the inline count).
+      if (this.dom.floatingCountText) this.dom.floatingCountText.textContent = label;
+
+      // Hide the floating pill entirely when there's nothing or when there's
+      // no more to load (point of the pill is to nudge during deep scrolling).
+      if (this.dom.floatingCount) {
+        const shouldEverShow = total > 0 && rendered < total;
+        if (!shouldEverShow) {
+          this.dom.floatingCount.hidden = true;
+          this.dom.floatingCount.classList.remove('is-visible');
+        } else {
+          this.dom.floatingCount.hidden = false;
+          // Visible-state itself toggled by the IO observer in
+          // _ensureFloatingCountObserver. Re-evaluate on next frame in case
+          // the inline count is already off-screen.
+          requestAnimationFrame(() => this._reevaluateFloatingCount());
+        }
+      }
+    }
+
+    _ensureFloatingCountObserver() {
+      if (this._floatingCountObserver || !this.dom.listCount) return;
+      if (typeof IntersectionObserver !== 'function') return;
+      this._floatingCountObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          // Show floating pill when the inline count is NOT visible
+          const inViewport = entry.isIntersecting;
+          this._setFloatingCountVisible(!inViewport);
+        }
+      }, { threshold: 0 });
+      this._floatingCountObserver.observe(this.dom.listCount);
+    }
+
+    _setFloatingCountVisible(visible) {
+      if (!this.dom.floatingCount) return;
+      if (this.dom.floatingCount.hidden) return; // pinned hidden by state
+      this.dom.floatingCount.classList.toggle('is-visible', !!visible);
+    }
+
+    _reevaluateFloatingCount() {
+      if (!this.dom.listCount || !this.dom.floatingCount) return;
+      const rect = this.dom.listCount.getBoundingClientRect();
+      const inViewport = rect.bottom > 0 && rect.top < (window.innerHeight || 0);
+      this._setFloatingCountVisible(!inViewport);
     }
 
     _computeFilteredAll() {

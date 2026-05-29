@@ -197,6 +197,64 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('#globalLogFab')).toHaveCount(0);
     });
 
+    test('fullDataLoaded event from the cache service refreshes the studio list', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        const totalBefore = parseInt(await page.locator('#studioList').getAttribute('data-total-count') || '0', 10);
+        expect(totalBefore).toBeGreaterThan(0);
+
+        // Simulate the full DB landing in the background by stuffing a fake
+        // exercise into the cache and emitting fullDataLoaded.
+        await page.evaluate(() => {
+            const svc = window.exerciseCacheService;
+            if (!svc) return;
+            const sentinel = {
+                id: 'fulldata-sentinel-x',
+                name: 'Cache Full Data Sentinel',
+                targetMuscleGroup: 'Chest',
+                primaryEquipment: 'Bodyweight',
+                isGlobal: true,
+            };
+            svc.exercises = (svc.exercises || []).concat([sentinel]);
+            // emit the event (the studio is listening)
+            if (typeof svc.emit === 'function') svc.emit('fullDataLoaded', { count: svc.exercises.length });
+        });
+
+        // Total grows by exactly one (or close to it if the live full DB is also racing)
+        const totalAfter = parseInt(await page.locator('#studioList').getAttribute('data-total-count') || '0', 10);
+        expect(totalAfter).toBeGreaterThan(totalBefore);
+    });
+
+    test('floating count pill appears once the inline count scrolls out of view', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        const pill = page.locator('#studioFloatingCount');
+        // Initially the inline count is visible at the top, so the floating
+        // pill should NOT be in is-visible state. (It may not even exist yet
+        // if rendered>=total, which is true on seed-only data.)
+        await page.evaluate(() => {
+            // Force a "more available" state so the pill is allowed to show
+            const ws = window.workoutStudio;
+            if (!ws) return;
+            ws.totalAvailable = (ws.totalAvailable || 0) + 500;
+            ws._updateListCount(ws.renderedCount || 60, ws.totalAvailable);
+        });
+
+        // Scroll to the bottom so the inline count goes off-screen.
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        // Give IntersectionObserver a tick to fire
+        await page.waitForTimeout(300);
+
+        await expect(pill).toHaveClass(/is-visible/, { timeout: 3000 });
+
+        // Scroll back to top and the pill loses the is-visible class.
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.waitForTimeout(300);
+        await expect(pill).not.toHaveClass(/is-visible/, { timeout: 3000 });
+    });
+
     test('section header shows "X of Y" count that grows as more load', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
