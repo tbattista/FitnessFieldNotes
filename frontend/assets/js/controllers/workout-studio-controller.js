@@ -38,8 +38,10 @@
       this._searchDebounceTimer = null;
       this.currentView = 'select'; // 'select' | 'organize'
       // Per-tray-instance editor state for Page 2:
-      //   key = instanceId, value = { sets, reps, rest, weight }
+      //   key = instanceId, value = { sets, reps, rest, weight, weightUnit }
       this.organizeState = new Map();
+      // Live card components mounted on Page 2, keyed by instanceId
+      this.studioCards = new Map();
       this.workoutName = '';
       this._saveInFlight = false;
     }
@@ -253,31 +255,8 @@
         });
       }
 
-      // Per-row field edits (delegated)
-      if (this.dom.organizeList) {
-        this.dom.organizeList.addEventListener('input', (e) => {
-          const input = e.target.closest('.studio-org-field-input');
-          if (!input) return;
-          const row = input.closest('.studio-org-row');
-          if (!row) return;
-          const instanceId = row.dataset.instanceId;
-          const field = input.dataset.field;
-          if (!instanceId || !field) return;
-          const state = this.organizeState.get(instanceId) || {};
-          state[field] = String(input.value || '');
-          this.organizeState.set(instanceId, state);
-        });
-
-        this.dom.organizeList.addEventListener('click', (e) => {
-          const removeBtn = e.target.closest('.studio-org-row-remove');
-          if (!removeBtn) return;
-          const row = removeBtn.closest('.studio-org-row');
-          if (!row || !this.tray) return;
-          const instanceId = row.dataset.instanceId;
-          this.tray.remove(instanceId);
-          // _onTrayChange will re-render Page 2 if we're still on it
-        });
-      }
+      // Per-card field edits and removals are now handled by
+      // StudioExerciseCard via the callbacks wired in _renderOrganize().
 
       if (this.dom.saveBtn) {
         this.dom.saveBtn.addEventListener('click', () => this._handleSave());
@@ -313,12 +292,14 @@
     _renderOrganize() {
       if (!this.dom.organizeList || !this.tray) return;
       const items = this.tray.getItems();
+
       if (this.dom.organizeCount) {
         this.dom.organizeCount.textContent = items.length === 1
           ? '1 exercise'
           : `${items.length} exercises`;
       }
       if (items.length === 0) {
+        this._destroyAllCards();
         this.dom.organizeList.innerHTML = '';
         if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = false;
         if (this.dom.saveBtn) this.dom.saveBtn.disabled = true;
@@ -327,49 +308,148 @@
       if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = true;
       if (this.dom.saveBtn) this.dom.saveBtn.disabled = false;
 
-      this.dom.organizeList.innerHTML = items.map((it) => {
-        const state = this.organizeState.get(it.instanceId) || {};
-        const sets = state.sets ?? DEFAULT_SETS;
-        const reps = state.reps ?? DEFAULT_REPS;
-        const rest = state.rest ?? DEFAULT_REST;
-        const weight = state.weight ?? '';
-        // Persist defaults back so they're collected on save without user input
-        this.organizeState.set(it.instanceId, { sets, reps, rest, weight });
-        return this._renderOrganizeRow(it, { sets, reps, rest, weight });
-      }).join('');
+      // Diff: drop cards no longer in the tray, rebuild from scratch in order.
+      // The card count is small (typical workout is <20 exercises), so a full
+      // rebuild is simpler and avoids stale field-controller bindings.
+      this._destroyAllCards();
+      this.dom.organizeList.innerHTML = '';
+
+      items.forEach((item, idx) => {
+        const state = this._ensureOrganizeState(item.instanceId);
+        const card = new window.StudioExerciseCard({
+          instanceId: item.instanceId,
+          name: item.name,
+          state,
+          callbacks: {
+            onChange: (instanceId, partial) => this._onCardChange(instanceId, partial),
+            onPencil: (instanceId) => this._onPencil(instanceId),
+            onMenuAction: (instanceId, action) => this._onCardMenuAction(instanceId, action),
+          },
+        });
+        const node = card.render();
+        this.dom.organizeList.appendChild(node);
+        card.setIndex(idx, items.length);
+        this.studioCards.set(item.instanceId, card);
+      });
     }
 
-    _renderOrganizeRow(item, vals) {
-      const safeName = this._escape(item.name);
-      const escAttr = (s) => this._escape(s);
-      return `
-        <div class="studio-org-row" role="listitem" data-instance-id="${escAttr(item.instanceId)}">
-          <div class="studio-org-row-head">
-            <div class="studio-org-row-name">${safeName}</div>
-            <button class="studio-org-row-remove" type="button" aria-label="Remove ${safeName}">
-              <i class="bx bx-x"></i>
-            </button>
-          </div>
-          <div class="studio-org-fields">
-            <label class="studio-org-field">
-              <span class="studio-org-field-label">Sets</span>
-              <input type="text" class="studio-org-field-input" data-field="sets" value="${escAttr(vals.sets)}" inputmode="numeric" maxlength="6">
-            </label>
-            <label class="studio-org-field">
-              <span class="studio-org-field-label">Reps</span>
-              <input type="text" class="studio-org-field-input" data-field="reps" value="${escAttr(vals.reps)}" maxlength="16">
-            </label>
-            <label class="studio-org-field">
-              <span class="studio-org-field-label">Weight</span>
-              <input type="text" class="studio-org-field-input" data-field="weight" value="${escAttr(vals.weight)}" inputmode="decimal" maxlength="8">
-            </label>
-            <label class="studio-org-field">
-              <span class="studio-org-field-label">Rest</span>
-              <input type="text" class="studio-org-field-input" data-field="rest" value="${escAttr(vals.rest)}" maxlength="8">
-            </label>
-          </div>
-        </div>
-      `;
+    _destroyAllCards() {
+      this.studioCards.forEach((c) => c.destroy && c.destroy());
+      this.studioCards.clear();
+    }
+
+    _ensureOrganizeState(instanceId) {
+      let state = this.organizeState.get(instanceId);
+      if (!state) {
+        state = {
+          sets: DEFAULT_SETS,
+          reps: DEFAULT_REPS,
+          rest: DEFAULT_REST,
+          weight: '',
+          weightUnit: 'lbs',
+        };
+        this.organizeState.set(instanceId, state);
+      } else {
+        // Backfill defaults if any were missing
+        if (state.sets == null) state.sets = DEFAULT_SETS;
+        if (state.reps == null) state.reps = DEFAULT_REPS;
+        if (state.rest == null) state.rest = DEFAULT_REST;
+        if (state.weight == null) state.weight = '';
+        if (state.weightUnit == null) state.weightUnit = 'lbs';
+      }
+      return state;
+    }
+
+    _onCardChange(instanceId, partial) {
+      const state = this._ensureOrganizeState(instanceId);
+      Object.assign(state, partial || {});
+      this.organizeState.set(instanceId, state);
+    }
+
+    _onCardMenuAction(instanceId, action) {
+      if (!this.tray) return;
+      const items = this.tray.getItems();
+      const idx = items.findIndex((it) => it.instanceId === instanceId);
+      if (idx === -1) return;
+
+      switch (action) {
+        case 'move-up':
+          if (idx > 0) this._reorderTray(idx, idx - 1);
+          break;
+        case 'move-down':
+          if (idx < items.length - 1) this._reorderTray(idx, idx + 1);
+          break;
+        case 'duplicate': {
+          const src = items[idx];
+          if (this.tray && src && src.exercise) this.tray.add(src.exercise);
+          break;
+        }
+        case 'delete':
+          this.tray.remove(instanceId);
+          break;
+      }
+    }
+
+    _reorderTray(fromIdx, toIdx) {
+      if (!this.tray || !Array.isArray(this.tray.items)) return;
+      const items = this.tray.items;
+      if (fromIdx < 0 || fromIdx >= items.length || toIdx < 0 || toIdx >= items.length) return;
+      const [moved] = items.splice(fromIdx, 1);
+      items.splice(toIdx, 0, moved);
+      // Re-render Page 2 and notify the tray so chips and Page 1 badges sync
+      this._renderOrganize();
+      if (typeof this.tray._emit === 'function') this.tray._emit();
+      if (typeof this.tray._render === 'function') this.tray._render();
+    }
+
+    _onPencil(instanceId) {
+      const item = this.tray && this.tray.getItems().find((it) => it.instanceId === instanceId);
+      if (!item) return;
+      const state = this._ensureOrganizeState(instanceId);
+
+      const config = {
+        groupId: instanceId,
+        exercises: { a: item.name },
+        sets: state.sets || DEFAULT_SETS,
+        reps: state.reps || DEFAULT_REPS,
+        rest: state.rest || DEFAULT_REST,
+        weight: state.weight || '',
+        weightUnit: state.weightUnit || 'lbs',
+        isNew: false,
+        mode: 'single',
+      };
+
+      const onSave = (groupData) => {
+        if (!groupData) return;
+        const next = {};
+        if (groupData.exercises && groupData.exercises.a) {
+          item.name = groupData.exercises.a;
+          // The tray chip label is derived from item.name; re-render the chip row.
+          if (this.tray && typeof this.tray._render === 'function') this.tray._render();
+        }
+        if (groupData.sets != null) next.sets = String(groupData.sets);
+        if (groupData.reps != null) next.reps = String(groupData.reps);
+        if (groupData.rest != null) next.rest = String(groupData.rest);
+        if (groupData.default_weight != null) next.weight = String(groupData.default_weight);
+        if (groupData.default_weight_unit) next.weightUnit = groupData.default_weight_unit;
+        this._onCardChange(instanceId, next);
+        // Refresh the card preview so the inline display matches
+        const card = this.studioCards.get(instanceId);
+        if (card) {
+          card.name = item.name;
+          card.setState(next);
+        }
+      };
+      const onDelete = () => {
+        if (this.tray) this.tray.remove(instanceId);
+      };
+
+      const factory = window.UnifiedOffcanvasFactory;
+      if (factory && typeof factory.createExerciseGroupEditor === 'function') {
+        factory.createExerciseGroupEditor(config, onSave, onDelete);
+      } else {
+        console.warn('[WorkoutStudio] UnifiedOffcanvasFactory not loaded; pencil edit is no-op until offcanvas module is available');
+      }
     }
 
     _escape(s) {
@@ -403,7 +483,7 @@
             reps: state.reps || DEFAULT_REPS,
             rest: state.rest || DEFAULT_REST,
             default_weight: state.weight || '',
-            default_weight_unit: 'lbs',
+            default_weight_unit: state.weightUnit || 'lbs',
             group_type: ex.group_type || 'standard',
           }],
         };
@@ -419,7 +499,7 @@
         reps: e.reps,
         rest: e.rest,
         default_weight: e.default_weight,
-        default_weight_unit: e.default_weight_unit,
+        default_weight_unit: e.default_weight_unit || 'lbs',
         group_type: e.group_type || 'standard',
       })));
 

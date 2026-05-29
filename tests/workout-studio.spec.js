@@ -181,7 +181,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         }
     }
 
-    test('Continue button navigates to Page 2 with one row per tray instance', async ({ page }) => {
+    test('Continue button navigates to Page 2 with one studio card per tray instance', async ({ page }) => {
         await addNFromGrid(page, 3);
 
         await expect(page.locator('#studioContinueCta')).toBeVisible();
@@ -195,13 +195,12 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         // Floating CTA hides on Page 2 (Save action is in-flow)
         await expect(page.locator('#studioContinueCta')).toBeHidden();
 
-        // One row per tray instance + default field values populated
-        await expect(page.locator('.studio-org-row')).toHaveCount(3);
-        const firstRow = page.locator('.studio-org-row').first();
-        await expect(firstRow.locator('input[data-field="sets"]')).toHaveValue('3');
-        await expect(firstRow.locator('input[data-field="reps"]')).toHaveValue('8-12');
-        await expect(firstRow.locator('input[data-field="rest"]')).toHaveValue('60s');
-        await expect(firstRow.locator('input[data-field="weight"]')).toHaveValue('');
+        // One card per tray instance + default display values
+        await expect(page.locator('.studio-card')).toHaveCount(3);
+        const firstCard = page.locator('.studio-card').first();
+        await expect(firstCard.locator('.repssets-value-text')).toHaveText('3×8-12');
+        await expect(firstCard.locator('.studio-rest-value-text')).toHaveText('60s');
+        await expect(firstCard.locator('.weight-value')).toHaveText('—');
 
         // Count chip in section header
         await expect(page.locator('#studioOrganizeCount')).toHaveText('3 exercises');
@@ -226,34 +225,102 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
     });
 
-    test('removing the last tray item from Page 2 bounces back to Page 1', async ({ page }) => {
+    test('3-dot menu Remove deletes the card and the tray chip', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('.studio-card')).toHaveCount(2);
+
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('[data-action="menu"]').click();
+        await firstCard.locator('[data-action="delete"]').click();
+
+        await expect(page.locator('.studio-card')).toHaveCount(1);
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
+    });
+
+    test('removing the last card bounces back to Page 1', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();
-        await expect(page.locator('.studio-org-row')).toHaveCount(1);
+        await expect(page.locator('.studio-card')).toHaveCount(1);
 
-        await page.locator('.studio-org-row-remove').first().click();
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('[data-action="menu"]').click();
+        await firstCard.locator('[data-action="delete"]').click();
+
         await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
         await expect(page.locator('#studioTray')).toHaveAttribute('data-empty', 'true');
     });
 
-    test('editing fields persists when navigating back and forward', async ({ page }) => {
+    test('tap-to-edit Protocol morphs the field into an input and saves on Enter', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();
 
-        const firstRow = page.locator('.studio-org-row').first();
-        await firstRow.locator('input[data-field="sets"]').fill('5');
-        await firstRow.locator('input[data-field="reps"]').fill('5');
-        await firstRow.locator('input[data-field="weight"]').fill('185');
-        await firstRow.locator('input[data-field="rest"]').fill('120s');
+        const firstCard = page.locator('.studio-card').first();
+        await expect(firstCard.locator('.repssets-value-text')).toHaveText('3×8-12');
+
+        // Tap display to enter edit mode
+        await firstCard.locator('.repssets-display').click();
+        const repsInput = firstCard.locator('.repssets-text-input');
+        await expect(repsInput).toBeVisible();
+        await repsInput.fill('5x5');
+        await repsInput.press('Enter');
+
+        // Display should reflect the new value
+        await expect(firstCard.locator('.repssets-value-text')).toHaveText('5×5');
+    });
+
+    test('tap-to-edit Weight morphs into a numeric input and saves on Enter', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('.weight-display').click();
+        const wInput = firstCard.locator('.weight-input');
+        await expect(wInput).toBeVisible();
+        await wInput.fill('185');
+        await wInput.press('Enter');
+
+        await expect(firstCard.locator('.weight-value')).toHaveText('185');
+    });
+
+    test('tap-to-edit Rest morphs into an input and saves on Enter', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('.studio-rest-display').click();
+        const restInput = firstCard.locator('.studio-rest-input');
+        await expect(restInput).toBeVisible();
+        await restInput.fill('120s');
+        await restInput.press('Enter');
+
+        await expect(firstCard.locator('.studio-rest-value-text')).toHaveText('120s');
+    });
+
+    test('edits persist when navigating back to Page 1 and returning', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('.repssets-display').click();
+        await firstCard.locator('.repssets-text-input').fill('5x5');
+        await firstCard.locator('.repssets-text-input').press('Enter');
+
+        await firstCard.locator('.weight-display').click();
+        await firstCard.locator('.weight-input').fill('225');
+        await firstCard.locator('.weight-input').press('Enter');
+
+        await firstCard.locator('.studio-rest-display').click();
+        await firstCard.locator('.studio-rest-input').fill('90s');
+        await firstCard.locator('.studio-rest-input').press('Enter');
 
         await page.locator('#studioOrganizeBack').click();
         await page.locator('#studioContinueBtn').click();
 
-        const reopened = page.locator('.studio-org-row').first();
-        await expect(reopened.locator('input[data-field="sets"]')).toHaveValue('5');
-        await expect(reopened.locator('input[data-field="reps"]')).toHaveValue('5');
-        await expect(reopened.locator('input[data-field="weight"]')).toHaveValue('185');
-        await expect(reopened.locator('input[data-field="rest"]')).toHaveValue('120s');
+        const reopened = page.locator('.studio-card').first();
+        await expect(reopened.locator('.repssets-value-text')).toHaveText('5×5');
+        await expect(reopened.locator('.weight-value')).toHaveText('225');
+        await expect(reopened.locator('.studio-rest-value-text')).toHaveText('90s');
     });
 
     test('Save without a workout name shows a friendly error', async ({ page }) => {
@@ -291,7 +358,12 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await page.evaluate(() => { delete window.dataManager; });
 
         await page.locator('#studioOrganizeName').fill('Studio Test Push Day');
-        await page.locator('.studio-org-row').first().locator('input[data-field="weight"]').fill('135');
+
+        // Tap-edit the first card's weight value to 135
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('.weight-display').click();
+        await firstCard.locator('.weight-input').fill('135');
+        await firstCard.locator('.weight-input').press('Enter');
 
         await page.locator('#studioSaveBtn').click();
 

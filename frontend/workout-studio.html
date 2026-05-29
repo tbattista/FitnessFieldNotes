@@ -44,6 +44,12 @@
     <!-- Workout Studio CSS -->
     <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=1.0.0" />
 
+    <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-specialized.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-dark.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/desktop-offcanvas.css?v=20260217" />
+
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
     <script src="/static/assets/js/config.js"></script>
@@ -267,9 +273,18 @@
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
     <script src="/static/assets/js/services/exercise-cache-service.js?v=20260226"></script>
 
-    <!-- Workout Studio JS (Phase 1, commit 1) -->
+    <!-- Field controllers reused on the studio's Page 2 cards (morphing inline editors) -->
+    <script src="/static/assets/js/controllers/weight-field-controller.js?v=20260528"></script>
+    <script src="/static/assets/js/controllers/repssets-field-controller.js?v=20260528"></script>
+
+    <!-- Unified Offcanvas Factory (pencil edit reuses createExerciseGroupEditor) -->
+    <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js?v=20251220-01"></script>
+    <script type="module" src="/static/assets/js/components/offcanvas/index.js?v=20251220-02"></script>
+
+    <!-- Workout Studio JS -->
     <script src="/static/assets/js/components/exercise-tray.js?v=1.0.0"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=1.0.0"></script>
+    <script src="/static/assets/js/components/studio-exercise-card.js?v=1.0.0"></script>
     <script src="/static/assets/js/controllers/workout-studio-controller.js?v=1.0.0"></script>
   </body>
 </html>
