@@ -190,6 +190,50 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         expect(afterCount).toBeLessThanOrEqual(beforeCount);
     });
 
+    test('global "Log Session" FAB is suppressed on the studio page', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        // Wait for menu-injection-service to run
+        await expect(page.locator('#layout-menu .menu-item').first()).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('#globalLogFab')).toHaveCount(0);
+    });
+
+    test('exercise list paginates — initial render is one page, more load on scroll', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        const initialRendered = await page.locator('#studioList').getAttribute('data-rendered-count');
+        const totalAvailable = await page.locator('#studioList').getAttribute('data-total-count');
+        const initialCount = parseInt(initialRendered || '0', 10);
+        const totalCount = parseInt(totalAvailable || '0', 10);
+
+        // The catalog is big — make sure we actually have more to load
+        expect(initialCount).toBeGreaterThan(0);
+        expect(initialCount).toBeLessThanOrEqual(60);
+        expect(totalCount).toBeGreaterThan(initialCount);
+
+        // Trigger the sentinel by manually loading more (deterministic; doesn't rely on viewport-based scroll)
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._loadMore && window.workoutStudio._loadMore());
+        const after = parseInt(await page.locator('#studioList').getAttribute('data-rendered-count') || '0', 10);
+        expect(after).toBeGreaterThan(initialCount);
+    });
+
+    test('changing a filter resets pagination back to the first page', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        // Load more so renderedCount > one page
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._loadMore && window.workoutStudio._loadMore());
+        const grown = parseInt(await page.locator('#studioList').getAttribute('data-rendered-count') || '0', 10);
+        expect(grown).toBeGreaterThan(60);
+
+        // Apply a filter — pagination should reset
+        await page.locator('#studioFilterBtn').click();
+        await page.locator('.studio-filter-chip[data-value="Chest"]').click();
+
+        const afterFilter = parseInt(await page.locator('#studioList').getAttribute('data-rendered-count') || '0', 10);
+        expect(afterFilter).toBeLessThanOrEqual(60);
+    });
+
     test('Clear all resets every filter chip and the badge', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });

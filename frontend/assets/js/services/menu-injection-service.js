@@ -94,10 +94,10 @@ class MenuInjectionService {
         // Inject sidebar menu HTML
         menuContainer.innerHTML = window.getMenuHTML(activePage);
 
-        // Inject global log FAB (skip on workout-mode and workout-builder)
+        // Inject global log FAB (skip on workout-mode, workout-builder, and workout-studio)
         if (window.getGlobalLogFabHTML) {
             const filename = window.location.pathname.split('/').pop() || '';
-            const excludedPages = ['workout-mode', 'workout-builder'];
+            const excludedPages = ['workout-mode', 'workout-builder', 'workout-studio'];
             const isExcluded = excludedPages.some(p => filename.includes(p));
             if (!isExcluded) {
                 const fabWrapper = document.createElement('div');

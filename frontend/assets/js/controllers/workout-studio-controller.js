@@ -18,7 +18,7 @@
 (function () {
   'use strict';
 
-  const LIST_LIMIT = 60;
+  const LIST_PAGE_SIZE = 60;
   const DEFAULT_SETS = '3';
   const DEFAULT_REPS = '8-12';
   const DEFAULT_REST = '60s';
@@ -47,6 +47,12 @@
         muscleGroup: new Set(),
         equipment: new Set(),
       };
+      // Pagination state — how many rows of the current filtered set we render.
+      // Grows by LIST_PAGE_SIZE every time the infinite-scroll sentinel intersects
+      // the viewport; resets on search or filter change.
+      this.renderedCount = LIST_PAGE_SIZE;
+      this.totalAvailable = 0;
+      this._infiniteScrollObserver = null;
     }
 
     init() {
@@ -60,6 +66,7 @@
       this._bindFilters();
       this._bindContinue();
       this._bindOrganize();
+      this._ensureSentinel();
 
       this._loadExercises().catch((err) => {
         console.error('[WorkoutStudio] Failed to load exercises:', err);
@@ -91,6 +98,7 @@
       this.dom.list = document.getElementById('studioList');
       this.dom.empty = document.getElementById('studioEmpty');
       this.dom.emptyText = document.getElementById('studioEmptyText');
+      this.dom.sentinel = null; // created lazily by _ensureSentinel
 
       this.dom.continueCta = document.getElementById('studioContinueCta');
       this.dom.continueBtn = document.getElementById('studioContinueBtn');
@@ -165,6 +173,7 @@
         if (this.dom.searchClear) {
           this.dom.searchClear.style.display = q ? '' : 'none';
         }
+        this._resetPagination();
         clearTimeout(this._searchDebounceTimer);
         this._searchDebounceTimer = setTimeout(() => this._refreshList(), 120);
       });
@@ -174,6 +183,7 @@
           this.dom.searchInput.value = '';
           this.searchQuery = '';
           this.dom.searchClear.style.display = 'none';
+          this._resetPagination();
           this._refreshList();
           this.dom.searchInput.focus();
         });
@@ -198,6 +208,7 @@
           else set.add(value);
           chip.classList.toggle('is-active', set.has(value));
           this._updateFilterBadge();
+          this._resetPagination();
           this._refreshList();
         });
       });
@@ -217,6 +228,7 @@
       Object.keys(this.filters).forEach((g) => this.filters[g].clear());
       this.dom.filterChips.forEach((chip) => chip.classList.remove('is-active'));
       this._updateFilterBadge();
+      this._resetPagination();
       this._refreshList();
     }
 
@@ -575,28 +587,73 @@
 
     _refreshList() {
       if (!this.grid) return;
-      const rows = this._computeList();
+      const all = this._computeFilteredAll();
+      this.totalAvailable = all.length;
+      const rows = all.slice(0, this.renderedCount);
+
+      if (this.dom.list) {
+        this.dom.list.dataset.renderedCount = String(rows.length);
+        this.dom.list.dataset.totalCount = String(this.totalAvailable);
+      }
+
       if (rows.length === 0) {
         this.grid.setExercises([]);
         this._showEmpty(this._emptyMessage());
+        this._setSentinelVisible(false);
         return;
       }
       this._hideEmpty();
       this.grid.setExercises(rows);
       if (this.tray) this.grid.setCounts(this.tray.countsByExerciseId());
+
+      // Show the sentinel only when there are more rows we could reveal
+      this._setSentinelVisible(rows.length < this.totalAvailable);
     }
 
-    _computeList() {
+    _computeFilteredAll() {
       const query = this.searchQuery;
       let pool;
       if (query && query.length >= 2 && window.exerciseCacheService) {
-        // Search returns a wider candidate set; we still apply filters below.
-        pool = window.exerciseCacheService.searchExercises(query, { limit: LIST_LIMIT * 3 });
+        // Search ranks the full catalog by relevance; we mirror that ceiling.
+        pool = window.exerciseCacheService.searchExercises(query, { limit: 2000 });
       } else {
         pool = this.allExercises;
       }
-      const filtered = this._applyFilters(pool);
-      return filtered.slice(0, LIST_LIMIT);
+      return this._applyFilters(pool);
+    }
+
+    _resetPagination() {
+      this.renderedCount = LIST_PAGE_SIZE;
+    }
+
+    _loadMore() {
+      if (this.renderedCount >= this.totalAvailable) return;
+      this.renderedCount += LIST_PAGE_SIZE;
+      this._refreshList();
+    }
+
+    _ensureSentinel() {
+      if (this.dom.sentinel || !this.dom.list || !this.dom.list.parentElement) return;
+      const sentinel = document.createElement('div');
+      sentinel.className = 'studio-list-sentinel';
+      sentinel.id = 'studioListSentinel';
+      sentinel.setAttribute('aria-hidden', 'true');
+      this.dom.list.parentElement.insertBefore(sentinel, this.dom.list.nextSibling);
+      this.dom.sentinel = sentinel;
+
+      if (typeof IntersectionObserver === 'function') {
+        this._infiniteScrollObserver = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) this._loadMore();
+          }
+        }, { rootMargin: '300px' });
+        this._infiniteScrollObserver.observe(sentinel);
+      }
+    }
+
+    _setSentinelVisible(visible) {
+      if (!this.dom.sentinel) return;
+      this.dom.sentinel.hidden = !visible;
     }
 
     _applyFilters(pool) {

@@ -743,6 +743,15 @@ html[data-bs-theme="dark"] .studio-org-field-input {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* -------------------- Infinite-scroll sentinel (invisible) -------------------- */
+.studio-list-sentinel {
+  height: 1px;
+  width: 100%;
+}
+.studio-list-sentinel[hidden] {
+  display: none;
+}
+
 /* -------------------- Empty / loading states -------------------- */
 .studio-empty {
   display: flex;
