@@ -132,33 +132,44 @@
                     </button>
                   </div>
 
-                  <!-- Quick-action tiles (Activity, Custom, Quick Add, Favorites) -->
-                  <div class="studio-quick-tiles" aria-label="Quick actions">
-                    <button class="studio-quick-tile" data-action="activity" type="button">
-                      <i class="bx bx-run"></i>
-                      <span>Activity</span>
-                    </button>
-                    <button class="studio-quick-tile" data-action="custom" type="button">
-                      <i class="bx bx-plus-circle"></i>
-                      <span>Custom</span>
-                    </button>
-                    <button class="studio-quick-tile" data-action="quick-add" type="button">
-                      <i class="bx bx-bolt-circle"></i>
-                      <span>Quick Add</span>
-                    </button>
-                    <button class="studio-quick-tile" data-action="favorites" type="button">
-                      <i class="bx bx-star"></i>
-                      <span>Favorites</span>
+                  <!-- Section header: title + Filter toggle -->
+                  <div class="studio-section-header">
+                    <h6 class="studio-section-title" id="studioSectionTitle">Exercises</h6>
+                    <button class="studio-filter-btn" id="studioFilterBtn" type="button" aria-expanded="false" aria-controls="studioFilterPanel">
+                      <i class="bx bx-filter"></i>
+                      <span>Filter</span>
+                      <span class="studio-filter-badge" id="studioFilterBadge" hidden>0</span>
                     </button>
                   </div>
 
-                  <!-- Section header: title + sort -->
-                  <div class="studio-section-header">
-                    <h6 class="studio-section-title" id="studioSectionTitle">Exercises</h6>
-                    <button class="studio-sort-chip" id="studioSortBtn" type="button">
-                      <i class="bx bx-filter"></i>
-                      <span id="studioSortLabel">Most Recent</span>
-                    </button>
+                  <!-- Inline filter panel (toggled by the Filter button) -->
+                  <div class="studio-filter-panel" id="studioFilterPanel" hidden>
+                    <div class="studio-filter-group">
+                      <span class="studio-filter-group-label">Muscle group</span>
+                      <div class="studio-filter-chips" data-group="muscleGroup">
+                        <button class="studio-filter-chip" type="button" data-value="Chest">Chest</button>
+                        <button class="studio-filter-chip" type="button" data-value="Back">Back</button>
+                        <button class="studio-filter-chip" type="button" data-value="Shoulders">Shoulders</button>
+                        <button class="studio-filter-chip" type="button" data-value="Arms">Arms</button>
+                        <button class="studio-filter-chip" type="button" data-value="Legs">Legs</button>
+                        <button class="studio-filter-chip" type="button" data-value="Glutes">Glutes</button>
+                        <button class="studio-filter-chip" type="button" data-value="Core">Core</button>
+                      </div>
+                    </div>
+                    <div class="studio-filter-group">
+                      <span class="studio-filter-group-label">Equipment</span>
+                      <div class="studio-filter-chips" data-group="equipment">
+                        <button class="studio-filter-chip" type="button" data-value="Barbell">Barbell</button>
+                        <button class="studio-filter-chip" type="button" data-value="Dumbbell">Dumbbell</button>
+                        <button class="studio-filter-chip" type="button" data-value="Bodyweight">Bodyweight</button>
+                        <button class="studio-filter-chip" type="button" data-value="Cable">Cable</button>
+                        <button class="studio-filter-chip" type="button" data-value="Kettlebell">Kettlebell</button>
+                        <button class="studio-filter-chip" type="button" data-value="Machine">Machine</button>
+                      </div>
+                    </div>
+                    <div class="studio-filter-actions">
+                      <button class="studio-filter-clear" id="studioFilterClear" type="button">Clear all</button>
+                    </div>
                   </div>
 
                   <!-- Exercise list -->

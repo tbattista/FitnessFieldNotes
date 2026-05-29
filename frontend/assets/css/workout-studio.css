@@ -195,37 +195,7 @@
   font-size: 1.1rem;
 }
 
-/* -------------------- Quick-action pills (compact) -------------------- */
-.studio-quick-tiles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  padding: 0.75rem 0.25rem 0.25rem;
-}
-.studio-quick-tile {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  height: 32px;
-  padding: 0 0.75rem;
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  color: var(--bs-primary);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-.studio-quick-tile:hover {
-  background: rgba(0, 0, 0, 0.07);
-}
-.studio-quick-tile .bx {
-  font-size: 1.05rem;
-}
-
-/* -------------------- Section header (label + sort) -------------------- */
+/* -------------------- Section header (label + filter) -------------------- */
 .studio-section-header {
   display: flex;
   align-items: center;
@@ -237,18 +207,101 @@
   font-size: 1.05rem;
   font-weight: 700;
 }
-.studio-sort-chip {
+.studio-filter-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid var(--bs-border-color);
   background: transparent;
   color: var(--bs-body-color);
   font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
+.studio-filter-btn:hover { background: rgba(0, 0, 0, 0.04); }
+.studio-filter-btn[aria-expanded="true"],
+.studio-filter-btn.has-active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+.studio-filter-btn .bx { font-size: 1.05rem; }
+.studio-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* -------------------- Filter panel (inline, below section header) -------------------- */
+.studio-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.5rem;
+  margin: 0 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 12px;
+}
+.studio-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.studio-filter-group-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+.studio-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.studio-filter-chip {
+  background: transparent;
+  border: 1px solid var(--bs-border-color);
+  color: var(--bs-body-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-filter-chip:hover { background: rgba(0, 0, 0, 0.04); }
+.studio-filter-chip.is-active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+.studio-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}
+.studio-filter-clear {
+  background: transparent;
+  border: none;
+  color: var(--bs-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.studio-filter-clear:hover { text-decoration: underline; }
 
 /* -------------------- Exercise list (compact rows) -------------------- */
 .studio-list {
@@ -738,12 +791,13 @@ html[data-bs-theme="dark"] .studio-slim-name:focus,
 html[data-bs-theme="dark"] .studio-mode-toggle,
 html[data-bs-theme="dark"] .studio-tray-chip-remove,
 html[data-bs-theme="dark"] .studio-row,
-html[data-bs-theme="dark"] .studio-quick-tile,
+html[data-bs-theme="dark"] .studio-filter-panel,
 html[data-bs-theme="dark"] .studio-row-add {
   background: rgba(255, 255, 255, 0.06);
 }
 html[data-bs-theme="dark"] .studio-row:hover,
-html[data-bs-theme="dark"] .studio-quick-tile:hover,
+html[data-bs-theme="dark"] .studio-filter-btn:hover,
+html[data-bs-theme="dark"] .studio-filter-chip:hover,
 html[data-bs-theme="dark"] .studio-row-add:hover {
   background: rgba(255, 255, 255, 0.10);
 }

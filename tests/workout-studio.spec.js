@@ -22,8 +22,10 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         // Search input
         await expect(page.locator('#studioSearchInput')).toBeVisible();
 
-        // No filter chips anymore — single unified list
-        await expect(page.locator('.studio-filter-chip')).toHaveCount(0);
+        // Single Filter button instead of the old quick-action tiles, and
+        // the filter panel itself is collapsed on first load.
+        await expect(page.locator('#studioFilterBtn')).toBeVisible();
+        await expect(page.locator('#studioFilterPanel')).toBeHidden();
 
         // Section title is the static "Exercises" label
         await expect(page.locator('#studioSectionTitle')).toHaveText('Exercises');
@@ -147,6 +149,59 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
             window.getComputedStyle(el).flexWrap
         );
         expect(flexWrap).toBe('wrap');
+    });
+
+    test('quick-action tiles are gone — single Filter button in section header instead', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-quick-tile')).toHaveCount(0);
+        await expect(page.locator('#studioFilterBtn')).toBeVisible();
+        await expect(page.locator('#studioFilterPanel')).toBeHidden();
+    });
+
+    test('Filter button toggles the inline filter panel', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioFilterBtn').click();
+        await expect(page.locator('#studioFilterPanel')).toBeVisible();
+        await expect(page.locator('#studioFilterBtn')).toHaveAttribute('aria-expanded', 'true');
+
+        await page.locator('#studioFilterBtn').click();
+        await expect(page.locator('#studioFilterPanel')).toBeHidden();
+        await expect(page.locator('#studioFilterBtn')).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('Selecting a muscle-group chip narrows the list and updates the badge', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        const beforeCount = await page.locator('.studio-row').count();
+        expect(beforeCount).toBeGreaterThan(0);
+
+        await page.locator('#studioFilterBtn').click();
+        await page.locator('.studio-filter-chip[data-value="Chest"]').click();
+
+        await expect(page.locator('#studioFilterBadge')).toHaveText('1');
+        await expect(page.locator('#studioFilterBtn')).toHaveClass(/has-active/);
+
+        // The visible rows after applying a single-group filter should be a subset
+        const afterCount = await page.locator('.studio-row').count();
+        expect(afterCount).toBeGreaterThan(0);
+        expect(afterCount).toBeLessThanOrEqual(beforeCount);
+    });
+
+    test('Clear all resets every filter chip and the badge', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioFilterBtn').click();
+        await page.locator('.studio-filter-chip[data-value="Chest"]').click();
+        await page.locator('.studio-filter-chip[data-value="Barbell"]').click();
+        await expect(page.locator('#studioFilterBadge')).toHaveText('2');
+
+        await page.locator('#studioFilterClear').click();
+        await expect(page.locator('#studioFilterBadge')).toBeHidden();
+        await expect(page.locator('.studio-filter-chip.is-active')).toHaveCount(0);
     });
 });
 

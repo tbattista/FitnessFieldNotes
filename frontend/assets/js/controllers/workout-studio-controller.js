@@ -42,6 +42,11 @@
       this.studioCards = new Map();
       this.workoutName = '';
       this._saveInFlight = false;
+      // Active filter selections by group (Set per group). Empty Sets = no filter.
+      this.filters = {
+        muscleGroup: new Set(),
+        equipment: new Set(),
+      };
     }
 
     init() {
@@ -52,7 +57,7 @@
       this._initGrid();
       this._bindHeader();
       this._bindSearch();
-      this._bindQuickTiles();
+      this._bindFilters();
       this._bindContinue();
       this._bindOrganize();
 
@@ -76,7 +81,11 @@
       this.dom.searchInput = document.getElementById('studioSearchInput');
       this.dom.searchClear = document.getElementById('studioSearchClear');
 
-      this.dom.quickTiles = document.querySelectorAll('.studio-quick-tile');
+      this.dom.filterBtn = document.getElementById('studioFilterBtn');
+      this.dom.filterBadge = document.getElementById('studioFilterBadge');
+      this.dom.filterPanel = document.getElementById('studioFilterPanel');
+      this.dom.filterClearBtn = document.getElementById('studioFilterClear');
+      this.dom.filterChips = document.querySelectorAll('.studio-filter-panel .studio-filter-chip');
 
       this.dom.sectionTitle = document.getElementById('studioSectionTitle');
       this.dom.list = document.getElementById('studioList');
@@ -171,14 +180,63 @@
       }
     }
 
-    _bindQuickTiles() {
-      this.dom.quickTiles.forEach((tile) => {
-        tile.addEventListener('click', () => {
-          const action = tile.dataset.action;
-          // Stubs in this commit; future commits wire these up.
-          console.log(`[WorkoutStudio] Quick tile tapped: ${action} (handler coming soon)`);
+    _bindFilters() {
+      if (this.dom.filterBtn) {
+        this.dom.filterBtn.addEventListener('click', () => {
+          const wasOpen = this.dom.filterBtn.getAttribute('aria-expanded') === 'true';
+          this._setFilterPanelOpen(!wasOpen);
+        });
+      }
+
+      this.dom.filterChips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const group = chip.parentElement && chip.parentElement.dataset.group;
+          const value = chip.dataset.value;
+          if (!group || !value || !this.filters[group]) return;
+          const set = this.filters[group];
+          if (set.has(value)) set.delete(value);
+          else set.add(value);
+          chip.classList.toggle('is-active', set.has(value));
+          this._updateFilterBadge();
+          this._refreshList();
         });
       });
+
+      if (this.dom.filterClearBtn) {
+        this.dom.filterClearBtn.addEventListener('click', () => this._clearFilters());
+      }
+    }
+
+    _setFilterPanelOpen(open) {
+      if (!this.dom.filterPanel || !this.dom.filterBtn) return;
+      this.dom.filterPanel.hidden = !open;
+      this.dom.filterBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    _clearFilters() {
+      Object.keys(this.filters).forEach((g) => this.filters[g].clear());
+      this.dom.filterChips.forEach((chip) => chip.classList.remove('is-active'));
+      this._updateFilterBadge();
+      this._refreshList();
+    }
+
+    _activeFilterCount() {
+      return Object.values(this.filters).reduce((n, set) => n + set.size, 0);
+    }
+
+    _updateFilterBadge() {
+      const n = this._activeFilterCount();
+      if (this.dom.filterBadge) {
+        if (n > 0) {
+          this.dom.filterBadge.textContent = String(n);
+          this.dom.filterBadge.hidden = false;
+        } else {
+          this.dom.filterBadge.hidden = true;
+        }
+      }
+      if (this.dom.filterBtn) {
+        this.dom.filterBtn.classList.toggle('has-active', n > 0);
+      }
     }
 
     _bindContinue() {
@@ -530,13 +588,48 @@
 
     _computeList() {
       const query = this.searchQuery;
+      let pool;
       if (query && query.length >= 2 && window.exerciseCacheService) {
-        return window.exerciseCacheService.searchExercises(query, { limit: LIST_LIMIT });
+        // Search returns a wider candidate set; we still apply filters below.
+        pool = window.exerciseCacheService.searchExercises(query, { limit: LIST_LIMIT * 3 });
+      } else {
+        pool = this.allExercises;
       }
-      return this.allExercises.slice(0, LIST_LIMIT);
+      const filtered = this._applyFilters(pool);
+      return filtered.slice(0, LIST_LIMIT);
+    }
+
+    _applyFilters(pool) {
+      const muscleSet = this.filters.muscleGroup;
+      const equipmentSet = this.filters.equipment;
+      if (muscleSet.size === 0 && equipmentSet.size === 0) return pool;
+
+      const matchesMuscle = (ex) => {
+        if (muscleSet.size === 0) return true;
+        const target = String(ex.targetMuscleGroup || '');
+        // Exact match OR substring (handles "Quadriceps" vs "Legs", etc.)
+        if (muscleSet.has(target)) return true;
+        for (const v of muscleSet) {
+          if (target && target.toLowerCase().includes(v.toLowerCase())) return true;
+        }
+        return false;
+      };
+      const matchesEquipment = (ex) => {
+        if (equipmentSet.size === 0) return true;
+        const eq = String(ex.primaryEquipment || '');
+        if (equipmentSet.has(eq)) return true;
+        for (const v of equipmentSet) {
+          if (eq && eq.toLowerCase().includes(v.toLowerCase())) return true;
+        }
+        return false;
+      };
+      return pool.filter((ex) => matchesMuscle(ex) && matchesEquipment(ex));
     }
 
     _emptyMessage() {
+      if (this._activeFilterCount() > 0) {
+        return 'No exercises match the active filters.';
+      }
       if (this.searchQuery && this.searchQuery.length >= 2) {
         return `No exercises match "${this.searchQuery}".`;
       }
