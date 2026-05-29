@@ -18,7 +18,6 @@
 (function () {
   'use strict';
 
-  const FILTERS = ['all', 'recent', 'mine'];
   const LIST_LIMIT = 60;
   const DEFAULT_SETS = '3';
   const DEFAULT_REPS = '8-12';
@@ -29,7 +28,6 @@
       this.dom = {};
       this.tray = null;
       this.grid = null;
-      this.activeFilter = 'all';
       this.searchQuery = '';
       this.mode = 'plan'; // 'plan' | 'log'
       this.allExercises = [];
@@ -54,7 +52,6 @@
       this._initGrid();
       this._bindHeader();
       this._bindSearch();
-      this._bindFilters();
       this._bindQuickTiles();
       this._bindContinue();
       this._bindOrganize();
@@ -69,8 +66,7 @@
 
     _cacheDom() {
       this.dom.studio = document.getElementById('studio');
-      this.dom.backBtn = document.getElementById('studioBackBtn');
-      this.dom.workoutPicker = document.getElementById('studioWorkoutPicker');
+      this.dom.workoutNameInput = document.getElementById('studioWorkoutNameInput');
       this.dom.modePlanBtn = document.getElementById('studioModePlan');
       this.dom.modeLogBtn = document.getElementById('studioModeLog');
 
@@ -80,7 +76,6 @@
       this.dom.searchInput = document.getElementById('studioSearchInput');
       this.dom.searchClear = document.getElementById('studioSearchClear');
 
-      this.dom.filterChips = document.querySelectorAll('.studio-filter-chip');
       this.dom.quickTiles = document.querySelectorAll('.studio-quick-tile');
 
       this.dom.sectionTitle = document.getElementById('studioSectionTitle');
@@ -95,7 +90,6 @@
       // Page 2 (Organize) elements
       this.dom.viewSelect = document.getElementById('studioViewSelect');
       this.dom.viewOrganize = document.getElementById('studioViewOrganize');
-      this.dom.organizeNameInput = document.getElementById('studioOrganizeName');
       this.dom.organizeList = document.getElementById('studioOrganizeList');
       this.dom.organizeCount = document.getElementById('studioOrganizeCount');
       this.dom.organizeEmpty = document.getElementById('studioOrganizeEmpty');
@@ -129,26 +123,9 @@
     }
 
     _bindHeader() {
-      if (this.dom.backBtn) {
-        this.dom.backBtn.addEventListener('click', () => {
-          // On Page 2, the header back button goes back to Page 1 instead of
-          // leaving the studio entirely.
-          if (this.currentView === 'organize') {
-            this._showView('select');
-            return;
-          }
-          if (window.history.length > 1) {
-            window.history.back();
-          } else {
-            window.location.href = '/';
-          }
-        });
-      }
-
-      if (this.dom.workoutPicker) {
-        this.dom.workoutPicker.addEventListener('click', () => {
-          // Sheet UI lands in a later commit. For now, log so the click is visibly wired.
-          console.log('[WorkoutStudio] Workout picker tapped (sheet coming in next commit)');
+      if (this.dom.workoutNameInput) {
+        this.dom.workoutNameInput.addEventListener('input', (e) => {
+          this.workoutName = String(e.target.value || '').trim();
         });
       }
 
@@ -194,43 +171,12 @@
       }
     }
 
-    _bindFilters() {
-      this.dom.filterChips.forEach((chip) => {
-        chip.addEventListener('click', () => {
-          const next = chip.dataset.filter;
-          if (!FILTERS.includes(next)) return;
-          this._setActiveFilter(next);
-        });
-      });
-    }
-
-    _setActiveFilter(filter) {
-      this.activeFilter = filter;
-      this.dom.filterChips.forEach((chip) => {
-        const active = chip.dataset.filter === filter;
-        chip.classList.toggle('is-active', active);
-        chip.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      if (this.dom.sectionTitle) {
-        this.dom.sectionTitle.textContent =
-          filter === 'recent' ? 'Recent' :
-          filter === 'mine'   ? 'My Exercises' :
-                                'Exercises';
-      }
-      this._refreshList();
-    }
-
     _bindQuickTiles() {
       this.dom.quickTiles.forEach((tile) => {
         tile.addEventListener('click', () => {
           const action = tile.dataset.action;
           // Stubs in this commit; future commits wire these up.
           console.log(`[WorkoutStudio] Quick tile tapped: ${action} (handler coming soon)`);
-          if (action === 'favorites') {
-            // Cheap shortcut already possible: jump to the Mine filter, which
-            // includes favorites + custom exercises.
-            this._setActiveFilter('mine');
-          }
         });
       });
     }
@@ -248,15 +194,8 @@
         this.dom.organizeBackBtn.addEventListener('click', () => this._showView('select'));
       }
 
-      if (this.dom.organizeNameInput) {
-        this.dom.organizeNameInput.addEventListener('input', (e) => {
-          this.workoutName = String(e.target.value || '').trim();
-          this._syncHeaderName();
-        });
-      }
-
-      // Per-card field edits and removals are now handled by
-      // StudioExerciseCard via the callbacks wired in _renderOrganize().
+      // Per-card field edits and removals are handled by StudioExerciseCard
+      // via the callbacks wired in _renderOrganize().
 
       if (this.dom.saveBtn) {
         this.dom.saveBtn.addEventListener('click', () => this._handleSave());
@@ -279,11 +218,10 @@
 
       if (view === 'organize') {
         this._renderOrganize();
-        if (this.dom.organizeNameInput && !this.dom.organizeNameInput.value && this.workoutName) {
-          this.dom.organizeNameInput.value = this.workoutName;
-        }
-        if (this.dom.organizeNameInput && !this.dom.organizeNameInput.value) {
-          setTimeout(() => this.dom.organizeNameInput.focus(), 150);
+        // If the workout has no name yet, nudge the user to fill the slim
+        // header input before saving.
+        if (!this.workoutName && this.dom.workoutNameInput) {
+          setTimeout(() => this.dom.workoutNameInput.focus(), 150);
         }
       }
       this._setStatus('', null);
@@ -460,12 +398,6 @@
         .replace(/"/g, '&quot;');
     }
 
-    _syncHeaderName() {
-      const el = document.getElementById('studioWorkoutName');
-      if (!el) return;
-      el.textContent = this.workoutName || 'New Workout';
-    }
-
     _buildSavePayload() {
       const items = this.tray ? this.tray.getItems() : [];
       const sections = items.map((it, idx) => {
@@ -522,7 +454,7 @@
       }
       if (!this.workoutName) {
         this._setStatus('Give your workout a name first.', 'error');
-        if (this.dom.organizeNameInput) this.dom.organizeNameInput.focus();
+        if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
         return;
       }
 
@@ -578,23 +510,17 @@
 
       window.exerciseCacheService.on('customLoaded', () => {
         this.customExercises = window.exerciseCacheService.customExercises || [];
-        if (this.activeFilter === 'mine') this._refreshList();
       });
-
-      // Favorites: loaded lazily — try to read from a global set if dashboard
-      // exercises module is also present. Safe no-op otherwise.
-      this.favoriteIds = (window.ffn && window.ffn.exercises && window.ffn.exercises.favorites)
-        || new Set();
 
       this._refreshList();
     }
 
     _refreshList() {
       if (!this.grid) return;
-      const rows = this._computeListForActiveFilter();
+      const rows = this._computeList();
       if (rows.length === 0) {
         this.grid.setExercises([]);
-        this._showEmpty(this._emptyMessageForFilter());
+        this._showEmpty(this._emptyMessage());
         return;
       }
       this._hideEmpty();
@@ -602,79 +528,19 @@
       if (this.tray) this.grid.setCounts(this.tray.countsByExerciseId());
     }
 
-    _computeListForActiveFilter() {
+    _computeList() {
       const query = this.searchQuery;
-      const usage = (window.exerciseCacheService && window.exerciseCacheService.usageData) || {};
-
-      let pool;
-      switch (this.activeFilter) {
-        case 'recent': {
-          // Exercises with usage records, sorted by lastUsed desc.
-          const usedIds = Object.keys(usage);
-          const byId = new Map();
-          for (const ex of this.allExercises) {
-            byId.set(String(ex.id || ex.name), ex);
-          }
-          for (const ex of this.customExercises) {
-            byId.set(String(ex.id || ex.name), ex);
-          }
-          pool = usedIds
-            .map((id) => {
-              const ex = byId.get(String(id));
-              return ex ? { ex, lastUsed: usage[id].lastUsed || 0 } : null;
-            })
-            .filter(Boolean)
-            .sort((a, b) => b.lastUsed - a.lastUsed)
-            .map((entry) => entry.ex);
-          break;
-        }
-        case 'mine': {
-          pool = this.customExercises.slice();
-          // Also include favorites from the global catalog
-          if (this.favoriteIds && this.favoriteIds.size > 0) {
-            for (const ex of this.allExercises) {
-              if (this.favoriteIds.has(ex.id) && !pool.some((p) => p.id === ex.id)) {
-                pool.push(ex);
-              }
-            }
-          }
-          break;
-        }
-        case 'all':
-        default:
-          pool = this.allExercises.slice();
-          break;
-      }
-
       if (query && query.length >= 2 && window.exerciseCacheService) {
-        // Use the cache service's search when looking at the full catalog;
-        // otherwise filter the in-memory pool by name/muscle/equipment substring.
-        if (this.activeFilter === 'all') {
-          return window.exerciseCacheService.searchExercises(query, { limit: LIST_LIMIT });
-        }
-        const q = query.toLowerCase();
-        return pool.filter((ex) => {
-          const hay = `${ex.name || ''} ${ex.targetMuscleGroup || ''} ${ex.primaryEquipment || ''}`.toLowerCase();
-          return hay.includes(q);
-        }).slice(0, LIST_LIMIT);
+        return window.exerciseCacheService.searchExercises(query, { limit: LIST_LIMIT });
       }
-
-      return pool.slice(0, LIST_LIMIT);
+      return this.allExercises.slice(0, LIST_LIMIT);
     }
 
-    _emptyMessageForFilter() {
+    _emptyMessage() {
       if (this.searchQuery && this.searchQuery.length >= 2) {
         return `No exercises match "${this.searchQuery}".`;
       }
-      switch (this.activeFilter) {
-        case 'recent':
-          return 'No recent exercises yet — pick one from "All" to start building history.';
-        case 'mine':
-          return 'No custom or favorited exercises yet.';
-        case 'all':
-        default:
-          return 'No exercises available.';
-      }
+      return 'No exercises available.';
     }
 
     _showEmpty(text) {

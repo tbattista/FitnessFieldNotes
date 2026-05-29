@@ -86,19 +86,19 @@
           <div class="content-wrapper">
             <div class="container-xxl flex-grow-1 container-p-y studio-container">
 
-              <!-- Studio shell: persistent header + tray + view container -->
+              <!-- Studio shell: slim header + tray + view container -->
               <section class="studio" id="studio" data-view="select">
 
-                <!-- Persistent header: back, workout name dropdown, mode toggle -->
-                <header class="studio-header">
-                  <button class="studio-header-btn studio-back-btn" id="studioBackBtn" type="button" aria-label="Back">
-                    <i class="bx bx-arrow-back"></i>
-                  </button>
-
-                  <button class="studio-workout-picker" id="studioWorkoutPicker" type="button" aria-haspopup="dialog">
-                    <span class="studio-workout-name" id="studioWorkoutName">New Workout</span>
-                    <i class="bx bx-chevron-down"></i>
-                  </button>
+                <!-- Slim header: workout name input (left) + Plan/Log toggle (right). No back button -->
+                <header class="studio-slim-header">
+                  <input
+                    type="text"
+                    class="studio-slim-name"
+                    id="studioWorkoutNameInput"
+                    placeholder="Workout name"
+                    maxlength="100"
+                    autocomplete="off"
+                    aria-label="Workout name" />
 
                   <div class="studio-mode-toggle" role="group" aria-label="Workout mode">
                     <button class="studio-mode-btn is-active" id="studioModePlan" type="button" data-mode="plan">Plan</button>
@@ -130,13 +130,6 @@
                     <button class="studio-search-clear" id="studioSearchClear" type="button" aria-label="Clear search" style="display: none;">
                       <i class="bx bx-x"></i>
                     </button>
-                  </div>
-
-                  <!-- Filter chips: collapses the prior tabs into one list with filters -->
-                  <div class="studio-filter-chips" role="tablist" id="studioFilters">
-                    <button class="studio-filter-chip is-active" role="tab" data-filter="all" id="studioFilterAll" aria-selected="true" type="button">All</button>
-                    <button class="studio-filter-chip" role="tab" data-filter="recent" id="studioFilterRecent" aria-selected="false" type="button">Recent</button>
-                    <button class="studio-filter-chip" role="tab" data-filter="mine" id="studioFilterMine" aria-selected="false" type="button">Mine</button>
                   </div>
 
                   <!-- Quick-action tiles (Activity, Custom, Quick Add, Favorites) -->
@@ -183,17 +176,6 @@
 
                 <!-- View: Page 2 (Organize) -->
                 <div class="studio-view studio-view-organize" id="studioViewOrganize" hidden>
-                  <div class="studio-organize-name">
-                    <label for="studioOrganizeName" class="studio-organize-label">Workout name</label>
-                    <input
-                      type="text"
-                      class="studio-organize-name-input"
-                      id="studioOrganizeName"
-                      placeholder="e.g. Push Day, Chest & Back, Leg Day"
-                      maxlength="100"
-                      autocomplete="off" />
-                  </div>
-
                   <div class="studio-organize-section-header">
                     <h6 class="studio-section-title">Exercises</h6>
                     <span class="studio-organize-count" id="studioOrganizeCount">0</span>

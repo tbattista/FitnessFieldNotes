@@ -5,12 +5,13 @@ const BASE = 'http://localhost:8001';
 
 test.describe('Workout Studio — Foundation + Live Exercise List', () => {
 
-    test('page loads with persistent header, sticky tray, search, and filter chips', async ({ page }) => {
+    test('page loads with slim header, sticky tray, and search', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
 
-        // Header pieces
-        await expect(page.locator('#studioBackBtn')).toBeVisible();
-        await expect(page.locator('#studioWorkoutPicker')).toContainText('New Workout');
+        // Slim header: workout name input (no back button, no picker dropdown) + mode toggle
+        await expect(page.locator('#studioBackBtn')).toHaveCount(0);
+        await expect(page.locator('#studioWorkoutPicker')).toHaveCount(0);
+        await expect(page.locator('#studioWorkoutNameInput')).toBeVisible();
         await expect(page.locator('#studioModePlan')).toHaveClass(/is-active/);
         await expect(page.locator('#studioModeLog')).not.toHaveClass(/is-active/);
 
@@ -21,41 +22,21 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         // Search input
         await expect(page.locator('#studioSearchInput')).toBeVisible();
 
-        // Filter chips (replacing the previous tab strip)
-        await expect(page.locator('#studioFilterAll')).toBeVisible();
-        await expect(page.locator('#studioFilterRecent')).toBeVisible();
-        await expect(page.locator('#studioFilterMine')).toBeVisible();
-        await expect(page.locator('#studioFilterAll')).toHaveClass(/is-active/);
+        // No filter chips anymore — single unified list
+        await expect(page.locator('.studio-filter-chip')).toHaveCount(0);
+
+        // Section title is the static "Exercises" label
+        await expect(page.locator('#studioSectionTitle')).toHaveText('Exercises');
 
         // Continue CTA hidden when tray is empty
         await expect(page.locator('#studioContinueCta')).toBeHidden();
     });
 
-    test('default "All" filter renders the live exercise list immediately', async ({ page }) => {
+    test('exercise list renders immediately on load (no tab/filter click required)', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
-
-        // No tab click required — "All" is the default, exercises should populate.
         const firstRow = page.locator('.studio-row').first();
         await expect(firstRow).toBeVisible({ timeout: 15000 });
         await expect(firstRow.locator('.studio-row-title')).not.toBeEmpty();
-    });
-
-    test('switching filter chips changes active state and section title', async ({ page }) => {
-        await page.goto(`${BASE}/workout-studio.html`);
-        await expect(page.locator('#studioFilterAll')).toHaveClass(/is-active/);
-        await expect(page.locator('#studioSectionTitle')).toHaveText('Exercises');
-
-        await page.locator('#studioFilterRecent').click();
-        await expect(page.locator('#studioFilterRecent')).toHaveClass(/is-active/);
-        await expect(page.locator('#studioFilterAll')).not.toHaveClass(/is-active/);
-        await expect(page.locator('#studioSectionTitle')).toHaveText('Recent');
-
-        await page.locator('#studioFilterMine').click();
-        await expect(page.locator('#studioFilterMine')).toHaveClass(/is-active/);
-        await expect(page.locator('#studioSectionTitle')).toHaveText('My Exercises');
-
-        await page.locator('#studioFilterAll').click();
-        await expect(page.locator('#studioFilterAll')).toHaveClass(/is-active/);
     });
 
     test('clicking "+" on a row adds the exercise to the tray as a chip', async ({ page }) => {
@@ -216,15 +197,6 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(page.locator('.studio-tray-chip')).toHaveCount(2);
     });
 
-    test('header back button on Page 2 returns to Page 1 instead of leaving the studio', async ({ page }) => {
-        await addNFromGrid(page, 1);
-        await page.locator('#studioContinueBtn').click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
-
-        await page.locator('#studioBackBtn').click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
-    });
-
     test('3-dot menu Remove deletes the card and the tray chip', async ({ page }) => {
         await addNFromGrid(page, 2);
         await page.locator('#studioContinueBtn').click();
@@ -357,7 +329,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         // (localStorage) that wouldn't hit the network.
         await page.evaluate(() => { delete window.dataManager; });
 
-        await page.locator('#studioOrganizeName').fill('Studio Test Push Day');
+        await page.locator('#studioWorkoutNameInput').fill('Studio Test Push Day');
 
         // Tap-edit the first card's weight value to 135
         const firstCard = page.locator('.studio-card').first();
