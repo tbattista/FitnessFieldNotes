@@ -197,6 +197,23 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('#globalLogFab')).toHaveCount(0);
     });
 
+    test('section header shows "X of Y" count that grows as more load', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        const countEl = page.locator('#studioListCount');
+        const before = (await countEl.textContent() || '').trim();
+        // Expect "60 of 139" or "60 of 2,400" — number, "of", number
+        expect(before).toMatch(/^[\d,]+ of [\d,]+$/);
+
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._loadMore && window.workoutStudio._loadMore());
+
+        const after = (await countEl.textContent() || '').trim();
+        const firstBefore = parseInt(before.split(' ')[0].replace(/,/g, ''), 10);
+        const firstAfter = parseInt(after.split(' ')[0].replace(/,/g, ''), 10);
+        expect(firstAfter).toBeGreaterThan(firstBefore);
+    });
+
     test('exercise list paginates — initial render is one page, more load on scroll', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });

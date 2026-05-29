@@ -98,6 +98,7 @@
       this.dom.filterChips = document.querySelectorAll('.studio-filter-panel .studio-filter-chip');
 
       this.dom.sectionTitle = document.getElementById('studioSectionTitle');
+      this.dom.listCount = document.getElementById('studioListCount');
       this.dom.list = document.getElementById('studioList');
       this.dom.empty = document.getElementById('studioEmpty');
       this.dom.emptyText = document.getElementById('studioEmptyText');
@@ -656,6 +657,8 @@
         this.dom.list.dataset.totalCount = String(this.totalAvailable);
       }
 
+      this._updateListCount(rows.length, this.totalAvailable);
+
       if (rows.length === 0) {
         this.grid.setExercises([]);
         this._showEmpty(this._emptyMessage());
@@ -668,6 +671,24 @@
 
       // Show the sentinel only when there are more rows we could reveal
       this._setSentinelVisible(rows.length < this.totalAvailable);
+    }
+
+    _updateListCount(rendered, total) {
+      if (!this.dom.listCount) return;
+      if (total === 0) {
+        this.dom.listCount.textContent = '';
+        this.dom.listCount.classList.remove('is-hint');
+        return;
+      }
+      const fmt = (n) => n.toLocaleString();
+      if (rendered >= total) {
+        this.dom.listCount.textContent = `${fmt(total)} total`;
+      } else {
+        this.dom.listCount.textContent = `${fmt(rendered)} of ${fmt(total)}`;
+      }
+      // Subtle nudge: when the unfiltered pool is large, hint that filters help.
+      const hasFilters = this._activeFilterCount() > 0 || (this.searchQuery && this.searchQuery.length >= 2);
+      this.dom.listCount.classList.toggle('is-hint', !hasFilters && total > 200);
     }
 
     _computeFilteredAll() {

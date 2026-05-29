@@ -202,10 +202,27 @@
   justify-content: space-between;
   padding: 1rem 0.25rem 0.5rem;
 }
+.studio-section-header-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
 .studio-section-title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
+}
+.studio-section-count {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.studio-section-count.is-hint {
+  color: var(--bs-primary);
+  font-weight: 600;
 }
 .studio-filter-btn {
   display: inline-flex;
