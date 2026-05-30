@@ -39,7 +39,7 @@
   }
 
   class StudioExerciseCard {
-    constructor({ instanceId, name, state, callbacks } = {}) {
+    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions } = {}) {
       this.instanceId = instanceId;
       this.name = name || 'Exercise';
       this.state = Object.assign({
@@ -50,6 +50,11 @@
         weightUnit: 'lbs',
       }, state || {});
       this.callbacks = callbacks || {};
+      // Visual + menu state for blocks
+      // inBlock: { blockId, blockName } | null
+      // blockOptions: array of { blockId, name } for "Move to block ..." targets
+      this.inBlock = inBlock || null;
+      this.blockOptions = Array.isArray(blockOptions) ? blockOptions : [];
       this.el = null;
       this._weightCtl = null;
       this._repsSetsCtl = null;
@@ -111,9 +116,12 @@
       const weightDisplay = weight === '' ? '—' : escapeHtml(weight);
       const unitDisplay = (unit !== 'diy' && weight !== '') ? unit : '';
       const restDisplay = escapeHtml(this.state.rest || '60s');
+      const blockClass = this.inBlock ? ' studio-card-in-block' : '';
+      const blockAttr = this.inBlock ? ` data-block-id="${escapeHtml(this.inBlock.blockId)}"` : '';
+      const moveMenuItems = this._buildMoveMenuItems();
 
       return `
-        <div class="studio-card" role="listitem" data-instance-id="${safeId}">
+        <div class="studio-card${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}>
           <div class="studio-card-header">
             <div class="studio-card-name">${safeName}</div>
             <div class="studio-card-actions">
@@ -131,6 +139,7 @@
                   <button class="studio-card-menu-item" role="menuitem" data-action="move-down" type="button">
                     <i class="bx bx-down-arrow-alt"></i> Move down
                   </button>
+                  ${moveMenuItems}
                   <button class="studio-card-menu-item" role="menuitem" data-action="duplicate" type="button">
                     <i class="bx bx-copy"></i> Duplicate
                   </button>
@@ -239,8 +248,9 @@
           if (!item) return;
           e.stopPropagation();
           const action = item.dataset.action;
+          const blockId = item.dataset.blockId || null;
           this._toggleMenu(true); // close
-          if (action) this._fire('onMenuAction', action);
+          if (action) this._fire('onMenuAction', action, blockId);
         });
         // Close on outside click
         this._handleDocClickForMenu = (e) => {
@@ -355,6 +365,36 @@
           console.warn('[StudioExerciseCard] RepsSetsFieldController init failed:', err);
         }
       }
+    }
+
+    _buildMoveMenuItems() {
+      const parts = [];
+      // If currently inside a block, offer "Move out of block"
+      if (this.inBlock) {
+        parts.push(`
+          <button class="studio-card-menu-item" role="menuitem" data-action="move-out-of-block" type="button">
+            <i class="bx bx-exit"></i> Move out of block
+          </button>
+        `);
+      }
+      // Offer "Move to: <block name>" for every block except the current one
+      const targets = this.blockOptions.filter((b) => !this.inBlock || b.blockId !== this.inBlock.blockId);
+      if (targets.length > 0) {
+        // Separator before the move-to-block items, only if there are preceding items
+        parts.push(`<div class="studio-card-menu-sep" role="separator"></div>`);
+        for (const b of targets) {
+          const safeName = escapeHtml(b.name || 'Block');
+          const safeBlockId = escapeHtml(b.blockId);
+          parts.push(`
+            <button class="studio-card-menu-item" role="menuitem"
+                    data-action="move-to-block" data-block-id="${safeBlockId}" type="button">
+              <i class="bx bx-collection"></i> Move to: ${safeName || '<span class="studio-card-menu-muted">(unnamed)</span>'}
+            </button>
+          `);
+        }
+        parts.push(`<div class="studio-card-menu-sep" role="separator"></div>`);
+      }
+      return parts.join('');
     }
 
     _toggleMenu(forceClose) {

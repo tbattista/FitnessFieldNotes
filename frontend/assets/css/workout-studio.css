@@ -753,6 +753,143 @@ html[data-bs-theme="dark"] .studio-add-custom-btn.is-active {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
+/* -------------------- Studio Block (Page 2) -------------------- */
+.studio-add-block-btn {
+  margin-left: auto;
+  padding: 0.25rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.studio-add-block-btn .bx { font-size: 1rem; }
+
+.studio-block {
+  background: rgba(0, 0, 0, 0.025);
+  border-radius: 14px;
+  padding: 0.4rem 0.4rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.studio-block.is-empty {
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  background: transparent;
+}
+
+.studio-block-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.4rem;
+}
+.studio-block-icon {
+  color: var(--bs-primary);
+  font-size: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.studio-block-name-input {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--bs-body-color);
+  padding: 0.1rem 0.25rem;
+  min-width: 0;
+}
+.studio-block-name-input::placeholder {
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+  opacity: 0.7;
+}
+.studio-block-name-input:focus {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+}
+
+.studio-block-icon-btn {
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--bs-secondary-color);
+  font-size: 1.1rem;
+  flex: 0 0 auto;
+}
+.studio-block-icon-btn:hover { background: rgba(0, 0, 0, 0.06); }
+
+.studio-block-menu-wrap { position: relative; }
+.studio-block-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.3rem;
+  z-index: 20;
+}
+.studio-block-menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.studio-block-menu-item:hover { background: rgba(0, 0, 0, 0.06); }
+.studio-block-menu-item[disabled] { opacity: 0.4; cursor: not-allowed; }
+.studio-block-menu-item-danger { color: var(--bs-danger); }
+.studio-block-menu-item-danger:hover { background: rgba(220, 53, 69, 0.08); }
+.studio-block-menu-item .bx { font-size: 1.05rem; }
+
+.studio-block-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 0.25rem;
+}
+.studio-block-children:empty { display: none; }
+.studio-block-placeholder {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  text-align: center;
+  padding: 0.65rem 0.5rem;
+  font-style: italic;
+}
+.studio-block:not(.is-empty) .studio-block-placeholder { display: none; }
+
+/* Card-in-block visual treatment: subtle left rail, no own background. */
+.studio-card.studio-card-in-block {
+  background: var(--bs-body-bg);
+  border-left: 3px solid var(--bs-primary);
+}
+
+/* Card menu separator + muted label hint for "Move to: …" */
+.studio-card-menu-sep {
+  height: 1px;
+  background: var(--bs-border-color);
+  margin: 0.25rem 0.1rem;
+}
+
 /* Dark-mode parity */
 html[data-bs-theme="dark"] .studio-card,
 html[data-bs-theme="dark"] .studio-card-icon-btn:hover,
@@ -760,6 +897,20 @@ html[data-bs-theme="dark"] .studio-card-field .click-to-edit:hover,
 html[data-bs-theme="dark"] .studio-card-menu-item:hover {
   background: rgba(255, 255, 255, 0.06);
 }
+html[data-bs-theme="dark"] .studio-block { background: rgba(255, 255, 255, 0.04); }
+html[data-bs-theme="dark"] .studio-block.is-empty {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: transparent;
+}
+html[data-bs-theme="dark"] .studio-block-name-input:focus { background: rgba(255, 255, 255, 0.06); }
+html[data-bs-theme="dark"] .studio-block-icon-btn:hover,
+html[data-bs-theme="dark"] .studio-block-menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+html[data-bs-theme="dark"] .studio-block-menu {
+  background: var(--bs-tertiary-bg);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .studio-card.studio-card-in-block { background: var(--bs-tertiary-bg); }
+
 html[data-bs-theme="dark"] .studio-card-field-input,
 html[data-bs-theme="dark"] .studio-card-menu {
   background: rgba(255, 255, 255, 0.05);

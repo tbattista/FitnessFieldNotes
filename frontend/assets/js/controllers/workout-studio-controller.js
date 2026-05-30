@@ -40,6 +40,17 @@
       this.organizeState = new Map();
       // Live card components mounted on Page 2, keyed by instanceId
       this.studioCards = new Map();
+      // Live block components mounted on Page 2, keyed by blockId
+      this.studioBlocks = new Map();
+      // Generic containers — Map<blockId, { name: string, instanceIds: string[] }>
+      this.blocks = new Map();
+      this._blockSeq = 1;
+      // Page 2 render order. Each entry is one of:
+      //   { kind: 'card', instanceId }   — top-level (loose) exercise card
+      //   { kind: 'block', blockId }     — block whose children live in blocks.get(blockId).instanceIds
+      // Every instanceId in tray.items appears exactly once across this array
+      // (as a top-level card OR inside one block's instanceIds).
+      this.organizeOrder = [];
       this.workoutName = '';
       this._saveInFlight = false;
       // Active filter selections by group (Set per group). Empty Sets = no filter.
@@ -122,6 +133,7 @@
       this.dom.organizeBackBtn = document.getElementById('studioOrganizeBack');
       this.dom.saveBtn = document.getElementById('studioSaveBtn');
       this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
+      this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
     }
 
     _initTray() {
@@ -322,6 +334,145 @@
       if (this.dom.saveBtn) {
         this.dom.saveBtn.addEventListener('click', () => this._handleSave());
       }
+
+      if (this.dom.addBlockBtn) {
+        this.dom.addBlockBtn.addEventListener('click', () => this._createBlock());
+      }
+    }
+
+    _createBlock() {
+      const blockId = `block-${Date.now()}-${this._blockSeq++}`;
+      this.blocks.set(blockId, { name: '', instanceIds: [] });
+      this.organizeOrder.push({ kind: 'block', blockId });
+      this._renderOrganize();
+      // Focus the new block's name input so the user can type immediately
+      requestAnimationFrame(() => {
+        const node = this.dom.organizeList && this.dom.organizeList.querySelector(
+          `.studio-block[data-block-id="${blockId}"] .studio-block-name-input`
+        );
+        if (node) node.focus();
+      });
+    }
+
+    _onBlockRename(blockId, name) {
+      const b = this.blocks.get(blockId);
+      if (!b) return;
+      b.name = name;
+      // Re-render cards so any "Move to: <name>" menu items pick up the new label.
+      this._renderOrganize();
+    }
+
+    _onBlockMenuAction(blockId, action) {
+      switch (action) {
+        case 'move-up':
+          this._moveOrderEntry({ kind: 'block', blockId }, -1);
+          break;
+        case 'move-down':
+          this._moveOrderEntry({ kind: 'block', blockId }, +1);
+          break;
+        case 'delete':
+          this._deleteBlock(blockId);
+          break;
+      }
+    }
+
+    _deleteBlock(blockId) {
+      const block = this.blocks.get(blockId);
+      if (!block) return;
+      const blockOrderIdx = this.organizeOrder.findIndex(
+        (e) => e.kind === 'block' && e.blockId === blockId
+      );
+      if (blockOrderIdx === -1) return;
+      // Promote each child instanceId back to a top-level card at the block's position,
+      // preserving their internal order.
+      const promoted = block.instanceIds.map((iid) => ({ kind: 'card', instanceId: iid }));
+      this.organizeOrder.splice(blockOrderIdx, 1, ...promoted);
+      this.blocks.delete(blockId);
+      this._renderOrganize();
+    }
+
+    _moveOrderEntry(matchEntry, delta) {
+      const idx = this.organizeOrder.findIndex((e) => {
+        if (e.kind !== matchEntry.kind) return false;
+        if (matchEntry.kind === 'card') return e.instanceId === matchEntry.instanceId;
+        if (matchEntry.kind === 'block') return e.blockId === matchEntry.blockId;
+        return false;
+      });
+      if (idx === -1) return;
+      const target = idx + delta;
+      if (target < 0 || target >= this.organizeOrder.length) return;
+      const [moved] = this.organizeOrder.splice(idx, 1);
+      this.organizeOrder.splice(target, 0, moved);
+      this._renderOrganize();
+    }
+
+    _moveCardToBlock(instanceId, blockId) {
+      const block = this.blocks.get(blockId);
+      if (!block) return;
+      // Remove the instanceId wherever it currently lives.
+      this._removeInstanceFromOrder(instanceId);
+      // Append to the destination block.
+      if (!block.instanceIds.includes(instanceId)) {
+        block.instanceIds.push(instanceId);
+      }
+      this._renderOrganize();
+    }
+
+    _moveCardOutOfBlock(instanceId) {
+      // Find the block holding this instanceId, if any.
+      let sourceBlockId = null;
+      for (const [bid, b] of this.blocks.entries()) {
+        if (b.instanceIds.includes(instanceId)) { sourceBlockId = bid; break; }
+      }
+      if (!sourceBlockId) return;
+      const block = this.blocks.get(sourceBlockId);
+      block.instanceIds = block.instanceIds.filter((id) => id !== instanceId);
+
+      // Insert as a top-level card immediately after the source block in organizeOrder.
+      const blockIdx = this.organizeOrder.findIndex(
+        (e) => e.kind === 'block' && e.blockId === sourceBlockId
+      );
+      const insertAt = blockIdx === -1 ? this.organizeOrder.length : blockIdx + 1;
+      this.organizeOrder.splice(insertAt, 0, { kind: 'card', instanceId });
+      this._renderOrganize();
+    }
+
+    /** Remove an instanceId from any location in organizeOrder/blocks. */
+    _removeInstanceFromOrder(instanceId) {
+      const looseIdx = this.organizeOrder.findIndex(
+        (e) => e.kind === 'card' && e.instanceId === instanceId
+      );
+      if (looseIdx !== -1) {
+        this.organizeOrder.splice(looseIdx, 1);
+        return;
+      }
+      for (const b of this.blocks.values()) {
+        const i = b.instanceIds.indexOf(instanceId);
+        if (i !== -1) {
+          b.instanceIds.splice(i, 1);
+          return;
+        }
+      }
+    }
+
+    /** Find which block (if any) currently holds the given instanceId. */
+    _findBlockOf(instanceId) {
+      for (const [bid, b] of this.blocks.entries()) {
+        if (b.instanceIds.includes(instanceId)) return { blockId: bid, block: b };
+      }
+      return null;
+    }
+
+    /** Snapshot of blocks for menu rendering: [{ blockId, name }, ...] in organizeOrder order. */
+    _blockOptionsList() {
+      const out = [];
+      for (const entry of this.organizeOrder) {
+        if (entry.kind === 'block') {
+          const b = this.blocks.get(entry.blockId);
+          if (b) out.push({ blockId: entry.blockId, name: b.name || 'Block' });
+        }
+      }
+      return out;
     }
 
     _showView(view) {
@@ -352,50 +503,106 @@
     _renderOrganize() {
       if (!this.dom.organizeList || !this.tray) return;
       const items = this.tray.getItems();
+      const itemMap = new Map(items.map((it) => [it.instanceId, it]));
 
       if (this.dom.organizeCount) {
         this.dom.organizeCount.textContent = items.length === 1
           ? '1 exercise'
           : `${items.length} exercises`;
       }
-      if (items.length === 0) {
-        this._destroyAllCards();
-        this.dom.organizeList.innerHTML = '';
-        if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = false;
-        if (this.dom.saveBtn) this.dom.saveBtn.disabled = true;
-        return;
-      }
-      if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = true;
-      if (this.dom.saveBtn) this.dom.saveBtn.disabled = false;
+      // The empty-state + save-disabled signal is driven by tray contents, not
+      // by organizeOrder (empty blocks are allowed and should still let users save).
+      const hasExercises = items.length > 0;
+      if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = hasExercises;
+      if (this.dom.saveBtn) this.dom.saveBtn.disabled = !hasExercises;
+      // Add-Block is irrelevant when there's nothing to add to. Keep it usable
+      // any time the user is on Page 2 (you can create a block first then move
+      // cards in), but hide it on the dead-end empty state.
+      if (this.dom.addBlockBtn) this.dom.addBlockBtn.hidden = !hasExercises;
 
-      // Diff: drop cards no longer in the tray, rebuild from scratch in order.
-      // The card count is small (typical workout is <20 exercises), so a full
-      // rebuild is simpler and avoids stale field-controller bindings.
+      // Full rebuild — card count per workout is typically <20 so a diff is overkill,
+      // and re-binding live field controllers cleanly is easier with a fresh tree.
       this._destroyAllCards();
+      this._destroyAllBlocks();
       this.dom.organizeList.innerHTML = '';
 
-      items.forEach((item, idx) => {
-        const state = this._ensureOrganizeState(item.instanceId);
-        const card = new window.StudioExerciseCard({
-          instanceId: item.instanceId,
-          name: item.name,
-          state,
-          callbacks: {
-            onChange: (instanceId, partial) => this._onCardChange(instanceId, partial),
-            onPencil: (instanceId) => this._onPencil(instanceId),
-            onMenuAction: (instanceId, action) => this._onCardMenuAction(instanceId, action),
-          },
-        });
-        const node = card.render();
-        this.dom.organizeList.appendChild(node);
-        card.setIndex(idx, items.length);
-        this.studioCards.set(item.instanceId, card);
+      if (!hasExercises) return;
+
+      const blockOptions = this._blockOptionsList();
+
+      // We compute a flat sequence position for top-level entries so that
+      // Move Up / Move Down on cards and blocks can disable correctly at the ends.
+      const total = this.organizeOrder.length;
+      this.organizeOrder.forEach((entry, idx) => {
+        if (entry.kind === 'card') {
+          const item = itemMap.get(entry.instanceId);
+          if (!item) return; // referenced item was removed
+          const card = this._mountCard(item, { idx, total, container: this.dom.organizeList, blockOptions, inBlock: null });
+          card.setIndex(idx, total);
+        } else if (entry.kind === 'block') {
+          const block = this.blocks.get(entry.blockId);
+          if (!block) return;
+          const blockComp = new window.StudioBlock({
+            blockId: entry.blockId,
+            name: block.name,
+            callbacks: {
+              onRename: (blockId, name) => this._onBlockRename(blockId, name),
+              onMenuAction: (blockId, action) => this._onBlockMenuAction(blockId, action),
+            },
+          });
+          const blockNode = blockComp.render();
+          this.dom.organizeList.appendChild(blockNode);
+          blockComp.setIndex(idx, total);
+          this.studioBlocks.set(entry.blockId, blockComp);
+
+          // Mount each child card into the block's children slot
+          const slot = blockComp.getChildrenSlot();
+          const childCount = block.instanceIds.length;
+          block.instanceIds.forEach((iid, childIdx) => {
+            const item = itemMap.get(iid);
+            if (!item) return;
+            const card = this._mountCard(item, {
+              idx: childIdx,
+              total: childCount,
+              container: slot,
+              blockOptions,
+              inBlock: { blockId: entry.blockId, blockName: block.name || '' },
+            });
+            card.setIndex(childIdx, childCount);
+          });
+          blockComp.setChildCount(childCount);
+        }
       });
+    }
+
+    _mountCard(item, { idx, total, container, blockOptions, inBlock }) {
+      const state = this._ensureOrganizeState(item.instanceId);
+      const card = new window.StudioExerciseCard({
+        instanceId: item.instanceId,
+        name: item.name,
+        state,
+        inBlock,
+        blockOptions,
+        callbacks: {
+          onChange: (instanceId, partial) => this._onCardChange(instanceId, partial),
+          onPencil: (instanceId) => this._onPencil(instanceId),
+          onMenuAction: (instanceId, action, blockId) => this._onCardMenuAction(instanceId, action, blockId),
+        },
+      });
+      const node = card.render();
+      container.appendChild(node);
+      this.studioCards.set(item.instanceId, card);
+      return card;
     }
 
     _destroyAllCards() {
       this.studioCards.forEach((c) => c.destroy && c.destroy());
       this.studioCards.clear();
+    }
+
+    _destroyAllBlocks() {
+      this.studioBlocks.forEach((b) => b.destroy && b.destroy());
+      this.studioBlocks.clear();
     }
 
     _ensureOrganizeState(instanceId) {
@@ -426,40 +633,53 @@
       this.organizeState.set(instanceId, state);
     }
 
-    _onCardMenuAction(instanceId, action) {
+    _onCardMenuAction(instanceId, action, blockId) {
       if (!this.tray) return;
-      const items = this.tray.getItems();
-      const idx = items.findIndex((it) => it.instanceId === instanceId);
-      if (idx === -1) return;
 
       switch (action) {
         case 'move-up':
-          if (idx > 0) this._reorderTray(idx, idx - 1);
+          this._moveCardWithinContainer(instanceId, -1);
           break;
         case 'move-down':
-          if (idx < items.length - 1) this._reorderTray(idx, idx + 1);
+          this._moveCardWithinContainer(instanceId, +1);
           break;
         case 'duplicate': {
-          const src = items[idx];
-          if (this.tray && src && src.exercise) this.tray.add(src.exercise);
+          const src = this.tray.getItems().find((it) => it.instanceId === instanceId);
+          if (src && src.exercise) this.tray.add(src.exercise);
           break;
         }
         case 'delete':
           this.tray.remove(instanceId);
           break;
+        case 'move-to-block':
+          if (blockId) this._moveCardToBlock(instanceId, blockId);
+          break;
+        case 'move-out-of-block':
+          this._moveCardOutOfBlock(instanceId);
+          break;
       }
     }
 
-    _reorderTray(fromIdx, toIdx) {
-      if (!this.tray || !Array.isArray(this.tray.items)) return;
-      const items = this.tray.items;
-      if (fromIdx < 0 || fromIdx >= items.length || toIdx < 0 || toIdx >= items.length) return;
-      const [moved] = items.splice(fromIdx, 1);
-      items.splice(toIdx, 0, moved);
-      // Re-render Page 2 and notify the tray so chips and Page 1 badges sync
-      this._renderOrganize();
-      if (typeof this.tray._emit === 'function') this.tray._emit();
-      if (typeof this.tray._render === 'function') this.tray._render();
+    /**
+     * Move a card up (-1) or down (+1) within whatever container it currently
+     * lives in — top-level (organizeOrder) or inside a block (block.instanceIds).
+     */
+    _moveCardWithinContainer(instanceId, delta) {
+      // First check if it's inside a block
+      const found = this._findBlockOf(instanceId);
+      if (found) {
+        const list = found.block.instanceIds;
+        const idx = list.indexOf(instanceId);
+        if (idx === -1) return;
+        const target = idx + delta;
+        if (target < 0 || target >= list.length) return;
+        list.splice(idx, 1);
+        list.splice(target, 0, instanceId);
+        this._renderOrganize();
+        return;
+      }
+      // Otherwise it's top-level: reorder organizeOrder entries
+      this._moveOrderEntry({ kind: 'card', instanceId }, delta);
     }
 
     _onPencil(instanceId) {
@@ -522,25 +742,57 @@
 
     _buildSavePayload() {
       const items = this.tray ? this.tray.getItems() : [];
-      const sections = items.map((it, idx) => {
-        const state = this.organizeState.get(it.instanceId) || {};
-        const ex = it.exercise || {};
+      const itemMap = new Map(items.map((it) => [it.instanceId, it]));
+      const ts = Date.now();
+
+      const buildExercise = (item, suffix) => {
+        const state = this.organizeState.get(item.instanceId) || {};
+        const ex = item.exercise || {};
         return {
-          section_id: `section-${Date.now()}-${idx}`,
-          type: 'standard',
-          name: null,
-          exercises: [{
-            exercise_id: ex.id ? String(ex.id) : `ex-${idx}`,
-            name: it.name,
-            alternates: [],
-            sets: state.sets || DEFAULT_SETS,
-            reps: state.reps || DEFAULT_REPS,
-            rest: state.rest || DEFAULT_REST,
-            default_weight: state.weight || '',
-            default_weight_unit: state.weightUnit || 'lbs',
-            group_type: ex.group_type || 'standard',
-          }],
+          exercise_id: ex.id ? String(ex.id) : `ex-${suffix}`,
+          name: item.name,
+          alternates: [],
+          sets: state.sets || DEFAULT_SETS,
+          reps: state.reps || DEFAULT_REPS,
+          rest: state.rest || DEFAULT_REST,
+          default_weight: state.weight || '',
+          default_weight_unit: state.weightUnit || 'lbs',
+          group_type: ex.group_type || 'standard',
         };
+      };
+
+      // Walk organizeOrder. Top-level cards become single-exercise sections.
+      // Blocks become multi-exercise sections with section.name set. Empty
+      // blocks are silently dropped (saving an empty block has no semantic
+      // value in the workout payload).
+      const sections = [];
+      this.organizeOrder.forEach((entry, idx) => {
+        if (entry.kind === 'card') {
+          const item = itemMap.get(entry.instanceId);
+          if (!item) return;
+          sections.push({
+            section_id: `section-${ts}-${idx}`,
+            type: 'standard',
+            name: null,
+            exercises: [buildExercise(item, `${idx}`)],
+          });
+        } else if (entry.kind === 'block') {
+          const block = this.blocks.get(entry.blockId);
+          if (!block || block.instanceIds.length === 0) return;
+          const exercises = block.instanceIds
+            .map((iid, exIdx) => {
+              const item = itemMap.get(iid);
+              return item ? buildExercise(item, `${idx}-${exIdx}`) : null;
+            })
+            .filter(Boolean);
+          if (exercises.length === 0) return;
+          sections.push({
+            section_id: `section-${ts}-${idx}`,
+            type: 'standard',
+            name: (block.name || '').trim() || null,
+            exercises,
+          });
+        }
       });
 
       // Flatten to exercise_groups for backward compatibility, mirroring the
@@ -943,6 +1195,11 @@
         this.dom.continueCount.textContent = n;
       }
 
+      // Keep organizeOrder + blocks in sync with the tray:
+      //   - new tray items appear as top-level cards at the end
+      //   - removed tray items vanish from whichever container they were in
+      this._syncOrganizeOrderWithTray(items);
+
       // Drop organize state for instances that no longer exist in the tray
       if (this.organizeState.size > 0) {
         const live = new Set(items.map((it) => it.instanceId));
@@ -958,6 +1215,33 @@
           this._showView('select');
         } else {
           this._renderOrganize();
+        }
+      }
+    }
+
+    _syncOrganizeOrderWithTray(items) {
+      const liveIds = new Set(items.map((it) => it.instanceId));
+
+      // 1) Remove entries that reference deleted instanceIds
+      this.organizeOrder = this.organizeOrder.filter((e) => {
+        if (e.kind === 'card') return liveIds.has(e.instanceId);
+        return true; // blocks survive even if all their children were removed
+      });
+      for (const b of this.blocks.values()) {
+        b.instanceIds = b.instanceIds.filter((iid) => liveIds.has(iid));
+      }
+
+      // 2) Append any instanceIds that exist in the tray but aren't tracked yet
+      const placedIds = new Set();
+      for (const e of this.organizeOrder) {
+        if (e.kind === 'card') placedIds.add(e.instanceId);
+      }
+      for (const b of this.blocks.values()) {
+        for (const iid of b.instanceIds) placedIds.add(iid);
+      }
+      for (const it of items) {
+        if (!placedIds.has(it.instanceId)) {
+          this.organizeOrder.push({ kind: 'card', instanceId: it.instanceId });
         }
       }
     }

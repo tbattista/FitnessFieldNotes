@@ -667,3 +667,179 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         expect(postedBody.sections[0].exercises[0].default_weight).toBe('135');
     });
 });
+
+test.describe('Workout Studio — Page 2 Blocks', () => {
+
+    async function addNFromGrid(page, n) {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+        const rows = page.locator('.studio-row');
+        for (let i = 0; i < n; i++) {
+            await rows.nth(i).locator('.studio-row-add').click();
+        }
+    }
+
+    test('+ Block button is visible on Page 2 and creates an empty block', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+
+        const addBlockBtn = page.locator('#studioAddBlockBtn');
+        await expect(addBlockBtn).toBeVisible();
+
+        await addBlockBtn.click();
+        const block = page.locator('.studio-block').first();
+        await expect(block).toBeVisible();
+        await expect(block).toHaveClass(/is-empty/);
+        await expect(block.locator('.studio-block-placeholder')).toBeVisible();
+        // Name input should auto-focus after creation
+        await expect(block.locator('.studio-block-name-input')).toBeFocused();
+    });
+
+    test('renaming a block commits on blur and on Enter', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+
+        const input = page.locator('.studio-block .studio-block-name-input').first();
+        await input.fill('Warmup');
+        await input.press('Enter');
+
+        // Name persists in the DOM and is exposed through the input value
+        await expect(input).toHaveValue('Warmup');
+    });
+
+    test('"Move to: <block>" menu item moves a top-level card into the block', async ({ page }) => {
+        await addNFromGrid(page, 3);
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+        await page.locator('.studio-block-name-input').first().fill('Main Lifts');
+        await page.locator('.studio-block-name-input').first().press('Enter');
+
+        // Find the first top-level card (not inside any block) and open its menu
+        const looseCard = page.locator('#studioOrganizeList > .studio-card').first();
+        await looseCard.locator('[data-action="menu"]').click();
+
+        // Click the "Move to: Main Lifts" menu item on that card
+        await looseCard.locator('[data-action="move-to-block"]').click();
+
+        // The card now lives inside the block's children slot
+        const blockChild = page.locator('.studio-block .studio-block-children .studio-card');
+        await expect(blockChild).toHaveCount(1);
+        await expect(blockChild.first()).toHaveClass(/studio-card-in-block/);
+
+        // Block is no longer empty
+        await expect(page.locator('.studio-block')).not.toHaveClass(/is-empty/);
+    });
+
+    test('"Move out of block" returns a card to top level', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+
+        // Move card #1 into the block
+        const looseCard = page.locator('#studioOrganizeList > .studio-card').first();
+        await looseCard.locator('[data-action="menu"]').click();
+        await looseCard.locator('[data-action="move-to-block"]').click();
+
+        await expect(page.locator('.studio-block .studio-block-children .studio-card')).toHaveCount(1);
+
+        // Now move it back out via the card's menu
+        const inBlockCard = page.locator('.studio-block .studio-block-children .studio-card').first();
+        await inBlockCard.locator('[data-action="menu"]').click();
+        await inBlockCard.locator('[data-action="move-out-of-block"]').click();
+
+        await expect(page.locator('.studio-block .studio-block-children .studio-card')).toHaveCount(0);
+        // Block is empty again; the placeholder is shown
+        await expect(page.locator('.studio-block.is-empty')).toBeVisible();
+    });
+
+    test('Remove block returns all of its children to top level', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+
+        // Move both cards into the block
+        for (let i = 0; i < 2; i++) {
+            const card = page.locator('#studioOrganizeList > .studio-card').first();
+            await card.locator('[data-action="menu"]').click();
+            await card.locator('[data-action="move-to-block"]').click();
+        }
+        await expect(page.locator('.studio-block .studio-card')).toHaveCount(2);
+
+        // Open block menu and delete (use the block-specific button class so
+        // we don't match the card menus inside the block)
+        await page.locator('.studio-block .studio-block-icon-btn[data-action="menu"]').click();
+        await page.locator('.studio-block .studio-block-menu [data-action="delete"]').click();
+
+        // Block is gone, both cards are back at top level
+        await expect(page.locator('.studio-block')).toHaveCount(0);
+        await expect(page.locator('#studioOrganizeList > .studio-card')).toHaveCount(2);
+    });
+
+    test('Save payload groups block exercises into a single section with name', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-test-blocks', name: postedBody?.name || 'Unnamed' }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        await addNFromGrid(page, 3);
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+
+        // Create a named block and move 2 of the 3 cards in
+        await page.locator('#studioAddBlockBtn').click();
+        await page.locator('.studio-block-name-input').first().fill('Push Block');
+        await page.locator('.studio-block-name-input').first().press('Enter');
+
+        for (let i = 0; i < 2; i++) {
+            const card = page.locator('#studioOrganizeList > .studio-card').first();
+            await card.locator('[data-action="menu"]').click();
+            await card.locator('[data-action="move-to-block"]').click();
+        }
+
+        await page.locator('#studioWorkoutNameInput').fill('Studio Blocks Test');
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody).toBeTruthy();
+        expect(postedBody.name).toBe('Studio Blocks Test');
+        const sections = postedBody.sections || [];
+        // Expected shape: 1 multi-exercise block section + 1 loose single-exercise section
+        const block = sections.find((s) => s.name === 'Push Block');
+        expect(block).toBeTruthy();
+        expect(Array.isArray(block.exercises)).toBe(true);
+        expect(block.exercises.length).toBe(2);
+        const loose = sections.find((s) => s !== block);
+        expect(loose).toBeTruthy();
+        expect(loose.exercises.length).toBe(1);
+        expect(loose.name == null || loose.name === '').toBe(true);
+    });
+
+    test('Removing a tray chip on Page 2 also removes the card whether loose or in a block', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+
+        // Move card 1 into the block
+        const card = page.locator('#studioOrganizeList > .studio-card').first();
+        await card.locator('[data-action="menu"]').click();
+        await card.locator('[data-action="move-to-block"]').click();
+        await expect(page.locator('.studio-block .studio-card')).toHaveCount(1);
+
+        // Remove via the chip in the sticky tray
+        await page.locator('#studioTrayChips .studio-tray-chip-remove').first().click();
+
+        // One card remains, in whichever container it was in. Total card count = 1.
+        await expect(page.locator('.studio-card')).toHaveCount(1);
+    });
+});
