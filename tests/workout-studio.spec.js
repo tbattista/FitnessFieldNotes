@@ -151,6 +151,68 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         expect(flexWrap).toBe('wrap');
     });
 
+    test('add-custom button is always visible, disabled until search has text', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const btn = page.locator('#studioAddCustomBtn');
+        await expect(btn).toBeVisible();
+        await expect(btn).toBeDisabled();
+        await expect(btn).not.toHaveClass(/is-active/);
+
+        await page.locator('#studioSearchInput').fill('Hex Bar Deadlift');
+        await expect(btn).toBeEnabled();
+        await expect(btn).toHaveClass(/is-active/);
+        await expect(btn).toContainText('Hex Bar Deadlift');
+
+        await page.locator('#studioSearchClear').click();
+        await expect(btn).toBeDisabled();
+        await expect(btn).not.toHaveClass(/is-active/);
+    });
+
+    test('tapping add-custom adds the typed name to the tray and clears the search', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioSearchInput').fill('My One-Off Lift');
+        await page.locator('#studioAddCustomBtn').click();
+
+        const chips = page.locator('.studio-tray-chip');
+        await expect(chips).toHaveCount(1);
+        await expect(chips.first()).toContainText('My One-Off Lift');
+
+        // Search cleared so a second add starts fresh
+        await expect(page.locator('#studioSearchInput')).toHaveValue('');
+        await expect(page.locator('#studioAddCustomBtn')).toBeDisabled();
+    });
+
+    test('custom-added exercise persists in the save payload with its typed name', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-1', name: postedBody?.name || '' }),
+                });
+            } else { await route.continue(); }
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioSearchInput').fill('Hex Bar Deadlift');
+        await page.locator('#studioAddCustomBtn').click();
+
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+        await page.locator('#studioWorkoutNameInput').fill('Custom Test');
+        await page.locator('#studioSaveBtn').click();
+
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+        expect(postedBody).toBeTruthy();
+        expect(postedBody.sections[0].exercises[0].name).toBe('Hex Bar Deadlift');
+    });
+
     test('quick-action tiles are gone — single Filter button in section header instead', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await expect(page.locator('.studio-quick-tile')).toHaveCount(0);

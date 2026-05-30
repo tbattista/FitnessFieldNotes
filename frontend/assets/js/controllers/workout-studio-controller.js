@@ -91,6 +91,8 @@
 
       this.dom.searchInput = document.getElementById('studioSearchInput');
       this.dom.searchClear = document.getElementById('studioSearchClear');
+      this.dom.addCustomBtn = document.getElementById('studioAddCustomBtn');
+      this.dom.addCustomLabel = document.getElementById('studioAddCustomLabel');
 
       this.dom.filterBtn = document.getElementById('studioFilterBtn');
       this.dom.filterBadge = document.getElementById('studioFilterBadge');
@@ -180,6 +182,7 @@
         if (this.dom.searchClear) {
           this.dom.searchClear.style.display = q ? '' : 'none';
         }
+        this._updateAddCustomButton();
         this._resetPagination();
         clearTimeout(this._searchDebounceTimer);
         this._searchDebounceTimer = setTimeout(() => this._refreshList(), 120);
@@ -190,11 +193,53 @@
           this.dom.searchInput.value = '';
           this.searchQuery = '';
           this.dom.searchClear.style.display = 'none';
+          this._updateAddCustomButton();
           this._resetPagination();
           this._refreshList();
           this.dom.searchInput.focus();
         });
       }
+
+      if (this.dom.addCustomBtn) {
+        this.dom.addCustomBtn.addEventListener('click', () => this._handleAddCustom());
+      }
+      this._updateAddCustomButton();
+    }
+
+    _updateAddCustomButton() {
+      if (!this.dom.addCustomBtn) return;
+      const q = this.searchQuery;
+      const hasText = !!(q && q.length > 0);
+      this.dom.addCustomBtn.disabled = !hasText;
+      this.dom.addCustomBtn.classList.toggle('is-active', hasText);
+      if (this.dom.addCustomLabel) {
+        this.dom.addCustomLabel.textContent = hasText
+          ? `Add "${q}" as custom`
+          : 'Type a name above, then tap to add as a custom exercise';
+      }
+    }
+
+    _handleAddCustom() {
+      const q = (this.searchQuery || '').trim();
+      if (!q || !this.tray) return;
+      const adHoc = {
+        id: `custom-${Date.now()}`,
+        name: q,
+        targetMuscleGroup: '',
+        primaryEquipment: '',
+        mechanics: '',
+        exerciseTier: 2,
+        isGlobal: false,
+        isCustom: true,
+      };
+      this.tray.add(adHoc);
+      // Clear search so the next add starts fresh
+      if (this.dom.searchInput) this.dom.searchInput.value = '';
+      this.searchQuery = '';
+      if (this.dom.searchClear) this.dom.searchClear.style.display = 'none';
+      this._updateAddCustomButton();
+      this._resetPagination();
+      this._refreshList();
     }
 
     _bindFilters() {
