@@ -134,6 +134,7 @@
       this.dom.saveBtn = document.getElementById('studioSaveBtn');
       this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
+      this.dom.reorderBtn = document.getElementById('studioReorderBtn');
     }
 
     _initTray() {
@@ -338,6 +339,45 @@
       if (this.dom.addBlockBtn) {
         this.dom.addBlockBtn.addEventListener('click', () => this._createBlock());
       }
+
+      if (this.dom.reorderBtn) {
+        this.dom.reorderBtn.addEventListener('click', () => this._openReorderSheet());
+      }
+    }
+
+    _openReorderSheet() {
+      if (!window.StudioReorderSheet) return;
+      const items = this.tray ? this.tray.getItems() : [];
+      if (items.length === 0) return;
+      const sheet = new window.StudioReorderSheet({
+        onSave: (next) => this._applyReorder(next),
+      });
+      // Snapshot the current structure so the sheet renders the live state.
+      sheet.open({
+        organizeOrder: this.organizeOrder.slice(),
+        blocks: this.blocks,
+        items,
+      });
+    }
+
+    /**
+     * Apply the new structure produced by the reorder sheet.
+     * next: { organizeOrder: [...], blockInstanceIds: Map<blockId, string[]> }
+     */
+    _applyReorder(next) {
+      if (!next) return;
+      // Update each block's child list to the new order
+      if (next.blockInstanceIds instanceof Map) {
+        for (const [blockId, ids] of next.blockInstanceIds.entries()) {
+          const block = this.blocks.get(blockId);
+          if (block) block.instanceIds = Array.isArray(ids) ? ids.slice() : [];
+        }
+      }
+      // Replace the top-level order
+      if (Array.isArray(next.organizeOrder)) {
+        this.organizeOrder = next.organizeOrder.slice();
+      }
+      this._renderOrganize();
     }
 
     _createBlock() {
@@ -515,10 +555,12 @@
       const hasExercises = items.length > 0;
       if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = hasExercises;
       if (this.dom.saveBtn) this.dom.saveBtn.disabled = !hasExercises;
-      // Add-Block is irrelevant when there's nothing to add to. Keep it usable
-      // any time the user is on Page 2 (you can create a block first then move
-      // cards in), but hide it on the dead-end empty state.
+      // Add-Block + Reorder are irrelevant on the dead-end empty state.
       if (this.dom.addBlockBtn) this.dom.addBlockBtn.hidden = !hasExercises;
+      // Reorder needs at least 2 items in the organize order to be useful.
+      if (this.dom.reorderBtn) {
+        this.dom.reorderBtn.hidden = !hasExercises || this.organizeOrder.length < 2;
+      }
 
       // Full rebuild — card count per workout is typically <20 so a diff is overkill,
       // and re-binding live field controllers cleanly is easier with a fresh tree.

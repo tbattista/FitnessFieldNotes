@@ -825,6 +825,115 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         expect(loose.name == null || loose.name === '').toBe(true);
     });
 
+    test('Reorder button is hidden until there are at least 2 items in the organize order', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+        // 1 item → reorder is useless, button stays hidden
+        await expect(page.locator('#studioReorderBtn')).toBeHidden();
+
+        // Go back, add another exercise → 2 items
+        await page.locator('#studioOrganizeBack').click();
+        const rows = page.locator('.studio-row');
+        await rows.nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+
+        await expect(page.locator('#studioReorderBtn')).toBeVisible();
+    });
+
+    test('Reorder button opens the sheet populated with the current order', async ({ page }) => {
+        await addNFromGrid(page, 3);
+        await page.locator('#studioContinueBtn').click();
+        // Add a block holding the first card
+        await page.locator('#studioAddBlockBtn').click();
+        await page.locator('.studio-block-name-input').first().fill('Push');
+        await page.locator('.studio-block-name-input').first().press('Enter');
+        const looseCard = page.locator('#studioOrganizeList > .studio-card').first();
+        await looseCard.locator('[data-action="menu"]').click();
+        await looseCard.locator('[data-action="move-to-block"]').click();
+
+        // Open Reorder sheet
+        await page.locator('#studioReorderBtn').click();
+        const sheet = page.locator('.studio-reorder-sheet');
+        await expect(sheet).toBeVisible();
+
+        // Top-level: one block row + two card rows (in some order)
+        const topRows = sheet.locator('#studioReorderList > .studio-reorder-row');
+        await expect(topRows).toHaveCount(3);
+
+        // Block has exactly one child card
+        const blockChildren = sheet.locator('.studio-reorder-block-children > .studio-reorder-card-row');
+        await expect(blockChildren).toHaveCount(1);
+
+        // Cancel closes without changes
+        await sheet.locator('[data-action="cancel"]').first().click();
+        await expect(sheet).toBeHidden({ timeout: 2000 });
+    });
+
+    test('Save in the reorder sheet applies the new top-level order to Page 2', async ({ page }) => {
+        await addNFromGrid(page, 3);
+        await page.locator('#studioContinueBtn').click();
+
+        // Capture original names in their initial top-level order
+        const namesBefore = await page.locator('#studioOrganizeList > .studio-card .studio-card-name')
+          .allTextContents();
+        expect(namesBefore.length).toBe(3);
+
+        await page.locator('#studioReorderBtn').click();
+        const sheet = page.locator('.studio-reorder-sheet');
+        await expect(sheet).toBeVisible();
+
+        // Move the first top-level row to the end of the list (simulating what
+        // a drag-and-drop would do). SortableJS in Playwright is too flaky to
+        // exercise; we drive the same end-state directly.
+        await page.evaluate(() => {
+            const list = document.getElementById('studioReorderList');
+            if (!list || list.children.length < 2) return;
+            const first = list.children[0];
+            list.appendChild(first);
+        });
+
+        await sheet.locator('[data-action="save"]').click();
+        await expect(sheet).toBeHidden({ timeout: 2000 });
+
+        const namesAfter = await page.locator('#studioOrganizeList > .studio-card .studio-card-name')
+          .allTextContents();
+        expect(namesAfter.length).toBe(3);
+        // The first name should now be at the end
+        expect(namesAfter[2]).toBe(namesBefore[0]);
+        expect(namesAfter[0]).toBe(namesBefore[1]);
+    });
+
+    test('Save in the reorder sheet moves a card between top level and a block', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+        await page.locator('.studio-block-name-input').first().fill('Block A');
+        await page.locator('.studio-block-name-input').first().press('Enter');
+        // Initially: 2 top-level cards + 1 empty block. Nothing is in the block.
+
+        await page.locator('#studioReorderBtn').click();
+        const sheet = page.locator('.studio-reorder-sheet');
+        await expect(sheet).toBeVisible();
+
+        // Move the first top-level card row into the block's children container
+        await page.evaluate(() => {
+            const list = document.getElementById('studioReorderList');
+            const blockChildren = list.querySelector('.studio-reorder-block-children');
+            // Pick a card row from the top level (one whose parent is the list itself)
+            const cardRow = Array.from(list.children).find(
+                (n) => n.dataset && n.dataset.type === 'card'
+            );
+            if (cardRow && blockChildren) blockChildren.appendChild(cardRow);
+        });
+
+        await sheet.locator('[data-action="save"]').click();
+        await expect(sheet).toBeHidden({ timeout: 2000 });
+
+        // Block now has 1 child; top level has 1 loose card + the block
+        await expect(page.locator('.studio-block .studio-block-children .studio-card')).toHaveCount(1);
+        await expect(page.locator('.studio-block')).not.toHaveClass(/is-empty/);
+    });
+
     test('Removing a tray chip on Page 2 also removes the card whether loose or in a block', async ({ page }) => {
         await addNFromGrid(page, 2);
         await page.locator('#studioContinueBtn').click();
