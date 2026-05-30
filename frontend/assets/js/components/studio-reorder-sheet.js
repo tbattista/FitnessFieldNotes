@@ -163,6 +163,7 @@
       const listEl = this.el.querySelector('#studioReorderList');
       const order = Array.isArray(snapshot.organizeOrder) ? snapshot.organizeOrder : [];
       const blocks = snapshot.blocks || new Map();
+      const notes = snapshot.notes || new Map();
 
       const parts = [];
       for (const entry of order) {
@@ -172,10 +173,30 @@
           const block = blocks.get(entry.blockId);
           if (!block) continue;
           parts.push(this._blockRowHtml(entry.blockId, block, nameByInstanceId));
+        } else if (entry.kind === 'note') {
+          const note = notes.get(entry.noteId);
+          if (!note) continue;
+          parts.push(this._noteRowHtml(entry.noteId, note.content));
         }
       }
       listEl.innerHTML = parts.join('') || `
         <div class="studio-reorder-empty">No exercises to reorder.</div>
+      `;
+    }
+
+    _noteRowHtml(noteId, content) {
+      const safeId = escapeHtml(noteId);
+      const text = String(content || '').trim();
+      const preview = text ? escapeHtml(text.length > 80 ? text.slice(0, 80) + '…' : text) : '<em>(empty note)</em>';
+      return `
+        <div class="studio-reorder-row studio-reorder-note-row"
+             role="listitem"
+             data-type="note"
+             data-note-id="${safeId}">
+          <span class="studio-reorder-handle" aria-hidden="true"><i class="bx bx-menu"></i></span>
+          <span class="studio-reorder-note-icon" aria-hidden="true"><i class="bx bx-note"></i></span>
+          <span class="studio-reorder-row-label studio-reorder-note-label">${preview}</span>
+        </div>
       `;
     }
 
@@ -235,10 +256,10 @@
       const top = window.Sortable.create(topEl, Object.assign({}, baseOpts, {
         group: { name: 'sr-mixed', pull: true, put: true },
         onMove: (evt) => {
-          // Prevent blocks from being dropped into a block's children container
+          // Blocks AND notes can only live at the top level
           const dragged = evt.dragged;
           const toEl = evt.to;
-          if (dragged && dragged.dataset.type === 'block') {
+          if (dragged && (dragged.dataset.type === 'block' || dragged.dataset.type === 'note')) {
             if (!toEl.classList.contains('studio-reorder-list')) return false;
           }
           return true;
@@ -250,10 +271,10 @@
       blockChildEls.forEach((childEl) => {
         const inner = window.Sortable.create(childEl, Object.assign({}, baseOpts, {
           group: { name: 'sr-mixed', pull: true, put: true },
-          // Block-children container only accepts cards
+          // Block-children containers only accept cards
           onMove: (evt) => {
             const dragged = evt.dragged;
-            if (dragged && dragged.dataset.type === 'block') return false;
+            if (dragged && dragged.dataset.type !== 'card') return false;
             return true;
           },
         }));
@@ -274,6 +295,9 @@
         if (type === 'card') {
           const iid = child.dataset.instanceId;
           if (iid) newOrder.push({ kind: 'card', instanceId: iid });
+        } else if (type === 'note') {
+          const nid = child.dataset.noteId;
+          if (nid) newOrder.push({ kind: 'note', noteId: nid });
         } else if (type === 'block') {
           const blockId = child.dataset.blockId;
           if (!blockId) continue;

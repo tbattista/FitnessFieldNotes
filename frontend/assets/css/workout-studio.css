@@ -1097,6 +1097,118 @@ html[data-bs-theme="dark"] .studio-row-add-badge {
   }
 }
 
+/* -------------------- Studio Note Card (Page 2) -------------------- */
+.studio-note-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(252, 211, 77, 0.10); /* warm yellow tint */
+  border: 1px solid rgba(252, 211, 77, 0.30);
+  border-left: 3px solid rgb(234, 179, 8);
+  border-radius: 10px;
+}
+.studio-note-icon {
+  color: rgb(180, 130, 10);
+  font-size: 1.1rem;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+.studio-note-textarea {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--bs-body-color);
+  line-height: 1.35;
+  padding: 0.1rem 0.15rem;
+  min-height: 1.6em;
+  font-family: inherit;
+}
+.studio-note-textarea::placeholder {
+  color: var(--bs-secondary-color);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.studio-note-menu-wrap { position: relative; flex: 0 0 auto; }
+.studio-note-icon-btn {
+  background: transparent;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--bs-secondary-color);
+  font-size: 1.05rem;
+}
+.studio-note-icon-btn:hover { background: rgba(0, 0, 0, 0.06); }
+
+.studio-note-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 160px;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.3rem;
+  z-index: 20;
+}
+.studio-note-menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.studio-note-menu-item:hover { background: rgba(0, 0, 0, 0.06); }
+.studio-note-menu-item[disabled] { opacity: 0.4; cursor: not-allowed; }
+.studio-note-menu-item-danger { color: var(--bs-danger); }
+.studio-note-menu-item-danger:hover { background: rgba(220, 53, 69, 0.08); }
+.studio-note-menu-item .bx { font-size: 1.05rem; }
+
+/* Reorder sheet — note row variant */
+.studio-reorder-note-row {
+  background: rgba(252, 211, 77, 0.10);
+  border-color: rgba(252, 211, 77, 0.30);
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+}
+.studio-reorder-note-icon { color: rgb(180, 130, 10); font-size: 1rem; }
+.studio-reorder-note-label { font-style: italic; color: var(--bs-secondary-color); }
+
+html[data-bs-theme="dark"] .studio-note-card {
+  background: rgba(252, 211, 77, 0.08);
+  border-color: rgba(252, 211, 77, 0.20);
+}
+html[data-bs-theme="dark"] .studio-note-menu {
+  background: var(--bs-tertiary-bg);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .studio-note-icon-btn:hover,
+html[data-bs-theme="dark"] .studio-note-menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+html[data-bs-theme="dark"] .studio-reorder-note-row {
+  background: rgba(252, 211, 77, 0.08);
+  border-color: rgba(252, 211, 77, 0.20);
+}
+
 /* -------------------- Studio Reorder Sheet -------------------- */
 .studio-reorder-sheet {
   height: auto;

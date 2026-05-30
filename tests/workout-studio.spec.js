@@ -934,6 +934,151 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await expect(page.locator('.studio-block')).not.toHaveClass(/is-empty/);
     });
 
+    test('+ Note button creates a note card with auto-focused textarea', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+
+        const addNoteBtn = page.locator('#studioAddNoteBtn');
+        await expect(addNoteBtn).toBeVisible();
+        await addNoteBtn.click();
+
+        const note = page.locator('.studio-note-card').first();
+        await expect(note).toBeVisible();
+        await expect(note.locator('.studio-note-textarea')).toBeFocused();
+    });
+
+    test('typing in a note persists and shows in save payload with order_index', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-test-notes', name: postedBody?.name || 'Unnamed' }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        await addNFromGrid(page, 3);
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+
+        // Add a note AFTER the first exercise: append, then move up twice so it
+        // sits between exercise 0 and exercise 1 (order_index = 1)
+        await page.locator('#studioAddNoteBtn').click();
+        const note = page.locator('.studio-note-card').first();
+        await note.locator('.studio-note-textarea').fill('Focus on bracing the core');
+        // Move it up to position between exercise 0 and exercise 1
+        await note.locator('[data-action="menu"]').click();
+        await note.locator('[data-action="move-up"]').click();
+        await note.locator('[data-action="menu"]').click();
+        await note.locator('[data-action="move-up"]').click();
+
+        await page.locator('#studioWorkoutNameInput').fill('Studio Notes Test');
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody).toBeTruthy();
+        expect(Array.isArray(postedBody.template_notes)).toBe(true);
+        expect(postedBody.template_notes.length).toBe(1);
+        expect(postedBody.template_notes[0].content).toBe('Focus on bracing the core');
+        expect(postedBody.template_notes[0].order_index).toBe(1);
+        // Notes should NOT have consumed a section slot
+        expect(postedBody.sections.length).toBe(3);
+    });
+
+    test('note at the start of the workout has order_index 0', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-test-notes-2', name: postedBody?.name || 'Unnamed' }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+
+        await page.locator('#studioAddNoteBtn').click();
+        const note = page.locator('.studio-note-card').first();
+        await note.locator('.studio-note-textarea').fill('Warmup five minutes');
+        // Move all the way to the top
+        await note.locator('[data-action="menu"]').click();
+        await note.locator('[data-action="move-up"]').click();
+        await note.locator('[data-action="menu"]').click();
+        await note.locator('[data-action="move-up"]').click();
+
+        await page.locator('#studioWorkoutNameInput').fill('Studio Notes At Top');
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody.template_notes.length).toBe(1);
+        expect(postedBody.template_notes[0].order_index).toBe(0);
+    });
+
+    test('Delete note removes it from the list and from the save payload', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-test-notes-3', name: postedBody?.name || 'Unnamed' }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+
+        await page.locator('#studioAddNoteBtn').click();
+        await page.locator('.studio-note-textarea').first().fill('Will be deleted');
+        const note = page.locator('.studio-note-card').first();
+        await note.locator('[data-action="menu"]').click();
+        await note.locator('[data-action="delete"]').click();
+
+        await expect(page.locator('.studio-note-card')).toHaveCount(0);
+
+        await page.locator('#studioWorkoutNameInput').fill('Studio Notes Deleted');
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody.template_notes).toEqual([]);
+    });
+
+    test('Reorder sheet includes note rows and preserves notes on save', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddNoteBtn').click();
+        await page.locator('.studio-note-textarea').first().fill('Hello note');
+
+        await page.locator('#studioReorderBtn').click();
+        const sheet = page.locator('.studio-reorder-sheet');
+        await expect(sheet).toBeVisible();
+        await expect(sheet.locator('.studio-reorder-note-row')).toHaveCount(1);
+        await expect(sheet.locator('.studio-reorder-note-row')).toContainText('Hello note');
+
+        // Save (no reorder) and verify the note survives
+        await sheet.locator('[data-action="save"]').click();
+        await expect(sheet).toBeHidden({ timeout: 2000 });
+        await expect(page.locator('.studio-note-card')).toHaveCount(1);
+        await expect(page.locator('.studio-note-textarea').first()).toHaveValue('Hello note');
+    });
+
     test('Removing a tray chip on Page 2 also removes the card whether loose or in a block', async ({ page }) => {
         await addNFromGrid(page, 2);
         await page.locator('#studioContinueBtn').click();

@@ -42,12 +42,18 @@
       this.studioCards = new Map();
       // Live block components mounted on Page 2, keyed by blockId
       this.studioBlocks = new Map();
+      // Live note components mounted on Page 2, keyed by noteId
+      this.studioNotes = new Map();
       // Generic containers — Map<blockId, { name: string, instanceIds: string[] }>
       this.blocks = new Map();
       this._blockSeq = 1;
+      // Workout-level free-text notes — Map<noteId, { content: string }>
+      this.notes = new Map();
+      this._noteSeq = 1;
       // Page 2 render order. Each entry is one of:
       //   { kind: 'card', instanceId }   — top-level (loose) exercise card
       //   { kind: 'block', blockId }     — block whose children live in blocks.get(blockId).instanceIds
+      //   { kind: 'note', noteId }       — workout-level free-text note
       // Every instanceId in tray.items appears exactly once across this array
       // (as a top-level card OR inside one block's instanceIds).
       this.organizeOrder = [];
@@ -135,6 +141,7 @@
       this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
+      this.dom.addNoteBtn = document.getElementById('studioAddNoteBtn');
     }
 
     _initTray() {
@@ -343,6 +350,54 @@
       if (this.dom.reorderBtn) {
         this.dom.reorderBtn.addEventListener('click', () => this._openReorderSheet());
       }
+
+      if (this.dom.addNoteBtn) {
+        this.dom.addNoteBtn.addEventListener('click', () => this._createNote());
+      }
+    }
+
+    _createNote() {
+      const noteId = `template-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      this.notes.set(noteId, { content: '' });
+      this.organizeOrder.push({ kind: 'note', noteId });
+      this._renderOrganize();
+      // Focus the new note's textarea so the user can type immediately
+      requestAnimationFrame(() => {
+        const node = this.dom.organizeList && this.dom.organizeList.querySelector(
+          `.studio-note-card[data-note-id="${noteId}"] .studio-note-textarea`
+        );
+        if (node) node.focus();
+      });
+    }
+
+    _onNoteChange(noteId, partial) {
+      const note = this.notes.get(noteId);
+      if (!note) return;
+      if (partial && typeof partial.content === 'string') {
+        note.content = partial.content;
+      }
+    }
+
+    _onNoteMenuAction(noteId, action) {
+      switch (action) {
+        case 'move-up':
+          this._moveOrderEntry({ kind: 'note', noteId }, -1);
+          break;
+        case 'move-down':
+          this._moveOrderEntry({ kind: 'note', noteId }, +1);
+          break;
+        case 'delete':
+          this._deleteNote(noteId);
+          break;
+      }
+    }
+
+    _deleteNote(noteId) {
+      this.notes.delete(noteId);
+      this.organizeOrder = this.organizeOrder.filter(
+        (e) => !(e.kind === 'note' && e.noteId === noteId)
+      );
+      this._renderOrganize();
     }
 
     _openReorderSheet() {
@@ -356,6 +411,7 @@
       sheet.open({
         organizeOrder: this.organizeOrder.slice(),
         blocks: this.blocks,
+        notes: this.notes,
         items,
       });
     }
@@ -436,6 +492,7 @@
         if (e.kind !== matchEntry.kind) return false;
         if (matchEntry.kind === 'card') return e.instanceId === matchEntry.instanceId;
         if (matchEntry.kind === 'block') return e.blockId === matchEntry.blockId;
+        if (matchEntry.kind === 'note') return e.noteId === matchEntry.noteId;
         return false;
       });
       if (idx === -1) return;
@@ -555,8 +612,9 @@
       const hasExercises = items.length > 0;
       if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = hasExercises;
       if (this.dom.saveBtn) this.dom.saveBtn.disabled = !hasExercises;
-      // Add-Block + Reorder are irrelevant on the dead-end empty state.
+      // Add-Block + Reorder + Add-Note are irrelevant on the dead-end empty state.
       if (this.dom.addBlockBtn) this.dom.addBlockBtn.hidden = !hasExercises;
+      if (this.dom.addNoteBtn) this.dom.addNoteBtn.hidden = !hasExercises;
       // Reorder needs at least 2 items in the organize order to be useful.
       if (this.dom.reorderBtn) {
         this.dom.reorderBtn.hidden = !hasExercises || this.organizeOrder.length < 2;
@@ -566,6 +624,7 @@
       // and re-binding live field controllers cleanly is easier with a fresh tree.
       this._destroyAllCards();
       this._destroyAllBlocks();
+      this._destroyAllNotes();
       this.dom.organizeList.innerHTML = '';
 
       if (!hasExercises) return;
@@ -581,6 +640,22 @@
           if (!item) return; // referenced item was removed
           const card = this._mountCard(item, { idx, total, container: this.dom.organizeList, blockOptions, inBlock: null });
           card.setIndex(idx, total);
+        } else if (entry.kind === 'note') {
+          const note = this.notes.get(entry.noteId);
+          if (!note) return;
+          if (!window.StudioNoteCard) return;
+          const noteComp = new window.StudioNoteCard({
+            noteId: entry.noteId,
+            content: note.content,
+            callbacks: {
+              onChange: (noteId, partial) => this._onNoteChange(noteId, partial),
+              onMenuAction: (noteId, action) => this._onNoteMenuAction(noteId, action),
+            },
+          });
+          const noteNode = noteComp.render();
+          this.dom.organizeList.appendChild(noteNode);
+          noteComp.setIndex(idx, total);
+          this.studioNotes.set(entry.noteId, noteComp);
         } else if (entry.kind === 'block') {
           const block = this.blocks.get(entry.blockId);
           if (!block) return;
@@ -645,6 +720,11 @@
     _destroyAllBlocks() {
       this.studioBlocks.forEach((b) => b.destroy && b.destroy());
       this.studioBlocks.clear();
+    }
+
+    _destroyAllNotes() {
+      this.studioNotes.forEach((n) => n.destroy && n.destroy());
+      this.studioNotes.clear();
     }
 
     _ensureOrganizeState(instanceId) {
@@ -806,8 +886,13 @@
       // Walk organizeOrder. Top-level cards become single-exercise sections.
       // Blocks become multi-exercise sections with section.name set. Empty
       // blocks are silently dropped (saving an empty block has no semantic
-      // value in the workout payload).
+      // value in the workout payload). Notes are collected separately and
+      // emitted as template_notes with an order_index that points into the
+      // flattened exercise_groups list (matches what _buildMergedItems in
+      // workout-detail-offcanvas.js expects on read-back).
       const sections = [];
+      const template_notes = [];
+      let flatGroupCount = 0;
       this.organizeOrder.forEach((entry, idx) => {
         if (entry.kind === 'card') {
           const item = itemMap.get(entry.instanceId);
@@ -818,6 +903,7 @@
             name: null,
             exercises: [buildExercise(item, `${idx}`)],
           });
+          flatGroupCount += 1;
         } else if (entry.kind === 'block') {
           const block = this.blocks.get(entry.blockId);
           if (!block || block.instanceIds.length === 0) return;
@@ -833,6 +919,17 @@
             type: 'standard',
             name: (block.name || '').trim() || null,
             exercises,
+          });
+          flatGroupCount += exercises.length;
+        } else if (entry.kind === 'note') {
+          const note = this.notes.get(entry.noteId);
+          if (!note) return;
+          // order_index reflects position in the flattened exercise_groups
+          // list at the moment of save (notes don't consume a group slot)
+          template_notes.push({
+            id: entry.noteId,
+            content: String(note.content || '').slice(0, 500),
+            order_index: flatGroupCount,
           });
         }
       });
@@ -858,7 +955,7 @@
         sections,
         exercise_groups,
         workout_type: 'standard',
-        template_notes: [],
+        template_notes,
       };
     }
 
