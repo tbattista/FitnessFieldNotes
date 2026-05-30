@@ -460,6 +460,24 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(page.locator('#studioTray')).toHaveAttribute('data-empty', 'true');
     });
 
+    test('on first render, editors are hidden — only the display side of each field is visible', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+
+        // Display rows visible
+        await expect(firstCard.locator('.repssets-display')).toBeVisible();
+        await expect(firstCard.locator('.weight-display')).toBeVisible();
+        await expect(firstCard.locator('.studio-rest-display')).toBeVisible();
+
+        // Editor rows should NOT be visible (regression guard for the
+        // duplicate-fields bug caused by display: flex !important).
+        await expect(firstCard.locator('.repssets-editor')).toBeHidden();
+        await expect(firstCard.locator('.weight-editor')).toBeHidden();
+        await expect(firstCard.locator('.studio-rest-editor')).toBeHidden();
+    });
+
     test('tap-to-edit Protocol morphs the field into an input and saves on Enter', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();

@@ -283,7 +283,7 @@
         restDisplay.addEventListener('click', (e) => {
           e.stopPropagation();
           restDisplay.style.display = 'none';
-          restEditor.style.display = '';
+          restEditor.style.display = 'flex';
           restInput.value = this.state.rest || '60s';
           setTimeout(() => { restInput.focus(); restInput.select(); }, 0);
         });

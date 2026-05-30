@@ -631,20 +631,17 @@
   color: var(--bs-secondary-color);
 }
 
-/* Editor states — show inline input + (for weight) unit selector */
+/* Editor layout — the editor's visibility is owned by the inline `style`
+ * attribute on the editor div (none by default, set to flex by the field
+ * controllers when entering edit mode). Don't force display here or both
+ * the display and editor end up visible at the same time. */
 .studio-card-field .repssets-editor,
 .studio-card-field .weight-editor,
 .studio-card-field .studio-rest-editor {
-  display: flex !important;
   align-items: center;
   gap: 0.5rem;
   flex: 1;
   width: 100%;
-}
-.studio-card-field.workout-repssets-field[data-protocol] .repssets-editor,
-.studio-card-field.workout-weight-field[data-weight] .weight-editor,
-.studio-card-field.studio-card-rest-field[data-rest] .studio-rest-editor {
-  /* keep inline display: none from the markup until the controller toggles it */
 }
 .studio-card-field-input {
   flex: 1;
