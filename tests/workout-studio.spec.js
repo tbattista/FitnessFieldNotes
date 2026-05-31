@@ -572,6 +572,32 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(firstCard.locator('.weight-value')).toHaveText('185');
     });
 
+    test('selecting DIY unit replaces the numeric input with the text input — only one visible at a time', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('.weight-display').click();
+
+        const numericRow = firstCard.locator('.weight-input-row.numeric-mode');
+        const diyRow = firstCard.locator('.weight-input-row.diy-mode');
+
+        // Numeric visible, DIY hidden in lbs mode
+        await expect(numericRow).toBeVisible();
+        await expect(diyRow).toBeHidden();
+
+        await firstCard.locator('.weight-unit-selector .unit-btn[data-unit="diy"]').click();
+
+        // Numeric hidden, DIY visible after DIY pill is tapped
+        await expect(numericRow).toBeHidden();
+        await expect(diyRow).toBeVisible();
+
+        // Flipping back to lbs restores the numeric input
+        await firstCard.locator('.weight-unit-selector .unit-btn[data-unit="lbs"]').click();
+        await expect(numericRow).toBeVisible();
+        await expect(diyRow).toBeHidden();
+    });
+
     test('tap-to-edit Rest morphs into an input and saves on Enter', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();

@@ -721,11 +721,11 @@ html[data-bs-theme="dark"] .studio-add-custom-btn.is-active {
   flex: 1;
   min-width: 90px;
 }
-.workout-weight-field:not(.diy-active) .weight-editor .weight-input-row.numeric-mode,
+/* The WeightFieldController toggles .diy-active on the .weight-editor only —
+   never on the outer .workout-weight-field — so we key off the editor. */
 .workout-weight-field .weight-editor:not(.diy-active) .weight-input-row.numeric-mode {
   display: flex;
 }
-.workout-weight-field.diy-active .weight-editor .weight-input-row.diy-mode,
 .workout-weight-field .weight-editor.diy-active .weight-input-row.diy-mode {
   display: flex;
 }
