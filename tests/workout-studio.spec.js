@@ -1204,3 +1204,99 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await expect(page.locator('.studio-card')).toHaveCount(1);
     });
 });
+
+test.describe('Workout Studio — AI Import', () => {
+
+    // Mock the regex parse endpoint with a high-confidence fixture so the
+    // wizard short-circuits before reaching the AI follow-up call.
+    async function routeParse(page, workoutData) {
+        await page.route('**/api/v3/import/parse', async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    success: true,
+                    confidence: 1.0,
+                    workout_data: workoutData,
+                }),
+            });
+        });
+        // Also stub the AI fallback in case the wizard reaches it
+        await page.route('**/api/v3/import/parse-ai', async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    success: true,
+                    confidence: 1.0,
+                    workout_data: workoutData,
+                }),
+            });
+        });
+    }
+
+    test('Import button is visible on Page 1 next to the search row', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('#studioImportBtn')).toBeVisible();
+        await expect(page.locator('#studioImportBtn')).toContainText(/Import/i);
+    });
+
+    test('Importing pastes a parsed workout into the tray and navigates to Page 2', async ({ page }) => {
+        await routeParse(page, {
+            name: 'Imported Push Day',
+            description: 'Chest + tris focus',
+            tags: ['push', 'imported'],
+            exercise_groups: [
+                { exercises: { a: 'Barbell Bench Press' }, sets: '3', reps: '8' },
+                { exercises: { a: 'Cable Fly' }, sets: '3', reps: '12' },
+                { exercises: { a: 'Tricep Pushdown' }, sets: '3', reps: '12' },
+            ],
+            template_notes: [],
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioImportBtn').click();
+        const wizard = page.locator('#importWizardOffcanvas');
+        await expect(wizard).toBeVisible();
+
+        await wizard.locator('#importTextArea').fill('bench 3x8, cable fly 3x12, pushdown 3x12');
+        await wizard.locator('#importParseBtn').click();
+
+        // Auto-navigates to Page 2 with 3 cards populated
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize', { timeout: 5000 });
+        await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(3);
+
+        // Name + tags + description carried over
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Imported Push Day');
+        await expect(page.locator('#studioTagsInput')).toHaveValue('push, imported');
+        await expect(page.locator('#studioDescriptionInput')).toHaveValue('Chest + tris focus');
+    });
+
+    test('Consecutive exercises sharing a block_id collapse into a studio block on import', async ({ page }) => {
+        await routeParse(page, {
+            name: 'Imported Superset',
+            exercise_groups: [
+                { exercises: { a: 'Bench Press' }, sets: '3', reps: '8', block_id: 'b1', group_name: 'Push Pair' },
+                { exercises: { a: 'Barbell Row' }, sets: '3', reps: '8', block_id: 'b1', group_name: 'Push Pair' },
+                { exercises: { a: 'Plank' }, sets: '3', reps: '60s' },
+            ],
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioImportBtn').click();
+        await page.locator('#importTextArea').fill('bench 3x8 / row 3x8 superset, plank 3x60s');
+        await page.locator('#importParseBtn').click();
+
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize', { timeout: 5000 });
+
+        // One block holds two cards; one loose card sits outside
+        await expect(page.locator('.studio-block')).toHaveCount(1);
+        await expect(page.locator('.studio-block .studio-block-children .studio-card')).toHaveCount(2);
+        await expect(page.locator('#studioOrganizeList > .studio-card')).toHaveCount(1);
+        await expect(page.locator('.studio-block-name-input')).toHaveValue('Push Pair');
+    });
+});

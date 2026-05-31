@@ -114,6 +114,7 @@
       this.dom.searchClear = document.getElementById('studioSearchClear');
       this.dom.addCustomBtn = document.getElementById('studioAddCustomBtn');
       this.dom.addCustomLabel = document.getElementById('studioAddCustomLabel');
+      this.dom.importBtn = document.getElementById('studioImportBtn');
 
       this.dom.filterBtn = document.getElementById('studioFilterBtn');
       this.dom.filterBadge = document.getElementById('studioFilterBadge');
@@ -317,7 +318,146 @@
       if (this.dom.addCustomBtn) {
         this.dom.addCustomBtn.addEventListener('click', () => this._handleAddCustom());
       }
+      if (this.dom.importBtn) {
+        this.dom.importBtn.addEventListener('click', () => this._openImportWizard());
+      }
       this._updateAddCustomButton();
+    }
+
+    _openImportWizard() {
+      const factory = window.UnifiedOffcanvasFactory;
+      if (!factory || typeof factory.createImportWizard !== 'function') {
+        console.warn('[WorkoutStudio] UnifiedOffcanvasFactory.createImportWizard unavailable');
+        return;
+      }
+      // The import service's populateBuilder is hard-wired to the legacy
+      // workout-builder DOM and throws on this page. Neutralize it once
+      // (idempotent) so finishImport reaches our onImportComplete callback.
+      if (window.importService && !window.importService.__studioPatched) {
+        window.importService.populateBuilder = () => {
+          /* studio consumes workoutData via onImportComplete instead */
+        };
+        window.importService.__studioPatched = true;
+      }
+      try {
+        factory.createImportWizard((workoutData) => this._onImportComplete(workoutData));
+      } catch (err) {
+        console.error('[WorkoutStudio] createImportWizard threw:', err);
+      }
+    }
+
+    _onImportComplete(workoutData) {
+      if (!workoutData || typeof workoutData !== 'object') return;
+
+      // 1. Workout name + description + tags
+      const name = String(workoutData.name || '').trim();
+      if (name && this.dom.workoutNameInput) {
+        this.dom.workoutNameInput.value = name;
+        this.workoutName = name;
+      }
+      const desc = String(workoutData.description || '');
+      if (desc) {
+        this.description = desc.slice(0, 500);
+        if (this.dom.descriptionInput) this.dom.descriptionInput.value = this.description;
+      }
+      const tags = Array.isArray(workoutData.tags) ? workoutData.tags.slice(0, 10) : [];
+      if (tags.length > 0) {
+        this.tags = tags;
+        if (this.dom.tagsInput) this.dom.tagsInput.value = tags.join(', ');
+      }
+      // Auto-expand the meta card so the user can see what was imported
+      if ((desc || tags.length > 0) && typeof this._setMetaExpanded === 'function') {
+        this._setMetaExpanded(true);
+      }
+
+      // 2. Build tray + organize state from exercise_groups, grouping
+      //    consecutive entries with the same block_id into a studio block.
+      const groups = Array.isArray(workoutData.exercise_groups) ? workoutData.exercise_groups : [];
+      let currentBlockId = null;
+      let currentBlockMeta = null;
+      groups.forEach((group, idx) => {
+        const exName = this._extractGroupName(group);
+        if (!exName) return;
+        const exerciseLike = {
+          // Generated id matches the custom-add pattern so the tray treats it
+          // as a fresh selection. Real catalog matching can come later.
+          id: `import-${Date.now()}-${idx}`,
+          name: exName,
+          targetMuscleGroup: '',
+          primaryEquipment: '',
+          exerciseTier: null,
+          group_type: group.group_type || 'standard',
+        };
+        const instanceId = this.tray && this.tray.add(exerciseLike);
+        if (!instanceId) return;
+
+        // Seed organize state with the parsed protocol so cards render right
+        const state = this._ensureOrganizeState(instanceId);
+        state.sets = String(group.sets || state.sets || DEFAULT_SETS);
+        state.reps = String(group.reps || state.reps || DEFAULT_REPS);
+        state.rest = String(group.rest || state.rest || DEFAULT_REST);
+        if (group.default_weight) state.weight = String(group.default_weight);
+        if (group.default_weight_unit) state.weightUnit = String(group.default_weight_unit);
+
+        // Block grouping: consecutive groups sharing a block_id collapse into
+        // a studio block. The first entry in a run creates the block; the
+        // subsequent ones get reassigned out of the loose top-level slot.
+        const bid = group.block_id || null;
+        if (bid) {
+          if (bid !== currentBlockId) {
+            // Start a new block for this run
+            const newBlockId = `block-${Date.now()}-${this._blockSeq++}`;
+            const blockName = String(group.group_name || group.block_name || '').trim();
+            this.blocks.set(newBlockId, { name: blockName, instanceIds: [] });
+            // Find this entry in organizeOrder (just appended as a card) and
+            // replace it with a block whose first child is this instance.
+            const lastIdx = this.organizeOrder.length - 1;
+            this.organizeOrder[lastIdx] = { kind: 'block', blockId: newBlockId };
+            this.blocks.get(newBlockId).instanceIds.push(instanceId);
+            currentBlockId = bid;
+            currentBlockMeta = newBlockId;
+          } else if (currentBlockMeta) {
+            // Same run — move this instanceId out of the top-level entry into
+            // the existing block.
+            this._removeInstanceFromOrder(instanceId);
+            this.blocks.get(currentBlockMeta).instanceIds.push(instanceId);
+          }
+        } else {
+          currentBlockId = null;
+          currentBlockMeta = null;
+        }
+      });
+
+      // 3. Template notes (order_index points into the flattened groups list)
+      const notes = Array.isArray(workoutData.template_notes) ? workoutData.template_notes : [];
+      notes.forEach((note) => {
+        if (!note || typeof note !== 'object') return;
+        const noteId = note.id || `template-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        this.notes.set(noteId, { content: String(note.content || '').slice(0, 500) });
+        // Insert at the right top-level position based on order_index.
+        // organizeOrder positions where order_index counts cards/blocks (one
+        // each), so map order_index → position in organizeOrder. Imperfect
+        // for blocks (block counts as one slot, not N), but close enough for
+        // a first-cut import; user can adjust via the reorder sheet.
+        const target = Math.min(Math.max(0, note.order_index || 0), this.organizeOrder.length);
+        this.organizeOrder.splice(target, 0, { kind: 'note', noteId });
+      });
+
+      // 4. Navigate to Page 2 if anything was imported
+      if (this.tray && this.tray.size() > 0) {
+        this._showView('organize');
+      }
+    }
+
+    _extractGroupName(group) {
+      if (!group) return '';
+      if (typeof group.name === 'string' && group.name.trim()) return group.name.trim();
+      const ex = group.exercises;
+      if (ex && typeof ex === 'object') {
+        const candidate = ex.a || ex.b || ex.c || Object.values(ex).find((v) => typeof v === 'string' && v.trim());
+        if (candidate) return String(candidate).trim();
+      }
+      return '';
     }
 
     _updateAddCustomButton() {

@@ -319,6 +319,39 @@ html[data-bs-theme="dark"] .studio-add-custom-btn {
   background: rgba(201, 124, 93, 0.12);
 }
 
+/* -------------------- Import button (inline, persistent) -------------------- */
+.studio-import-btn {
+  flex: 0 0 auto;
+  min-width: 96px;
+  max-width: 30%;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 12px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-import-btn .bx {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  color: var(--bs-primary);
+}
+.studio-import-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+}
+html[data-bs-theme="dark"] .studio-import-btn { background: var(--bs-tertiary-bg); }
+html[data-bs-theme="dark"] .studio-import-btn:hover { background: rgba(255, 255, 255, 0.08); }
+
 /* -------------------- Section header (label + filter) -------------------- */
 .studio-section-header {
   display: flex;
