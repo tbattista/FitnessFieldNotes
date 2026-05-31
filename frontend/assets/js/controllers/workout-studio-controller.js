@@ -230,12 +230,12 @@
       if (!this.dom.addCustomBtn) return;
       const q = this.searchQuery;
       const hasText = !!(q && q.length > 0);
+      // Only reveal the button when there's text — otherwise it has no purpose
+      // and would just take up space on the search row.
+      this.dom.addCustomBtn.hidden = !hasText;
       this.dom.addCustomBtn.disabled = !hasText;
-      this.dom.addCustomBtn.classList.toggle('is-active', hasText);
       if (this.dom.addCustomLabel) {
-        this.dom.addCustomLabel.textContent = hasText
-          ? `Add "${q}" as custom`
-          : 'Type a name above, then tap to add as a custom exercise';
+        this.dom.addCustomLabel.textContent = hasText ? `Add "${q}"` : 'Add custom';
       }
     }
 

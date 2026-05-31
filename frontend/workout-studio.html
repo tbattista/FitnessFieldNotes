@@ -118,25 +118,23 @@
                 <!-- View: Page 1 (Select) -->
                 <div class="studio-view studio-view-select" id="studioViewSelect">
 
-                  <!-- Search bar -->
-                  <div class="studio-search">
-                    <i class="bx bx-search"></i>
-                    <input
-                      type="text"
-                      id="studioSearchInput"
-                      placeholder="Search exercises, equipment, muscle…"
-                      autocomplete="off"
-                      aria-label="Search exercises" />
-                    <button class="studio-search-clear" id="studioSearchClear" type="button" aria-label="Clear search" style="display: none;">
-                      <i class="bx bx-x"></i>
-                    </button>
-                  </div>
-
-                  <!-- Add-custom button (always visible; uses the search query as the exercise name) -->
-                  <div class="studio-add-custom-row">
-                    <button class="studio-add-custom-btn" id="studioAddCustomBtn" type="button" disabled>
+                  <!-- Search bar + inline add-custom (button reveals when input has text) -->
+                  <div class="studio-search-row">
+                    <div class="studio-search">
+                      <i class="bx bx-search"></i>
+                      <input
+                        type="text"
+                        id="studioSearchInput"
+                        placeholder="Search exercises, equipment, muscle…"
+                        autocomplete="off"
+                        aria-label="Search exercises" />
+                      <button class="studio-search-clear" id="studioSearchClear" type="button" aria-label="Clear search" style="display: none;">
+                        <i class="bx bx-x"></i>
+                      </button>
+                    </div>
+                    <button class="studio-add-custom-btn" id="studioAddCustomBtn" type="button" hidden>
                       <i class="bx bx-plus-circle"></i>
-                      <span id="studioAddCustomLabel">Type a name above, then tap to add as a custom exercise</span>
+                      <span id="studioAddCustomLabel">Add custom</span>
                     </button>
                   </div>
 

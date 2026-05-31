@@ -375,29 +375,44 @@
         setTimeout(() => { input.focus(); input.select(); }, 0);
       });
 
+      // Sticky flag set on the way down (mouse or touch) so the input's blur
+      // knows the user is interacting with a unit pill and shouldn't exit
+      // edit mode. Cleared shortly after, so a real blur on the next tap
+      // does close the editor.
+      let pillInteractionInFlight = false;
+      const claimPillInteraction = () => {
+        pillInteractionInFlight = true;
+        setTimeout(() => { pillInteractionInFlight = false; }, 200);
+      };
+
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); exitEdit(true); }
         else if (e.key === 'Escape') { e.preventDefault(); exitEdit(false); }
       });
       input.addEventListener('blur', (e) => {
-        // Don't exit if focus is moving to a unit pill — the user is mid-edit.
+        if (pillInteractionInFlight) {
+          // Restore focus so the morphed input is ready for more typing.
+          requestAnimationFrame(() => input.focus());
+          return;
+        }
         const next = e.relatedTarget;
         if (next && editor.contains(next)) return;
         exitEdit(true);
       });
 
       unitBtns.forEach((btn) => {
-        btn.addEventListener('mousedown', (e) => {
-          // Prevent the input's blur from firing before our click handler runs.
-          e.preventDefault();
+        // Cover all pointer modalities. preventDefault on the down-event also
+        // stops the input from losing focus mid-tap in browsers that respect it.
+        ['pointerdown', 'mousedown'].forEach((evt) => {
+          btn.addEventListener(evt, (e) => { claimPillInteraction(); e.preventDefault(); });
         });
+        btn.addEventListener('touchstart', claimPillInteraction, { passive: true });
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const unit = btn.dataset.unit;
           if (!unit || unit === this.state.weightUnit) return;
           this.state.weightUnit = unit;
           applyUnitMode(unit);
-          // Keep focus on the (newly typed) input so the user can keep typing.
           requestAnimationFrame(() => input.focus());
         });
       });

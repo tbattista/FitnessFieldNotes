@@ -151,21 +151,26 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         expect(flexWrap).toBe('wrap');
     });
 
-    test('add-custom button is always visible, disabled until search has text', async ({ page }) => {
+    test('add-custom button is hidden until search has text, then reveals on the same row', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         const btn = page.locator('#studioAddCustomBtn');
-        await expect(btn).toBeVisible();
-        await expect(btn).toBeDisabled();
-        await expect(btn).not.toHaveClass(/is-active/);
+        // Hidden when search is empty — no purpose, no visual weight
+        await expect(btn).toBeHidden();
 
         await page.locator('#studioSearchInput').fill('Hex Bar Deadlift');
-        await expect(btn).toBeEnabled();
-        await expect(btn).toHaveClass(/is-active/);
+        await expect(btn).toBeVisible();
         await expect(btn).toContainText('Hex Bar Deadlift');
 
+        // Verify it shares a row with the search input (same parent)
+        const sharedParent = await page.evaluate(() => {
+            const a = document.getElementById('studioSearchInput');
+            const b = document.getElementById('studioAddCustomBtn');
+            return a && b && a.closest('.studio-search-row') === b.parentElement;
+        });
+        expect(sharedParent).toBe(true);
+
         await page.locator('#studioSearchClear').click();
-        await expect(btn).toBeDisabled();
-        await expect(btn).not.toHaveClass(/is-active/);
+        await expect(btn).toBeHidden();
     });
 
     test('tapping add-custom adds the typed name to the tray and clears the search', async ({ page }) => {
@@ -179,9 +184,9 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(chips).toHaveCount(1);
         await expect(chips.first()).toContainText('My One-Off Lift');
 
-        // Search cleared so a second add starts fresh
+        // Search cleared so a second add starts fresh — button hides again
         await expect(page.locator('#studioSearchInput')).toHaveValue('');
-        await expect(page.locator('#studioAddCustomBtn')).toBeDisabled();
+        await expect(page.locator('#studioAddCustomBtn')).toBeHidden();
     });
 
     test('custom-added exercise persists in the save payload with its typed name', async ({ page }) => {
