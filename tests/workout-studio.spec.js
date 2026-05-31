@@ -572,30 +572,36 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(firstCard.locator('.weight-value')).toHaveText('185');
     });
 
-    test('selecting DIY unit replaces the numeric input with the text input — only one visible at a time', async ({ page }) => {
+    test('DIY pill morphs the single weight input to a text field; lbs/kg restores number type', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();
 
         const firstCard = page.locator('.studio-card').first();
         await firstCard.locator('.weight-display').click();
 
-        const numericRow = firstCard.locator('.weight-input-row.numeric-mode');
-        const diyRow = firstCard.locator('.weight-input-row.diy-mode');
+        // Exactly one input element exists, regardless of unit
+        const inputs = firstCard.locator('.weight-input');
+        await expect(inputs).toHaveCount(1);
 
-        // Numeric visible, DIY hidden in lbs mode
-        await expect(numericRow).toBeVisible();
-        await expect(diyRow).toBeHidden();
+        const input = inputs.first();
+        // lbs mode: numeric input
+        await expect(input).toHaveAttribute('type', 'number');
 
+        // Tap DIY → same input morphs to text + placeholder updates
         await firstCard.locator('.weight-unit-selector .unit-btn[data-unit="diy"]').click();
+        await expect(input).toHaveAttribute('type', 'text');
+        await expect(input).toHaveAttribute('placeholder', /bodyweight/);
 
-        // Numeric hidden, DIY visible after DIY pill is tapped
-        await expect(numericRow).toBeHidden();
-        await expect(diyRow).toBeVisible();
+        // Type arbitrary text and Enter to save
+        await input.fill('bodyweight + 25');
+        await input.press('Enter');
+        await expect(firstCard.locator('.weight-value')).toHaveText('bodyweight + 25');
 
-        // Flipping back to lbs restores the numeric input
-        await firstCard.locator('.weight-unit-selector .unit-btn[data-unit="lbs"]').click();
-        await expect(numericRow).toBeVisible();
-        await expect(diyRow).toBeHidden();
+        // Re-open and flip back to kg → input returns to number type
+        await firstCard.locator('.weight-display').click();
+        await firstCard.locator('.weight-unit-selector .unit-btn[data-unit="kg"]').click();
+        await expect(input).toHaveAttribute('type', 'number');
+        await expect(input).toHaveAttribute('placeholder', '0');
     });
 
     test('tap-to-edit Rest morphs into an input and saves on Enter', async ({ page }) => {

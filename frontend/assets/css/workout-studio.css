@@ -683,7 +683,7 @@ html[data-bs-theme="dark"] .studio-add-custom-btn.is-active {
  * controllers when entering edit mode). Don't force display here or both
  * the display and editor end up visible at the same time. */
 .studio-card-field .repssets-editor,
-.studio-card-field .weight-editor,
+.studio-card-field .studio-weight-editor,
 .studio-card-field .studio-rest-editor {
   align-items: center;
   gap: 0.5rem;
@@ -708,7 +708,8 @@ html[data-bs-theme="dark"] .studio-add-custom-btn.is-active {
   border-color: var(--bs-primary);
 }
 
-/* Weight editor: stack the numeric/diy row + unit selector horizontally */
+/* Weight editor: single input that morphs type when DIY pill is tapped,
+   sitting next to the unit selector in a horizontal row. */
 .studio-card-weight-row {
   display: flex;
   align-items: center;
@@ -716,18 +717,9 @@ html[data-bs-theme="dark"] .studio-add-custom-btn.is-active {
   flex: 1;
   flex-wrap: wrap;
 }
-.workout-weight-field .weight-input-row {
-  display: none;
+.studio-card-weight-field .weight-input {
   flex: 1;
   min-width: 90px;
-}
-/* The WeightFieldController toggles .diy-active on the .weight-editor only —
-   never on the outer .workout-weight-field — so we key off the editor. */
-.workout-weight-field .weight-editor:not(.diy-active) .weight-input-row.numeric-mode {
-  display: flex;
-}
-.workout-weight-field .weight-editor.diy-active .weight-input-row.diy-mode {
-  display: flex;
 }
 
 /* Unit selector pills */

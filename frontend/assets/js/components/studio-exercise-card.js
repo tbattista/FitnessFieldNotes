@@ -56,7 +56,6 @@
       this.inBlock = inBlock || null;
       this.blockOptions = Array.isArray(blockOptions) ? blockOptions : [];
       this.el = null;
-      this._weightCtl = null;
       this._repsSetsCtl = null;
       this._handleDocClickForMenu = null;
     }
@@ -170,12 +169,10 @@
               </div>
             </div>
 
-            <!-- Weight -->
-            <div class="workout-weight-field studio-card-field"
+            <!-- Weight (single input that morphs type when DIY pill is tapped) -->
+            <div class="studio-card-weight-field studio-card-field"
                  data-weight="${escapeHtml(weight)}"
-                 data-unit="${escapeHtml(unit)}"
-                 data-weight-mode="${isDIY ? 'text' : 'numeric'}"
-                 data-exercise-name="${safeName}">
+                 data-unit="${escapeHtml(unit)}">
               <div class="weight-display click-to-edit">
                 <span class="studio-card-field-label">Weight</span>
                 <span class="studio-card-field-value-wrap">
@@ -183,19 +180,16 @@
                   <span class="weight-unit" ${unitDisplay ? '' : 'style="display:none;"'}>${unitDisplay}</span>
                 </span>
               </div>
-              <div class="weight-editor ${isDIY ? 'diy-active' : ''}" style="display: none;">
+              <div class="studio-weight-editor" style="display: none;">
                 <span class="studio-card-field-label">Weight</span>
                 <div class="studio-card-weight-row">
-                  <div class="weight-input-row numeric-mode">
-                    <input type="number" class="weight-input studio-card-field-input"
-                           value="${isDIY ? '' : escapeHtml(weight)}"
-                           step="5" min="0" max="9999" inputmode="decimal" placeholder="0" />
-                  </div>
-                  <div class="weight-input-row diy-mode">
-                    <input type="text" class="weight-text-input studio-card-field-input"
-                           value="${isDIY ? escapeHtml(weight) : ''}"
-                           placeholder="e.g. bodyweight + 10 lbs" />
-                  </div>
+                  <input class="weight-input studio-card-field-input"
+                         type="${isDIY ? 'text' : 'number'}"
+                         value="${escapeHtml(weight)}"
+                         step="${unit === 'kg' ? '2.5' : '5'}"
+                         min="0" max="9999"
+                         inputmode="${isDIY ? 'text' : 'decimal'}"
+                         placeholder="${isDIY ? 'e.g. bodyweight + 10 lbs' : '0'}" />
                   <div class="weight-unit-selector">
                     <button class="unit-btn ${unit === 'lbs' ? 'active' : ''}" data-unit="lbs" type="button">lbs</button>
                     <button class="unit-btn ${unit === 'kg' ? 'active' : ''}" data-unit="kg" type="button">kg</button>
@@ -259,14 +253,7 @@
         document.addEventListener('click', this._handleDocClickForMenu);
       }
 
-      // Display tap → enter edit mode for each field
-      const wDisplay = this.el.querySelector('.weight-display');
-      if (wDisplay) {
-        wDisplay.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (this._weightCtl) this._weightCtl.enterEditMode();
-        });
-      }
+      // Protocol display tap → enter edit via RepsSetsFieldController
       const rDisplay = this.el.querySelector('.repssets-display');
       if (rDisplay) {
         rDisplay.addEventListener('click', (e) => {
@@ -274,6 +261,11 @@
           if (this._repsSetsCtl) this._repsSetsCtl.enterEditMode();
         });
       }
+
+      // Weight field (bespoke inline edit — one input that morphs type
+      // when the DIY unit pill is tapped, so it can hold either a number
+      // or arbitrary text like "bodyweight + 10 lbs".)
+      this._bindWeightField();
 
       // Rest field (bespoke inline edit)
       const restDisplay = this.el.querySelector('.studio-rest-display');
@@ -305,19 +297,6 @@
       }
 
       // Listen for change events emitted by the field controllers
-      const weightFieldEl = this.el.querySelector('.workout-weight-field');
-      if (weightFieldEl) {
-        weightFieldEl.addEventListener('weightChanged', (e) => {
-          const detail = e.detail || {};
-          const newState = {
-            weight: detail.weight != null ? String(detail.weight) : '',
-            weightUnit: detail.unit || this.state.weightUnit || 'lbs',
-          };
-          Object.assign(this.state, newState);
-          this._refreshWeightDisplay();
-          this._fire('onChange', newState);
-        });
-      }
       const repsFieldEl = this.el.querySelector('.workout-repssets-field');
       if (repsFieldEl) {
         repsFieldEl.addEventListener('repsSetsChanged', (e) => {
@@ -343,18 +322,8 @@
     }
 
     _initFieldControllers() {
-      const wEl = this.el.querySelector('.workout-weight-field');
+      // Weight is handled bespoke in _bindWeightField — no controller needed.
       const rEl = this.el.querySelector('.workout-repssets-field');
-      if (wEl && window.WeightFieldController) {
-        try {
-          this._weightCtl = new window.WeightFieldController(wEl, {
-            exerciseName: this.name,
-            sessionService: null, // Plan mode: no session
-          });
-        } catch (err) {
-          console.warn('[StudioExerciseCard] WeightFieldController init failed:', err);
-        }
-      }
       if (rEl && window.RepsSetsFieldController) {
         try {
           this._repsSetsCtl = new window.RepsSetsFieldController(rEl, {
@@ -365,6 +334,73 @@
           console.warn('[StudioExerciseCard] RepsSetsFieldController init failed:', err);
         }
       }
+    }
+
+    _bindWeightField() {
+      if (!this.el) return;
+      const display = this.el.querySelector('.weight-display');
+      const editor = this.el.querySelector('.studio-weight-editor');
+      const input = this.el.querySelector('.weight-input');
+      const unitBtns = this.el.querySelectorAll('.weight-unit-selector .unit-btn');
+      if (!display || !editor || !input) return;
+
+      const applyUnitMode = (unit) => {
+        const isDIY = unit === 'diy';
+        // One physical input morphs type so the box position is stable.
+        input.type = isDIY ? 'text' : 'number';
+        input.inputMode = isDIY ? 'text' : 'decimal';
+        input.placeholder = isDIY ? 'e.g. bodyweight + 10 lbs' : '0';
+        input.step = unit === 'kg' ? '2.5' : '5';
+        unitBtns.forEach((b) => b.classList.toggle('active', b.dataset.unit === unit));
+      };
+
+      const exitEdit = (save) => {
+        if (save) {
+          const v = String(input.value || '').trim();
+          this.state.weight = v;
+          // weightUnit was tracked live via unit-button clicks below
+          this._fire('onChange', { weight: this.state.weight, weightUnit: this.state.weightUnit });
+        }
+        this._refreshWeightDisplay();
+        editor.style.display = 'none';
+        display.style.display = '';
+      };
+
+      display.addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyUnitMode(this.state.weightUnit || 'lbs');
+        input.value = this.state.weight || '';
+        display.style.display = 'none';
+        editor.style.display = 'flex';
+        setTimeout(() => { input.focus(); input.select(); }, 0);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); exitEdit(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); exitEdit(false); }
+      });
+      input.addEventListener('blur', (e) => {
+        // Don't exit if focus is moving to a unit pill — the user is mid-edit.
+        const next = e.relatedTarget;
+        if (next && editor.contains(next)) return;
+        exitEdit(true);
+      });
+
+      unitBtns.forEach((btn) => {
+        btn.addEventListener('mousedown', (e) => {
+          // Prevent the input's blur from firing before our click handler runs.
+          e.preventDefault();
+        });
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const unit = btn.dataset.unit;
+          if (!unit || unit === this.state.weightUnit) return;
+          this.state.weightUnit = unit;
+          applyUnitMode(unit);
+          // Keep focus on the (newly typed) input so the user can keep typing.
+          requestAnimationFrame(() => input.focus());
+        });
+      });
     }
 
     _buildMoveMenuItems() {
@@ -421,7 +457,7 @@
       const unit = this.state.weightUnit || 'lbs';
       const valEl = this.el.querySelector('.weight-display .weight-value');
       const unitEl = this.el.querySelector('.weight-display .weight-unit');
-      const field = this.el.querySelector('.workout-weight-field');
+      const field = this.el.querySelector('.studio-card-weight-field');
       if (valEl) valEl.textContent = weight === '' ? '—' : weight;
       if (unitEl) {
         if (weight !== '' && unit !== 'diy') {
@@ -434,7 +470,6 @@
       if (field) {
         field.dataset.weight = weight;
         field.dataset.unit = unit;
-        field.dataset.weightMode = unit === 'diy' ? 'text' : 'numeric';
       }
     }
 
