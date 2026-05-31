@@ -100,9 +100,27 @@
                     autocomplete="off"
                     aria-label="Workout name" />
 
-                  <div class="studio-mode-toggle" role="group" aria-label="Workout mode">
-                    <button class="studio-mode-btn is-active" id="studioModePlan" type="button" data-mode="plan">Plan</button>
-                    <button class="studio-mode-btn" id="studioModeLog" type="button" data-mode="log">Log Now</button>
+                  <div class="studio-meta-row">
+                    <label class="studio-meta-field" aria-label="Tags">
+                      <i class="bx bx-purchase-tag" aria-hidden="true"></i>
+                      <input
+                        type="text"
+                        class="studio-meta-input"
+                        id="studioTagsInput"
+                        placeholder="Tags (comma-separated)"
+                        maxlength="200"
+                        autocomplete="off" />
+                    </label>
+                    <label class="studio-meta-field" aria-label="Description">
+                      <i class="bx bx-note" aria-hidden="true"></i>
+                      <input
+                        type="text"
+                        class="studio-meta-input"
+                        id="studioDescriptionInput"
+                        placeholder="Description"
+                        maxlength="500"
+                        autocomplete="off" />
+                    </label>
                   </div>
                 </header>
 

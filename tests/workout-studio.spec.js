@@ -5,15 +5,20 @@ const BASE = 'http://localhost:8001';
 
 test.describe('Workout Studio — Foundation + Live Exercise List', () => {
 
-    test('page loads with slim header, sticky tray, and search', async ({ page }) => {
+    test('page loads with workout meta card, sticky tray, and search', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
 
-        // Slim header: workout name input (no back button, no picker dropdown) + mode toggle
+        // Workout meta card: name + tags + description, no Plan/Log toggle anymore
         await expect(page.locator('#studioBackBtn')).toHaveCount(0);
         await expect(page.locator('#studioWorkoutPicker')).toHaveCount(0);
         await expect(page.locator('#studioWorkoutNameInput')).toBeVisible();
-        await expect(page.locator('#studioModePlan')).toHaveClass(/is-active/);
-        await expect(page.locator('#studioModeLog')).not.toHaveClass(/is-active/);
+        await expect(page.locator('#studioTagsInput')).toBeVisible();
+        await expect(page.locator('#studioDescriptionInput')).toBeVisible();
+        await expect(page.locator('#studioModePlan')).toHaveCount(0);
+        await expect(page.locator('#studioModeLog')).toHaveCount(0);
+
+        // Workout name is pre-populated with a default like "New Workout - ..."
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue(/^New Workout - /);
 
         // Tray starts empty
         await expect(page.locator('#studioTray')).toHaveAttribute('data-empty', 'true');
@@ -98,16 +103,37 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('#studioContinueCta')).toBeHidden();
     });
 
-    test('Plan / Log Now mode toggle switches active state', async ({ page }) => {
+    test('tags + description inputs persist into the save payload', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-meta', name: postedBody?.name || '' }),
+                });
+            } else { await route.continue(); }
+        });
+
         await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+        await page.evaluate(() => { delete window.dataManager; });
 
-        await expect(page.locator('#studioModePlan')).toHaveClass(/is-active/);
-        await page.locator('#studioModeLog').click();
-        await expect(page.locator('#studioModeLog')).toHaveClass(/is-active/);
-        await expect(page.locator('#studioModePlan')).not.toHaveClass(/is-active/);
+        // Fill workout name + tags + description
+        await page.locator('#studioWorkoutNameInput').fill('Push Day Alpha');
+        await page.locator('#studioTagsInput').fill('push, chest, intermediate');
+        await page.locator('#studioDescriptionInput').fill('Bench focus, 4 working sets per primary lift.');
 
-        await page.locator('#studioModePlan').click();
-        await expect(page.locator('#studioModePlan')).toHaveClass(/is-active/);
+        await page.locator('.studio-row').first().locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody).toBeTruthy();
+        expect(postedBody.name).toBe('Push Day Alpha');
+        expect(postedBody.description).toBe('Bench focus, 4 working sets per primary lift.');
+        expect(postedBody.tags).toEqual(['push', 'chest', 'intermediate']);
     });
 
     test('search filters the list down to matching exercises', async ({ page }) => {
@@ -651,9 +677,12 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
 
     test('Save without a workout name shows a friendly error', async ({ page }) => {
         await addNFromGrid(page, 1);
+
+        // The name field is pre-populated with a "New Workout - <date>" default,
+        // so explicitly clear it to recreate the no-name path.
+        await page.locator('#studioWorkoutNameInput').fill('');
         await page.locator('#studioContinueBtn').click();
 
-        // Don't fill the name input
         await page.locator('#studioSaveBtn').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/name/i);
         await expect(page.locator('#studioOrganizeStatus')).toHaveClass(/is-error/);

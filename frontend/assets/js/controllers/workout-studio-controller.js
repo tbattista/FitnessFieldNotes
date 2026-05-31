@@ -29,7 +29,8 @@
       this.tray = null;
       this.grid = null;
       this.searchQuery = '';
-      this.mode = 'plan'; // 'plan' | 'log'
+      this.tags = [];
+      this.description = '';
       this.allExercises = [];
       this.customExercises = [];
       this.favoriteIds = new Set();
@@ -100,8 +101,8 @@
     _cacheDom() {
       this.dom.studio = document.getElementById('studio');
       this.dom.workoutNameInput = document.getElementById('studioWorkoutNameInput');
-      this.dom.modePlanBtn = document.getElementById('studioModePlan');
-      this.dom.modeLogBtn = document.getElementById('studioModeLog');
+      this.dom.tagsInput = document.getElementById('studioTagsInput');
+      this.dom.descriptionInput = document.getElementById('studioDescriptionInput');
 
       this.dom.tray = document.getElementById('studioTray');
       this.dom.trayChips = document.getElementById('studioTrayChips');
@@ -170,28 +171,44 @@
 
     _bindHeader() {
       if (this.dom.workoutNameInput) {
+        // Seed a sensible default name so first-time users don't see a blank
+        // field — matches the legacy workout-builder behavior.
+        if (!this.dom.workoutNameInput.value) {
+          const defaultName = this._defaultWorkoutName();
+          this.dom.workoutNameInput.value = defaultName;
+          this.workoutName = defaultName;
+        }
         this.dom.workoutNameInput.addEventListener('input', (e) => {
           this.workoutName = String(e.target.value || '').trim();
         });
       }
 
-      [this.dom.modePlanBtn, this.dom.modeLogBtn].forEach((btn) => {
-        if (!btn) return;
-        btn.addEventListener('click', () => this._setMode(btn.dataset.mode));
-      });
+      if (this.dom.tagsInput) {
+        this.dom.tagsInput.addEventListener('input', (e) => {
+          const raw = String(e.target.value || '');
+          this.tags = raw.split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+            .slice(0, 10);
+        });
+      }
+
+      if (this.dom.descriptionInput) {
+        this.dom.descriptionInput.addEventListener('input', (e) => {
+          this.description = String(e.target.value || '').slice(0, 500);
+        });
+      }
     }
 
-    _setMode(mode) {
-      if (mode !== 'plan' && mode !== 'log') return;
-      this.mode = mode;
-      if (this.dom.modePlanBtn) {
-        this.dom.modePlanBtn.classList.toggle('is-active', mode === 'plan');
-        this.dom.modePlanBtn.setAttribute('aria-pressed', mode === 'plan' ? 'true' : 'false');
-      }
-      if (this.dom.modeLogBtn) {
-        this.dom.modeLogBtn.classList.toggle('is-active', mode === 'log');
-        this.dom.modeLogBtn.setAttribute('aria-pressed', mode === 'log' ? 'true' : 'false');
-      }
+    _defaultWorkoutName() {
+      const now = new Date();
+      const month = now.toLocaleString('en-US', { month: 'short' });
+      const day = now.getDate();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const meridiem = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      return `New Workout - ${month} ${day} at ${hours}:${minutes} ${meridiem}`;
     }
 
     _bindSearch() {
@@ -950,8 +967,8 @@
 
       return {
         name: this.workoutName,
-        description: '',
-        tags: [],
+        description: this.description || '',
+        tags: Array.isArray(this.tags) ? this.tags.slice() : [],
         sections,
         exercise_groups,
         workout_type: 'standard',
