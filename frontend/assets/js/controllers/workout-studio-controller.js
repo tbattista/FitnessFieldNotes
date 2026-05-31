@@ -103,6 +103,9 @@
       this.dom.workoutNameInput = document.getElementById('studioWorkoutNameInput');
       this.dom.tagsInput = document.getElementById('studioTagsInput');
       this.dom.descriptionInput = document.getElementById('studioDescriptionInput');
+      this.dom.slimHeader = document.getElementById('studioSlimHeader');
+      this.dom.metaRow = document.getElementById('studioMetaRow');
+      this.dom.metaToggle = document.getElementById('studioMetaToggle');
 
       this.dom.tray = document.getElementById('studioTray');
       this.dom.trayChips = document.getElementById('studioTrayChips');
@@ -197,6 +200,44 @@
         this.dom.descriptionInput.addEventListener('input', (e) => {
           this.description = String(e.target.value || '').slice(0, 500);
         });
+      }
+
+      if (this.dom.metaToggle) {
+        this.dom.metaToggle.addEventListener('click', () => this._toggleMetaRow());
+      }
+      // Auto-expand if either field is pre-populated (e.g. when editing an
+      // existing workout in a later commit). Today both start empty so this
+      // is a no-op, but the hook lets _setExpanded fire correctly later.
+      const initialExpanded = !!(
+        (this.dom.tagsInput && this.dom.tagsInput.value) ||
+        (this.dom.descriptionInput && this.dom.descriptionInput.value)
+      );
+      if (initialExpanded) this._setMetaExpanded(true);
+    }
+
+    _toggleMetaRow() {
+      const isExpanded = this.dom.slimHeader && this.dom.slimHeader.classList.contains('is-meta-expanded');
+      this._setMetaExpanded(!isExpanded);
+      if (!isExpanded && this.dom.tagsInput) {
+        // Focus the tags field on first expand so keyboard users can start
+        // typing immediately. Use rAF so the field is visible first.
+        requestAnimationFrame(() => this.dom.tagsInput.focus());
+      }
+    }
+
+    _setMetaExpanded(expanded) {
+      if (this.dom.slimHeader) {
+        this.dom.slimHeader.classList.toggle('is-meta-expanded', expanded);
+      }
+      if (this.dom.metaRow) {
+        this.dom.metaRow.hidden = !expanded;
+      }
+      if (this.dom.metaToggle) {
+        this.dom.metaToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        this.dom.metaToggle.setAttribute(
+          'aria-label',
+          expanded ? 'Hide tags and description' : 'Show tags and description'
+        );
       }
     }
 

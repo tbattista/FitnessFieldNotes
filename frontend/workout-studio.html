@@ -90,17 +90,28 @@
               <section class="studio" id="studio" data-view="select">
 
                 <!-- Slim header: workout name input (left) + Plan/Log toggle (right). No back button -->
-                <header class="studio-slim-header">
-                  <input
-                    type="text"
-                    class="studio-slim-name"
-                    id="studioWorkoutNameInput"
-                    placeholder="Workout name"
-                    maxlength="100"
-                    autocomplete="off"
-                    aria-label="Workout name" />
+                <header class="studio-slim-header" id="studioSlimHeader">
+                  <div class="studio-slim-name-row">
+                    <input
+                      type="text"
+                      class="studio-slim-name"
+                      id="studioWorkoutNameInput"
+                      placeholder="Workout name"
+                      maxlength="100"
+                      autocomplete="off"
+                      aria-label="Workout name" />
+                    <button
+                      type="button"
+                      class="studio-meta-toggle"
+                      id="studioMetaToggle"
+                      aria-controls="studioMetaRow"
+                      aria-expanded="false"
+                      aria-label="Show tags and description">
+                      <i class="bx bx-chevron-down" aria-hidden="true"></i>
+                    </button>
+                  </div>
 
-                  <div class="studio-meta-row">
+                  <div class="studio-meta-row" id="studioMetaRow" hidden>
                     <label class="studio-meta-field" aria-label="Tags">
                       <i class="bx bx-purchase-tag" aria-hidden="true"></i>
                       <input
