@@ -96,6 +96,33 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('#studioContinueCount')).toHaveText('2');
     });
 
+    test('tapping the row body (not the + button) also adds the exercise', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+
+        // Click somewhere inside the row body, NOT on the + or info buttons
+        await firstRow.locator('.studio-row-body').click();
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
+        await expect(firstRow.locator('.studio-row-add-badge')).toHaveText('1');
+    });
+
+    test('info button opens the exercise detail offcanvas and does NOT add', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+
+        await firstRow.locator('.studio-row-info').click();
+
+        // Detail offcanvas opens (the shared mobile bottom-sheet) — its id
+        // is reused from the exercise-database page.
+        const offcanvas = page.locator('#exerciseDetailOffcanvas');
+        await expect(offcanvas).toBeVisible({ timeout: 5000 });
+
+        // Tray stays empty — the info click did not also add
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(0);
+    });
+
     test('removing a chip decrements the row badge and updates the CTA', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
 

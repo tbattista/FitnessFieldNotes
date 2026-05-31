@@ -168,8 +168,44 @@
       this.grid = new window.ExerciseSelectionGrid({
         container: this.dom.list,
         onAdd: (exercise) => this._onAddExercise(exercise),
-        // onRowClick: open detail view in a later commit
+        onInfo: (exercise) => this._openExerciseDetail(exercise),
       });
+    }
+
+    _openExerciseDetail(exercise) {
+      if (!exercise) return;
+      if (!window.ExerciseDetailOffcanvas) {
+        console.warn('[WorkoutStudio] ExerciseDetailOffcanvas unavailable; cannot show detail');
+        return;
+      }
+      // The detail offcanvas reads exercises out of window.ffn.exercises.{all,custom}.
+      // The studio sources its data from a different cache, so mirror what we
+      // already have onto window.ffn before opening — this keeps the
+      // offcanvas a pure consumer and avoids forking it for the studio.
+      window.ffn = window.ffn || {};
+      window.ffn.exercises = window.ffn.exercises || {};
+      window.ffn.exercises.all = Array.isArray(this.allExercises) ? this.allExercises : [];
+      window.ffn.exercises.custom = Array.isArray(this.customExercises) ? this.customExercises : [];
+      if (!(window.ffn.exercises.favorites instanceof Set)) {
+        window.ffn.exercises.favorites = this.favoriteIds instanceof Set
+          ? this.favoriteIds
+          : new Set();
+      }
+
+      if (!this._exerciseDetailOffcanvas) {
+        try {
+          this._exerciseDetailOffcanvas = new window.ExerciseDetailOffcanvas();
+        } catch (err) {
+          console.error('[WorkoutStudio] Failed to create ExerciseDetailOffcanvas:', err);
+          return;
+        }
+      }
+      const id = exercise.id || exercise.name;
+      try {
+        this._exerciseDetailOffcanvas.show(id);
+      } catch (err) {
+        console.error('[WorkoutStudio] ExerciseDetailOffcanvas.show threw:', err);
+      }
     }
 
     _bindHeader() {

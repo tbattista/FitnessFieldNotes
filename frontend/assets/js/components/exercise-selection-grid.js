@@ -12,18 +12,19 @@
  *   - Circular "+" button with optional count badge when in the tray
  *
  * Callbacks:
- *   onAdd(exercise, rowEl)   -> "+" was tapped; controller pushes to the tray
- *   onRowClick(exercise)     -> row body (not the "+") was tapped (detail view, optional)
+ *   onAdd(exercise, rowEl)   -> row body or "+" was tapped; controller pushes to the tray
+ *   onInfo(exercise)         -> info icon was tapped; controller opens the detail popup
  */
 
 (function () {
   'use strict';
 
   class ExerciseSelectionGrid {
-    constructor({ container, onAdd, onRowClick } = {}) {
+    constructor({ container, onAdd, onRowClick, onInfo } = {}) {
       this.container = container;
       this.onAdd = onAdd || (() => {});
       this.onRowClick = onRowClick || (() => {});
+      this.onInfo = onInfo || (() => {});
       this.exercises = [];
       this.countsByExerciseId = new Map();
 
@@ -49,27 +50,24 @@
       const exercise = this._findById(id);
       if (!exercise) return;
 
-      const addBtn = e.target.closest('.studio-row-add');
-      if (addBtn) {
+      // Info icon → open detail popup, swallow event so the row's add doesn't fire
+      if (e.target.closest('.studio-row-info')) {
         e.stopPropagation();
-        try {
-          this.onAdd(exercise, row);
-        } catch (err) {
-          console.error('[ExerciseSelectionGrid] onAdd threw:', err);
-        }
-        row.classList.remove('is-added');
-        // Force reflow to restart animation
-        // eslint-disable-next-line no-unused-expressions
-        row.offsetWidth;
-        row.classList.add('is-added');
+        try { this.onInfo(exercise); }
+        catch (err) { console.error('[ExerciseSelectionGrid] onInfo threw:', err); }
         return;
       }
 
-      try {
-        this.onRowClick(exercise);
-      } catch (err) {
-        console.error('[ExerciseSelectionGrid] onRowClick threw:', err);
-      }
+      // Anything else on the row — the dedicated + button or the row body —
+      // adds the exercise to the tray. Single behavior keeps multi-add
+      // intuitive: tap the card again to add another instance.
+      try { this.onAdd(exercise, row); }
+      catch (err) { console.error('[ExerciseSelectionGrid] onAdd threw:', err); }
+      row.classList.remove('is-added');
+      // Force reflow to restart the bounce animation on repeat adds
+      // eslint-disable-next-line no-unused-expressions
+      row.offsetWidth;
+      row.classList.add('is-added');
     }
 
     _findById(id) {
@@ -134,6 +132,9 @@
             </div>
             <div class="studio-row-subtitle">${subtitle}</div>
           </div>
+          <button class="studio-row-info" type="button" aria-label="View details for ${name}" title="Details">
+            <i class="bx bx-info-circle"></i>
+          </button>
           <button class="studio-row-add" type="button" aria-label="Add ${name} to tray">
             <i class="bx bx-plus"></i>
             <span class="studio-row-add-badge" style="display: none;"></span>
