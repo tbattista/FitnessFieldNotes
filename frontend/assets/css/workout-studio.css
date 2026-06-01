@@ -1516,3 +1516,83 @@ html[data-bs-theme="dark"] .studio-reorder-row { background: var(--bs-tertiary-b
 
 html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary { background: var(--bs-tertiary-bg); }
 html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* -------------------- Detail offcanvas: pairing recommendations -------------------- */
+/* The exercise-database stylesheet isn't loaded on the studio page, so its
+   .pairing-exercise-chip + .pairing-add-btn styles don't apply. Provide a
+   studio-flavored version scoped to #exerciseDetailOffcanvas so we don't
+   leak into the legacy detail-panel layout. */
+#exerciseDetailOffcanvas .pairing-category-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.4rem;
+}
+#exerciseDetailOffcanvas .pairing-exercise-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.35rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid var(--bs-border-color);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+#exerciseDetailOffcanvas .pairing-exercise-chip:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: var(--bs-primary);
+}
+#exerciseDetailOffcanvas .pairing-exercise-chip:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 1px;
+}
+#exerciseDetailOffcanvas .pairing-exercise-name {
+  font-size: 0.92rem;
+  font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#exerciseDetailOffcanvas .pairing-exercise-meta {
+  font-size: 0.7rem;
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+}
+#exerciseDetailOffcanvas .pairing-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--bs-primary);
+  font-size: 1.05rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+#exerciseDetailOffcanvas .pairing-add-btn:hover {
+  background: var(--bs-primary);
+  color: white;
+}
+#exerciseDetailOffcanvas .pairing-add-btn:active {
+  transform: scale(0.9);
+}
+
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-exercise-chip {
+  background: rgba(255, 255, 255, 0.04);
+}
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-exercise-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-add-btn {
+  background: rgba(255, 255, 255, 0.08);
+}

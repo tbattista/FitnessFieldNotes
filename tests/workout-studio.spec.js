@@ -159,6 +159,31 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
     });
 
+    test('pairing recommendation + buttons route to the studio tray (not the legacy cart)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+
+        await firstRow.locator('.studio-row-info').click();
+        const offcanvas = page.locator('#exerciseDetailOffcanvas');
+        await expect(offcanvas).toBeVisible({ timeout: 5000 });
+
+        // Some exercises have no pairings; pick the first chip that does exist.
+        const pairingAddBtn = offcanvas.locator('.pairing-add-btn').first();
+        const pairingChip = offcanvas.locator('.pairing-exercise-chip').first();
+        const hasPairings = (await pairingAddBtn.count()) > 0;
+        test.skip(!hasPairings, 'No pairing recommendations for first exercise');
+
+        // Sanity: studio-flavored chip styling kicks in (light bg, rounded corners)
+        await expect(pairingChip).toHaveCSS('border-radius', '10px');
+
+        await pairingAddBtn.click();
+
+        // Tray now has an entry pushed by the pairing click (the original
+        // exercise wasn't added — only this pairing was tapped).
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
+    });
+
     test('removing a chip decrements the row badge and updates the CTA', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
 

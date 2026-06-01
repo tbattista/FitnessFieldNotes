@@ -108,6 +108,32 @@ class ExerciseDetailOffcanvas {
         if (window._wirePairingChipClicks) {
             window._wirePairingChipClicks(contentEl, (targetId) => this.show(targetId));
         }
+
+        // In studio context, intercept the pairing-add buttons (which the
+        // legacy wiring above routes to window.ExerciseCart, not the studio
+        // tray) and route them through this.onAdd instead. Capture-phase
+        // + stopImmediatePropagation ensures our handler runs first and
+        // suppresses the legacy ExerciseCart listener on the same element.
+        if (this.context === 'studio' && this.onAdd) {
+            contentEl.querySelectorAll('.pairing-add-btn').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    const id = btn.dataset.exerciseId;
+                    const name = btn.dataset.exerciseName;
+                    if (!id || !name) return;
+                    // Look up the full exercise for accurate metadata, fall
+                    // back to a stub if not found.
+                    const pool = [
+                        ...((window.ffn && window.ffn.exercises && window.ffn.exercises.all) || []),
+                        ...((window.ffn && window.ffn.exercises && window.ffn.exercises.custom) || []),
+                    ];
+                    const ex = pool.find((e2) => String(e2.id) === String(id)) || { id, name };
+                    try { this.onAdd(ex); }
+                    catch (err) { console.error('[ExerciseDetailOffcanvas] pairing onAdd threw:', err); }
+                }, { capture: true });
+            });
+        }
     }
 
     _renderFooterActions(exercise) {
