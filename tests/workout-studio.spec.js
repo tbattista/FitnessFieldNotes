@@ -123,6 +123,42 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('.studio-tray-chip')).toHaveCount(0);
     });
 
+    test('detail offcanvas shows only Favorite + Add in studio context (no Edit/Delete)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+
+        await firstRow.locator('.studio-row-info').click();
+        const offcanvas = page.locator('#exerciseDetailOffcanvas');
+        await expect(offcanvas).toBeVisible({ timeout: 5000 });
+
+        // Studio-styled footer present
+        await expect(offcanvas.locator('.studio-offcanvas-actions')).toBeVisible();
+        await expect(offcanvas.locator('.exercise-offcanvas-fav-btn')).toBeVisible();
+        await expect(offcanvas.locator('.exercise-offcanvas-add-btn')).toBeVisible();
+
+        // Edit + Delete are NOT rendered in studio context
+        await expect(offcanvas.locator('.exercise-offcanvas-edit-btn')).toHaveCount(0);
+        await expect(offcanvas.locator('.exercise-offcanvas-delete-btn')).toHaveCount(0);
+    });
+
+    test('Add to Workout in the detail offcanvas pushes the exercise into the tray and closes', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+
+        await firstRow.locator('.studio-row-info').click();
+        const offcanvas = page.locator('#exerciseDetailOffcanvas');
+        await expect(offcanvas).toBeVisible({ timeout: 5000 });
+
+        await offcanvas.locator('.exercise-offcanvas-add-btn').click();
+
+        // Offcanvas closes
+        await expect(offcanvas).toBeHidden({ timeout: 3000 });
+        // Exercise lands in the tray
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
+    });
+
     test('removing a chip decrements the row badge and updates the CTA', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
 

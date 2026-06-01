@@ -195,7 +195,10 @@
 
       if (!this._exerciseDetailOffcanvas) {
         try {
-          this._exerciseDetailOffcanvas = new window.ExerciseDetailOffcanvas();
+          this._exerciseDetailOffcanvas = new window.ExerciseDetailOffcanvas({
+            context: 'studio',
+            onAdd: (ex) => this._onAddExercise(ex),
+          });
         } catch (err) {
           console.error('[WorkoutStudio] Failed to create ExerciseDetailOffcanvas:', err);
           return;

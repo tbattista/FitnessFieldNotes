@@ -6,11 +6,18 @@
  */
 
 class ExerciseDetailOffcanvas {
-    constructor() {
+    constructor(options = {}) {
         this.currentExercise = null;
         this.offcanvasId = 'exerciseDetailOffcanvas';
         this.offcanvasElement = null;
         this.bsOffcanvas = null;
+        // Context-aware footer:
+        //   - 'default' (legacy exercise-database flow): Favorite + Edit/Delete
+        //     for custom exercises + Add (via window.addExerciseToWorkout)
+        //   - 'studio': slimmer Favorite + Add pair, no Edit/Delete, Add
+        //     routes through options.onAdd instead of the cart
+        this.context = options.context === 'studio' ? 'studio' : 'default';
+        this.onAdd = typeof options.onAdd === 'function' ? options.onAdd : null;
 
         this.initialize();
     }
@@ -107,9 +114,35 @@ class ExerciseDetailOffcanvas {
         const footer = document.getElementById('exerciseOffcanvasFooter');
         if (!footer) return;
 
-        const isCustom = !exercise.isGlobal;
         const isFavorited = window.ffn?.exercises?.favorites?.has(exercise.id);
 
+        if (this.context === 'studio') {
+            // Studio context: Favorite + Add only, styled as studio pills.
+            // Edit/Delete are intentionally omitted — they'd navigate away
+            // or destroy data mid-workout-build.
+            footer.innerHTML = `
+                <div class="studio-offcanvas-actions">
+                    <button type="button"
+                            class="studio-offcanvas-btn studio-offcanvas-btn-secondary exercise-offcanvas-fav-btn ${isFavorited ? 'is-favorited' : ''}"
+                            data-exercise-id="${exercise.id}">
+                        <i class="bx ${isFavorited ? 'bxs-heart' : 'bx-heart'}"></i>
+                        <span>${isFavorited ? 'Unfavorite' : 'Favorite'}</span>
+                    </button>
+                    <button type="button"
+                            class="studio-offcanvas-btn studio-offcanvas-btn-primary exercise-offcanvas-add-btn"
+                            data-exercise-id="${exercise.id}"
+                            data-exercise-name="${this._escapeHtml(exercise.name)}">
+                        <i class="bx bx-plus"></i>
+                        <span>Add to Workout</span>
+                    </button>
+                </div>
+            `;
+            this._attachFooterListeners(footer, exercise);
+            return;
+        }
+
+        // Default / legacy context
+        const isCustom = !exercise.isGlobal;
         let actionsHTML = `
             <div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-outline-${isFavorited ? 'danger' : 'secondary'} flex-fill exercise-offcanvas-fav-btn"
@@ -156,7 +189,10 @@ class ExerciseDetailOffcanvas {
         const addBtn = footer.querySelector('.exercise-offcanvas-add-btn');
         if (addBtn) {
             addBtn.addEventListener('click', () => {
-                if (window.addExerciseToWorkout) {
+                if (this.context === 'studio' && this.onAdd) {
+                    try { this.onAdd(exercise); }
+                    catch (err) { console.error('[ExerciseDetailOffcanvas] onAdd threw:', err); }
+                } else if (window.addExerciseToWorkout) {
                     window.addExerciseToWorkout({ id: exercise.id, name: exercise.name });
                 }
                 this.hide();

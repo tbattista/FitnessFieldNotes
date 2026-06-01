@@ -1461,3 +1461,58 @@ html[data-bs-theme="dark"] .studio-reorder-note-row {
 /* Dark-mode parity */
 html[data-bs-theme="dark"] .studio-reorder-block-row { background: rgba(255, 255, 255, 0.04); }
 html[data-bs-theme="dark"] .studio-reorder-row { background: var(--bs-tertiary-bg); }
+
+/* -------------------- Exercise Detail Offcanvas (studio context) -------------------- */
+.studio-offcanvas-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.studio-offcanvas-btn {
+  flex: 1 1 0;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.studio-offcanvas-btn .bx { font-size: 1.15rem; flex-shrink: 0; }
+
+.studio-offcanvas-btn-primary {
+  background: var(--bs-primary);
+  color: white;
+  border-color: var(--bs-primary);
+}
+.studio-offcanvas-btn-primary:hover {
+  filter: brightness(0.95);
+}
+
+.studio-offcanvas-btn-secondary {
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+.studio-offcanvas-btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+}
+.studio-offcanvas-btn-secondary.is-favorited {
+  color: var(--bs-danger);
+  border-color: var(--bs-danger);
+  background: rgba(220, 53, 69, 0.06);
+}
+.studio-offcanvas-btn-secondary.is-favorited:hover {
+  background: rgba(220, 53, 69, 0.12);
+}
+
+html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary { background: var(--bs-tertiary-bg); }
+html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary:hover { background: rgba(255, 255, 255, 0.08); }
