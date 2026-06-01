@@ -122,7 +122,15 @@
       return `
         <div class="studio-card${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}>
           <div class="studio-card-header">
-            <div class="studio-card-name">${safeName}</div>
+            <div class="studio-card-name-wrap">
+              <div class="studio-card-name click-to-edit" tabindex="0">${safeName}</div>
+              <input class="studio-card-name-input"
+                     type="text"
+                     value="${safeName}"
+                     maxlength="100"
+                     aria-label="Exercise name"
+                     style="display: none;" />
+            </div>
             <div class="studio-card-actions">
               <button class="studio-card-icon-btn" data-action="pencil" type="button" aria-label="Edit ${safeName}" title="Edit">
                 <i class="bx bx-pencil"></i>
@@ -267,6 +275,9 @@
       // or arbitrary text like "bodyweight + 10 lbs".)
       this._bindWeightField();
 
+      // Name field (tap-to-edit; saves on Enter/blur, cancels on Escape)
+      this._bindNameField();
+
       // Rest field (bespoke inline edit)
       const restDisplay = this.el.querySelector('.studio-rest-display');
       const restEditor = this.el.querySelector('.studio-rest-editor');
@@ -334,6 +345,57 @@
           console.warn('[StudioExerciseCard] RepsSetsFieldController init failed:', err);
         }
       }
+    }
+
+    _bindNameField() {
+      if (!this.el) return;
+      const display = this.el.querySelector('.studio-card-name');
+      const input = this.el.querySelector('.studio-card-name-input');
+      if (!display || !input) return;
+
+      const exitEdit = (save) => {
+        if (save) {
+          const v = String(input.value || '').trim();
+          if (v && v !== this.name) {
+            this.name = v;
+            display.textContent = v;
+            // Keep the pencil's aria-label in sync for screen readers
+            const pencil = this.el.querySelector('[data-action="pencil"]');
+            if (pencil) pencil.setAttribute('aria-label', `Edit ${v}`);
+            this._fire('onChange', { name: v });
+          } else {
+            // No-op or empty value — revert the input
+            input.value = this.name;
+          }
+        } else {
+          input.value = this.name;
+        }
+        input.style.display = 'none';
+        display.style.display = '';
+      };
+
+      const enterEdit = () => {
+        input.value = this.name;
+        display.style.display = 'none';
+        input.style.display = '';
+        setTimeout(() => { input.focus(); input.select(); }, 0);
+      };
+
+      display.addEventListener('click', (e) => {
+        e.stopPropagation();
+        enterEdit();
+      });
+      display.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          enterEdit();
+        }
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); exitEdit(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); exitEdit(false); }
+      });
+      input.addEventListener('blur', () => exitEdit(true));
     }
 
     _bindWeightField() {

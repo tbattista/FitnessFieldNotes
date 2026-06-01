@@ -985,8 +985,17 @@
     }
 
     _onCardChange(instanceId, partial) {
+      if (!partial) return;
+      // Name updates live on the tray item, not in organizeState — sync the
+      // tray so the save payload picks up the renamed exercise.
+      if (typeof partial.name === 'string' && this.tray) {
+        const item = this.tray.getItems().find((it) => it.instanceId === instanceId);
+        if (item) item.name = partial.name;
+      }
       const state = this._ensureOrganizeState(instanceId);
-      Object.assign(state, partial || {});
+      // Only protocol/weight/rest belong in organizeState; name lives elsewhere
+      const { name, ...stateChanges } = partial;
+      Object.assign(state, stateChanges);
       this.organizeState.set(instanceId, state);
     }
 

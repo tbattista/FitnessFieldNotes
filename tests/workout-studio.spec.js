@@ -788,6 +788,69 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(firstCard.locator('.studio-rest-value-text')).toHaveText('120s');
     });
 
+    test('tap-to-edit exercise name morphs into an input and saves on Enter', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+        const nameDisplay = firstCard.locator('.studio-card-name');
+        await expect(nameDisplay).toBeVisible();
+
+        await nameDisplay.click();
+        const nameInput = firstCard.locator('.studio-card-name-input');
+        await expect(nameInput).toBeVisible();
+
+        await nameInput.fill('Heavy Bench Press');
+        await nameInput.press('Enter');
+
+        await expect(nameInput).toBeHidden();
+        await expect(nameDisplay).toHaveText('Heavy Bench Press');
+    });
+
+    test('Escape on the name editor cancels and reverts the value', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+        const original = (await firstCard.locator('.studio-card-name').textContent()) || '';
+
+        await firstCard.locator('.studio-card-name').click();
+        await firstCard.locator('.studio-card-name-input').fill('should-not-stick');
+        await firstCard.locator('.studio-card-name-input').press('Escape');
+
+        await expect(firstCard.locator('.studio-card-name')).toHaveText(original.trim());
+    });
+
+    test('renamed exercise persists into the save payload', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); } catch (e) { postedBody = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-rename', name: postedBody?.name || '' }),
+                });
+            } else { await route.continue(); }
+        });
+
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+
+        const firstCard = page.locator('.studio-card').first();
+        await firstCard.locator('.studio-card-name').click();
+        await firstCard.locator('.studio-card-name-input').fill('My Custom Bench Variant');
+        await firstCard.locator('.studio-card-name-input').press('Enter');
+
+        await page.locator('#studioWorkoutNameInput').fill('Rename Roundtrip');
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody).toBeTruthy();
+        expect(postedBody.sections[0].exercises[0].name).toBe('My Custom Bench Variant');
+    });
+
     test('edits persist when navigating back to Page 1 and returning', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();
