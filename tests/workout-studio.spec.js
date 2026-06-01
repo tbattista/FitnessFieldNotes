@@ -616,7 +616,44 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(firstCard.locator('.weight-value')).toHaveText('—');
 
         // Count chip in section header
-        await expect(page.locator('#studioOrganizeCount')).toHaveText('3 exercises');
+        // Header now shows just the number; parentheses come from CSS pseudo-elements
+        await expect(page.locator('#studioOrganizeCount')).toHaveText('3');
+    });
+
+    test('tray chip row is hidden on Page 2 (redundant with the card list)', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await expect(page.locator('#studioTray')).toBeVisible();
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        await expect(page.locator('#studioTray')).toBeHidden();
+
+        // Back on Page 1 the tray returns
+        await page.locator('#studioOrganizeBack').click();
+        await expect(page.locator('#studioTray')).toBeVisible();
+    });
+
+    test('section header buttons (Reorder / Block / Note) share a uniform style', async ({ page }) => {
+        await addNFromGrid(page, 2);
+        await page.locator('#studioContinueBtn').click();
+
+        const reorder = page.locator('#studioReorderBtn');
+        const block = page.locator('#studioAddBlockBtn');
+        const note = page.locator('#studioAddNoteBtn');
+        await expect(reorder).toBeVisible();
+        await expect(block).toBeVisible();
+        await expect(note).toBeVisible();
+
+        // All three buttons collapse to the same height + border-radius so the
+        // row reads as a uniform set instead of three differently-shaped pills.
+        const h1 = await reorder.evaluate((el) => el.offsetHeight);
+        const h2 = await block.evaluate((el) => el.offsetHeight);
+        const h3 = await note.evaluate((el) => el.offsetHeight);
+        expect(h1).toBe(h2);
+        expect(h2).toBe(h3);
+
+        await expect(reorder).toHaveCSS('border-radius', '999px');
+        await expect(block).toHaveCSS('border-radius', '999px');
+        await expect(note).toHaveCSS('border-radius', '999px');
     });
 
     test('Back to selection returns to Page 1 with the tray intact', async ({ page }) => {
@@ -1247,7 +1284,7 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await expect(page.locator('.studio-note-textarea').first()).toHaveValue('Hello note');
     });
 
-    test('Removing a tray chip on Page 2 also removes the card whether loose or in a block', async ({ page }) => {
+    test('Removing a card via its 3-dot menu works whether the card is loose or in a block', async ({ page }) => {
         await addNFromGrid(page, 2);
         await page.locator('#studioContinueBtn').click();
         await page.locator('#studioAddBlockBtn').click();
@@ -1258,10 +1295,12 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await card.locator('[data-action="move-to-block"]').click();
         await expect(page.locator('.studio-block .studio-card')).toHaveCount(1);
 
-        // Remove via the chip in the sticky tray
-        await page.locator('#studioTrayChips .studio-tray-chip-remove').first().click();
+        // Remove the in-block card via its own 3-dot menu
+        const inBlockCard = page.locator('.studio-block .studio-block-children .studio-card').first();
+        await inBlockCard.locator('[data-action="menu"]').click();
+        await inBlockCard.locator('[data-action="delete"]').click();
 
-        // One card remains, in whichever container it was in. Total card count = 1.
+        // One card remains (the still-loose top-level one)
         await expect(page.locator('.studio-card')).toHaveCount(1);
     });
 });

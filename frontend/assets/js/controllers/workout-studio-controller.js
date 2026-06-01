@@ -840,9 +840,7 @@
       const itemMap = new Map(items.map((it) => [it.instanceId, it]));
 
       if (this.dom.organizeCount) {
-        this.dom.organizeCount.textContent = items.length === 1
-          ? '1 exercise'
-          : `${items.length} exercises`;
+        this.dom.organizeCount.textContent = String(items.length);
       }
       // The empty-state + save-disabled signal is driven by tray contents, not
       // by organizeOrder (empty blocks are allowed and should still let users save).

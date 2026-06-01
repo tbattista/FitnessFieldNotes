@@ -654,14 +654,19 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
 /* -------------------- Page 2: Organize -------------------- */
 .studio-organize-section-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 1rem 0.25rem 0.5rem;
 }
 .studio-organize-count {
   font-size: 0.85rem;
   color: var(--bs-secondary-color);
+  white-space: nowrap;
+  font-weight: 500;
 }
+.studio-organize-count::before { content: '('; }
+.studio-organize-count::after { content: ')'; }
 
 .studio-organize-list {
   display: flex;
@@ -885,18 +890,26 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  flex-wrap: nowrap;
 }
 .studio-add-block-btn,
-.studio-reorder-btn {
-  padding: 0.25rem 0.65rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+.studio-reorder-btn,
+.studio-add-note-btn {
+  height: 32px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  white-space: nowrap;
+  /* Equal flex basis so the three buttons read as a uniform set */
+  flex: 0 0 auto;
 }
 .studio-add-block-btn .bx,
-.studio-reorder-btn .bx { font-size: 1rem; }
+.studio-reorder-btn .bx,
+.studio-add-note-btn .bx { font-size: 1rem; line-height: 1; }
 
 .studio-block {
   background: rgba(0, 0, 0, 0.025);
@@ -1128,6 +1141,8 @@ html[data-bs-theme="dark"] .studio-org-field-input {
 }
 /* Floating CTA is only meaningful on Page 1 */
 .studio[data-view="organize"] .studio-cta { display: none !important; }
+/* Tray chips are redundant on Page 2 (each exercise renders as a card below) */
+.studio[data-view="organize"] .studio-tray { display: none !important; }
 
 /* -------------------- Floating list-count pill -------------------- */
 .studio-floating-count {
