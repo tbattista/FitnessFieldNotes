@@ -1611,6 +1611,7 @@ html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary:hover { background: r
   margin-left: 0.25rem;
   flex-shrink: 0;
 }
+#exerciseDetailOffcanvas .pairing-info-btn,
 #exerciseDetailOffcanvas .pairing-add-btn {
   display: inline-flex;
   align-items: center;
@@ -1618,31 +1619,51 @@ html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary:hover { background: r
   width: 30px;
   height: 30px;
   padding: 0;
+  margin-left: 0.25rem;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.06);
-  color: var(--bs-primary);
   font-size: 1.05rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.12s ease, transform 0.12s ease;
+  transition: background 0.12s ease, transform 0.12s ease, color 0.12s ease;
+}
+#exerciseDetailOffcanvas .pairing-info-btn { color: var(--bs-secondary-color); }
+#exerciseDetailOffcanvas .pairing-add-btn { color: var(--bs-primary); }
+#exerciseDetailOffcanvas .pairing-info-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--bs-primary);
 }
 #exerciseDetailOffcanvas .pairing-add-btn:hover {
   background: var(--bs-primary);
   color: white;
 }
+#exerciseDetailOffcanvas .pairing-info-btn:active,
 #exerciseDetailOffcanvas .pairing-add-btn:active {
   transform: scale(0.9);
+}
+
+/* Body no longer a click target — kill the row's cursor + remove the
+   hover bg that suggested "tap me". */
+#exerciseDetailOffcanvas .pairing-exercise-chip { cursor: default; }
+#exerciseDetailOffcanvas .pairing-exercise-chip:hover {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: var(--bs-border-color);
 }
 
 html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-exercise-chip {
   background: rgba(255, 255, 255, 0.04);
 }
 html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-exercise-chip:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--bs-border-color);
 }
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-info-btn,
 html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-add-btn {
   background: rgba(255, 255, 255, 0.08);
+}
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-info-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 /* -------------------- Draft restored banner -------------------- */

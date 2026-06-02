@@ -159,6 +159,42 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
     });
 
+    test('pairing rows expose explicit info + add buttons; the chip body is no longer interactive', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+
+        await firstRow.locator('.studio-row-info').click();
+        const offcanvas = page.locator('#exerciseDetailOffcanvas');
+        await expect(offcanvas).toBeVisible({ timeout: 5000 });
+
+        const chip = offcanvas.locator('.pairing-exercise-chip').first();
+        const hasPairings = (await chip.count()) > 0;
+        test.skip(!hasPairings, 'No pairing recommendations for first exercise');
+
+        // Chip body no longer carries role=button or tabindex — it is just a label.
+        await expect(chip).not.toHaveAttribute('role', /button/);
+        await expect(chip).not.toHaveAttribute('tabindex', /\d+/);
+
+        // Both explicit action buttons are present
+        await expect(chip.locator('.pairing-info-btn')).toBeVisible();
+        await expect(chip.locator('.pairing-add-btn')).toBeVisible();
+
+        // Tapping the chip's name body does NOT navigate or add — the
+        // exercise title displayed in the offcanvas header should be unchanged
+        // and the tray must remain empty.
+        const headerNameBefore = (await offcanvas.locator('#exerciseOffcanvasName').textContent()) || '';
+        await chip.locator('.pairing-exercise-name').click();
+        await expect(offcanvas.locator('#exerciseOffcanvasName')).toHaveText(headerNameBefore);
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(0);
+
+        // Tapping the info button navigates: the offcanvas header swaps
+        // to the pairing exercise's name.
+        const pairingName = (await chip.locator('.pairing-exercise-name').textContent() || '').trim();
+        await chip.locator('.pairing-info-btn').click();
+        await expect(offcanvas.locator('#exerciseOffcanvasName')).toHaveText(pairingName);
+    });
+
     test('pairing recommendation + buttons route to the studio tray (not the legacy cart)', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         const firstRow = page.locator('.studio-row').first();
