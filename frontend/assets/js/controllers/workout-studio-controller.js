@@ -98,12 +98,21 @@
       // studio as an editing session. The loader skips both the default-name
       // seed AND the draft restore (the saved record is the source of truth).
       // Otherwise, restore any in-progress draft.
+      //
+      // CRITICAL: dataManager routes to Firebase OR localStorage based on the
+      // resolved auth state. If we call getWorkouts() before auth resolves we
+      // get an empty list for Firebase users and silently fall through to
+      // "workout not found". Mirror the builder's pattern and gate the
+      // loader on waitForAuthReady().
       const urlWorkoutId = this._readWorkoutIdFromUrl();
       if (urlWorkoutId) {
-        this._loadWorkoutById(urlWorkoutId).catch((err) => {
-          console.error('[WorkoutStudio] Failed to load workout:', err);
-          this._setStatus(`Could not load workout: ${err.message || 'unknown error'}`, 'error');
-        });
+        this._showLoadingState();
+        this._waitForDataManagerReady()
+          .then(() => this._loadWorkoutById(urlWorkoutId))
+          .catch((err) => {
+            console.error('[WorkoutStudio] Failed to load workout:', err);
+            this._showLoadErrorState(err);
+          });
       } else {
         this._restoreDraftIfPresent();
       }
@@ -648,6 +657,91 @@
       this._showView('select');
     }
 
+    /**
+     * Wait for dataManager + Firebase auth state to be fully resolved.
+     * Without this, Firebase users see an empty workout list on first call
+     * because storage routing isn't yet set up — and the loader silently
+     * fails into "workout not found". Mirrors workout-builder.html's pattern.
+     * Times out after 5s so tests / anonymous flows aren't blocked.
+     */
+    async _waitForDataManagerReady() {
+      const deadline = Date.now() + 5000;
+      // First, poll briefly for window.dataManager to exist at all.
+      while (!window.dataManager && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      if (!window.dataManager) return; // raw fallback will handle it
+      if (typeof window.dataManager.waitForAuthReady === 'function') {
+        try {
+          // The dataManager surfaces its own internal timeout; wrap so a
+          // hung auth call doesn't stall the studio forever.
+          await Promise.race([
+            window.dataManager.waitForAuthReady(),
+            new Promise((resolve) => setTimeout(resolve, Math.max(0, deadline - Date.now()))),
+          ]);
+        } catch (err) {
+          console.warn('[WorkoutStudio] waitForAuthReady warned:', err);
+        }
+      }
+    }
+
+    /**
+     * Show a Page-1-visible "Loading…" placeholder so the user knows the
+     * loader is working. Replaces the default empty workspace until either
+     * hydration completes or the error state takes over.
+     */
+    _showLoadingState() {
+      if (!this.dom.continueCta) return;
+      this._setStatus('Loading workout…', null);
+      // Optional inline hint near the search row, in case the user looks
+      // at Page 1 first. Soft-fail if the element doesn't exist.
+      const host = this.dom.studio;
+      if (!host) return;
+      let banner = host.querySelector('.studio-load-banner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.className = 'studio-load-banner';
+        banner.setAttribute('role', 'status');
+        banner.style.cssText = 'padding:0.75rem 1rem;margin:0.5rem 0;border-radius:0.5rem;background:rgba(201,124,93,0.1);color:#C97C5D;font-size:0.9rem;text-align:center;';
+        host.insertBefore(banner, host.firstChild);
+      }
+      banner.textContent = 'Loading workout…';
+      banner.hidden = false;
+    }
+
+    _hideLoadingBanner() {
+      const banner = this.dom.studio && this.dom.studio.querySelector('.studio-load-banner');
+      if (banner) banner.remove();
+    }
+
+    /**
+     * Surface a load failure prominently on Page 1 (where the user lands)
+     * with a Back-to-library escape hatch. The Page-2 status div alone
+     * isn't enough — the user never reaches that page when the load fails.
+     */
+    _showLoadErrorState(err) {
+      this._hideLoadingBanner();
+      this._setStatus(`Could not load workout: ${err.message || 'unknown error'}`, 'error');
+      const host = this.dom.studio;
+      if (!host) return;
+      let banner = host.querySelector('.studio-load-error');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.className = 'studio-load-error alert alert-danger';
+        banner.setAttribute('role', 'alert');
+        banner.style.cssText = 'margin:0.75rem 0;padding:0.9rem 1rem;border-radius:0.5rem;';
+        host.insertBefore(banner, host.firstChild);
+      }
+      const msg = String(err && err.message ? err.message : 'Workout not found');
+      banner.innerHTML = `
+        <strong>Couldn't load this workout.</strong>
+        <span class="d-block small mt-1">${msg}</span>
+        <a href="/workout-database.html" class="btn btn-sm btn-outline-light mt-2">
+          <i class="bx bx-arrow-back"></i> Back to library
+        </a>
+      `;
+    }
+
     /** Read ?id=<workout_id> from window.location, return null if absent. */
     _readWorkoutIdFromUrl() {
       try {
@@ -679,6 +773,7 @@
           throw new Error('Workout not found');
         }
         this._hydrateFromWorkoutData(workout);
+        this._hideLoadingBanner();
         this._setStatus('', null);
       } catch (err) {
         // Final fallback: try the raw endpoint in case dataManager's cache
