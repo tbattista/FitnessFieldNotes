@@ -2316,3 +2316,45 @@ test.describe('Workout Studio — unified card edit (workout-mode parity)', () =
         await expect(card.locator('.repssets-value-text')).not.toHaveText('AMRAP');
     });
 });
+
+test.describe('Workout Studio — search includes activities by default', () => {
+    test('typing "run" surfaces the Running activity without flipping a filter', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        // Wait for the live list to render before searching
+        await page.locator('.studio-row').first().waitFor({ state: 'visible', timeout: 10000 });
+
+        // Type into the search input
+        const search = page.locator('#studioSearch, #studioSearchInput').first();
+        await search.fill('run');
+
+        // The Running activity should appear in the results with no filter
+        // selection required. We don't assert exact ordering — just that
+        // the row exists somewhere in the visible list within a reasonable
+        // settle window.
+        await expect(page.locator('.studio-row:has-text("Running")').first())
+            .toBeVisible({ timeout: 5000 });
+    });
+
+    test('Strength filter chip narrows results back to exercises only', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.locator('.studio-row').first().waitFor({ state: 'visible', timeout: 10000 });
+
+        // Drive the filter via the controller to avoid coupling to the
+        // filter-bar markup details. The controller exposes itself for tests.
+        await page.evaluate(() => {
+            const ws = window.workoutStudio;
+            if (!ws) throw new Error('workoutStudio not exposed');
+            ws.filters.type = new Set(['strength']);
+            ws._refreshList();
+        });
+
+        const search = page.locator('#studioSearch, #studioSearchInput').first();
+        await search.fill('run');
+
+        // With Strength selected, Running (an activity) should NOT appear.
+        // Use a quick polling check — toHaveCount(0) settles immediately
+        // if there's no match, or surfaces clearly if one slipped through.
+        await page.waitForTimeout(300);
+        await expect(page.locator('.studio-row:has-text("Running")')).toHaveCount(0);
+    });
+});

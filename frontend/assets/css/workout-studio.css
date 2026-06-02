@@ -452,6 +452,90 @@ html[data-bs-theme="dark"] .studio-import-btn:hover { background: rgba(255, 255,
   text-transform: uppercase;
   color: var(--bs-secondary-color);
 }
+/* -------------------------------------------------------------------------
+   Cardio editor offcanvas — restyle the activity-type and RPE pills to
+   match the studio's filter-chip aesthetic (pill-shaped, peach on active)
+   so the Edit Activity sheet feels native to the studio rather than the
+   legacy activity log page.
+
+   Scope: ID-prefix selectors keep these overrides confined to the cardio
+   editor offcanvas. The standalone activity-log page (which uses the same
+   class names) is untouched.
+   ------------------------------------------------------------------------- */
+[id^="cardioEditorOffcanvas-"] .activity-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  min-height: 0;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn i {
+  font-size: 1.05rem;
+  color: var(--bs-primary);
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn span {
+  white-space: nowrap;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn.active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn.active i { color: white; }
+[data-bs-theme="dark"] [id^="cardioEditorOffcanvas-"] .activity-type-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[id^="cardioEditorOffcanvas-"] .rpe-selector {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+[id^="cardioEditorOffcanvas-"] .rpe-btn {
+  flex: 1 1 auto;
+  min-width: 32px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+[id^="cardioEditorOffcanvas-"] .rpe-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+}
+[id^="cardioEditorOffcanvas-"] .rpe-btn.active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+[data-bs-theme="dark"] [id^="cardioEditorOffcanvas-"] .rpe-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .studio-filter-chips {
   display: flex;
   flex-wrap: wrap;

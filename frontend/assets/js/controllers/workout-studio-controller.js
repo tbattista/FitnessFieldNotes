@@ -2273,9 +2273,11 @@
       const typeSet = this.filters.type;
 
       // Source pool: exercises and/or activities, depending on the Type filter.
-      // Default (no Type chip selected) = exercises only.
+      // Default (no Type chip selected) = BOTH exercises and activities, so
+      // typing "run" finds the Running activity without the user first
+      // having to flip to the Activities filter. The chips narrow from there.
       const includeExercises = typeSet.size === 0 || typeSet.has('strength');
-      const includeActivities = typeSet.has('activities');
+      const includeActivities = typeSet.size === 0 || typeSet.has('activities');
 
       let pool = [];
 
