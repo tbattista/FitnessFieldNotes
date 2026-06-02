@@ -137,7 +137,7 @@
 
     _templateHtml() {
       return `
-        <div class="offcanvas offcanvas-bottom studio-reorder-sheet" tabindex="-1"
+        <div class="offcanvas offcanvas-bottom offcanvas-bottom-tall studio-reorder-sheet" tabindex="-1"
              aria-labelledby="studioReorderTitle"
              data-bs-scroll="true">
           <div class="offcanvas-header studio-reorder-header">

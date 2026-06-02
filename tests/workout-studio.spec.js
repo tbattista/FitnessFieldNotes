@@ -1134,6 +1134,37 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await expect(page.locator('#studioReorderBtn')).toBeVisible();
     });
 
+    test('Reorder sheet expands to accommodate many items, not pinned to ~30vh', async ({ page }) => {
+        // Build a workout with enough items that the sheet would clip
+        // visibly if it inherited Bootstrap's default offcanvas-bottom height
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+        const rows = page.locator('.studio-row');
+        for (let i = 0; i < 10; i++) {
+            await rows.nth(i).locator('.studio-row-add').click();
+        }
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioReorderBtn').click();
+        const sheet = page.locator('.studio-reorder-sheet');
+        await expect(sheet).toBeVisible();
+
+        // Sheet height should comfortably exceed 30% of viewport — its
+        // content (10 rows) needs more than that. We measure via the
+        // bounding box and compare against the viewport height.
+        const { height: sheetH, viewportH } = await page.evaluate(() => ({
+            height: document.querySelector('.studio-reorder-sheet').getBoundingClientRect().height,
+            viewportH: window.innerHeight,
+        }));
+        // 10 rows + header + footer should easily clear half the viewport
+        expect(sheetH).toBeGreaterThan(viewportH * 0.5);
+        // ...and never exceed the 90vh cap from .offcanvas-bottom-tall
+        expect(sheetH).toBeLessThanOrEqual(viewportH * 0.91);
+
+        // All 10 rows are in the DOM (the body scrolls if needed)
+        await expect(sheet.locator('.studio-reorder-row.studio-reorder-card-row')).toHaveCount(10);
+    });
+
     test('Reorder button opens the sheet populated with the current order', async ({ page }) => {
         await addNFromGrid(page, 3);
         await page.locator('#studioContinueBtn').click();

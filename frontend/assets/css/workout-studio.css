@@ -1375,9 +1375,11 @@ html[data-bs-theme="dark"] .studio-reorder-note-row {
 }
 
 /* -------------------- Studio Reorder Sheet -------------------- */
+/* Height is controlled by the .offcanvas-bottom-tall utility (height:auto,
+   max-height:90vh) defined in components/unified-offcanvas.css — Bootstrap's
+   .offcanvas.offcanvas-bottom rule (two-class selector) would otherwise
+   pin this sheet to ~30vh and clip the list to 2-3 visible rows. */
 .studio-reorder-sheet {
-  height: auto;
-  max-height: 80vh;
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
   display: flex;
@@ -1386,11 +1388,15 @@ html[data-bs-theme="dark"] .studio-reorder-note-row {
 .studio-reorder-header {
   padding: 0.85rem 1rem 0.5rem;
   border-bottom: 1px solid var(--bs-border-color);
+  flex: 0 0 auto;
 }
 .studio-reorder-body {
   padding: 0.75rem 1rem;
   flex: 1 1 auto;
   overflow-y: auto;
+  /* Leave room for the sticky header + footer so the scrollable list area
+     uses the full remaining height inside the 90vh container. */
+  min-height: 0;
 }
 .studio-reorder-hint {
   font-size: 0.85rem;
@@ -1481,6 +1487,7 @@ html[data-bs-theme="dark"] .studio-reorder-note-row {
   padding: 0.6rem 1rem 0.85rem;
   border-top: 1px solid var(--bs-border-color);
   background: var(--bs-body-bg);
+  flex: 0 0 auto;
 }
 .studio-reorder-status {
   font-size: 0.8rem;
