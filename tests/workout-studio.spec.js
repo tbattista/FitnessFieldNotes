@@ -1463,3 +1463,171 @@ test.describe('Workout Studio — AI Import', () => {
         await expect(page.locator('.studio-block-name-input')).toHaveValue('Push Pair');
     });
 });
+
+test.describe('Workout Studio — Draft persistence', () => {
+
+    test('default open does not write a draft (clean localStorage)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+        const stored = await page.evaluate(() => localStorage.getItem('ffn:studio:draft:v1'));
+        expect(stored).toBeNull();
+        await expect(page.locator('#studioDraftBanner')).toBeHidden();
+    });
+
+    test('adding an exercise persists a draft to localStorage', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+        await page.locator('.studio-row').first().locator('.studio-row-add').click();
+
+        // _scheduleDraftSave is debounced ~400ms
+        await page.waitForFunction(() => !!localStorage.getItem('ffn:studio:draft:v1'), null, { timeout: 3000 });
+        const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ffn:studio:draft:v1')));
+        expect(stored).toBeTruthy();
+        expect(stored.version).toBe(1);
+        expect(Array.isArray(stored.items)).toBe(true);
+        expect(stored.items.length).toBe(1);
+        expect(typeof stored.savedAt).toBe('number');
+    });
+
+    test('reloading after building a draft silently restores state and shows the banner', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        // Build: pick 2 exercises, set tags + description, set name
+        await page.locator('.studio-row').nth(0).locator('.studio-row-add').click();
+        await page.locator('.studio-row').nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Persisted Push Day');
+        await page.locator('#studioMetaToggle').click();
+        await page.locator('#studioTagsInput').fill('push, draft');
+        await page.locator('#studioDescriptionInput').fill('Bench focus.');
+        await page.waitForFunction(() => !!localStorage.getItem('ffn:studio:draft:v1'), null, { timeout: 3000 });
+
+        await page.reload();
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        // Silent restore — banner present, modal NOT present
+        await expect(page.locator('#studioDraftBanner')).toBeVisible();
+        await expect(page.locator('#studioDraftBannerTime')).toContainText(/(just now|minute|hour)/i);
+
+        // State carried over
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Persisted Push Day');
+        await expect(page.locator('#studioTagsInput')).toHaveValue('push, draft');
+        await expect(page.locator('#studioDescriptionInput')).toHaveValue('Bench focus.');
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(2);
+
+        // Continue → Page 2 shows the same two cards
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(2);
+    });
+
+    test('dismiss button hides the banner without clearing the draft', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+        await page.locator('.studio-row').first().locator('.studio-row-add').click();
+        await page.waitForFunction(() => !!localStorage.getItem('ffn:studio:draft:v1'), null, { timeout: 3000 });
+
+        await page.reload();
+        await expect(page.locator('#studioDraftBanner')).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioDraftBannerDismiss').click();
+        await expect(page.locator('#studioDraftBanner')).toBeHidden();
+        // Draft still persisted
+        const stored = await page.evaluate(() => localStorage.getItem('ffn:studio:draft:v1'));
+        expect(stored).toBeTruthy();
+        // Tray still has the restored chip
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
+    });
+
+    test('Start fresh button wipes the draft, resets to defaults', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        await page.locator('.studio-row').first().locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('To Be Discarded');
+        await page.waitForFunction(() => !!localStorage.getItem('ffn:studio:draft:v1'), null, { timeout: 3000 });
+
+        await page.reload();
+        await expect(page.locator('#studioDraftBanner')).toBeVisible({ timeout: 15000 });
+
+        await page.locator('#studioDraftBannerStartFresh').click();
+
+        await expect(page.locator('#studioDraftBanner')).toBeHidden();
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(0);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue(/^New Workout - /);
+        const stored = await page.evaluate(() => localStorage.getItem('ffn:studio:draft:v1'));
+        expect(stored).toBeNull();
+    });
+
+    test('successful save clears the draft so a reload starts clean', async ({ page }) => {
+        await page.route('**/api/v3/workouts*', async (route) => {
+            if (route.request().method() === 'POST') {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: 'wkt-cleared', name: 'X' }),
+                });
+            } else { await route.continue(); }
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+        await page.evaluate(() => { delete window.dataManager; });
+
+        await page.locator('.studio-row').first().locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Saved Workout');
+        await page.waitForFunction(() => !!localStorage.getItem('ffn:studio:draft:v1'), null, { timeout: 3000 });
+
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioSaveBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        // Draft cleared on success
+        const stored = await page.evaluate(() => localStorage.getItem('ffn:studio:draft:v1'));
+        expect(stored).toBeNull();
+    });
+
+    test('block + note + organize state survive a reload', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        // Build: 2 exercises into a named block + 1 note
+        await page.locator('.studio-row').nth(0).locator('.studio-row-add').click();
+        await page.locator('.studio-row').nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+        await page.locator('.studio-block-name-input').first().fill('Persisted Block');
+        await page.locator('.studio-block-name-input').first().press('Enter');
+        for (let i = 0; i < 2; i++) {
+            const card = page.locator('#studioOrganizeList > .studio-card').first();
+            await card.locator('[data-action="menu"]').click();
+            await card.locator('[data-action="move-to-block"]').click();
+        }
+        await page.locator('#studioAddNoteBtn').click();
+        await page.locator('.studio-note-textarea').first().fill('Persisted note');
+
+        // Wait for the debounced save
+        await page.waitForFunction(() => {
+            const raw = localStorage.getItem('ffn:studio:draft:v1');
+            if (!raw) return false;
+            try {
+                const d = JSON.parse(raw);
+                return (d.blocks || []).length === 1 && (d.notes || []).length === 1;
+            } catch (_) { return false; }
+        }, null, { timeout: 3000 });
+
+        await page.reload();
+        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+
+        // Banner present, tray populated
+        await expect(page.locator('#studioDraftBanner')).toBeVisible();
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(2);
+
+        // Page 2 still shows the block with 2 cards + the note card
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('.studio-block')).toHaveCount(1);
+        await expect(page.locator('.studio-block-name-input')).toHaveValue('Persisted Block');
+        await expect(page.locator('.studio-block .studio-block-children .studio-card')).toHaveCount(2);
+        await expect(page.locator('.studio-note-card')).toHaveCount(1);
+        await expect(page.locator('.studio-note-textarea')).toHaveValue('Persisted note');
+    });
+});

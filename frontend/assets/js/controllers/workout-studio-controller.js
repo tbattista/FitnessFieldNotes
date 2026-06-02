@@ -87,8 +87,14 @@
       this._bindFilters();
       this._bindContinue();
       this._bindOrganize();
+      this._bindDraftBanner();
       this._ensureSentinel();
       this._ensureFloatingCountObserver();
+
+      // Restore any in-progress draft AFTER all bindings are set up but
+      // BEFORE the exercise list loads. We don't want async exercise data
+      // to clobber a restored tray.
+      this._restoreDraftIfPresent();
 
       this._loadExercises().catch((err) => {
         console.error('[WorkoutStudio] Failed to load exercises:', err);
@@ -147,6 +153,11 @@
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
       this.dom.addNoteBtn = document.getElementById('studioAddNoteBtn');
+
+      this.dom.draftBanner = document.getElementById('studioDraftBanner');
+      this.dom.draftBannerTime = document.getElementById('studioDraftBannerTime');
+      this.dom.draftBannerStartFresh = document.getElementById('studioDraftBannerStartFresh');
+      this.dom.draftBannerDismiss = document.getElementById('studioDraftBannerDismiss');
     }
 
     _initTray() {
@@ -223,6 +234,7 @@
         }
         this.dom.workoutNameInput.addEventListener('input', (e) => {
           this.workoutName = String(e.target.value || '').trim();
+          this._scheduleDraftSave();
         });
       }
 
@@ -233,12 +245,14 @@
             .map((t) => t.trim())
             .filter(Boolean)
             .slice(0, 10);
+          this._scheduleDraftSave();
         });
       }
 
       if (this.dom.descriptionInput) {
         this.dom.descriptionInput.addEventListener('input', (e) => {
           this.description = String(e.target.value || '').slice(0, 500);
+          this._scheduleDraftSave();
         });
       }
 
@@ -568,6 +582,207 @@
       });
     }
 
+    _bindDraftBanner() {
+      if (this.dom.draftBannerStartFresh) {
+        this.dom.draftBannerStartFresh.addEventListener('click', () => this._handleStartFresh());
+      }
+      if (this.dom.draftBannerDismiss) {
+        this.dom.draftBannerDismiss.addEventListener('click', () => this._hideDraftBanner());
+      }
+    }
+
+    _showDraftBanner(savedAt) {
+      if (!this.dom.draftBanner) return;
+      if (this.dom.draftBannerTime && window.StudioDraftService) {
+        this.dom.draftBannerTime.textContent = window.StudioDraftService.relativeTime(savedAt);
+      }
+      this.dom.draftBanner.hidden = false;
+    }
+
+    _hideDraftBanner() {
+      if (this.dom.draftBanner) this.dom.draftBanner.hidden = true;
+    }
+
+    _handleStartFresh() {
+      // Clear persisted draft + reset in-memory state to defaults
+      if (window.StudioDraftService) window.StudioDraftService.clear();
+      this._suppressDraftSave = true;
+      try {
+        // Wipe content
+        if (this.tray && typeof this.tray.clear === 'function') this.tray.clear();
+        this.organizeOrder = [];
+        this.blocks = new Map();
+        this.notes = new Map();
+        this.organizeState = new Map();
+        this.tags = [];
+        this.description = '';
+
+        // Reset DOM
+        const fresh = this._defaultWorkoutName();
+        this.workoutName = fresh;
+        if (this.dom.workoutNameInput) this.dom.workoutNameInput.value = fresh;
+        if (this.dom.tagsInput) this.dom.tagsInput.value = '';
+        if (this.dom.descriptionInput) this.dom.descriptionInput.value = '';
+        if (typeof this._setMetaExpanded === 'function') this._setMetaExpanded(false);
+
+        // Re-render so Page 2 reflects the empty state
+        this._renderOrganize();
+      } finally {
+        this._suppressDraftSave = false;
+      }
+      this._hideDraftBanner();
+      // Show on Page 1 (the user's now-clean workspace)
+      this._showView('select');
+    }
+
+    _restoreDraftIfPresent() {
+      if (!window.StudioDraftService) return;
+      const draft = window.StudioDraftService.load();
+      if (!draft) return;
+
+      // Only restore non-trivial drafts. A draft with nothing the user
+      // actually built (no items, no tags, no description, default name)
+      // is noise — clear it and start fresh silently.
+      const hasContent =
+        (Array.isArray(draft.items) && draft.items.length > 0) ||
+        (Array.isArray(draft.tags) && draft.tags.length > 0) ||
+        (typeof draft.description === 'string' && draft.description.trim().length > 0) ||
+        (typeof draft.name === 'string' && draft.name.trim() && !/^New Workout - /.test(draft.name));
+      if (!hasContent) {
+        window.StudioDraftService.clear();
+        return;
+      }
+
+      this._suppressDraftSave = true;
+      try {
+        if (typeof draft.name === 'string' && draft.name.trim()) {
+          this.workoutName = draft.name;
+          if (this.dom.workoutNameInput) this.dom.workoutNameInput.value = draft.name;
+        }
+        if (Array.isArray(draft.tags)) {
+          this.tags = draft.tags.slice();
+          if (this.dom.tagsInput) this.dom.tagsInput.value = this.tags.join(', ');
+        }
+        if (typeof draft.description === 'string') {
+          this.description = draft.description;
+          if (this.dom.descriptionInput) this.dom.descriptionInput.value = draft.description;
+        }
+        if ((this.tags.length || this.description) && typeof this._setMetaExpanded === 'function') {
+          this._setMetaExpanded(true);
+        }
+
+        if (Array.isArray(draft.blocks)) {
+          this.blocks = new Map(draft.blocks.map(([k, v]) => [k, {
+            name: String(v?.name || ''),
+            instanceIds: Array.isArray(v?.instanceIds) ? v.instanceIds.slice() : [],
+          }]));
+        }
+        if (Array.isArray(draft.notes)) {
+          this.notes = new Map(draft.notes.map(([k, v]) => [k, { content: String(v?.content || '') }]));
+        }
+        if (Array.isArray(draft.organizeOrder)) {
+          this.organizeOrder = draft.organizeOrder.slice();
+        }
+        if (Array.isArray(draft.organizeState)) {
+          this.organizeState = new Map(draft.organizeState.map(([k, v]) => [k, Object.assign({}, v)]));
+        }
+        // Bump the block sequence past anything we restored so newly-created
+        // blocks don't collide with existing ids.
+        if (this.blocks.size > 0) {
+          const maxSeq = Array.from(this.blocks.keys()).reduce((m, id) => {
+            const match = String(id).match(/block-\d+-(\d+)/);
+            return match ? Math.max(m, parseInt(match[1], 10)) : m;
+          }, 0);
+          if (maxSeq >= this._blockSeq) this._blockSeq = maxSeq + 1;
+        }
+
+        // Restore tray items by assigning directly — we want the saved
+        // instanceIds to survive so they keep matching organizeOrder.
+        if (Array.isArray(draft.items) && this.tray) {
+          this.tray.items = draft.items.map((it) => ({
+            instanceId: String(it.instanceId),
+            exerciseId: String(it.exerciseId),
+            name: String(it.name || ''),
+            exercise: it.exercise || { id: it.exerciseId, name: it.name },
+          }));
+          // Push the sequence past the highest restored id
+          const maxSeq = this.tray.items.reduce((m, it) => {
+            const match = String(it.instanceId).match(/^tray-(\d+)$/);
+            return match ? Math.max(m, parseInt(match[1], 10)) : m;
+          }, 0);
+          this.tray._instanceSeq = maxSeq + 1;
+          this.tray._render();
+
+          // Manually trigger the derived UI that _onTrayChange normally
+          // handles, but DO NOT run _syncOrganizeOrderWithTray — that
+          // would clobber the carefully-restored block/note structure.
+          if (this.grid) this.grid.setCounts(this.tray.countsByExerciseId());
+          const n = this.tray.items.length;
+          if (this.dom.continueCta) this.dom.continueCta.hidden = n === 0;
+          if (this.dom.continueCount) this.dom.continueCount.textContent = String(n);
+        }
+
+        this._showDraftBanner(draft.savedAt);
+      } finally {
+        this._suppressDraftSave = false;
+      }
+    }
+
+    _scheduleDraftSave() {
+      if (this._suppressDraftSave) return;
+      clearTimeout(this._draftSaveTimer);
+      this._draftSaveTimer = setTimeout(() => this._saveDraft(), 400);
+    }
+
+    _saveDraft() {
+      if (!window.StudioDraftService || !this.tray) return;
+      const items = this.tray.getItems();
+      const tagsArr = Array.isArray(this.tags) ? this.tags : [];
+      const desc = String(this.description || '');
+      const nameStr = String(this.workoutName || '');
+
+      // "Trivial" = no exercises, no metadata, default-shaped name.
+      // Don't write a draft for that state — clear any existing one so
+      // a fresh open isn't greeted by a phantom "Resumed" banner.
+      const isTrivial =
+        items.length === 0 &&
+        tagsArr.length === 0 &&
+        desc.trim().length === 0 &&
+        (!nameStr || /^New Workout - /.test(nameStr));
+      if (isTrivial) {
+        window.StudioDraftService.clear();
+        return;
+      }
+
+      const snapshot = {
+        name: nameStr,
+        tags: tagsArr.slice(),
+        description: desc,
+        items: items.map((it) => ({
+          instanceId: it.instanceId,
+          exerciseId: it.exerciseId,
+          name: it.name,
+          // Strip down to the fields the studio actually reads back —
+          // the full exercise object can be hundreds of bytes per row.
+          exercise: it.exercise ? {
+            id: it.exercise.id,
+            name: it.exercise.name,
+            targetMuscleGroup: it.exercise.targetMuscleGroup,
+            primaryEquipment: it.exercise.primaryEquipment,
+            group_type: it.exercise.group_type,
+          } : null,
+        })),
+        organizeOrder: this.organizeOrder.map((e) => Object.assign({}, e)),
+        blocks: Array.from(this.blocks.entries()).map(([k, v]) => [k, {
+          name: v.name,
+          instanceIds: v.instanceIds.slice(),
+        }]),
+        notes: Array.from(this.notes.entries()).map(([k, v]) => [k, { content: v.content }]),
+        organizeState: Array.from(this.organizeState.entries()).map(([k, v]) => [k, Object.assign({}, v)]),
+      };
+      window.StudioDraftService.save(snapshot);
+    }
+
     _bindOrganize() {
       if (this.dom.organizeBackBtn) {
         this.dom.organizeBackBtn.addEventListener('click', () => this._showView('select'));
@@ -612,6 +827,7 @@
       if (!note) return;
       if (partial && typeof partial.content === 'string') {
         note.content = partial.content;
+        this._scheduleDraftSave();
       }
     }
 
@@ -925,6 +1141,12 @@
           blockComp.setChildCount(childCount);
         }
       });
+
+      // Any path that re-renders Page 2 has either mutated organize state
+      // (blocks, notes, reorder, move-to-block, etc.) or restored it from a
+      // draft. The draft-save method is internally debounced + clears
+      // itself out when state is trivial, so we can hook here unconditionally.
+      this._scheduleDraftSave();
     }
 
     _mountCard(item, { idx, total, container, blockOptions, inBlock }) {
@@ -997,6 +1219,7 @@
       const { name, ...stateChanges } = partial;
       Object.assign(state, stateChanges);
       this.organizeState.set(instanceId, state);
+      this._scheduleDraftSave();
     }
 
     _onCardMenuAction(instanceId, action, blockId) {
@@ -1236,6 +1459,10 @@
         }
         this._setStatus('Saved!', 'success');
         console.log('[WorkoutStudio] Workout saved:', saved && saved.id);
+        // Successful save → draft is no longer needed (the workout now lives
+        // as a real saved template). Clear it so the next visit starts clean.
+        if (window.StudioDraftService) window.StudioDraftService.clear();
+        this._hideDraftBanner();
       } catch (err) {
         console.error('[WorkoutStudio] Save failed:', err);
         this._setStatus(`Could not save: ${err.message || 'unknown error'}`, 'error');
@@ -1600,6 +1827,8 @@
           this._renderOrganize();
         }
       }
+
+      this._scheduleDraftSave();
     }
 
     _syncOrganizeOrderWithTray(items) {

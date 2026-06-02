@@ -147,6 +147,20 @@
                 <!-- View: Page 1 (Select) -->
                 <div class="studio-view studio-view-select" id="studioViewSelect">
 
+                  <!-- Draft restored banner — shown only when a non-trivial draft was loaded -->
+                  <div class="studio-draft-banner" id="studioDraftBanner" hidden role="status">
+                    <i class="bx bx-time-five studio-draft-banner-icon" aria-hidden="true"></i>
+                    <span class="studio-draft-banner-text">
+                      Resumed draft from <strong id="studioDraftBannerTime">just now</strong>
+                    </span>
+                    <button class="studio-draft-banner-action" id="studioDraftBannerStartFresh" type="button">
+                      Start fresh
+                    </button>
+                    <button class="studio-draft-banner-dismiss" id="studioDraftBannerDismiss" type="button" aria-label="Dismiss">
+                      <i class="bx bx-x"></i>
+                    </button>
+                  </div>
+
                   <!-- Search bar + inline add-custom (button reveals when input has text) -->
                   <div class="studio-search-row">
                     <div class="studio-search">
@@ -375,6 +389,9 @@
 
     <!-- AI Import service (consumed by the offcanvas-import wizard) -->
     <script src="/static/assets/js/services/import-service.js?v=20260216-01"></script>
+
+    <!-- Studio draft persistence -->
+    <script src="/static/assets/js/services/studio-draft-service.js?v=1.0.0"></script>
 
     <script src="/static/assets/js/components/exercise-tray.js?v=1.0.0"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=1.0.0"></script>
