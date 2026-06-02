@@ -804,11 +804,14 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         const offcanvas = page.locator('#exerciseDetailOffcanvas');
         await expect(offcanvas).toBeVisible({ timeout: 5000 });
 
-        // It's the same studio-context offcanvas Page 1 opens — Favorite + Add,
-        // no Edit/Delete buttons.
-        await expect(offcanvas.locator('.studio-offcanvas-actions')).toBeVisible();
+        // Edit/Delete are always omitted in the studio context
         await expect(offcanvas.locator('.exercise-offcanvas-edit-btn')).toHaveCount(0);
         await expect(offcanvas.locator('.exercise-offcanvas-delete-btn')).toHaveCount(0);
+
+        // Page 2 surface: Favorite is shown but 'Add to Workout' is NOT —
+        // the exercise is already in this workout, so adding is redundant.
+        await expect(offcanvas.locator('.exercise-offcanvas-fav-btn')).toBeVisible();
+        await expect(offcanvas.locator('.exercise-offcanvas-add-btn')).toHaveCount(0);
     });
 
     test('tap-to-edit exercise name morphs into an input and saves on Enter', async ({ page }) => {

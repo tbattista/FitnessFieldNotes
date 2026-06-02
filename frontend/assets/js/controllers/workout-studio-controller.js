@@ -184,7 +184,7 @@
       });
     }
 
-    _openExerciseDetail(exercise) {
+    _openExerciseDetail(exercise, presentation) {
       if (!exercise) return;
       if (!window.ExerciseDetailOffcanvas) {
         console.warn('[WorkoutStudio] ExerciseDetailOffcanvas unavailable; cannot show detail');
@@ -217,7 +217,7 @@
       }
       const id = exercise.id || exercise.name;
       try {
-        this._exerciseDetailOffcanvas.show(id);
+        this._exerciseDetailOffcanvas.show(id, presentation || {});
       } catch (err) {
         console.error('[WorkoutStudio] ExerciseDetailOffcanvas.show threw:', err);
       }
@@ -1274,10 +1274,14 @@
     _onCardInfo(instanceId) {
       const item = this.tray && this.tray.getItems().find((it) => it.instanceId === instanceId);
       if (!item) return;
-      // Reuse the same detail offcanvas the Page 1 info button opens.
-      // The card's exercise object holds the catalog id, which the detail
-      // offcanvas needs to look up the full record from window.ffn.exercises.
-      this._openExerciseDetail(item.exercise || { id: item.exerciseId, name: item.name });
+      // Reuse the same detail offcanvas the Page 1 info button opens, but
+      // hide the 'Add to Workout' footer button — the exercise is already
+      // in this workout, so the action is redundant here. Favorite stays.
+      // Pairing chips still work (they target other exercises).
+      this._openExerciseDetail(
+        item.exercise || { id: item.exerciseId, name: item.name },
+        { showAdd: false }
+      );
     }
 
     _escape(s) {

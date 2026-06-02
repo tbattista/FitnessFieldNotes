@@ -60,11 +60,22 @@ class ExerciseDetailOffcanvas {
         this.offcanvasElement = document.getElementById(this.offcanvasId);
     }
 
-    show(exerciseId) {
+    show(exerciseId, presentation = {}) {
         const exercise = [...(window.ffn?.exercises?.all || []), ...(window.ffn?.exercises?.custom || [])]
             .find(e => e.id === exerciseId);
 
         if (!exercise) return;
+
+        // Per-open presentation lets the same offcanvas instance render
+        // different footers depending on where it was opened from
+        // (e.g. Page 1 selection grid wants 'Add to Workout', Page 2 card
+        // already has the exercise in the tray and only wants Favorite).
+        // Pairing-add buttons in the body always remain wired — those
+        // target *other* exercises and are useful regardless of context.
+        this._currentPresentation = {
+            showFavorite: presentation.showFavorite !== false,
+            showAdd: presentation.showAdd !== false,
+        };
 
         this.currentExercise = exercise;
         this._showLoading();
@@ -143,17 +154,23 @@ class ExerciseDetailOffcanvas {
         const isFavorited = window.ffn?.exercises?.favorites?.has(exercise.id);
 
         if (this.context === 'studio') {
-            // Studio context: Favorite + Add only, styled as studio pills.
-            // Edit/Delete are intentionally omitted — they'd navigate away
-            // or destroy data mid-workout-build.
-            footer.innerHTML = `
-                <div class="studio-offcanvas-actions">
+            // Studio context: pill-styled actions, controlled by the
+            // per-open presentation flags. Edit/Delete are always omitted —
+            // they'd navigate away or destroy data mid-workout-build.
+            const p = this._currentPresentation || { showFavorite: true, showAdd: true };
+            const parts = [];
+            if (p.showFavorite !== false) {
+                parts.push(`
                     <button type="button"
                             class="studio-offcanvas-btn studio-offcanvas-btn-secondary exercise-offcanvas-fav-btn ${isFavorited ? 'is-favorited' : ''}"
                             data-exercise-id="${exercise.id}">
                         <i class="bx ${isFavorited ? 'bxs-heart' : 'bx-heart'}"></i>
                         <span>${isFavorited ? 'Unfavorite' : 'Favorite'}</span>
                     </button>
+                `);
+            }
+            if (p.showAdd !== false) {
+                parts.push(`
                     <button type="button"
                             class="studio-offcanvas-btn studio-offcanvas-btn-primary exercise-offcanvas-add-btn"
                             data-exercise-id="${exercise.id}"
@@ -161,8 +178,16 @@ class ExerciseDetailOffcanvas {
                         <i class="bx bx-plus"></i>
                         <span>Add to Workout</span>
                     </button>
-                </div>
-            `;
+                `);
+            }
+            // No visible actions → hide the footer divider too
+            if (parts.length === 0) {
+                footer.innerHTML = '';
+                footer.style.display = 'none';
+            } else {
+                footer.style.display = '';
+                footer.innerHTML = `<div class="studio-offcanvas-actions">${parts.join('')}</div>`;
+            }
             this._attachFooterListeners(footer, exercise);
             return;
         }
