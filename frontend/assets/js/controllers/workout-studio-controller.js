@@ -1687,7 +1687,12 @@
           rest: DEFAULT_REST,
           weight: '',
           weightUnit: 'lbs',
+          // Free-text protocol — source of truth for what the user sees on
+          // the card. sets + reps are kept in sync best-effort for the
+          // save payload + legacy consumers.
+          protocol: '',
         };
+        state.protocol = `${state.sets}×${state.reps}`;
         this.organizeState.set(instanceId, state);
       } else {
         // Backfill defaults if any were missing
@@ -1696,6 +1701,11 @@
         if (state.rest == null) state.rest = DEFAULT_REST;
         if (state.weight == null) state.weight = '';
         if (state.weightUnit == null) state.weightUnit = 'lbs';
+        // Derive protocol from sets+reps for states migrated before this
+        // field existed (e.g. older drafts in localStorage).
+        if (state.protocol == null || state.protocol === '') {
+          state.protocol = state.sets && state.reps ? `${state.sets}×${state.reps}` : (state.sets || state.reps || '');
+        }
       }
       return state;
     }

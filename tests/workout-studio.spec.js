@@ -753,15 +753,16 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         const firstCard = page.locator('.studio-card').first();
         await expect(firstCard.locator('.repssets-value-text')).toHaveText('3×8-12');
 
-        // Tap display to enter edit mode
+        // Tap display to enter unified edit mode
         await firstCard.locator('.repssets-display').click();
-        const repsInput = firstCard.locator('.repssets-text-input');
+        const repsInput = firstCard.locator('.repssets-input');
         await expect(repsInput).toBeVisible();
         await repsInput.fill('5x5');
         await repsInput.press('Enter');
 
-        // Display should reflect the new value
-        await expect(firstCard.locator('.repssets-value-text')).toHaveText('5×5');
+        // Display should reflect the typed value verbatim — no autoformat
+        // to '5×5'. (Free-text protocol is the new contract.)
+        await expect(firstCard.locator('.repssets-value-text')).toHaveText('5x5');
     });
 
     test('tap-to-edit Weight morphs into a numeric input and saves on Enter', async ({ page }) => {
@@ -778,36 +779,28 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(firstCard.locator('.weight-value')).toHaveText('185');
     });
 
-    test('DIY pill morphs the single weight input to a text field; lbs/kg restores number type', async ({ page }) => {
+    test('weight input accepts free text (e.g. "bodyweight + 25") regardless of unit', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();
 
         const firstCard = page.locator('.studio-card').first();
         await firstCard.locator('.weight-display').click();
 
-        // Exactly one input element exists, regardless of unit
-        const inputs = firstCard.locator('.weight-input');
-        await expect(inputs).toHaveCount(1);
+        const input = firstCard.locator('.weight-input');
+        await expect(input).toHaveCount(1);
+        // Weight is now ALWAYS free text — the user asked for "open text
+        // fields" so we no longer morph between number/text based on unit.
+        // The DIY/lbs/kg pills still toggle the active unit + placeholder
+        // hint, but the input itself accepts any string.
+        await expect(input).toHaveAttribute('type', 'text');
 
-        const input = inputs.first();
-        // lbs mode: numeric input
-        await expect(input).toHaveAttribute('type', 'number');
-
-        // Tap DIY → same input morphs to text + placeholder updates
         await firstCard.locator('.weight-unit-selector .unit-btn[data-unit="diy"]').click();
         await expect(input).toHaveAttribute('type', 'text');
         await expect(input).toHaveAttribute('placeholder', /bodyweight/);
 
-        // Type arbitrary text and Enter to save
         await input.fill('bodyweight + 25');
         await input.press('Enter');
         await expect(firstCard.locator('.weight-value')).toHaveText('bodyweight + 25');
-
-        // Re-open and flip back to kg → input returns to number type
-        await firstCard.locator('.weight-display').click();
-        await firstCard.locator('.weight-unit-selector .unit-btn[data-unit="kg"]').click();
-        await expect(input).toHaveAttribute('type', 'number');
-        await expect(input).toHaveAttribute('placeholder', '0');
     });
 
     test('tap-to-edit Rest morphs into an input and saves on Enter', async ({ page }) => {
@@ -917,24 +910,22 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();
 
+        // Unified edit mode: tapping any field opens all three editors at
+        // once, and a single ✓ commits all of them. Fill all three then
+        // commit once.
         const firstCard = page.locator('.studio-card').first();
         await firstCard.locator('.repssets-display').click();
-        await firstCard.locator('.repssets-text-input').fill('5x5');
-        await firstCard.locator('.repssets-text-input').press('Enter');
-
-        await firstCard.locator('.weight-display').click();
+        await firstCard.locator('.repssets-input').fill('5x5');
         await firstCard.locator('.weight-input').fill('225');
-        await firstCard.locator('.weight-input').press('Enter');
-
-        await firstCard.locator('.studio-rest-display').click();
         await firstCard.locator('.studio-rest-input').fill('90s');
-        await firstCard.locator('.studio-rest-input').press('Enter');
+        await firstCard.locator('.studio-card-edit-save').click();
 
         await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
         await page.locator('#studioContinueBtn').click();
 
         const reopened = page.locator('.studio-card').first();
-        await expect(reopened.locator('.repssets-value-text')).toHaveText('5×5');
+        // Protocol persists verbatim — "5x5" stays "5x5" (no autoformat)
+        await expect(reopened.locator('.repssets-value-text')).toHaveText('5x5');
         await expect(reopened.locator('.weight-value')).toHaveText('225');
         await expect(reopened.locator('.studio-rest-value-text')).toHaveText('90s');
     });
@@ -2230,7 +2221,7 @@ test.describe('Workout Studio — cardio summary card + offcanvas editing', () =
     });
 });
 
-test.describe('Workout Studio — inline edit commit/cancel (workout-mode parity)', () => {
+test.describe('Workout Studio — unified card edit (workout-mode parity)', () => {
     async function addOneExerciseAndContinue(page) {
         const firstRow = page.locator('.studio-row').first();
         await firstRow.waitFor({ state: 'visible', timeout: 10000 });
@@ -2239,70 +2230,89 @@ test.describe('Workout Studio — inline edit commit/cancel (workout-mode parity
         await page.locator('#studioContinueBtn').click();
     }
 
-    test('protocol field commits on ✓ button and persists across page-1 round-trip', async ({ page }) => {
+    test('tapping any field opens all three editors and shows ONE card-level ✓/✗', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await addOneExerciseAndContinue(page);
+
+        const card = page.locator('.studio-card').first();
+        // Tap the protocol display
+        await card.locator('.repssets-display').click();
+
+        // All three editors become visible
+        await expect(card.locator('.repssets-editor')).toBeVisible();
+        await expect(card.locator('.studio-weight-editor')).toBeVisible();
+        await expect(card.locator('.studio-rest-editor')).toBeVisible();
+
+        // Exactly ONE save + ONE cancel for the entire card (no per-field pairs)
+        await expect(card.locator('.studio-card-edit-save')).toHaveCount(1);
+        await expect(card.locator('.studio-card-edit-cancel')).toHaveCount(1);
+
+        // Card carries the editing class for visual feedback
+        await expect(card).toHaveClass(/studio-card-editing/);
+    });
+
+    test('protocol persists verbatim — "5x5" stays "5x5" (no autoformat to "5×5")', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await addOneExerciseAndContinue(page);
 
         const card = page.locator('.studio-card').first();
         await card.locator('.repssets-display').click();
-        const input = card.locator('.repssets-input');
-        await expect(input).toBeVisible();
-        await input.fill('5×5');
+        await card.locator('.repssets-input').fill('5x5');
 
-        // Click the ✓ button — committing should hide the editor and persist
-        await card.locator('.workout-repssets-field .studio-inline-save').click();
+        // Single card-level ✓ commits everything
+        await card.locator('.studio-card-edit-save').click();
         await expect(card.locator('.repssets-editor')).toBeHidden();
-        await expect(card.locator('.repssets-value-text')).toHaveText('5×5');
+        await expect(card.locator('.repssets-value-text')).toHaveText('5x5');
 
-        // Round-trip: back to selection then forward to organize again —
-        // the committed value should still be there.
+        // Round-trip back to selection and forward — typed value should be intact
         await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
         await page.locator('#studioContinueBtn').click();
-        await expect(page.locator('.studio-card .repssets-value-text').first()).toHaveText('5×5');
+        await expect(page.locator('.studio-card .repssets-value-text').first()).toHaveText('5x5');
     });
 
-    test('clicking off the input no longer reverts (blur is a no-op now)', async ({ page }) => {
+    test('clicking off any input no longer reverts; commit is required', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await addOneExerciseAndContinue(page);
 
         const card = page.locator('.studio-card').first();
         await card.locator('.studio-rest-display').click();
-        const input = card.locator('.studio-rest-input');
-        await expect(input).toBeVisible();
-        await input.fill('90s');
+        const restInput = card.locator('.studio-rest-input');
+        await restInput.fill('90s');
 
-        // Tap somewhere outside the editor (the card name area) — this used
-        // to trigger blur → cancel → revert. Now the editor should stay
-        // open and the typed value should still be in the input.
+        // Tap somewhere outside the inputs — used to trigger blur → cancel → revert.
+        // Editor should stay open with typed value intact.
         await page.locator('#studioOrganizeCount').click();
         await expect(card.locator('.studio-rest-editor')).toBeVisible();
-        await expect(input).toHaveValue('90s');
+        await expect(restInput).toHaveValue('90s');
 
         // ✓ commits
-        await card.locator('.studio-card-rest-field .studio-inline-save').click();
+        await card.locator('.studio-card-edit-save').click();
         await expect(card.locator('.studio-rest-editor')).toBeHidden();
         await expect(card.locator('.studio-rest-value-text')).toHaveText('90s');
     });
 
-    test('Cancel (✗) discards changes — weight reverts to prior value', async ({ page }) => {
+    test('✗ Cancel discards changes across all three fields at once', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await addOneExerciseAndContinue(page);
 
         const card = page.locator('.studio-card').first();
 
-        // First, commit a known starting weight (135)
+        // Commit a known starting state
         await card.locator('.weight-display').click();
         await card.locator('.weight-input').fill('135');
-        await card.locator('.studio-card-weight-field .studio-inline-save').click();
+        await card.locator('.studio-card-edit-save').click();
         await expect(card.locator('.weight-value')).toHaveText('135');
 
-        // Now open weight again, type a different value, and ✗ Cancel
-        await card.locator('.weight-display').click();
+        // Open again, change protocol AND weight, then ✗ Cancel — both revert
+        await card.locator('.repssets-display').click();
+        await card.locator('.repssets-input').fill('AMRAP');
         await card.locator('.weight-input').fill('200');
-        await card.locator('.studio-card-weight-field .studio-inline-cancel').click();
+        await card.locator('.studio-card-edit-cancel').click();
 
-        // Should revert to 135, NOT 200
         await expect(card.locator('.studio-weight-editor')).toBeHidden();
         await expect(card.locator('.weight-value')).toHaveText('135');
+        // Protocol stays at whatever it was before this edit session (the
+        // default seeded by _ensureOrganizeState, not 'AMRAP')
+        await expect(card.locator('.repssets-value-text')).not.toHaveText('AMRAP');
     });
 });

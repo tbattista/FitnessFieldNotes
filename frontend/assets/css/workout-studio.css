@@ -873,33 +873,38 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   min-height: 28px;
 }
 
-/* Inline ✓ / ✗ buttons inside an active editor — mirrors workout-mode's
-   .workout-unified-actions visual so blur no longer cancels edits and
-   the user has explicit commit/cancel affordances. */
-.studio-inline-actions {
+/* Single card-level commit row — one ✓ Save + ✗ Cancel for the whole
+   card, shown only while the card is in unified edit mode. Mirrors the
+   workout-mode pattern where one explicit action commits all fields. */
+.studio-card-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+[data-bs-theme="dark"] .studio-card-edit-actions {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+.studio-card-edit-actions .btn {
+  height: 30px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: auto;
-  padding-left: 6px;
-}
-.studio-inline-actions .btn {
-  min-width: 30px;
-  height: 30px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   line-height: 1;
 }
-.studio-inline-actions .btn i {
-  font-size: 16px;
+.studio-card-edit-actions .btn i { font-size: 16px; }
+
+/* Subtle ring while a card is actively being edited so the user knows
+   which card their typing is going into. */
+.studio-card.studio-card-editing {
+  box-shadow: 0 0 0 2px rgba(201, 124, 93, 0.25);
 }
-/* Slight visual lift on hover so the action target reads as tappable */
-.studio-inline-actions .studio-inline-save:hover { filter: brightness(1.05); }
-.studio-inline-actions .studio-inline-cancel:hover { background: rgba(0, 0, 0, 0.04); }
-[data-bs-theme="dark"] .studio-inline-actions .studio-inline-cancel:hover {
-  background: rgba(255, 255, 255, 0.06);
+[data-bs-theme="dark"] .studio-card.studio-card-editing {
+  box-shadow: 0 0 0 2px rgba(201, 124, 93, 0.4);
 }
 .studio-card-field-label {
   font-size: 0.68rem;

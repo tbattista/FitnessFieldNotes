@@ -38,6 +38,21 @@
     return sets || reps || '3×10';
   }
 
+  /**
+   * The protocol field is treated as a single free-text value at the UI
+   * layer — the user types "5x5" and that exact string is what they see
+   * later. On the way out to the save payload we still split into sets +
+   * reps best-effort for backend compatibility, but the display value is
+   * preserved verbatim. Returns { sets, reps } where one may be empty.
+   */
+  function splitProtocol(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return { sets: '', reps: '' };
+    const m = s.match(/^\s*(\d+)\s*[x×]\s*(.+?)\s*$/i);
+    if (m) return { sets: m[1], reps: m[2] };
+    return { sets: '', reps: s };
+  }
+
   class StudioExerciseCard {
     constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId } = {}) {
       this.instanceId = instanceId;
@@ -48,7 +63,15 @@
         rest: '60s',
         weight: '',
         weightUnit: 'lbs',
+        // Free-text protocol string the user typed — source of truth for
+        // the protocol display. sets + reps are derived on save for
+        // backend compatibility. Falls back to formatProtocol(sets, reps)
+        // for legacy state that doesn't yet carry this field.
+        protocol: '',
       }, state || {});
+      if (!this.state.protocol) {
+        this.state.protocol = formatProtocol(this.state.sets, this.state.reps);
+      }
       this.callbacks = callbacks || {};
       // Visual + menu state for blocks
       // inBlock: { blockId, blockName } | null
@@ -76,9 +99,6 @@
       tpl.innerHTML = this._templateHtml();
       this.el = tpl.firstElementChild;
       this._bindEvents();
-      // Cardio cards skip the inline-field controllers — those edit
-      // sets/reps/rest/weight, none of which apply to a cardio summary.
-      if (this.groupType !== 'cardio') this._initFieldControllers();
       return this.el;
     }
 
@@ -146,7 +166,11 @@
     _templateHtml() {
       const safeName = escapeHtml(this.name);
       const safeId = escapeHtml(this.instanceId);
-      const protocolDisplay = escapeHtml(formatProtocol(this.state.sets, this.state.reps));
+      // Use the free-text protocol as-is when set, falling back to the
+      // legacy formatProtocol(sets, reps) shape for state that predates it.
+      const protocolDisplay = escapeHtml(
+        this.state.protocol || formatProtocol(this.state.sets, this.state.reps)
+      );
       const weight = this.state.weight || '';
       const unit = this.state.weightUnit || 'lbs';
       const isDIY = unit === 'diy';
@@ -216,7 +240,8 @@
           </div>
 
           <div class="studio-card-body">
-            <!-- Protocol (sets × reps) -->
+            <!-- Protocol — free-text. Whatever the user types is what they
+                 see; backend sets/reps are derived best-effort on save. -->
             <div class="workout-repssets-field studio-card-field"
                  data-protocol="${protocolDisplay}"
                  data-exercise-name="${safeName}">
@@ -227,18 +252,16 @@
               <div class="repssets-editor" style="display: none;">
                 <span class="studio-card-field-label">Protocol</span>
                 <input type="text"
-                       class="repssets-input repssets-text-input studio-card-field-input"
+                       class="repssets-input studio-card-field-input"
                        value="${protocolDisplay}"
                        placeholder="e.g., 3x10, AMRAP"
                        inputmode="text" />
-                <div class="studio-inline-actions" data-field="protocol">
-                  <button class="btn btn-sm btn-success studio-inline-save" type="button" aria-label="Save protocol" title="Save"><i class="bx bx-check"></i></button>
-                  <button class="btn btn-sm btn-outline-secondary studio-inline-cancel" type="button" aria-label="Cancel protocol" title="Cancel"><i class="bx bx-x"></i></button>
-                </div>
               </div>
             </div>
 
-            <!-- Weight (single input that morphs type when DIY pill is tapped) -->
+            <!-- Weight — free text. Unit pills choose lbs / kg / DIY; the
+                 input itself accepts arbitrary text so '90, then drop set'
+                 and similar entries persist verbatim. -->
             <div class="studio-card-weight-field studio-card-field"
                  data-weight="${escapeHtml(weight)}"
                  data-unit="${escapeHtml(unit)}">
@@ -253,11 +276,9 @@
                 <span class="studio-card-field-label">Weight</span>
                 <div class="studio-card-weight-row">
                   <input class="weight-input studio-card-field-input"
-                         type="${isDIY ? 'text' : 'number'}"
+                         type="text"
                          value="${escapeHtml(weight)}"
-                         step="${unit === 'kg' ? '2.5' : '5'}"
-                         min="0" max="9999"
-                         inputmode="${isDIY ? 'text' : 'decimal'}"
+                         inputmode="text"
                          placeholder="${isDIY ? 'e.g. bodyweight + 10 lbs' : '0'}" />
                   <div class="weight-unit-selector">
                     <button class="unit-btn ${unit === 'lbs' ? 'active' : ''}" data-unit="lbs" type="button">lbs</button>
@@ -265,14 +286,10 @@
                     <button class="unit-btn ${unit === 'diy' ? 'active' : ''}" data-unit="diy" type="button">DIY</button>
                   </div>
                 </div>
-                <div class="studio-inline-actions" data-field="weight">
-                  <button class="btn btn-sm btn-success studio-inline-save" type="button" aria-label="Save weight" title="Save"><i class="bx bx-check"></i></button>
-                  <button class="btn btn-sm btn-outline-secondary studio-inline-cancel" type="button" aria-label="Cancel weight" title="Cancel"><i class="bx bx-x"></i></button>
-                </div>
               </div>
             </div>
 
-            <!-- Rest (small bespoke editor — no existing controller) -->
+            <!-- Rest — free text. -->
             <div class="studio-card-rest-field studio-card-field" data-rest="${restDisplay}">
               <div class="studio-rest-display click-to-edit">
                 <span class="studio-card-field-label">Rest</span>
@@ -282,13 +299,17 @@
                 <span class="studio-card-field-label">Rest</span>
                 <input type="text" class="studio-rest-input studio-card-field-input"
                        value="${restDisplay}"
-                       placeholder="60s" maxlength="8" />
-                <div class="studio-inline-actions" data-field="rest">
-                  <button class="btn btn-sm btn-success studio-inline-save" type="button" aria-label="Save rest" title="Save"><i class="bx bx-check"></i></button>
-                  <button class="btn btn-sm btn-outline-secondary studio-inline-cancel" type="button" aria-label="Cancel rest" title="Cancel"><i class="bx bx-x"></i></button>
-                </div>
+                       placeholder="60s" maxlength="20" />
               </div>
             </div>
+          </div>
+
+          <!-- Single card-level commit row, only visible during edit mode.
+               Tapping any field's display opens all three editors and shows
+               this footer; ✓ commits all, ✗ reverts all (workout-mode parity). -->
+          <div class="studio-card-edit-actions" style="display: none;">
+            <button class="btn btn-sm btn-outline-secondary studio-card-edit-cancel" type="button" aria-label="Cancel edits" title="Cancel"><i class="bx bx-x"></i> Cancel</button>
+            <button class="btn btn-sm btn-success studio-card-edit-save" type="button" aria-label="Save edits" title="Save"><i class="bx bx-check"></i> Save</button>
           </div>
         </div>
       `;
@@ -343,80 +364,190 @@
         document.addEventListener('click', this._handleDocClickForMenu);
       }
 
-      // Protocol display tap → enter edit via RepsSetsFieldController
-      const rDisplay = this.el.querySelector('.repssets-display');
-      if (rDisplay) {
-        rDisplay.addEventListener('click', (e) => {
+      // Unified edit mode — tapping ANY of the three field displays
+      // (protocol, weight, rest) opens ALL three editors at once and
+      // surfaces a single ✓/✗ row at the bottom of the card. This is the
+      // workout-mode pattern: one explicit commit per card, no per-field
+      // save/cancel, no blur-cancels-and-loses-typing.
+      const displays = this.el.querySelectorAll(
+        '.repssets-display, .weight-display, .studio-rest-display'
+      );
+      displays.forEach((d) => {
+        d.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (this._repsSetsCtl) this._repsSetsCtl.enterEditMode();
+          // Map each display back to the field its input belongs to so
+          // we can focus the field the user actually tapped, not always
+          // the first one.
+          let focusField = 'protocol';
+          if (d.classList.contains('weight-display')) focusField = 'weight';
+          else if (d.classList.contains('studio-rest-display')) focusField = 'rest';
+          this._enterCardEditMode(focusField);
         });
-      }
+      });
 
-      // Weight field (bespoke inline edit — one input that morphs type
-      // when the DIY unit pill is tapped, so it can hold either a number
-      // or arbitrary text like "bodyweight + 10 lbs".)
-      this._bindWeightField();
+      // Card-level Save / Cancel — wired once; commit/revert all fields.
+      const saveBtn = this.el.querySelector('.studio-card-edit-save');
+      const cancelBtn = this.el.querySelector('.studio-card-edit-cancel');
+      if (saveBtn) saveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._exitCardEditMode(true);
+      });
+      if (cancelBtn) cancelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._exitCardEditMode(false);
+      });
 
-      // Name field (tap-to-edit; saves on Enter/blur, cancels on Escape)
+      // Enter = commit, Escape = revert. Bound on each input so the
+      // shortcuts work no matter which field has focus.
+      const inputs = this.el.querySelectorAll(
+        '.repssets-input, .weight-input, .studio-rest-input'
+      );
+      inputs.forEach((inp) => {
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); this._exitCardEditMode(true); }
+          else if (e.key === 'Escape') { e.preventDefault(); this._exitCardEditMode(false); }
+        });
+      });
+
+      // Weight unit pills — independent of edit-mode entry/exit, just
+      // toggle the active class + state. Pressed buttons don't take
+      // focus from the weight input.
+      const unitBtns = this.el.querySelectorAll('.weight-unit-selector .unit-btn');
+      const weightInput = this.el.querySelector('.weight-input');
+      unitBtns.forEach((btn) => {
+        ['pointerdown', 'mousedown'].forEach((evt) => {
+          btn.addEventListener(evt, (ev) => { ev.preventDefault(); });
+        });
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const unit = btn.dataset.unit;
+          if (!unit) return;
+          this.state.weightUnit = unit;
+          unitBtns.forEach((b) => b.classList.toggle('active', b.dataset.unit === unit));
+          if (weightInput) {
+            weightInput.placeholder = unit === 'diy' ? 'e.g. bodyweight + 10 lbs' : '0';
+            requestAnimationFrame(() => weightInput.focus());
+          }
+        });
+      });
+
+      // Name field — independent, simple click-to-edit with blur-saves.
+      // Single field, no validation, low risk: blur-commits is the lowest-
+      // friction interaction. It does NOT participate in the unified edit
+      // mode (different concern, different lifetime).
       this._bindNameField();
+    }
 
-      // Rest field (bespoke inline edit). Workout-mode-style: blur is a
-      // no-op; commit is explicit via the inline ✓ button or Enter, cancel
-      // via ✗ or Escape. This is what fixes the "tap off → revert" pain.
-      const restDisplay = this.el.querySelector('.studio-rest-display');
-      const restEditor = this.el.querySelector('.studio-rest-editor');
-      const restInput = this.el.querySelector('.studio-rest-input');
-      if (restDisplay && restEditor && restInput) {
-        const exitRestEdit = (save) => {
-          if (save) {
-            const v = String(restInput.value || '').trim() || '60s';
-            this.state.rest = v;
-            this._fire('onChange', { rest: v });
-          }
-          this._refreshRestDisplay();
-          restEditor.style.display = 'none';
-          restDisplay.style.display = '';
-        };
-        restDisplay.addEventListener('click', (e) => {
-          e.stopPropagation();
-          restDisplay.style.display = 'none';
-          restEditor.style.display = 'flex';
-          restInput.value = this.state.rest || '60s';
-          setTimeout(() => { restInput.focus(); restInput.select(); }, 0);
-        });
-        restInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') { e.preventDefault(); exitRestEdit(true); }
-          else if (e.key === 'Escape') { e.preventDefault(); exitRestEdit(false); }
-        });
-        const rSave = this.el.querySelector('.studio-card-rest-field .studio-inline-save');
-        const rCancel = this.el.querySelector('.studio-card-rest-field .studio-inline-cancel');
-        if (rSave) rSave.addEventListener('click', (e) => { e.stopPropagation(); exitRestEdit(true); });
-        if (rCancel) rCancel.addEventListener('click', (e) => { e.stopPropagation(); exitRestEdit(false); });
+    /**
+     * Snapshot the current state, open all three editors, show the
+     * card-level ✓/✗ row, and focus the requested field's input. Safe
+     * to call when already in edit mode (it's idempotent).
+     */
+    _enterCardEditMode(focusField) {
+      if (!this.el || this._cardEditOpen) {
+        // Already open — just refocus the requested field
+        const refocusEl = this._getEditorInput(focusField);
+        if (refocusEl) { refocusEl.focus(); refocusEl.select && refocusEl.select(); }
+        return;
       }
+      this._cardEditOpen = true;
+      this._editSnapshot = {
+        protocol: this.state.protocol || '',
+        sets: this.state.sets || '',
+        reps: this.state.reps || '',
+        weight: this.state.weight || '',
+        weightUnit: this.state.weightUnit || 'lbs',
+        rest: this.state.rest || '60s',
+      };
+      // Seed every input from current state, then swap visibility
+      const pInput = this.el.querySelector('.repssets-input');
+      const wInput = this.el.querySelector('.weight-input');
+      const rInput = this.el.querySelector('.studio-rest-input');
+      if (pInput) pInput.value = this._editSnapshot.protocol;
+      if (wInput) wInput.value = this._editSnapshot.weight;
+      if (rInput) rInput.value = this._editSnapshot.rest;
 
-      // Listen for change events emitted by the field controllers
-      const repsFieldEl = this.el.querySelector('.workout-repssets-field');
-      if (repsFieldEl) {
-        repsFieldEl.addEventListener('repsSetsChanged', (e) => {
-          const detail = e.detail || {};
-          const newState = {};
-          if (detail.protocol) {
-            const m = String(detail.protocol).match(/^\s*(\d+)\s*[x×]\s*(.+?)\s*$/i);
-            if (m) {
-              newState.sets = m[1];
-              newState.reps = m[2];
-            } else {
-              newState.sets = '';
-              newState.reps = String(detail.protocol);
-            }
-          }
-          if (detail.sets != null) newState.sets = String(detail.sets);
-          if (detail.reps != null) newState.reps = String(detail.reps);
-          Object.assign(this.state, newState);
-          this._refreshProtocolDisplay();
-          this._fire('onChange', newState);
+      const displays = this.el.querySelectorAll(
+        '.repssets-display, .weight-display, .studio-rest-display'
+      );
+      displays.forEach((d) => { d.style.display = 'none'; });
+      this.el.querySelectorAll('.repssets-editor, .studio-weight-editor, .studio-rest-editor')
+        .forEach((e) => { e.style.display = 'flex'; });
+
+      const actions = this.el.querySelector('.studio-card-edit-actions');
+      if (actions) actions.style.display = 'flex';
+      this.el.classList.add('studio-card-editing');
+
+      const focusEl = this._getEditorInput(focusField);
+      if (focusEl) setTimeout(() => { focusEl.focus(); focusEl.select && focusEl.select(); }, 0);
+    }
+
+    _getEditorInput(field) {
+      if (!this.el) return null;
+      if (field === 'weight') return this.el.querySelector('.weight-input');
+      if (field === 'rest') return this.el.querySelector('.studio-rest-input');
+      return this.el.querySelector('.repssets-input');
+    }
+
+    /**
+     * Commit (save=true) or discard (save=false) all three field edits as
+     * a single transaction. Saves emit a single onChange with the merged
+     * patch so the controller's draft + organize state stay coherent.
+     */
+    _exitCardEditMode(save) {
+      if (!this.el || !this._cardEditOpen) return;
+      if (save) {
+        const pInput = this.el.querySelector('.repssets-input');
+        const wInput = this.el.querySelector('.weight-input');
+        const rInput = this.el.querySelector('.studio-rest-input');
+        const protocolRaw = pInput ? String(pInput.value || '').trim() : this.state.protocol;
+        const restRaw = rInput ? String(rInput.value || '').trim() : this.state.rest;
+        const weightRaw = wInput ? String(wInput.value || '').trim() : this.state.weight;
+
+        // Protocol is stored verbatim; sets+reps are derived best-effort
+        // so the save payload + workout-mode (which reads sets/reps) keep
+        // working without quirks like "5x5" auto-formatting to "5×5".
+        const finalProtocol = protocolRaw || formatProtocol(this.state.sets, this.state.reps);
+        const split = splitProtocol(finalProtocol);
+        this.state.protocol = finalProtocol;
+        this.state.sets = split.sets;
+        this.state.reps = split.reps;
+        this.state.rest = restRaw || '60s';
+        this.state.weight = weightRaw;
+        // weightUnit was tracked live by the pill click handler.
+        this._fire('onChange', {
+          protocol: this.state.protocol,
+          sets: this.state.sets,
+          reps: this.state.reps,
+          rest: this.state.rest,
+          weight: this.state.weight,
+          weightUnit: this.state.weightUnit,
         });
+      } else if (this._editSnapshot) {
+        // Discard — restore every field to its pre-edit snapshot.
+        Object.assign(this.state, this._editSnapshot);
       }
+      // Refresh display lines from the now-final state, then swap back.
+      this._refreshProtocolDisplay();
+      this._refreshWeightDisplay();
+      this._refreshRestDisplay();
+
+      // Sync unit-pill active state in case Cancel rolled back a change.
+      const unitBtns = this.el.querySelectorAll('.weight-unit-selector .unit-btn');
+      unitBtns.forEach((b) => b.classList.toggle('active', b.dataset.unit === this.state.weightUnit));
+
+      this.el.querySelectorAll('.repssets-editor, .studio-weight-editor, .studio-rest-editor')
+        .forEach((e) => { e.style.display = 'none'; });
+      const displays = this.el.querySelectorAll(
+        '.repssets-display, .weight-display, .studio-rest-display'
+      );
+      displays.forEach((d) => { d.style.display = ''; });
+      const actions = this.el.querySelector('.studio-card-edit-actions');
+      if (actions) actions.style.display = 'none';
+      this.el.classList.remove('studio-card-editing');
+
+      this._cardEditOpen = false;
+      this._editSnapshot = null;
     }
 
     // -------- cardio (summary-only, offcanvas-driven editing) --------
@@ -506,40 +637,6 @@
       slot.appendChild(span);
     }
 
-    _initFieldControllers() {
-      // Weight is handled bespoke in _bindWeightField — no controller needed.
-      const rEl = this.el.querySelector('.workout-repssets-field');
-      if (rEl && window.RepsSetsFieldController) {
-        try {
-          this._repsSetsCtl = new window.RepsSetsFieldController(rEl, {
-            exerciseName: this.name,
-            sessionService: null,
-          });
-          // The controller's default blur handler CANCELS edits — for the
-          // studio that meant "tap protocol → type → tap off → value
-          // reverts." Disable that auto-cancel by claiming unified mode so
-          // the user has to explicitly commit via the inline ✓ / Enter,
-          // matching workout-mode's inline-edit feel.
-          if (typeof this._repsSetsCtl.setUnifiedEditMode === 'function') {
-            this._repsSetsCtl.setUnifiedEditMode(true);
-          }
-        } catch (err) {
-          console.warn('[StudioExerciseCard] RepsSetsFieldController init failed:', err);
-        }
-      }
-      // Wire the inline ✓ / ✗ buttons that live inside the protocol editor.
-      const pSave = this.el.querySelector('.workout-repssets-field .studio-inline-save');
-      const pCancel = this.el.querySelector('.workout-repssets-field .studio-inline-cancel');
-      if (pSave) pSave.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this._repsSetsCtl) this._repsSetsCtl.exitEditMode(true);
-      });
-      if (pCancel) pCancel.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this._repsSetsCtl) this._repsSetsCtl.exitEditMode(false);
-      });
-    }
-
     _bindNameField() {
       if (!this.el) return;
       const display = this.el.querySelector('.studio-card-name');
@@ -591,85 +688,6 @@
       input.addEventListener('blur', () => exitEdit(true));
     }
 
-    _bindWeightField() {
-      if (!this.el) return;
-      const display = this.el.querySelector('.weight-display');
-      const editor = this.el.querySelector('.studio-weight-editor');
-      const input = this.el.querySelector('.weight-input');
-      const unitBtns = this.el.querySelectorAll('.weight-unit-selector .unit-btn');
-      if (!display || !editor || !input) return;
-
-      const applyUnitMode = (unit) => {
-        const isDIY = unit === 'diy';
-        // One physical input morphs type so the box position is stable.
-        input.type = isDIY ? 'text' : 'number';
-        input.inputMode = isDIY ? 'text' : 'decimal';
-        input.placeholder = isDIY ? 'e.g. bodyweight + 10 lbs' : '0';
-        input.step = unit === 'kg' ? '2.5' : '5';
-        unitBtns.forEach((b) => b.classList.toggle('active', b.dataset.unit === unit));
-      };
-
-      // Snapshot the pre-edit state so Cancel can fully revert (including
-      // a unit change the user made via the pills before tapping ✗).
-      let originalWeight = '';
-      let originalUnit = 'lbs';
-
-      const exitEdit = (save) => {
-        if (save) {
-          const v = String(input.value || '').trim();
-          this.state.weight = v;
-          this._fire('onChange', { weight: this.state.weight, weightUnit: this.state.weightUnit });
-        } else {
-          // Roll back any unit-pill changes made during this edit session.
-          this.state.weight = originalWeight;
-          this.state.weightUnit = originalUnit;
-        }
-        this._refreshWeightDisplay();
-        editor.style.display = 'none';
-        display.style.display = '';
-      };
-
-      display.addEventListener('click', (e) => {
-        e.stopPropagation();
-        originalWeight = this.state.weight || '';
-        originalUnit = this.state.weightUnit || 'lbs';
-        applyUnitMode(originalUnit);
-        input.value = originalWeight;
-        display.style.display = 'none';
-        editor.style.display = 'flex';
-        setTimeout(() => { input.focus(); input.select(); }, 0);
-      });
-
-      // Workout-mode pattern: blur is a no-op. The editor stays open until
-      // the user explicitly commits via ✓ / Enter or discards via ✗ /
-      // Escape. This is what fixes "tap off → value reverts" — there's no
-      // longer an auto-cancel on blur.
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); exitEdit(true); }
-        else if (e.key === 'Escape') { e.preventDefault(); exitEdit(false); }
-      });
-
-      const wSave = this.el.querySelector('.studio-card-weight-field .studio-inline-save');
-      const wCancel = this.el.querySelector('.studio-card-weight-field .studio-inline-cancel');
-      if (wSave) wSave.addEventListener('click', (e) => { e.stopPropagation(); exitEdit(true); });
-      if (wCancel) wCancel.addEventListener('click', (e) => { e.stopPropagation(); exitEdit(false); });
-
-      unitBtns.forEach((btn) => {
-        // Stop the down-event from stealing focus so the input cursor stays
-        // ready for more typing after a pill tap.
-        ['pointerdown', 'mousedown'].forEach((evt) => {
-          btn.addEventListener(evt, (e) => { e.preventDefault(); });
-        });
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const unit = btn.dataset.unit;
-          if (!unit || unit === this.state.weightUnit) return;
-          this.state.weightUnit = unit;
-          applyUnitMode(unit);
-          requestAnimationFrame(() => input.focus());
-        });
-      });
-    }
 
     _buildMoveMenuItems() {
       const parts = [];
@@ -712,7 +730,9 @@
 
     _refreshProtocolDisplay() {
       if (!this.el) return;
-      const text = formatProtocol(this.state.sets, this.state.reps);
+      // Prefer the verbatim protocol the user typed; fall back to the
+      // derived sets×reps shape for legacy state.
+      const text = this.state.protocol || formatProtocol(this.state.sets, this.state.reps);
       const display = this.el.querySelector('.repssets-display .repssets-value-text');
       const field = this.el.querySelector('.workout-repssets-field');
       if (display) display.textContent = text;
