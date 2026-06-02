@@ -1724,3 +1724,185 @@ test.describe('Workout Studio — Draft persistence', () => {
         await expect(page.locator('.studio-note-textarea')).toHaveValue('Persisted note');
     });
 });
+
+test.describe('Workout Studio — Load existing workout via ?id=', () => {
+
+    // Route both /api/v3/workouts (list, used by dataManager.getWorkouts)
+    // AND /api/v3/workouts/{id} (single, used by the raw-fallback loader).
+    async function routeWorkoutsList(page, workouts) {
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ workouts }),
+            });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            const url = new URL(route.request().url());
+            const id = url.pathname.split('/').pop();
+            const match = workouts.find((w) => String(w.id) === String(id));
+            if (!match) return route.fulfill({ status: 404, body: '{}' });
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(match),
+            });
+        });
+    }
+
+    test('opening ?id=<existing> hydrates the meta card + cards from the saved sections', async ({ page }) => {
+        const workout = {
+            id: 'wkt-loaded-1',
+            name: 'Loaded Push Day',
+            description: 'Saved-back description',
+            tags: ['push', 'loaded'],
+            workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-1', name: 'Barbell Bench Press', sets: '4', reps: '6', rest: '90s', default_weight: '185', default_weight_unit: 'lbs' },
+                ]},
+                { type: 'standard', name: 'Push Block', exercises: [
+                    { exercise_id: 'ex-2', name: 'Incline DB Press', sets: '3', reps: '10', rest: '60s' },
+                    { exercise_id: 'ex-3', name: 'Cable Fly', sets: '3', reps: '12', rest: '45s' },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        // We need the route up before navigation so the controller's first
+        // dataManager.getWorkouts() call hits our fixture.
+        await page.addInitScript(() => { delete window.dataManager; });
+        await routeWorkoutsList(page, [workout]);
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Loaded Push Day', { timeout: 10000 });
+
+        // Meta auto-expanded since tags + description were set
+        await expect(page.locator('#studioTagsInput')).toHaveValue('push, loaded');
+        await expect(page.locator('#studioDescriptionInput')).toHaveValue('Saved-back description');
+
+        // Continue to Page 2 — 1 loose card + 1 block with 2 children
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studioOrganizeList > .studio-card')).toHaveCount(1);
+        await expect(page.locator('.studio-block')).toHaveCount(1);
+        await expect(page.locator('.studio-block-name-input')).toHaveValue('Push Block');
+        await expect(page.locator('.studio-block .studio-block-children .studio-card')).toHaveCount(2);
+
+        // First card carries the saved weight value
+        await expect(page.locator('#studioOrganizeList > .studio-card .weight-value').first()).toHaveText('185');
+
+        // Save button label switches to Update Workout
+        await expect(page.locator('#studioSaveBtnLabel')).toHaveText('Update Workout');
+    });
+
+    test('saving an existing workout PUTs to /api/v3/workouts/{id} (update, not create)', async ({ page }) => {
+        const workout = {
+            id: 'wkt-loaded-2',
+            name: 'Edit Me',
+            description: '',
+            tags: [],
+            workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-9', name: 'Squat', sets: '5', reps: '5', rest: '120s' },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+
+        await page.addInitScript(() => { delete window.dataManager; });
+        await routeWorkoutsList(page, [workout]);
+
+        let putHit = null;
+        let postHit = null;
+        await page.route('**/api/v3/workouts/wkt-loaded-2', async (route) => {
+            if (route.request().method() === 'PUT') {
+                try { putHit = JSON.parse(route.request().postData() || '{}'); } catch (e) { putHit = null; }
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ id: workout.id, name: putHit?.name || workout.name }),
+                });
+            } else { await route.fallback(); }
+        });
+        await page.route('**/api/v3/workouts', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postHit = JSON.parse(route.request().postData() || '{}'); } catch (e) { postHit = null; }
+                await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+            } else { await route.fallback(); }
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Edit Me', { timeout: 10000 });
+
+        // Now that load is done, force the save to hit the raw-fetch fallback
+        // (dataManager.updateWorkout would otherwise go through localStorage
+        // and fail with "not found" since the workout was never seeded there).
+        await page.evaluate(() => { delete window.dataManager; });
+
+        // Rename then save
+        await page.locator('#studioWorkoutNameInput').fill('Edit Me — Renamed');
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioSaveBtn').click();
+
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/updated/i, { timeout: 5000 });
+        expect(putHit).toBeTruthy();
+        expect(putHit.name).toBe('Edit Me — Renamed');
+        expect(postHit).toBeNull(); // We did NOT create a new workout
+    });
+
+    test('loading an existing workout does NOT write to the new-workout draft slot', async ({ page }) => {
+        const workout = {
+            id: 'wkt-no-draft',
+            name: 'Loaded Workout',
+            description: '',
+            tags: [],
+            sections: [{ type: 'standard', name: null, exercises: [{ exercise_id: 'a', name: 'Curl', sets: '3', reps: '10' }] }],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await routeWorkoutsList(page, [workout]);
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Loaded Workout', { timeout: 10000 });
+
+        // Make an edit — would normally schedule a draft save
+        await page.locator('#studioWorkoutNameInput').fill('Loaded Workout edited');
+        // Give the debounce a chance to fire
+        await page.waitForTimeout(800);
+
+        const stored = await page.evaluate(() => localStorage.getItem('ffn:studio:draft:v1'));
+        expect(stored).toBeNull();
+    });
+
+    test('legacy exercise_groups with block_id collapses into a studio block on load', async ({ page }) => {
+        const workout = {
+            id: 'wkt-legacy',
+            name: 'Legacy Block Workout',
+            description: '',
+            tags: [],
+            sections: null,
+            exercise_groups: [
+                { group_id: 'g1', exercises: { a: 'Bench Press' }, sets: '3', reps: '8', block_id: 'b1', group_name: 'Push Pair' },
+                { group_id: 'g2', exercises: { a: 'Barbell Row' }, sets: '3', reps: '8', block_id: 'b1', group_name: 'Push Pair' },
+                { group_id: 'g3', exercises: { a: 'Plank' }, sets: '3', reps: '60s' },
+            ],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await routeWorkoutsList(page, [workout]);
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Legacy Block Workout', { timeout: 10000 });
+
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('.studio-block')).toHaveCount(1);
+        await expect(page.locator('.studio-block .studio-block-children .studio-card')).toHaveCount(2);
+        await expect(page.locator('#studioOrganizeList > .studio-card')).toHaveCount(1);
+        await expect(page.locator('.studio-block-name-input')).toHaveValue('Push Pair');
+    });
+});

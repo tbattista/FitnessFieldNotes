@@ -59,6 +59,9 @@
       // (as a top-level card OR inside one block's instanceIds).
       this.organizeOrder = [];
       this.workoutName = '';
+      // Set when the studio was opened with ?id=<workout_id>. While set, the
+      // save flow PUTs to /api/v3/workouts/{id} instead of POSTing a new one.
+      this.workoutId = null;
       this._saveInFlight = false;
       // Active filter selections by group (Set per group). Empty Sets = no filter.
       this.filters = {
@@ -91,10 +94,19 @@
       this._ensureSentinel();
       this._ensureFloatingCountObserver();
 
-      // Restore any in-progress draft AFTER all bindings are set up but
-      // BEFORE the exercise list loads. We don't want async exercise data
-      // to clobber a restored tray.
-      this._restoreDraftIfPresent();
+      // If we were opened with ?id=<workout_id>, load that workout into the
+      // studio as an editing session. The loader skips both the default-name
+      // seed AND the draft restore (the saved record is the source of truth).
+      // Otherwise, restore any in-progress draft.
+      const urlWorkoutId = this._readWorkoutIdFromUrl();
+      if (urlWorkoutId) {
+        this._loadWorkoutById(urlWorkoutId).catch((err) => {
+          console.error('[WorkoutStudio] Failed to load workout:', err);
+          this._setStatus(`Could not load workout: ${err.message || 'unknown error'}`, 'error');
+        });
+      } else {
+        this._restoreDraftIfPresent();
+      }
 
       this._loadExercises().catch((err) => {
         console.error('[WorkoutStudio] Failed to load exercises:', err);
@@ -149,6 +161,7 @@
       this.dom.organizeEmpty = document.getElementById('studioOrganizeEmpty');
       this.dom.organizeBackBtn = document.getElementById('studioOrganizeBack');
       this.dom.saveBtn = document.getElementById('studioSaveBtn');
+      this.dom.saveBtnLabel = document.getElementById('studioSaveBtnLabel');
       this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
@@ -635,6 +648,256 @@
       this._showView('select');
     }
 
+    /** Read ?id=<workout_id> from window.location, return null if absent. */
+    _readWorkoutIdFromUrl() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        return id && String(id).trim() ? String(id).trim() : null;
+      } catch (_err) {
+        return null;
+      }
+    }
+
+    /**
+     * Fetch a saved workout by id and hydrate the studio into editing mode.
+     * Defaults the data-source to window.dataManager.getWorkouts() so it picks
+     * up Firebase-or-localStorage routing automatically.
+     */
+    async _loadWorkoutById(id) {
+      const dm = window.dataManager;
+      if (!dm || typeof dm.getWorkouts !== 'function') {
+        // Raw fallback so the loader still works in test contexts that
+        // delete window.dataManager to force the network path.
+        return this._loadWorkoutByIdRaw(id);
+      }
+      this._setStatus('Loading workout…', null);
+      try {
+        const workouts = await dm.getWorkouts();
+        const workout = Array.isArray(workouts) ? workouts.find((w) => String(w.id) === String(id)) : null;
+        if (!workout) {
+          throw new Error('Workout not found');
+        }
+        this._hydrateFromWorkoutData(workout);
+        this._setStatus('', null);
+      } catch (err) {
+        // Final fallback: try the raw endpoint in case dataManager's cache
+        // is stale or the workout is reachable only via the API.
+        try {
+          await this._loadWorkoutByIdRaw(id);
+        } catch (_) {
+          throw err;
+        }
+      }
+    }
+
+    async _loadWorkoutByIdRaw(id) {
+      this._setStatus('Loading workout…', null);
+      const url = `/api/v3/workouts/${encodeURIComponent(id)}`;
+      const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if (!resp.ok) throw new Error(`Load failed (${resp.status})`);
+      const workout = await resp.json();
+      if (!workout || !workout.id) throw new Error('Workout not found');
+      this._hydrateFromWorkoutData(workout);
+      this._setStatus('', null);
+    }
+
+    /**
+     * Apply a saved workout payload to the studio state.
+     * Prefers sections[] when present (blocks-aware); falls back to
+     * exercise_groups[] with block_id-collapsing for legacy records.
+     * Suppresses draft saves during hydration so we don't write a partial
+     * snapshot while restoring.
+     */
+    _hydrateFromWorkoutData(workout) {
+      if (!workout || typeof workout !== 'object') return;
+
+      this._suppressDraftSave = true;
+      // Also block the tray's emit-driven _onTrayChange from auto-syncing
+      // organizeOrder while we're mid-hydration. Without this, each
+      // tray.add() in _hydrateFromSections would push the just-added
+      // instanceId onto organizeOrder as a loose card, defeating the block
+      // grouping we're constructing on the same pass.
+      this._suppressTrayChange = true;
+      try {
+        // Track id so subsequent saves UPDATE rather than CREATE.
+        this.workoutId = workout.id || null;
+        if (this.dom.saveBtnLabel && this.workoutId) {
+          this.dom.saveBtnLabel.textContent = 'Update Workout';
+        }
+
+        // Clear in-memory state to defaults before populating from the
+        // saved record. Any default name seeded by _bindHeader is replaced.
+        if (this.tray && typeof this.tray.clear === 'function') this.tray.clear();
+        this.organizeOrder = [];
+        this.blocks = new Map();
+        this.notes = new Map();
+        this.organizeState = new Map();
+
+        // Metadata
+        const name = String(workout.name || '').trim();
+        this.workoutName = name;
+        if (this.dom.workoutNameInput) this.dom.workoutNameInput.value = name;
+
+        const tags = Array.isArray(workout.tags) ? workout.tags.slice(0, 10) : [];
+        this.tags = tags;
+        if (this.dom.tagsInput) this.dom.tagsInput.value = tags.join(', ');
+
+        const desc = String(workout.description || '');
+        this.description = desc;
+        if (this.dom.descriptionInput) this.dom.descriptionInput.value = desc;
+
+        // Auto-expand the meta card when there's anything to show
+        if ((tags.length > 0 || desc.length > 0) && typeof this._setMetaExpanded === 'function') {
+          this._setMetaExpanded(true);
+        }
+
+        // Sections > exercise_groups for shape fidelity (blocks survive)
+        const sections = Array.isArray(workout.sections) ? workout.sections : null;
+        if (sections && sections.length > 0) {
+          this._hydrateFromSections(sections);
+        } else if (Array.isArray(workout.exercise_groups)) {
+          this._hydrateFromExerciseGroups(workout.exercise_groups);
+        }
+
+        // Notes — interleave by order_index against the flattened
+        // exercise_groups slot count (matches what _buildSavePayload writes
+        // and what _buildMergedItems on the read side expects).
+        const notes = Array.isArray(workout.template_notes) ? workout.template_notes : [];
+        const sortedNotes = notes.slice().sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+        sortedNotes.forEach((note) => {
+          if (!note || typeof note !== 'object') return;
+          const noteId = note.id || `template-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          this.notes.set(noteId, { content: String(note.content || '').slice(0, 500) });
+          // order_index counts flattened exercise_groups; in organizeOrder a
+          // block is one slot, so map to the nth top-level position best-effort.
+          const target = Math.min(Math.max(0, note.order_index || 0), this.organizeOrder.length);
+          this.organizeOrder.splice(target, 0, { kind: 'note', noteId });
+        });
+
+        // Render Page 2 reflecting the loaded structure
+        this._renderOrganize();
+
+        // Now that the tray + organizeOrder are coherent, run the derived
+        // Page 1 UI that _onTrayChange would have updated: count badges on
+        // the selection grid, Continue CTA visibility, count text.
+        if (this.tray) {
+          const items = this.tray.getItems();
+          if (this.grid) this.grid.setCounts(this.tray.countsByExerciseId());
+          const n = items.length;
+          if (this.dom.continueCta) this.dom.continueCta.hidden = n === 0;
+          if (this.dom.continueCount) this.dom.continueCount.textContent = String(n);
+        }
+      } finally {
+        this._suppressDraftSave = false;
+        this._suppressTrayChange = false;
+      }
+    }
+
+    /** sections[] shape: each section may be a block (>1 exercises with optional name). */
+    _hydrateFromSections(sections) {
+      sections.forEach((section, sIdx) => {
+        const exercises = Array.isArray(section.exercises) ? section.exercises : [];
+        if (exercises.length === 0) return;
+
+        if (exercises.length === 1) {
+          // Single-exercise section becomes a loose top-level card.
+          const instanceId = this._addLoadedExerciseToTray(exercises[0], sIdx, 0);
+          if (instanceId) this.organizeOrder.push({ kind: 'card', instanceId });
+        } else {
+          // Multi-exercise section becomes a studio block.
+          const blockId = `block-${Date.now()}-${this._blockSeq++}`;
+          const blockName = String(section.name || '').trim();
+          const instanceIds = [];
+          exercises.forEach((ex, eIdx) => {
+            const iid = this._addLoadedExerciseToTray(ex, sIdx, eIdx);
+            if (iid) instanceIds.push(iid);
+          });
+          this.blocks.set(blockId, { name: blockName, instanceIds });
+          this.organizeOrder.push({ kind: 'block', blockId });
+        }
+      });
+    }
+
+    /**
+     * Legacy fallback: walk exercise_groups[] and collapse consecutive groups
+     * sharing a block_id into a studio block — same algorithm the AI Import
+     * uses on the parsed payload.
+     */
+    _hydrateFromExerciseGroups(groups) {
+      let currentBlockId = null;
+      let currentBlockKey = null;
+      groups.forEach((group, idx) => {
+        const exShape = this._exerciseFromGroup(group, idx);
+        const instanceId = this._addLoadedExerciseToTray(exShape, idx, 0);
+        if (!instanceId) return;
+
+        const bid = group.block_id || null;
+        if (bid) {
+          if (bid !== currentBlockKey) {
+            const newBlockId = `block-${Date.now()}-${this._blockSeq++}`;
+            const blockName = String(group.group_name || group.block_name || '').trim();
+            this.blocks.set(newBlockId, { name: blockName, instanceIds: [instanceId] });
+            this.organizeOrder.push({ kind: 'block', blockId: newBlockId });
+            currentBlockKey = bid;
+            currentBlockId = newBlockId;
+          } else if (currentBlockId) {
+            this.blocks.get(currentBlockId).instanceIds.push(instanceId);
+          }
+        } else {
+          this.organizeOrder.push({ kind: 'card', instanceId });
+          currentBlockKey = null;
+          currentBlockId = null;
+        }
+      });
+    }
+
+    /**
+     * Push one saved exercise into the tray and seed its organize state.
+     * Accepts either a section_exercise (has .name + .exercise_id) or a
+     * legacy exercise_group (has .exercises.{a,b,c} + .sets/.reps/.rest).
+     */
+    _addLoadedExerciseToTray(saved, idxA, idxB) {
+      if (!saved || !this.tray) return null;
+      const name = saved.name || (saved.exercises && (saved.exercises.a || saved.exercises.b || saved.exercises.c)) || '';
+      if (!name) return null;
+
+      const exerciseLike = {
+        id: saved.exercise_id || saved.id || `load-${idxA}-${idxB}-${Date.now()}`,
+        name: String(name).trim(),
+        targetMuscleGroup: '',
+        primaryEquipment: '',
+        exerciseTier: null,
+        group_type: saved.group_type || 'standard',
+      };
+      const instanceId = this.tray.add(exerciseLike);
+      if (!instanceId) return null;
+
+      const state = this._ensureOrganizeState(instanceId);
+      state.sets = String(saved.sets || state.sets || DEFAULT_SETS);
+      state.reps = String(saved.reps || state.reps || DEFAULT_REPS);
+      state.rest = String(saved.rest || state.rest || DEFAULT_REST);
+      if (saved.default_weight) state.weight = String(saved.default_weight);
+      if (saved.default_weight_unit) state.weightUnit = String(saved.default_weight_unit);
+      return instanceId;
+    }
+
+    /** Build a synthetic 'section exercise' shape from a legacy exercise_group. */
+    _exerciseFromGroup(group, idx) {
+      const exes = group && group.exercises;
+      const name = (exes && (exes.a || exes.b || exes.c)) || group?.name || '';
+      return {
+        exercise_id: group?.exercise_id || group?.group_id || `eg-${idx}`,
+        name,
+        sets: group?.sets,
+        reps: group?.reps,
+        rest: group?.rest,
+        default_weight: group?.default_weight,
+        default_weight_unit: group?.default_weight_unit,
+        group_type: group?.group_type || 'standard',
+      };
+    }
+
     _restoreDraftIfPresent() {
       if (!window.StudioDraftService) return;
       const draft = window.StudioDraftService.load();
@@ -730,6 +993,11 @@
 
     _scheduleDraftSave() {
       if (this._suppressDraftSave) return;
+      // When editing an existing saved workout, the saved record is the
+      // source of truth — don't write parallel state into the new-workout
+      // draft slot (it would surface as a 'Resumed draft' banner the next
+      // time the user opens the studio fresh).
+      if (this.workoutId) return;
       clearTimeout(this._draftSaveTimer);
       this._draftSaveTimer = setTimeout(() => this._saveDraft(), 400);
     }
@@ -1408,19 +1676,32 @@
       try {
         const payload = this._buildSavePayload();
         let saved;
-        if (window.dataManager && typeof window.dataManager.createWorkout === 'function') {
-          saved = await window.dataManager.createWorkout(payload);
+        const isUpdate = !!this.workoutId;
+        if (window.dataManager) {
+          if (isUpdate && typeof window.dataManager.updateWorkout === 'function') {
+            saved = await window.dataManager.updateWorkout(this.workoutId, payload);
+          } else if (!isUpdate && typeof window.dataManager.createWorkout === 'function') {
+            saved = await window.dataManager.createWorkout(payload);
+          } else {
+            throw new Error('dataManager missing save method');
+          }
         } else {
           // Fallback for environments without dataManager (e.g. anonymous tests)
-          const resp = await fetch('/api/v3/workouts', {
-            method: 'POST',
+          const url = isUpdate
+            ? `/api/v3/workouts/${encodeURIComponent(this.workoutId)}`
+            : '/api/v3/workouts';
+          const resp = await fetch(url, {
+            method: isUpdate ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
           if (!resp.ok) throw new Error(`Save failed (${resp.status})`);
           saved = await resp.json();
         }
-        this._setStatus('Saved!', 'success');
+        // After the first successful save of a brand-new workout, remember the
+        // id so subsequent saves UPDATE rather than CREATE another copy.
+        if (!isUpdate && saved && saved.id) this.workoutId = saved.id;
+        this._setStatus(isUpdate ? 'Updated!' : 'Saved!', 'success');
         console.log('[WorkoutStudio] Workout saved:', saved && saved.id);
         // Successful save → draft is no longer needed (the workout now lives
         // as a real saved template). Clear it so the next visit starts clean.
@@ -1754,6 +2035,12 @@
     }
 
     _onTrayChange(items) {
+      // Hydration paths (workout load, draft restore) populate the tray
+      // directly with their own organizeOrder structure. Suppress this
+      // handler during those windows so we don't auto-sync everything into
+      // loose top-level cards.
+      if (this._suppressTrayChange) return;
+
       // Update count badges on visible rows
       if (this.grid && this.tray) {
         this.grid.setCounts(this.tray.countsByExerciseId());
