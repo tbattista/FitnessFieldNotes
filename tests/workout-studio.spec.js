@@ -1906,3 +1906,110 @@ test.describe('Workout Studio — Load existing workout via ?id=', () => {
         await expect(page.locator('.studio-block-name-input')).toHaveValue('Push Pair');
     });
 });
+
+test.describe('Modal manager — type-to-confirm', () => {
+    test('confirm button stays disabled until the user types the required phrase', async ({ page }) => {
+        // exercise-database.html loads modal-manager.js. We just need
+        // ffnModalManager on window; the page content doesn't matter.
+        await page.goto(`${BASE}/exercise-database.html`);
+        await page.waitForFunction(() => typeof window.ffnModalManager !== 'undefined', null, { timeout: 15000 });
+
+        let confirmed = false;
+        await page.exposeFunction('__markConfirmed', () => { confirmed = true; });
+
+        await page.evaluate(() => {
+            window.__confirmHappened = false;
+            window.ffnModalManager.typeToConfirm(
+                'Delete test',
+                'This is irreversible.',
+                'delete',
+                () => {
+                    window.__confirmHappened = true;
+                    window.__markConfirmed();
+                },
+                { confirmText: 'Delete permanently', confirmClass: 'btn-danger' }
+            );
+        });
+
+        // Use evaluate to drive the modal directly — Playwright's locator
+        // interaction with dynamically-added Bootstrap modals is flaky here.
+        // We're testing the manager's logic, not DOM rendering quirks.
+        const readState = async () => page.evaluate(() => {
+            const modals = document.querySelectorAll('.modal[id^="type-to-confirm-modal-"]');
+            const m = modals[modals.length - 1];
+            if (!m) return null;
+            const input = m.querySelector('input[type="text"]');
+            const btn = m.querySelector('button.btn-danger');
+            return {
+                hasInput: !!input,
+                hasBtn: !!btn,
+                btnDisabled: btn ? btn.disabled : null,
+                inputValue: input ? input.value : null,
+            };
+        });
+
+        // Wait for the modal AND for typeToConfirm's shown.bs.modal listener
+        // to wire the input → button sync. We detect that by checking that
+        // dispatching an input event actually toggles the disabled state.
+        await page.waitForFunction(() => {
+            const m = document.querySelector('.modal[id^="type-to-confirm-modal-"]');
+            if (!m) return false;
+            const input = m.querySelector('input[type="text"]');
+            const btn = m.querySelector('button.btn-danger');
+            if (!input || !btn) return false;
+            // Probe: set value, dispatch input event, check btn state, restore
+            const prev = input.value;
+            input.value = 'delete';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            const wired = btn.disabled === false;
+            input.value = prev;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            return wired;
+        }, null, { timeout: 5000 });
+
+        // Initial state: disabled
+        let state = await readState();
+        if (!state.hasInput) {
+            const dump = await page.evaluate(() => {
+                const modals = document.querySelectorAll('.modal[id^="type-to-confirm-modal-"]');
+                const m = modals[modals.length - 1];
+                return m ? m.outerHTML : `no modal; matching ids: ${Array.from(modals).map(x => x.id).join(',')}`;
+            });
+            throw new Error('No input. Modal outerHTML: ' + dump.slice(0, 1500));
+        }
+        expect(state.hasInput).toBe(true);
+        expect(state.btnDisabled).toBe(true);
+
+        // Wrong text → still disabled
+        await page.evaluate(() => {
+            const modals = document.querySelectorAll('.modal[id^="type-to-confirm-modal-"]');
+            const m = modals[modals.length - 1];
+            const input = m.querySelector('input[type="text"]');
+            input.value = 'something-else';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        state = await readState();
+        expect(state.btnDisabled).toBe(true);
+
+        // Correct text → enabled
+        await page.evaluate(() => {
+            const modals = document.querySelectorAll('.modal[id^="type-to-confirm-modal-"]');
+            const m = modals[modals.length - 1];
+            const input = m.querySelector('input[type="text"]');
+            input.value = 'delete';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        state = await readState();
+        expect(state.btnDisabled).toBe(false);
+
+        // Click confirm → callback fires
+        await page.evaluate(() => {
+            const modals = document.querySelectorAll('.modal[id^="type-to-confirm-modal-"]');
+            const m = modals[modals.length - 1];
+            m.querySelector('button.btn-danger').click();
+        });
+        // Bootstrap modal hide → onHidden → callback
+        await page.waitForFunction(() => window.__confirmHappened === true, null, { timeout: 5000 });
+        expect(confirmed).toBe(true);
+    });
+});

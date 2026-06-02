@@ -93,12 +93,14 @@ class FFNModalManager {
             const btnClass = button.class || 'btn-secondary';
             const btnId = button.id || `modal-btn-${index}`;
             const dismiss = button.dismiss ? 'data-bs-dismiss="modal"' : '';
-            
+            const disabled = button.disabled ? 'disabled' : '';
+
             return `
-                <button type="button" 
-                        class="btn ${btnClass}" 
+                <button type="button"
+                        class="btn ${btnClass}"
                         id="${btnId}"
-                        ${dismiss}>
+                        ${dismiss}
+                        ${disabled}>
                     ${button.icon ? `<i class="${button.icon} me-1"></i>` : ''}
                     ${button.text}
                 </button>
@@ -344,6 +346,91 @@ class FFNModalManager {
             } else {
                 if (onCancel) onCancel();
             }
+        }, { once: true });
+
+        this.show(id);
+        return modal;
+    }
+
+    /**
+     * Show a destructive-action confirmation gated by typing a required
+     * phrase. The confirm button is disabled until the input value matches
+     * (case-insensitive trim). Use for genuinely irreversible actions like
+     * permanent delete — the typing requirement makes accidental confirms
+     * (autocomplete, double-tap, fat-finger) effectively impossible.
+     *
+     * @param {string} title
+     * @param {string} message - HTML allowed
+     * @param {string} requiredText - the phrase the user must type
+     * @param {Function} onConfirm - invoked AFTER hide if confirmed
+     * @param {Object} [options] - { confirmText, confirmClass, placeholder, size }
+     */
+    typeToConfirm(title, message, requiredText, onConfirm, options = {}) {
+        const id = `type-to-confirm-modal-${this.modalCounter++}`;
+        const inputId = `${id}-input`;
+        const confirmBtnId = `${id}-confirm`;
+        const required = String(requiredText || '').trim();
+        let pendingConfirm = null;
+
+        const body = `
+            <p class="mb-3">${message}</p>
+            <label for="${inputId}" class="form-label small text-muted">
+                Type <code class="text-danger">${required}</code> to confirm
+            </label>
+            <input type="text"
+                   class="form-control"
+                   id="${inputId}"
+                   autocomplete="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   placeholder="${options.placeholder || required}">
+        `;
+
+        const modal = this.create(id, {
+            title: title || 'Confirm',
+            body: body,
+            size: options.size || 'sm',
+            buttons: [
+                { text: options.cancelText || 'Cancel', class: 'btn-secondary', dismiss: true },
+                {
+                    text: options.confirmText || 'Delete permanently',
+                    class: options.confirmClass || 'btn-danger',
+                    id: confirmBtnId,
+                    disabled: true,
+                    onClick: () => {
+                        const input = document.getElementById(inputId);
+                        const val = input ? String(input.value).trim() : '';
+                        if (val.toLowerCase() !== required.toLowerCase()) return;
+                        pendingConfirm = onConfirm;
+                        this.hide(id);
+                    }
+                }
+            ]
+        });
+
+        modal.element.addEventListener('shown.bs.modal', () => {
+            const input = document.getElementById(inputId);
+            const btn = document.getElementById(confirmBtnId);
+            if (!input) return;
+            input.focus();
+            const sync = () => {
+                const match = input.value.trim().toLowerCase() === required.toLowerCase();
+                if (btn) btn.disabled = !match;
+            };
+            input.addEventListener('input', sync);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && input.value.trim().toLowerCase() === required.toLowerCase()) {
+                    e.preventDefault();
+                    pendingConfirm = onConfirm;
+                    this.hide(id);
+                }
+            });
+        }, { once: true });
+
+        modal.element.addEventListener('hidden.bs.modal', () => {
+            const cb = pendingConfirm;
+            this.destroy(id);
+            if (cb) cb();
         }, { once: true });
 
         this.show(id);

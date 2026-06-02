@@ -261,8 +261,12 @@ function initializeComponents() {
                     onClick: (workout) => shareWorkout(workout.id)
                 }
             ],
-            // Configure which actions appear in dropdown menu
-            dropdownActions: ['start', 'history', 'edit', 'duplicate', 'share', 'delete'],
+            // Configure which actions appear in dropdown menu.
+            // 'studio' is the transitional dual entry — sits next to 'edit'
+            // (Builder) until Studio fully replaces Builder.
+            // 'permanent-delete' is the hard-delete with type-to-confirm,
+            // distinct from 'delete' which still routes to Archive.
+            dropdownActions: ['start', 'history', 'edit', 'studio', 'duplicate', 'share', 'delete', 'permanent-delete'],
             // View details callback for dropdown
             onViewDetails: (workout) => viewWorkoutDetails(workout.id),
             // Card tap also opens detail view
