@@ -2229,3 +2229,80 @@ test.describe('Workout Studio — cardio summary card + offcanvas editing', () =
         await expect(page.locator('#studioFabSave')).toHaveCount(1);
     });
 });
+
+test.describe('Workout Studio — inline edit commit/cancel (workout-mode parity)', () => {
+    async function addOneExerciseAndContinue(page) {
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Inline edit test');
+        await page.locator('#studioContinueBtn').click();
+    }
+
+    test('protocol field commits on ✓ button and persists across page-1 round-trip', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await addOneExerciseAndContinue(page);
+
+        const card = page.locator('.studio-card').first();
+        await card.locator('.repssets-display').click();
+        const input = card.locator('.repssets-input');
+        await expect(input).toBeVisible();
+        await input.fill('5×5');
+
+        // Click the ✓ button — committing should hide the editor and persist
+        await card.locator('.workout-repssets-field .studio-inline-save').click();
+        await expect(card.locator('.repssets-editor')).toBeHidden();
+        await expect(card.locator('.repssets-value-text')).toHaveText('5×5');
+
+        // Round-trip: back to selection then forward to organize again —
+        // the committed value should still be there.
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('.studio-card .repssets-value-text').first()).toHaveText('5×5');
+    });
+
+    test('clicking off the input no longer reverts (blur is a no-op now)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await addOneExerciseAndContinue(page);
+
+        const card = page.locator('.studio-card').first();
+        await card.locator('.studio-rest-display').click();
+        const input = card.locator('.studio-rest-input');
+        await expect(input).toBeVisible();
+        await input.fill('90s');
+
+        // Tap somewhere outside the editor (the card name area) — this used
+        // to trigger blur → cancel → revert. Now the editor should stay
+        // open and the typed value should still be in the input.
+        await page.locator('#studioOrganizeCount').click();
+        await expect(card.locator('.studio-rest-editor')).toBeVisible();
+        await expect(input).toHaveValue('90s');
+
+        // ✓ commits
+        await card.locator('.studio-card-rest-field .studio-inline-save').click();
+        await expect(card.locator('.studio-rest-editor')).toBeHidden();
+        await expect(card.locator('.studio-rest-value-text')).toHaveText('90s');
+    });
+
+    test('Cancel (✗) discards changes — weight reverts to prior value', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await addOneExerciseAndContinue(page);
+
+        const card = page.locator('.studio-card').first();
+
+        // First, commit a known starting weight (135)
+        await card.locator('.weight-display').click();
+        await card.locator('.weight-input').fill('135');
+        await card.locator('.studio-card-weight-field .studio-inline-save').click();
+        await expect(card.locator('.weight-value')).toHaveText('135');
+
+        // Now open weight again, type a different value, and ✗ Cancel
+        await card.locator('.weight-display').click();
+        await card.locator('.weight-input').fill('200');
+        await card.locator('.studio-card-weight-field .studio-inline-cancel').click();
+
+        // Should revert to 135, NOT 200
+        await expect(card.locator('.studio-weight-editor')).toBeHidden();
+        await expect(card.locator('.weight-value')).toHaveText('135');
+    });
+});

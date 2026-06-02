@@ -231,6 +231,10 @@
                        value="${protocolDisplay}"
                        placeholder="e.g., 3x10, AMRAP"
                        inputmode="text" />
+                <div class="studio-inline-actions" data-field="protocol">
+                  <button class="btn btn-sm btn-success studio-inline-save" type="button" aria-label="Save protocol" title="Save"><i class="bx bx-check"></i></button>
+                  <button class="btn btn-sm btn-outline-secondary studio-inline-cancel" type="button" aria-label="Cancel protocol" title="Cancel"><i class="bx bx-x"></i></button>
+                </div>
               </div>
             </div>
 
@@ -261,6 +265,10 @@
                     <button class="unit-btn ${unit === 'diy' ? 'active' : ''}" data-unit="diy" type="button">DIY</button>
                   </div>
                 </div>
+                <div class="studio-inline-actions" data-field="weight">
+                  <button class="btn btn-sm btn-success studio-inline-save" type="button" aria-label="Save weight" title="Save"><i class="bx bx-check"></i></button>
+                  <button class="btn btn-sm btn-outline-secondary studio-inline-cancel" type="button" aria-label="Cancel weight" title="Cancel"><i class="bx bx-x"></i></button>
+                </div>
               </div>
             </div>
 
@@ -275,6 +283,10 @@
                 <input type="text" class="studio-rest-input studio-card-field-input"
                        value="${restDisplay}"
                        placeholder="60s" maxlength="8" />
+                <div class="studio-inline-actions" data-field="rest">
+                  <button class="btn btn-sm btn-success studio-inline-save" type="button" aria-label="Save rest" title="Save"><i class="bx bx-check"></i></button>
+                  <button class="btn btn-sm btn-outline-secondary studio-inline-cancel" type="button" aria-label="Cancel rest" title="Cancel"><i class="bx bx-x"></i></button>
+                </div>
               </div>
             </div>
           </div>
@@ -348,7 +360,9 @@
       // Name field (tap-to-edit; saves on Enter/blur, cancels on Escape)
       this._bindNameField();
 
-      // Rest field (bespoke inline edit)
+      // Rest field (bespoke inline edit). Workout-mode-style: blur is a
+      // no-op; commit is explicit via the inline ✓ button or Enter, cancel
+      // via ✗ or Escape. This is what fixes the "tap off → revert" pain.
       const restDisplay = this.el.querySelector('.studio-rest-display');
       const restEditor = this.el.querySelector('.studio-rest-editor');
       const restInput = this.el.querySelector('.studio-rest-input');
@@ -374,7 +388,10 @@
           if (e.key === 'Enter') { e.preventDefault(); exitRestEdit(true); }
           else if (e.key === 'Escape') { e.preventDefault(); exitRestEdit(false); }
         });
-        restInput.addEventListener('blur', () => exitRestEdit(true));
+        const rSave = this.el.querySelector('.studio-card-rest-field .studio-inline-save');
+        const rCancel = this.el.querySelector('.studio-card-rest-field .studio-inline-cancel');
+        if (rSave) rSave.addEventListener('click', (e) => { e.stopPropagation(); exitRestEdit(true); });
+        if (rCancel) rCancel.addEventListener('click', (e) => { e.stopPropagation(); exitRestEdit(false); });
       }
 
       // Listen for change events emitted by the field controllers
@@ -498,10 +515,29 @@
             exerciseName: this.name,
             sessionService: null,
           });
+          // The controller's default blur handler CANCELS edits — for the
+          // studio that meant "tap protocol → type → tap off → value
+          // reverts." Disable that auto-cancel by claiming unified mode so
+          // the user has to explicitly commit via the inline ✓ / Enter,
+          // matching workout-mode's inline-edit feel.
+          if (typeof this._repsSetsCtl.setUnifiedEditMode === 'function') {
+            this._repsSetsCtl.setUnifiedEditMode(true);
+          }
         } catch (err) {
           console.warn('[StudioExerciseCard] RepsSetsFieldController init failed:', err);
         }
       }
+      // Wire the inline ✓ / ✗ buttons that live inside the protocol editor.
+      const pSave = this.el.querySelector('.workout-repssets-field .studio-inline-save');
+      const pCancel = this.el.querySelector('.workout-repssets-field .studio-inline-cancel');
+      if (pSave) pSave.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this._repsSetsCtl) this._repsSetsCtl.exitEditMode(true);
+      });
+      if (pCancel) pCancel.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this._repsSetsCtl) this._repsSetsCtl.exitEditMode(false);
+      });
     }
 
     _bindNameField() {
@@ -573,12 +609,20 @@
         unitBtns.forEach((b) => b.classList.toggle('active', b.dataset.unit === unit));
       };
 
+      // Snapshot the pre-edit state so Cancel can fully revert (including
+      // a unit change the user made via the pills before tapping ✗).
+      let originalWeight = '';
+      let originalUnit = 'lbs';
+
       const exitEdit = (save) => {
         if (save) {
           const v = String(input.value || '').trim();
           this.state.weight = v;
-          // weightUnit was tracked live via unit-button clicks below
           this._fire('onChange', { weight: this.state.weight, weightUnit: this.state.weightUnit });
+        } else {
+          // Roll back any unit-pill changes made during this edit session.
+          this.state.weight = originalWeight;
+          this.state.weightUnit = originalUnit;
         }
         this._refreshWeightDisplay();
         editor.style.display = 'none';
@@ -587,45 +631,35 @@
 
       display.addEventListener('click', (e) => {
         e.stopPropagation();
-        applyUnitMode(this.state.weightUnit || 'lbs');
-        input.value = this.state.weight || '';
+        originalWeight = this.state.weight || '';
+        originalUnit = this.state.weightUnit || 'lbs';
+        applyUnitMode(originalUnit);
+        input.value = originalWeight;
         display.style.display = 'none';
         editor.style.display = 'flex';
         setTimeout(() => { input.focus(); input.select(); }, 0);
       });
 
-      // Sticky flag set on the way down (mouse or touch) so the input's blur
-      // knows the user is interacting with a unit pill and shouldn't exit
-      // edit mode. Cleared shortly after, so a real blur on the next tap
-      // does close the editor.
-      let pillInteractionInFlight = false;
-      const claimPillInteraction = () => {
-        pillInteractionInFlight = true;
-        setTimeout(() => { pillInteractionInFlight = false; }, 200);
-      };
-
+      // Workout-mode pattern: blur is a no-op. The editor stays open until
+      // the user explicitly commits via ✓ / Enter or discards via ✗ /
+      // Escape. This is what fixes "tap off → value reverts" — there's no
+      // longer an auto-cancel on blur.
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); exitEdit(true); }
         else if (e.key === 'Escape') { e.preventDefault(); exitEdit(false); }
       });
-      input.addEventListener('blur', (e) => {
-        if (pillInteractionInFlight) {
-          // Restore focus so the morphed input is ready for more typing.
-          requestAnimationFrame(() => input.focus());
-          return;
-        }
-        const next = e.relatedTarget;
-        if (next && editor.contains(next)) return;
-        exitEdit(true);
-      });
+
+      const wSave = this.el.querySelector('.studio-card-weight-field .studio-inline-save');
+      const wCancel = this.el.querySelector('.studio-card-weight-field .studio-inline-cancel');
+      if (wSave) wSave.addEventListener('click', (e) => { e.stopPropagation(); exitEdit(true); });
+      if (wCancel) wCancel.addEventListener('click', (e) => { e.stopPropagation(); exitEdit(false); });
 
       unitBtns.forEach((btn) => {
-        // Cover all pointer modalities. preventDefault on the down-event also
-        // stops the input from losing focus mid-tap in browsers that respect it.
+        // Stop the down-event from stealing focus so the input cursor stays
+        // ready for more typing after a pill tap.
         ['pointerdown', 'mousedown'].forEach((evt) => {
-          btn.addEventListener(evt, (e) => { claimPillInteraction(); e.preventDefault(); });
+          btn.addEventListener(evt, (e) => { e.preventDefault(); });
         });
-        btn.addEventListener('touchstart', claimPillInteraction, { passive: true });
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const unit = btn.dataset.unit;
