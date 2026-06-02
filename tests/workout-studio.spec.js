@@ -265,7 +265,7 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
 
         await page.locator('.studio-row').first().locator('.studio-row-add').click();
         await page.locator('#studioContinueBtn').click();
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
 
         expect(postedBody).toBeTruthy();
@@ -375,7 +375,7 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await page.locator('#studioContinueBtn').click();
         await page.evaluate(() => { delete window.dataManager; });
         await page.locator('#studioWorkoutNameInput').fill('Custom Test');
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
 
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
         expect(postedBody).toBeTruthy();
@@ -664,7 +664,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(page.locator('#studioTray')).toBeHidden();
 
         // Back on Page 1 the tray returns
-        await page.locator('#studioOrganizeBack').click();
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
         await expect(page.locator('#studioTray')).toBeVisible();
     });
 
@@ -697,7 +697,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await page.locator('#studioContinueBtn').click();
         await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
 
-        await page.locator('#studioOrganizeBack').click();
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
         await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
         await expect(page.locator('.studio-tray-chip')).toHaveCount(2);
     });
@@ -906,7 +906,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await firstCard.locator('.studio-card-name-input').press('Enter');
 
         await page.locator('#studioWorkoutNameInput').fill('Rename Roundtrip');
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
 
         expect(postedBody).toBeTruthy();
@@ -930,7 +930,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await firstCard.locator('.studio-rest-input').fill('90s');
         await firstCard.locator('.studio-rest-input').press('Enter');
 
-        await page.locator('#studioOrganizeBack').click();
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
         await page.locator('#studioContinueBtn').click();
 
         const reopened = page.locator('.studio-card').first();
@@ -947,7 +947,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await page.locator('#studioWorkoutNameInput').fill('');
         await page.locator('#studioContinueBtn').click();
 
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/name/i);
         await expect(page.locator('#studioOrganizeStatus')).toHaveClass(/is-error/);
     });
@@ -984,7 +984,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await firstCard.locator('.weight-input').fill('135');
         await firstCard.locator('.weight-input').press('Enter');
 
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
 
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
         await expect(page.locator('#studioOrganizeStatus')).toHaveClass(/is-success/);
@@ -1138,7 +1138,7 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         }
 
         await page.locator('#studioWorkoutNameInput').fill('Studio Blocks Test');
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
 
         expect(postedBody).toBeTruthy();
@@ -1162,7 +1162,7 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await expect(page.locator('#studioReorderBtn')).toBeHidden();
 
         // Go back, add another exercise → 2 items
-        await page.locator('#studioOrganizeBack').click();
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
         const rows = page.locator('.studio-row');
         await rows.nth(1).locator('.studio-row-add').click();
         await page.locator('#studioContinueBtn').click();
@@ -1339,7 +1339,7 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await note.locator('[data-action="move-up"]').click();
 
         await page.locator('#studioWorkoutNameInput').fill('Studio Notes Test');
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
 
         expect(postedBody).toBeTruthy();
@@ -1380,7 +1380,7 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await note.locator('[data-action="move-up"]').click();
 
         await page.locator('#studioWorkoutNameInput').fill('Studio Notes At Top');
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
 
         expect(postedBody.template_notes.length).toBe(1);
@@ -1415,7 +1415,7 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await expect(page.locator('.studio-note-card')).toHaveCount(0);
 
         await page.locator('#studioWorkoutNameInput').fill('Studio Notes Deleted');
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
 
         expect(postedBody.template_notes).toEqual([]);
@@ -1671,7 +1671,7 @@ test.describe('Workout Studio — Draft persistence', () => {
         await page.waitForFunction(() => !!localStorage.getItem('ffn:studio:draft:v1'), null, { timeout: 3000 });
 
         await page.locator('#studioContinueBtn').click();
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
 
         // Draft cleared on success
@@ -1793,8 +1793,9 @@ test.describe('Workout Studio — Load existing workout via ?id=', () => {
         // First card carries the saved weight value
         await expect(page.locator('#studioOrganizeList > .studio-card .weight-value').first()).toHaveText('185');
 
-        // Save button label switches to Update Workout
-        await expect(page.locator('#studioSaveBtnLabel')).toHaveText('Update Workout');
+        // workoutId is tracked so subsequent saves UPDATE rather than CREATE
+        const wid = await page.evaluate(() => window.workoutStudio && window.workoutStudio.workoutId);
+        expect(wid).toBe('wkt-loaded-1');
     });
 
     test('saving an existing workout PUTs to /api/v3/workouts/{id} (update, not create)', async ({ page }) => {
@@ -1846,7 +1847,7 @@ test.describe('Workout Studio — Load existing workout via ?id=', () => {
         // Rename then save
         await page.locator('#studioWorkoutNameInput').fill('Edit Me — Renamed');
         await page.locator('#studioContinueBtn').click();
-        await page.locator('#studioSaveBtn').click();
+        await page.locator('#studioFabSave').click();
 
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/updated/i, { timeout: 5000 });
         expect(putHit).toBeTruthy();
@@ -2087,5 +2088,144 @@ test.describe('Workout Studio — type cards + floating FABs (builder parity)', 
         // registry-resolved icon or the bx-pulse fallback — both are
         // .studio-card-type-icon.
         await expect(cardioCard.locator('.studio-card-type-icon')).toHaveCount(1);
+    });
+});
+
+test.describe('Workout Studio — cardio summary card + offcanvas editing', () => {
+
+    // Stub ActivityDisplayConfig + a route so the summary line formats
+    // deterministically regardless of which display columns the test
+    // env has saved.
+    async function setupActivityStubs(page) {
+        await page.addInitScript(() => {
+            // Force a known display column set so the summary is predictable.
+            const ready = setInterval(() => {
+                if (window.ActivityDisplayConfig) {
+                    try {
+                        // Override getColumns to a known order; keep getFieldDef.
+                        const orig = window.ActivityDisplayConfig.getColumns;
+                        window.ActivityDisplayConfig.getColumns = () => ['duration', 'distance', 'pace'];
+                    } catch (_) {}
+                    clearInterval(ready);
+                }
+            }, 30);
+        });
+    }
+
+    test('loaded cardio workout renders a summary line (no inline sets/reps/weight)', async ({ page }) => {
+        const workout = {
+            id: 'wkt-cardio-summary',
+            name: 'Cardio Test',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    {
+                        exercise_id: 'ex-c',
+                        name: 'Stair Climber',
+                        group_type: 'cardio',
+                        cardio_config: {
+                            activity_type: 'stair_climber',
+                            duration_minutes: 20,
+                        },
+                    },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await setupActivityStubs(page);
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Cardio Test', { timeout: 10000 });
+        await page.locator('#studioContinueBtn').click();
+
+        const cardio = page.locator('.studio-card.studio-card-cardio');
+        await expect(cardio).toHaveCount(1);
+
+        // Summary surface is present + contains the duration
+        const summary = cardio.locator('.studio-card-cardio-summary');
+        await expect(summary).toBeVisible();
+        await expect(summary).toContainText(/20\s*min/i);
+
+        // The inline strength-style fields are NOT rendered for cardio
+        await expect(cardio.locator('.workout-repssets-field')).toHaveCount(0);
+        await expect(cardio.locator('.studio-card-weight-field')).toHaveCount(0);
+        await expect(cardio.locator('.studio-card-rest-field')).toHaveCount(0);
+    });
+
+    test('tapping the cardio summary fires the edit hook (opens the offcanvas factory)', async ({ page }) => {
+        const workout = {
+            id: 'wkt-cardio-tap',
+            name: 'Tap Test',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-c2', name: 'Rowing', group_type: 'cardio',
+                      cardio_config: { activity_type: 'rowing' } },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        // Stub the factory so we can detect the call without rendering the
+        // real offcanvas (which has its own dependencies + animation).
+        await page.addInitScript(() => {
+            window.__cardioEditorCalls = [];
+            const wait = setInterval(() => {
+                if (window.UnifiedOffcanvasFactory) {
+                    window.UnifiedOffcanvasFactory.createCardioEditor = (cfg) => {
+                        window.__cardioEditorCalls.push({
+                            groupId: cfg.groupId,
+                            cardioConfig: cfg.cardioConfig,
+                        });
+                        return { id: 'stub', hide: () => {} };
+                    };
+                    clearInterval(wait);
+                }
+            }, 30);
+        });
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Tap Test', { timeout: 10000 });
+        await page.locator('#studioContinueBtn').click();
+
+        const cardio = page.locator('.studio-card.studio-card-cardio');
+        await expect(cardio).toHaveCount(1);
+
+        // Tap the summary surface
+        await cardio.locator('.studio-card-cardio-summary').click();
+
+        const calls = await page.evaluate(() => window.__cardioEditorCalls);
+        expect(calls.length).toBe(1);
+        expect(calls[0].groupId).toMatch(/^studio:/);
+        expect(calls[0].cardioConfig.activity_type).toBe('rowing');
+    });
+
+    test('redundant inline Back/Save buttons are gone (FABs cover both)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForFunction(() => !!document.getElementById('studio'), null, { timeout: 10000 });
+        // Inline Back / Save row removed from Page 2
+        await expect(page.locator('#studioOrganizeBack')).toHaveCount(0);
+        await expect(page.locator('#studioSaveBtn')).toHaveCount(0);
+        // FABs are the new home for those actions
+        await expect(page.locator('#studioFabSave')).toHaveCount(1);
     });
 });

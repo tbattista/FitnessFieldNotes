@@ -39,7 +39,7 @@
   }
 
   class StudioExerciseCard {
-    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon } = {}) {
+    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId } = {}) {
       this.instanceId = instanceId;
       this.name = name || 'Exercise';
       this.state = Object.assign({
@@ -60,6 +60,12 @@
       // distinct from standard strength cards.
       this.groupType = String(groupType || 'standard').toLowerCase();
       this.activityIcon = activityIcon ? String(activityIcon) : '';
+      // Cardio-only — the cardio_config object (activity_type, duration_minutes,
+      // distance, pace, hr, calories, rpe, elevation, notes, ...). Cardio cards
+      // render a read-only summary derived from this; editing happens through
+      // the cardio offcanvas, not inline.
+      this.cardioConfig = cardioConfig ? Object.assign({}, cardioConfig) : {};
+      this.activityId = activityId ? String(activityId) : '';
       this.el = null;
       this._repsSetsCtl = null;
       this._handleDocClickForMenu = null;
@@ -70,7 +76,9 @@
       tpl.innerHTML = this._templateHtml();
       this.el = tpl.firstElementChild;
       this._bindEvents();
-      this._initFieldControllers();
+      // Cardio cards skip the inline-field controllers — those edit
+      // sets/reps/rest/weight, none of which apply to a cardio summary.
+      if (this.groupType !== 'cardio') this._initFieldControllers();
       return this.el;
     }
 
@@ -87,9 +95,26 @@
           nameEl.textContent = this.name;
         }
       }
-      this._refreshProtocolDisplay();
-      this._refreshWeightDisplay();
-      this._refreshRestDisplay();
+      if (this.groupType === 'cardio') {
+        this._refreshCardioSummary();
+      } else {
+        this._refreshProtocolDisplay();
+        this._refreshWeightDisplay();
+        this._refreshRestDisplay();
+      }
+    }
+
+    /**
+     * Replace the cardio_config (e.g. after the offcanvas saves) and
+     * refresh the summary line + activity icon + name without rebuilding
+     * the whole card.
+     */
+    setCardioConfig(newConfig, opts = {}) {
+      this.cardioConfig = newConfig ? Object.assign({}, newConfig) : {};
+      if (opts.activityIcon) this.activityIcon = String(opts.activityIcon);
+      if (opts.name) this.name = String(opts.name);
+      if (opts.activityId) this.activityId = String(opts.activityId);
+      this.refresh();
     }
 
     setState(partial) {
@@ -142,6 +167,14 @@
       const iconHtml = (this.groupType === 'cardio' && this.activityIcon)
         ? `<i class="bx ${escapeHtml(this.activityIcon)} studio-card-type-icon" aria-hidden="true"></i> `
         : '';
+
+      // Cardio cards render a summary-only template — activity fields
+      // (duration, distance, pace, hr, calories, rpe, ...) are interdependent
+      // and far too numerous to edit inline. Tapping the body opens the
+      // shared cardio offcanvas (same editor the builder uses).
+      if (this.groupType === 'cardio') {
+        return this._templateCardio({ safeId, safeName, iconHtml, blockClass, blockAttr, typeAttr, moveMenuItems });
+      }
 
       return `
         <div class="studio-card${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
@@ -261,6 +294,19 @@
         });
       }
 
+      // Cardio edit affordances — the pencil button AND the summary
+      // surface both open the cardio offcanvas. Both share the
+      // data-action="edit-cardio" hook, so one delegated listener covers
+      // both. Stop propagation so it doesn't bubble to the card click.
+      const editCardioEls = this.el.querySelectorAll('[data-action="edit-cardio"]');
+      editCardioEls.forEach((node) => {
+        node.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          this._fire('onEditCardio');
+        });
+      });
+
       // 3-dot menu toggle
       const menuBtn = this.el.querySelector('[data-action="menu"]');
       const menu = this.el.querySelector('.studio-card-menu');
@@ -354,6 +400,93 @@
           this._fire('onChange', newState);
         });
       }
+    }
+
+    // -------- cardio (summary-only, offcanvas-driven editing) --------
+
+    _templateCardio({ safeId, safeName, iconHtml, blockClass, blockAttr, typeAttr, moveMenuItems }) {
+      const summary = this._formatCardioSummary();
+      const summaryHtml = summary
+        ? escapeHtml(summary)
+        : 'Tap to set duration, distance, pace…';
+      const summaryClass = summary ? 'studio-card-cardio-meta' : 'studio-card-cardio-empty';
+      return `
+        <div class="studio-card studio-card-cardio${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
+          <div class="studio-card-header">
+            <div class="studio-card-name-wrap">
+              <div class="studio-card-name">${iconHtml}${safeName}</div>
+            </div>
+            <div class="studio-card-actions">
+              <button class="studio-card-icon-btn" data-action="edit-cardio" type="button" aria-label="Edit activity" title="Edit activity">
+                <i class="bx bx-pencil"></i>
+              </button>
+              <div class="studio-card-menu-wrap">
+                <button class="studio-card-icon-btn" data-action="menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More actions" title="More">
+                  <i class="bx bx-dots-vertical-rounded"></i>
+                </button>
+                <div class="studio-card-menu" role="menu" hidden>
+                  <button class="studio-card-menu-item" role="menuitem" data-action="move-up" type="button">
+                    <i class="bx bx-up-arrow-alt"></i> Move up
+                  </button>
+                  <button class="studio-card-menu-item" role="menuitem" data-action="move-down" type="button">
+                    <i class="bx bx-down-arrow-alt"></i> Move down
+                  </button>
+                  ${moveMenuItems}
+                  <button class="studio-card-menu-item" role="menuitem" data-action="duplicate" type="button">
+                    <i class="bx bx-copy"></i> Duplicate
+                  </button>
+                  <button class="studio-card-menu-item studio-card-menu-item-danger" role="menuitem" data-action="delete" type="button">
+                    <i class="bx bx-trash"></i> Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="studio-card-cardio-summary" data-action="edit-cardio" type="button">
+            <span class="${summaryClass}">${summaryHtml}</span>
+          </button>
+        </div>
+      `;
+    }
+
+    /**
+     * Build the comma-separated meta line ("20 min • 2.5 mi • 8:00/mi")
+     * from cardio_config + ActivityDisplayConfig's user-chosen columns.
+     * Returns '' when no displayable fields are populated.
+     */
+    _formatCardioSummary() {
+      const cfg = this.cardioConfig || {};
+      const ADC = window.ActivityDisplayConfig;
+      // Default to the three most common columns when ADC isn't loaded.
+      const columns = ADC && typeof ADC.getColumns === 'function'
+        ? ADC.getColumns()
+        : ['duration', 'distance', 'pace'];
+      const parts = [];
+      columns.forEach((fieldId) => {
+        const def = ADC && typeof ADC.getFieldDef === 'function' ? ADC.getFieldDef(fieldId) : null;
+        if (!def || typeof def.format !== 'function') return;
+        const val = def.format(cfg);
+        if (val) parts.push(val);
+      });
+      return parts.join(' • ');
+    }
+
+    _refreshCardioSummary() {
+      if (!this.el) return;
+      const slot = this.el.querySelector('.studio-card-cardio-summary');
+      if (!slot) return;
+      const summary = this._formatCardioSummary();
+      const span = document.createElement('span');
+      if (summary) {
+        span.className = 'studio-card-cardio-meta';
+        span.textContent = summary;
+      } else {
+        span.className = 'studio-card-cardio-empty';
+        span.textContent = 'Tap to set duration, distance, pace…';
+      }
+      slot.innerHTML = '';
+      slot.appendChild(span);
     }
 
     _initFieldControllers() {

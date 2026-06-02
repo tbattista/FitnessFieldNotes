@@ -714,6 +714,48 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   color: #60a5fa;
 }
 
+/* Cardio cards render a summary-only body — the whole surface opens the
+   activity offcanvas. Style it as a tappable area, not a button row. */
+.studio-card-cardio .studio-card-body { display: none; }
+.studio-card-cardio-summary {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.studio-card-cardio-summary:hover,
+.studio-card-cardio-summary:focus-visible {
+  border-color: var(--workout-cardio, #3b82f6);
+  background: rgba(59, 130, 246, 0.05);
+  outline: none;
+}
+[data-bs-theme="dark"] .studio-card-cardio-summary {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-bs-theme="dark"] .studio-card-cardio-summary:hover,
+[data-bs-theme="dark"] .studio-card-cardio-summary:focus-visible {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.08);
+}
+.studio-card-cardio-meta {
+  font-size: 0.92rem;
+  color: var(--bs-body-color);
+}
+.studio-card-cardio-empty {
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color, #6c757d);
+  font-style: italic;
+}
+
 .studio-card-header {
   display: flex;
   align-items: center;

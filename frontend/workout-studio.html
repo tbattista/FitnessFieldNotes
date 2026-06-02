@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-03" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-04" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -298,15 +298,9 @@
                     <p>No exercises selected yet — go back and add a few.</p>
                   </div>
 
-                  <div class="studio-organize-actions">
-                    <button class="btn btn-outline-secondary" id="studioOrganizeBack" type="button">
-                      <i class="bx bx-arrow-back"></i> Back to selection
-                    </button>
-                    <button class="btn btn-primary" id="studioSaveBtn" type="button">
-                      <i class="bx bx-save"></i> <span id="studioSaveBtnLabel">Save Template</span>
-                    </button>
-                  </div>
-
+                  <!-- Back / Save actions live in the floating FAB row now;
+                       inline buttons removed. Keep the status div for live
+                       Save / Update messages. -->
                   <div class="studio-organize-status" id="studioOrganizeStatus" role="status" aria-live="polite"></div>
                 </div>
 
@@ -413,10 +407,10 @@
 
     <script src="/static/assets/js/components/exercise-tray.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=20260601-01"></script>
-    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260602-03"></script>
+    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260602-04"></script>
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-03"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-04"></script>
   </body>
 </html>

@@ -960,7 +960,20 @@
      */
     _addLoadedExerciseToTray(saved, idxA, idxB) {
       if (!saved || !this.tray) return null;
-      const name = saved.name || (saved.exercises && (saved.exercises.a || saved.exercises.b || saved.exercises.c)) || '';
+      const groupType = String(saved.group_type || 'standard').toLowerCase();
+      const cardioCfg = saved.cardio_config || null;
+
+      // For cardio, prefer the activity_type (registry display name) over
+      // any raw `name` carried by the section. The registry name is what
+      // the user actually sees in the activity picker.
+      let name = saved.name || (saved.exercises && (saved.exercises.a || saved.exercises.b || saved.exercises.c)) || '';
+      let activityId = '';
+      if (groupType === 'cardio' && cardioCfg && cardioCfg.activity_type) {
+        activityId = String(cardioCfg.activity_type);
+        const reg = window.ActivityTypeRegistry;
+        const resolved = reg && typeof reg.getName === 'function' ? reg.getName(activityId) : null;
+        if (resolved) name = resolved;
+      }
       if (!name) return null;
 
       const exerciseLike = {
@@ -969,17 +982,24 @@
         targetMuscleGroup: '',
         primaryEquipment: '',
         exerciseTier: null,
-        group_type: saved.group_type || 'standard',
+        group_type: groupType,
       };
+      if (activityId) exerciseLike._activityId = activityId;
       const instanceId = this.tray.add(exerciseLike);
       if (!instanceId) return null;
 
       const state = this._ensureOrganizeState(instanceId);
-      state.sets = String(saved.sets || state.sets || DEFAULT_SETS);
-      state.reps = String(saved.reps || state.reps || DEFAULT_REPS);
-      state.rest = String(saved.rest || state.rest || DEFAULT_REST);
-      if (saved.default_weight) state.weight = String(saved.default_weight);
-      if (saved.default_weight_unit) state.weightUnit = String(saved.default_weight_unit);
+      if (groupType === 'cardio') {
+        // Activity payload lives on cardioConfig — skip seeding sets/reps,
+        // they don't apply and would emit dead fields in the save payload.
+        state.cardioConfig = cardioCfg ? Object.assign({}, cardioCfg) : {};
+      } else {
+        state.sets = String(saved.sets || state.sets || DEFAULT_SETS);
+        state.reps = String(saved.reps || state.reps || DEFAULT_REPS);
+        state.rest = String(saved.rest || state.rest || DEFAULT_REST);
+        if (saved.default_weight) state.weight = String(saved.default_weight);
+        if (saved.default_weight_unit) state.weightUnit = String(saved.default_weight_unit);
+      }
       return instanceId;
     }
 
@@ -996,6 +1016,9 @@
         default_weight: group?.default_weight,
         default_weight_unit: group?.default_weight_unit,
         group_type: group?.group_type || 'standard',
+        // Carry cardio_config through the legacy-shape adapter too —
+        // exercise_groups[] records may have it set alongside group_type='cardio'.
+        cardio_config: group?.cardio_config || null,
       };
     }
 
@@ -1540,17 +1563,10 @@
       // group_type + the activity registry icon for cardio cards.
       const src = item.exercise || {};
       const groupType = String(src.group_type || 'standard').toLowerCase();
-      let activityIcon = '';
-      if (groupType === 'cardio') {
-        const reg = window.ActivityTypeRegistry;
-        const activityId = src._activityId || src.activity_id || '';
-        if (reg && activityId && typeof reg.getIcon === 'function') {
-          activityIcon = reg.getIcon(activityId) || '';
-        }
-        // Sensible default so cardio cards always show *some* icon even
-        // when the activity id isn't in the registry.
-        if (!activityIcon) activityIcon = 'bx-pulse';
-      }
+      const activityId = src._activityId || src.activity_id || (state.cardioConfig && state.cardioConfig.activity_type) || '';
+      const activityIcon = groupType === 'cardio'
+        ? (this._resolveActivityIcon(activityId) || 'bx-pulse')
+        : '';
       const card = new window.StudioExerciseCard({
         instanceId: item.instanceId,
         name: item.name,
@@ -1559,16 +1575,92 @@
         blockOptions,
         groupType,
         activityIcon,
+        cardioConfig: state.cardioConfig || {},
+        activityId,
         callbacks: {
           onChange: (instanceId, partial) => this._onCardChange(instanceId, partial),
           onInfo: (instanceId) => this._onCardInfo(instanceId),
           onMenuAction: (instanceId, action, blockId) => this._onCardMenuAction(instanceId, action, blockId),
+          onEditCardio: (instanceId) => this._onEditCardio(instanceId),
         },
       });
       const node = card.render();
       container.appendChild(node);
       this.studioCards.set(item.instanceId, card);
       return card;
+    }
+
+    /** Look up the bx icon class for an activity id; '' when unresolved. */
+    _resolveActivityIcon(activityId) {
+      const reg = window.ActivityTypeRegistry;
+      if (!reg || !activityId || typeof reg.getIcon !== 'function') return '';
+      try { return reg.getIcon(activityId) || ''; } catch (_) { return ''; }
+    }
+
+    /**
+     * Cardio card edit → open the shared cardio editor offcanvas. The
+     * factory takes a groupId for its internal addressing, but the value
+     * is opaque to it; we pass the studio's instanceId so the offcanvas
+     * doesn't collide with any builder-side groups that might coexist
+     * in window.exerciseGroupsData.
+     */
+    _onEditCardio(instanceId) {
+      const item = this.tray ? this.tray.getItems().find((it) => it.instanceId === instanceId) : null;
+      if (!item) return;
+      const state = this._ensureOrganizeState(instanceId);
+      const factory = window.UnifiedOffcanvasFactory;
+      if (!factory || typeof factory.createCardioEditor !== 'function') {
+        console.warn('[WorkoutStudio] Cardio editor factory unavailable');
+        return;
+      }
+      factory.createCardioEditor({
+        groupId: `studio:${instanceId}`,
+        cardioConfig: state.cardioConfig || {},
+        onSave: (updatedConfig) => this._applyCardioConfig(instanceId, updatedConfig),
+      });
+    }
+
+    /**
+     * Persist the offcanvas's new cardio_config back into organize state,
+     * sync the tray item's display name to the activity name, and refresh
+     * the card so the summary line + icon reflect the change.
+     */
+    _applyCardioConfig(instanceId, cfg) {
+      const state = this._ensureOrganizeState(instanceId);
+      state.cardioConfig = cfg ? Object.assign({}, cfg) : {};
+
+      // Sync the human-visible name to the activity registry's display
+      // name (falls back to the raw activity_type for unknown ids).
+      const reg = window.ActivityTypeRegistry;
+      const activityType = state.cardioConfig.activity_type || '';
+      let displayName = activityType;
+      let iconClass = '';
+      if (reg && activityType) {
+        if (typeof reg.getName === 'function') displayName = reg.getName(activityType) || activityType;
+        if (typeof reg.getIcon === 'function') iconClass = reg.getIcon(activityType) || '';
+      }
+
+      const item = this.tray && this.tray.getItems().find((it) => it.instanceId === instanceId);
+      if (item && displayName) {
+        item.name = displayName;
+        if (item.exercise) {
+          item.exercise.name = displayName;
+          item.exercise._activityId = activityType || item.exercise._activityId;
+        }
+      }
+
+      const card = this.studioCards.get(instanceId);
+      if (card && typeof card.setCardioConfig === 'function') {
+        card.setCardioConfig(state.cardioConfig, {
+          activityIcon: iconClass || 'bx-pulse',
+          name: displayName,
+          activityId: activityType,
+        });
+      }
+
+      // Persist draft + refresh save button state (name may have changed).
+      this._scheduleDraftSave();
+      this._refreshFabState();
     }
 
     _destroyAllCards() {
@@ -1702,17 +1794,30 @@
       const buildExercise = (item, suffix) => {
         const state = this.organizeState.get(item.instanceId) || {};
         const ex = item.exercise || {};
-        return {
+        const groupType = ex.group_type || 'standard';
+        const base = {
           exercise_id: ex.id ? String(ex.id) : `ex-${suffix}`,
           name: item.name,
           alternates: [],
+          group_type: groupType,
+        };
+        if (groupType === 'cardio') {
+          // Cardio sections: the workout-mode runtime + the legacy builder
+          // both expect cardio_config to carry the full activity payload
+          // (duration_minutes, distance, target_pace, ...) — see
+          // workout-exercise-operations-manager.js's add-cardio path.
+          // Sets/reps/rest/weight don't apply to a cardio activity.
+          return Object.assign(base, {
+            cardio_config: state.cardioConfig ? Object.assign({}, state.cardioConfig) : {},
+          });
+        }
+        return Object.assign(base, {
           sets: state.sets || DEFAULT_SETS,
           reps: state.reps || DEFAULT_REPS,
           rest: state.rest || DEFAULT_REST,
           default_weight: state.weight || '',
           default_weight_unit: state.weightUnit || 'lbs',
-          group_type: ex.group_type || 'standard',
-        };
+        });
       };
 
       // Walk organizeOrder. Top-level cards become single-exercise sections.
@@ -1768,17 +1873,25 @@
 
       // Flatten to exercise_groups for backward compatibility, mirroring the
       // shape produced by workout-editor-save-manager.js when sections mode
-      // is active.
-      const exercise_groups = sections.flatMap((s) => (s.exercises || []).map((e) => ({
-        group_id: e.exercise_id,
-        exercises: { a: e.name },
-        sets: e.sets,
-        reps: e.reps,
-        rest: e.rest,
-        default_weight: e.default_weight,
-        default_weight_unit: e.default_weight_unit || 'lbs',
-        group_type: e.group_type || 'standard',
-      })));
+      // is active. Cardio entries carry cardio_config in place of the
+      // sets/reps/rest/weight fields (which don't apply).
+      const exercise_groups = sections.flatMap((s) => (s.exercises || []).map((e) => {
+        const base = {
+          group_id: e.exercise_id,
+          exercises: { a: e.name },
+          group_type: e.group_type || 'standard',
+        };
+        if ((e.group_type || 'standard') === 'cardio') {
+          return Object.assign(base, { cardio_config: e.cardio_config || {} });
+        }
+        return Object.assign(base, {
+          sets: e.sets,
+          reps: e.reps,
+          rest: e.rest,
+          default_weight: e.default_weight,
+          default_weight_unit: e.default_weight_unit || 'lbs',
+        });
+      }));
 
       return {
         name: this.workoutName,
@@ -1799,15 +1912,22 @@
     _refreshFabState() {
       const trayHas = this.tray && this.tray.size() > 0;
       const nameSet = !!(this.workoutName && this.workoutName.trim());
-      const canSave = !!(trayHas && nameSet);
-      const canGo = canSave && !!this.workoutId;
+      // Save only requires at least one exercise — the name check lives
+      // inside _handleSave so users get a friendly "Give your workout a
+      // name first" error rather than a silent disabled button.
+      const canSave = !!trayHas;
+      // Go additionally requires both name + a saved workoutId, since
+      // workout-mode is loaded by id.
+      const canGo = canSave && nameSet && !!this.workoutId;
       if (this.dom.fabSave) {
         this.dom.fabSave.disabled = !canSave;
-        this.dom.fabSave.title = canSave ? 'Save workout' : 'Add an exercise and name first';
+        this.dom.fabSave.title = canSave ? 'Save workout' : 'Add an exercise first';
       }
       if (this.dom.fabGo) {
         this.dom.fabGo.disabled = !canGo;
-        this.dom.fabGo.title = canGo ? 'Start workout' : (canSave ? 'Save first to start' : 'Add an exercise to start');
+        this.dom.fabGo.title = canGo
+          ? 'Start workout'
+          : (trayHas ? (nameSet ? 'Save first to start' : 'Add a name then save') : 'Add an exercise to start');
       }
     }
 
