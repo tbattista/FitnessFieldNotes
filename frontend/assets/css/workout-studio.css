@@ -685,6 +685,35 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   gap: 0.35rem;
 }
 
+/* Type-card accents — left-border treatment carried over from the legacy
+   builder so cardio/note cards are visually distinct from standard
+   strength cards at a glance. Tokens (--workout-cardio / --workout-note)
+   live in workout-mode/_variables.css and are already loaded site-wide. */
+.studio-card[data-card-type="cardio"] {
+  border-left: 3px solid var(--workout-cardio, #3b82f6);
+}
+.studio-card[data-card-type="note"] {
+  border-left: 3px solid var(--workout-note, #64748b);
+}
+[data-bs-theme="dark"] .studio-card[data-card-type="cardio"] {
+  border-left-color: #60a5fa;
+}
+[data-bs-theme="dark"] .studio-card[data-card-type="note"] {
+  border-left-color: #94a3b8;
+}
+
+/* Inline activity icon next to the card name (Stair Climber → trending-up,
+   etc.) */
+.studio-card-type-icon {
+  font-size: 1.05em;
+  color: var(--workout-cardio, #3b82f6);
+  vertical-align: -0.05em;
+  margin-right: 0.15rem;
+}
+[data-bs-theme="dark"] .studio-card-type-icon {
+  color: #60a5fa;
+}
+
 .studio-card-header {
   display: flex;
   align-items: center;
@@ -1167,6 +1196,63 @@ html[data-bs-theme="dark"] .studio-org-field-input {
 }
 /* Floating CTA is only meaningful on Page 1 */
 .studio[data-view="organize"] .studio-cta { display: none !important; }
+
+/* Floating FABs — ported from .builder-floating-fabs so the studio's
+   bottom-right action surface matches the builder's. Only shown on
+   Page 2 (the Continue CTA owns Page 1's bottom). */
+.studio-floating-fabs {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  z-index: 1050;
+  pointer-events: none;
+}
+.studio-floating-fabs[hidden] { display: none; }
+/* Page 1 owns the centered Continue CTA — hide FABs while selecting */
+.studio[data-view="select"] .studio-floating-fabs { display: none; }
+
+.studio-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+}
+.studio-fab:active { transform: scale(0.93); }
+.studio-fab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.studio-fab-more {
+  background: #fff;
+  color: var(--bs-warning);
+}
+.studio-fab-save {
+  background: var(--bs-primary);
+}
+.studio-fab-go {
+  background: var(--bs-success);
+}
+.studio-fab-save.is-saved {
+  background: var(--bs-success);
+}
+[data-bs-theme="dark"] .studio-fab-more {
+  background: var(--bs-body-bg);
+}
+[data-bs-theme="dark"] .studio-fab {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
 /* Tray chips are redundant on Page 2 (each exercise renders as a card below) */
 .studio[data-view="organize"] .studio-tray { display: none !important; }
 

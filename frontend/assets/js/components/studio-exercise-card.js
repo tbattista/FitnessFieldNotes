@@ -39,7 +39,7 @@
   }
 
   class StudioExerciseCard {
-    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions } = {}) {
+    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon } = {}) {
       this.instanceId = instanceId;
       this.name = name || 'Exercise';
       this.state = Object.assign({
@@ -55,6 +55,11 @@
       // blockOptions: array of { blockId, name } for "Move to block ..." targets
       this.inBlock = inBlock || null;
       this.blockOptions = Array.isArray(blockOptions) ? blockOptions : [];
+      // Type-card metadata — drives the left-border accent + name-line icon,
+      // borrowed from the legacy builder so cardio/note cards are visually
+      // distinct from standard strength cards.
+      this.groupType = String(groupType || 'standard').toLowerCase();
+      this.activityIcon = activityIcon ? String(activityIcon) : '';
       this.el = null;
       this._repsSetsCtl = null;
       this._handleDocClickForMenu = null;
@@ -73,7 +78,15 @@
     refresh() {
       if (!this.el) return;
       const nameEl = this.el.querySelector('.studio-card-name');
-      if (nameEl) nameEl.textContent = this.name;
+      if (nameEl) {
+        // Preserve the type icon if one was rendered — clearing textContent
+        // would wipe it. Rebuild the inner HTML to match the template.
+        if (this.groupType === 'cardio' && this.activityIcon) {
+          nameEl.innerHTML = `<i class="bx ${escapeHtml(this.activityIcon)} studio-card-type-icon" aria-hidden="true"></i> ${escapeHtml(this.name)}`;
+        } else {
+          nameEl.textContent = this.name;
+        }
+      }
       this._refreshProtocolDisplay();
       this._refreshWeightDisplay();
       this._refreshRestDisplay();
@@ -118,12 +131,23 @@
       const blockClass = this.inBlock ? ' studio-card-in-block' : '';
       const blockAttr = this.inBlock ? ` data-block-id="${escapeHtml(this.inBlock.blockId)}"` : '';
       const moveMenuItems = this._buildMoveMenuItems();
+      // Type accent: standard cards omit the attr so the default surface
+      // shows through; cardio + note get a colored left border via CSS.
+      const typeAttr = this.groupType && this.groupType !== 'standard'
+        ? ` data-card-type="${escapeHtml(this.groupType)}"`
+        : '';
+      // For cardio cards we prepend the activity icon (e.g. bx-trending-up
+      // for stair climber) inline next to the name — same affordance the
+      // legacy builder uses to signal cardio at a glance.
+      const iconHtml = (this.groupType === 'cardio' && this.activityIcon)
+        ? `<i class="bx ${escapeHtml(this.activityIcon)} studio-card-type-icon" aria-hidden="true"></i> `
+        : '';
 
       return `
-        <div class="studio-card${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}>
+        <div class="studio-card${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
           <div class="studio-card-header">
             <div class="studio-card-name-wrap">
-              <div class="studio-card-name click-to-edit" tabindex="0">${safeName}</div>
+              <div class="studio-card-name click-to-edit" tabindex="0">${iconHtml}${safeName}</div>
               <input class="studio-card-name-input"
                      type="text"
                      value="${safeName}"

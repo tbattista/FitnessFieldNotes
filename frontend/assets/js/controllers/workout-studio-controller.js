@@ -172,6 +172,11 @@
       this.dom.saveBtn = document.getElementById('studioSaveBtn');
       this.dom.saveBtnLabel = document.getElementById('studioSaveBtnLabel');
       this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
+      // Floating FAB row (Page 2 only)
+      this.dom.fabs = document.getElementById('studioFloatingFabs');
+      this.dom.fabMore = document.getElementById('studioFabMore');
+      this.dom.fabSave = document.getElementById('studioFabSave');
+      this.dom.fabGo = document.getElementById('studioFabGo');
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
       this.dom.addNoteBtn = document.getElementById('studioAddNoteBtn');
@@ -257,6 +262,7 @@
         this.dom.workoutNameInput.addEventListener('input', (e) => {
           this.workoutName = String(e.target.value || '').trim();
           this._scheduleDraftSave();
+          this._refreshFabState();
         });
       }
 
@@ -1158,6 +1164,17 @@
         this.dom.saveBtn.addEventListener('click', () => this._handleSave());
       }
 
+      // Floating FAB row — Page 2's mobile-primary action surface.
+      if (this.dom.fabSave) {
+        this.dom.fabSave.addEventListener('click', () => this._handleSave());
+      }
+      if (this.dom.fabGo) {
+        this.dom.fabGo.addEventListener('click', () => this._handleStartFromFab());
+      }
+      if (this.dom.fabMore) {
+        this.dom.fabMore.addEventListener('click', () => this._openMoreSheet());
+      }
+
       if (this.dom.addBlockBtn) {
         this.dom.addBlockBtn.addEventListener('click', () => this._createBlock());
       }
@@ -1402,6 +1419,10 @@
       if (this.dom.viewSelect)   this.dom.viewSelect.hidden   = view !== 'select';
       if (this.dom.viewOrganize) this.dom.viewOrganize.hidden = view !== 'organize';
 
+      // FAB row is Page-2 only — Page 1's CTA is the centered Continue button.
+      if (this.dom.fabs) this.dom.fabs.hidden = view !== 'organize';
+      this._refreshFabState();
+
       if (view === 'organize') {
         this._renderOrganize();
         // If the workout has no name yet, nudge the user to fill the slim
@@ -1514,12 +1535,30 @@
 
     _mountCard(item, { idx, total, container, blockOptions, inBlock }) {
       const state = this._ensureOrganizeState(item.instanceId);
+      // Resolve the type-card visual metadata once per mount. The tray
+      // stores the original exercise on the item, so we can read
+      // group_type + the activity registry icon for cardio cards.
+      const src = item.exercise || {};
+      const groupType = String(src.group_type || 'standard').toLowerCase();
+      let activityIcon = '';
+      if (groupType === 'cardio') {
+        const reg = window.ActivityTypeRegistry;
+        const activityId = src._activityId || src.activity_id || '';
+        if (reg && activityId && typeof reg.getIcon === 'function') {
+          activityIcon = reg.getIcon(activityId) || '';
+        }
+        // Sensible default so cardio cards always show *some* icon even
+        // when the activity id isn't in the registry.
+        if (!activityIcon) activityIcon = 'bx-pulse';
+      }
       const card = new window.StudioExerciseCard({
         instanceId: item.instanceId,
         name: item.name,
         state,
         inBlock,
         blockOptions,
+        groupType,
+        activityIcon,
         callbacks: {
           onChange: (instanceId, partial) => this._onCardChange(instanceId, partial),
           onInfo: (instanceId) => this._onCardInfo(instanceId),
@@ -1752,6 +1791,106 @@
       };
     }
 
+    /**
+     * Sync FAB enabled state with what the user can actually do right now.
+     * Save: needs at least one exercise + a name. Go: additionally needs
+     * a workoutId (saved record), since workout-mode loads by id.
+     */
+    _refreshFabState() {
+      const trayHas = this.tray && this.tray.size() > 0;
+      const nameSet = !!(this.workoutName && this.workoutName.trim());
+      const canSave = !!(trayHas && nameSet);
+      const canGo = canSave && !!this.workoutId;
+      if (this.dom.fabSave) {
+        this.dom.fabSave.disabled = !canSave;
+        this.dom.fabSave.title = canSave ? 'Save workout' : 'Add an exercise and name first';
+      }
+      if (this.dom.fabGo) {
+        this.dom.fabGo.disabled = !canGo;
+        this.dom.fabGo.title = canGo ? 'Start workout' : (canSave ? 'Save first to start' : 'Add an exercise to start');
+      }
+    }
+
+    /**
+     * Go-FAB: launch workout-mode for the saved workout. If unsaved edits
+     * exist (or this is a brand-new workout that's never been saved), do a
+     * save-then-navigate so the user lands in a coherent session. Falls
+     * back to a friendly status hint when prerequisites are missing.
+     */
+    async _handleStartFromFab() {
+      if (!this.tray || this.tray.size() === 0) {
+        this._setStatus('Add at least one exercise first.', 'error');
+        return;
+      }
+      if (!this.workoutName || !this.workoutName.trim()) {
+        this._setStatus('Give your workout a name first.', 'error');
+        if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
+        return;
+      }
+      // Save (creates on first call, updates on subsequent ones). _handleSave
+      // sets this.workoutId on a successful create, so we re-read after.
+      try {
+        await this._handleSave();
+      } catch (_) { /* status already surfaced by _handleSave */ }
+      if (!this.workoutId) return; // save failed → don't navigate
+      window.location.href = `/workout-mode.html?id=${encodeURIComponent(this.workoutId)}`;
+    }
+
+    /**
+     * More-FAB sheet — quick actions that don't fit the always-visible
+     * header. Prefer UnifiedOffcanvasFactory for parity with the rest of
+     * the app; fall back to a native confirm for Discard if the factory
+     * isn't loaded (defensive — the studio page may load before some
+     * shared services).
+     */
+    _openMoreSheet() {
+      const items = [];
+      items.push({
+        icon: 'bx-edit-alt',
+        title: 'Edit metadata',
+        description: 'Open the name / tags / description card',
+        onClick: () => {
+          if (typeof this._setMetaExpanded === 'function') this._setMetaExpanded(true);
+          if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
+        },
+      });
+      items.push({
+        icon: 'bx-arrow-back',
+        title: 'Back to selection',
+        description: 'Return to the exercise picker',
+        onClick: () => this._showView('select'),
+      });
+      items.push({
+        icon: 'bx-trash',
+        title: 'Discard workout',
+        description: this.workoutId ? 'Close without further edits' : 'Clear the in-progress workout',
+        onClick: () => this._handleDiscardFromFab(),
+        danger: true,
+      });
+
+      if (window.UnifiedOffcanvasFactory && typeof window.UnifiedOffcanvasFactory.createMenuOffcanvas === 'function') {
+        window.UnifiedOffcanvasFactory.createMenuOffcanvas({
+          id: 'studioMoreSheet',
+          title: 'More options',
+          icon: 'bx-dots-vertical-rounded',
+          menuItems: items,
+        });
+      } else {
+        // Native fallback — keeps the FAB useful when the factory isn't loaded.
+        if (window.confirm('Discard this workout and start fresh?')) this._handleDiscardFromFab();
+      }
+    }
+
+    _handleDiscardFromFab() {
+      if (this.workoutId) {
+        // Editing a saved workout — just navigate back, the record is intact.
+        window.location.href = '/workout-database.html';
+        return;
+      }
+      // New workout — same effect as the draft-banner Start fresh path.
+      if (typeof this._handleStartFresh === 'function') this._handleStartFresh();
+    }
+
     async _handleSave() {
       if (this._saveInFlight) return;
       if (!this.tray || this.tray.size() === 0) {
@@ -1796,6 +1935,13 @@
         // After the first successful save of a brand-new workout, remember the
         // id so subsequent saves UPDATE rather than CREATE another copy.
         if (!isUpdate && saved && saved.id) this.workoutId = saved.id;
+        // Go-FAB unlocks the moment workoutId exists; flash 'is-saved' on the
+        // save FAB for a quick visual confirmation.
+        this._refreshFabState();
+        if (this.dom.fabSave) {
+          this.dom.fabSave.classList.add('is-saved');
+          setTimeout(() => this.dom.fabSave && this.dom.fabSave.classList.remove('is-saved'), 1200);
+        }
         this._setStatus(isUpdate ? 'Updated!' : 'Saved!', 'success');
         console.log('[WorkoutStudio] Workout saved:', saved && saved.id);
         // Successful save → draft is no longer needed (the workout now lives
@@ -2135,6 +2281,9 @@
       // handler during those windows so we don't auto-sync everything into
       // loose top-level cards.
       if (this._suppressTrayChange) return;
+
+      // FAB save/go enable-state tracks tray contents.
+      this._refreshFabState();
 
       // Update count badges on visible rows
       if (this.grid && this.tray) {

@@ -2013,3 +2013,79 @@ test.describe('Modal manager — type-to-confirm', () => {
         expect(confirmed).toBe(true);
     });
 });
+
+test.describe('Workout Studio — type cards + floating FABs (builder parity)', () => {
+
+    test('FAB row is hidden on Page 1 and shown on Page 2 with disabled save/go when empty', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForFunction(() => !!document.getElementById('studioFloatingFabs'), null, { timeout: 10000 });
+
+        // Page 1 (Select) — FAB row hidden
+        await expect(page.locator('#studioFloatingFabs')).toBeHidden();
+
+        // Add an exercise to enable Continue
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+
+        // Page 2 — FAB row visible
+        await expect(page.locator('#studioFloatingFabs')).toBeVisible();
+
+        // Save disabled until a name is set (we added an exercise but the
+        // default-name seed only runs on full page boot, so the name input
+        // might be filled. Probe both states programmatically.)
+        const nameVal = await page.locator('#studioWorkoutNameInput').inputValue();
+        if (!nameVal) {
+            await expect(page.locator('#studioFabSave')).toBeDisabled();
+        }
+
+        // Set a name → save enables
+        await page.locator('#studioWorkoutNameInput').fill('FAB test workout');
+        await expect(page.locator('#studioFabSave')).toBeEnabled();
+
+        // Go stays disabled until the workout is saved (no workoutId yet)
+        await expect(page.locator('#studioFabGo')).toBeDisabled();
+    });
+
+    test('cardio cards get a data-card-type=cardio accent + a type icon', async ({ page }) => {
+        // Load a workout with a single cardio section so we exercise the
+        // sections[] hydration path and the type-card rendering together.
+        const workout = {
+            id: 'wkt-type-card',
+            name: 'Cardio Day',
+            description: '',
+            tags: [],
+            workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-c1', name: 'Stair Climber', sets: '1', reps: '20 min', group_type: 'cardio' },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Cardio Day', { timeout: 10000 });
+        await page.locator('#studioContinueBtn').click();
+
+        // The cardio card carries data-card-type="cardio"
+        const cardioCard = page.locator('.studio-card[data-card-type="cardio"]');
+        await expect(cardioCard).toHaveCount(1);
+
+        // And renders a type icon inline with the name. Either the
+        // registry-resolved icon or the bx-pulse fallback — both are
+        // .studio-card-type-icon.
+        await expect(cardioCard.locator('.studio-card-type-icon')).toHaveCount(1);
+    });
+});
