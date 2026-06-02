@@ -2358,3 +2358,51 @@ test.describe('Workout Studio — search includes activities by default', () => 
         await expect(page.locator('.studio-row:has-text("Running")')).toHaveCount(0);
     });
 });
+
+test.describe('Cardio editor — picked activity from "More" appears in the favorites row', () => {
+    test('selecting HIIT from More inserts a temporary pill in the grid with .active', async ({ page }) => {
+        // The studio loads both the offcanvas factory AND the activity
+        // type registry, so we drive the offcanvas directly from there.
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForFunction(() => !!(window.UnifiedOffcanvasFactory && window.ActivityTypeRegistry), null, { timeout: 15000 });
+
+        // Open the cardio editor offcanvas with an arbitrary activity
+        await page.evaluate(() => {
+            window.UnifiedOffcanvasFactory.createCardioEditor({
+                groupId: 'test-grp',
+                cardioConfig: { activity_type: 'running' },
+                onSave: () => {},
+            });
+        });
+
+        // Wait for the favorites grid to mount
+        const grid = page.locator('[id^="cardioTypeGrid-"]').last();
+        await expect(grid).toBeVisible();
+
+        // Sanity: HIIT is NOT a default favorite, so no pill yet
+        await expect(grid.locator('[data-activity-type="hiit"]')).toHaveCount(0);
+
+        // Click the More button → opens the category picker
+        await grid.locator('.activity-type-more-btn').click();
+
+        // Wait for the picker offcanvas to mount, then click HIIT
+        // Scope to .offcanvas — the same id-prefix also matches the
+        // h5 title element (`<id>Label`), and .last() grabs the title
+        // rather than the picker. The .offcanvas tag uniquely names the
+        // container itself.
+        const picker = page.locator('.offcanvas[id^="activityPicker-"]').last();
+        await expect(picker).toBeVisible({ timeout: 5000 });
+        const hiitItem = picker.locator('.activity-picker-item[data-type-id="hiit"]');
+        await hiitItem.scrollIntoViewIfNeeded();
+        await hiitItem.click({ force: true });
+
+        // The picker closes via a setTimeout(200) → onSelect fires → grid
+        // gets a fresh pill. Poll for it.
+        await expect(grid.locator('[data-activity-type="hiit"]')).toHaveCount(1, { timeout: 5000 });
+        await expect(grid.locator('[data-activity-type="hiit"]')).toHaveClass(/active/);
+
+        // The new pill carries the activity's short name + icon
+        await expect(grid.locator('[data-activity-type="hiit"] span')).toHaveText(/HIIT/i);
+        await expect(grid.locator('[data-activity-type="hiit"] i')).toHaveClass(/bx-bolt-circle/);
+    });
+});

@@ -275,7 +275,26 @@ export function createCardioEditor(config) {
                     // Update grid selection
                     typeGrid.querySelectorAll('.activity-type-btn').forEach(b => b.classList.remove('active'));
                     const existing = typeGrid.querySelector(`[data-activity-type="${typeId}"]`);
-                    if (existing) existing.classList.add('active');
+                    if (existing) {
+                        existing.classList.add('active');
+                    } else {
+                        // Picked activity isn't in the favorites row — insert a
+                        // temporary pill before the More button so the user can
+                        // see what they selected (and one-tap back to it)
+                        // without re-opening the picker. Session-only; gone on
+                        // next open unless they explicitly favorite it.
+                        const type = Registry.getById(typeId);
+                        if (type) {
+                            const pill = document.createElement('button');
+                            pill.type = 'button';
+                            pill.className = 'activity-type-btn active';
+                            pill.dataset.activityType = typeId;
+                            pill.innerHTML = `<i class="bx ${escapeHtml(type.icon)}"></i><span>${escapeHtml(type.shortName)}</span>`;
+                            const moreBtnEl = typeGrid.querySelector('.activity-type-more-btn');
+                            if (moreBtnEl) typeGrid.insertBefore(pill, moreBtnEl);
+                            else typeGrid.appendChild(pill);
+                        }
+                    }
                     updateConditionalFields(el, id, typeId);
                     calculatePace(el, id);
                 });
