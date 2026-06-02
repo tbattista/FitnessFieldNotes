@@ -2,7 +2,7 @@
  * StudioExerciseCard — Workout Studio Page 2 card
  *
  * Renders one card per tray instance with:
- *   - Compact header: exercise name + pencil edit + 3-dot menu
+ *   - Compact header: exercise name + info button + 3-dot menu
  *   - Body with three labeled rows: Protocol (sets×reps), Weight, Rest
  *   - Tap any value in the body to inline-edit. Protocol + Weight reuse the
  *     existing battle-tested field controllers
@@ -12,7 +12,7 @@
  *
  * Public events (emitted via the provided callbacks):
  *   - onChange(instanceId, partialState)  -> after any inline edit
- *   - onPencil(instanceId)                -> when user taps the pencil
+ *   - onInfo(instanceId)                  -> when user taps the info icon
  *   - onMenuAction(instanceId, action)    -> 'move-up' | 'move-down' | 'duplicate' | 'delete'
  *
  * The card does NOT pass a sessionService to the field controllers — Plan
@@ -132,8 +132,8 @@
                      style="display: none;" />
             </div>
             <div class="studio-card-actions">
-              <button class="studio-card-icon-btn" data-action="pencil" type="button" aria-label="Edit ${safeName}" title="Edit">
-                <i class="bx bx-pencil"></i>
+              <button class="studio-card-icon-btn" data-action="info" type="button" aria-label="Details for ${safeName}" title="Details">
+                <i class="bx bx-info-circle"></i>
               </button>
               <div class="studio-card-menu-wrap">
                 <button class="studio-card-icon-btn" data-action="menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More actions" title="More">
@@ -228,12 +228,12 @@
     _bindEvents() {
       if (!this.el) return;
 
-      // Pencil button → emit onPencil callback (controller opens offcanvas)
-      const pencilBtn = this.el.querySelector('[data-action="pencil"]');
-      if (pencilBtn) {
-        pencilBtn.addEventListener('click', (e) => {
+      // Info button → emit onInfo callback (controller opens detail offcanvas)
+      const infoBtn = this.el.querySelector('[data-action="info"]');
+      if (infoBtn) {
+        infoBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          this._fire('onPencil');
+          this._fire('onInfo');
         });
       }
 
@@ -359,9 +359,9 @@
           if (v && v !== this.name) {
             this.name = v;
             display.textContent = v;
-            // Keep the pencil's aria-label in sync for screen readers
-            const pencil = this.el.querySelector('[data-action="pencil"]');
-            if (pencil) pencil.setAttribute('aria-label', `Edit ${v}`);
+            // Keep the info button's aria-label in sync for screen readers
+            const info = this.el.querySelector('[data-action="info"]');
+            if (info) info.setAttribute('aria-label', `Details for ${v}`);
             this._fire('onChange', { name: v });
           } else {
             // No-op or empty value — revert the input

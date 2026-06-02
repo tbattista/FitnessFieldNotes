@@ -788,6 +788,29 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(firstCard.locator('.studio-rest-value-text')).toHaveText('120s');
     });
 
+    test('studio card has an info button (not a pencil) that opens the detail offcanvas', async ({ page }) => {
+        await addNFromGrid(page, 1);
+        await page.locator('#studioContinueBtn').click();
+
+        const firstCard = page.locator('.studio-card').first();
+        // Pencil is gone
+        await expect(firstCard.locator('[data-action="pencil"]')).toHaveCount(0);
+        // Info button replaces it
+        const infoBtn = firstCard.locator('[data-action="info"]');
+        await expect(infoBtn).toBeVisible();
+        await expect(infoBtn.locator('.bx-info-circle')).toBeVisible();
+
+        await infoBtn.click();
+        const offcanvas = page.locator('#exerciseDetailOffcanvas');
+        await expect(offcanvas).toBeVisible({ timeout: 5000 });
+
+        // It's the same studio-context offcanvas Page 1 opens — Favorite + Add,
+        // no Edit/Delete buttons.
+        await expect(offcanvas.locator('.studio-offcanvas-actions')).toBeVisible();
+        await expect(offcanvas.locator('.exercise-offcanvas-edit-btn')).toHaveCount(0);
+        await expect(offcanvas.locator('.exercise-offcanvas-delete-btn')).toHaveCount(0);
+    });
+
     test('tap-to-edit exercise name morphs into an input and saves on Enter', async ({ page }) => {
         await addNFromGrid(page, 1);
         await page.locator('#studioContinueBtn').click();

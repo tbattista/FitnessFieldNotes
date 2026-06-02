@@ -1159,7 +1159,7 @@
         blockOptions,
         callbacks: {
           onChange: (instanceId, partial) => this._onCardChange(instanceId, partial),
-          onPencil: (instanceId) => this._onPencil(instanceId),
+          onInfo: (instanceId) => this._onCardInfo(instanceId),
           onMenuAction: (instanceId, action, blockId) => this._onCardMenuAction(instanceId, action, blockId),
         },
       });
@@ -1271,54 +1271,13 @@
       this._moveOrderEntry({ kind: 'card', instanceId }, delta);
     }
 
-    _onPencil(instanceId) {
+    _onCardInfo(instanceId) {
       const item = this.tray && this.tray.getItems().find((it) => it.instanceId === instanceId);
       if (!item) return;
-      const state = this._ensureOrganizeState(instanceId);
-
-      const config = {
-        groupId: instanceId,
-        exercises: { a: item.name },
-        sets: state.sets || DEFAULT_SETS,
-        reps: state.reps || DEFAULT_REPS,
-        rest: state.rest || DEFAULT_REST,
-        weight: state.weight || '',
-        weightUnit: state.weightUnit || 'lbs',
-        isNew: false,
-        mode: 'single',
-      };
-
-      const onSave = (groupData) => {
-        if (!groupData) return;
-        const next = {};
-        if (groupData.exercises && groupData.exercises.a) {
-          item.name = groupData.exercises.a;
-          // The tray chip label is derived from item.name; re-render the chip row.
-          if (this.tray && typeof this.tray._render === 'function') this.tray._render();
-        }
-        if (groupData.sets != null) next.sets = String(groupData.sets);
-        if (groupData.reps != null) next.reps = String(groupData.reps);
-        if (groupData.rest != null) next.rest = String(groupData.rest);
-        if (groupData.default_weight != null) next.weight = String(groupData.default_weight);
-        if (groupData.default_weight_unit) next.weightUnit = groupData.default_weight_unit;
-        this._onCardChange(instanceId, next);
-        // Refresh the card preview so the inline display matches
-        const card = this.studioCards.get(instanceId);
-        if (card) {
-          card.name = item.name;
-          card.setState(next);
-        }
-      };
-      const onDelete = () => {
-        if (this.tray) this.tray.remove(instanceId);
-      };
-
-      const factory = window.UnifiedOffcanvasFactory;
-      if (factory && typeof factory.createExerciseGroupEditor === 'function') {
-        factory.createExerciseGroupEditor(config, onSave, onDelete);
-      } else {
-        console.warn('[WorkoutStudio] UnifiedOffcanvasFactory not loaded; pencil edit is no-op until offcanvas module is available');
-      }
+      // Reuse the same detail offcanvas the Page 1 info button opens.
+      // The card's exercise object holds the catalog id, which the detail
+      // offcanvas needs to look up the full record from window.ffn.exercises.
+      this._openExerciseDetail(item.exercise || { id: item.exerciseId, name: item.name });
     }
 
     _escape(s) {
