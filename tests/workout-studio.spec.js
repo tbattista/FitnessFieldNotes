@@ -2406,3 +2406,55 @@ test.describe('Cardio editor — picked activity from "More" appears in the favo
         await expect(grid.locator('[data-activity-type="hiit"] i')).toHaveClass(/bx-bolt-circle/);
     });
 });
+
+test.describe('Workout Studio — Back FAB (4th button)', () => {
+    test('Back FAB navigates from organize back to selection', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Back FAB test');
+        await page.locator('#studioContinueBtn').click();
+
+        // FAB row visible on Page 2, with the Back FAB present
+        await expect(page.locator('#studioFloatingFabs')).toBeVisible();
+        await expect(page.locator('#studioFabBack')).toBeVisible();
+
+        // Click Back → return to select view
+        await page.locator('#studioFabBack').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+
+        // FAB row is hidden again on Page 1
+        await expect(page.locator('#studioFloatingFabs')).toBeHidden();
+    });
+});
+
+test.describe('Cardio editor — newly-inserted More pill flashes for visibility', () => {
+    test('inserted pill carries the studio-pill-just-added class briefly', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForFunction(() => !!(window.UnifiedOffcanvasFactory && window.ActivityTypeRegistry), null, { timeout: 15000 });
+
+        await page.evaluate(() => {
+            window.UnifiedOffcanvasFactory.createCardioEditor({
+                groupId: 'flash-test',
+                cardioConfig: { activity_type: 'running' },
+                onSave: () => {},
+            });
+        });
+
+        const grid = page.locator('[id^="cardioTypeGrid-"]').last();
+        await expect(grid).toBeVisible();
+        await grid.locator('.activity-type-more-btn').click();
+
+        const picker = page.locator('.offcanvas[id^="activityPicker-"]').last();
+        await expect(picker).toBeVisible({ timeout: 5000 });
+        const hiit = picker.locator('.activity-picker-item[data-type-id="hiit"]');
+        await hiit.scrollIntoViewIfNeeded();
+        await hiit.click({ force: true });
+
+        // Pill appears AND immediately carries the flash class
+        const pill = grid.locator('[data-activity-type="hiit"]');
+        await expect(pill).toHaveCount(1, { timeout: 5000 });
+        await expect(pill).toHaveClass(/studio-pill-just-added/);
+    });
+});

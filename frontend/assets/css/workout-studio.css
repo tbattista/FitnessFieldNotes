@@ -501,6 +501,17 @@ html[data-bs-theme="dark"] .studio-import-btn:hover { background: rgba(255, 255,
   color: white;
 }
 [id^="cardioEditorOffcanvas-"] .activity-type-btn.active i { color: white; }
+
+/* Flash animation for pills inserted from the More picker — a quick
+   ring pulse so the user notices the new pill appearing inline. */
+@keyframes studio-pill-just-added-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(201, 124, 93, 0.55); }
+  60%  { box-shadow: 0 0 0 8px rgba(201, 124, 93, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 124, 93, 0); }
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn.studio-pill-just-added {
+  animation: studio-pill-just-added-pulse 1.2s ease-out 2;
+}
 [data-bs-theme="dark"] [id^="cardioEditorOffcanvas-"] .activity-type-btn:hover {
   background: rgba(255, 255, 255, 0.05);
 }
@@ -1394,6 +1405,11 @@ html[data-bs-theme="dark"] .studio-org-field-input {
   opacity: 0.55;
   cursor: not-allowed;
 }
+.studio-fab-back {
+  background: #fff;
+  color: var(--bs-secondary, #6c757d);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
 .studio-fab-more {
   background: #fff;
   color: var(--bs-warning);
@@ -1407,8 +1423,10 @@ html[data-bs-theme="dark"] .studio-org-field-input {
 .studio-fab-save.is-saved {
   background: var(--bs-success);
 }
+[data-bs-theme="dark"] .studio-fab-back,
 [data-bs-theme="dark"] .studio-fab-more {
   background: var(--bs-body-bg);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 [data-bs-theme="dark"] .studio-fab {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);

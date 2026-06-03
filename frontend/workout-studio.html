@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-07" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-09" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -325,6 +325,9 @@
                      as a desktop-friendly fallback; the FABs are the mobile
                      primary path. -->
                 <div class="studio-floating-fabs" id="studioFloatingFabs" hidden>
+                  <button type="button" class="studio-fab studio-fab-back" id="studioFabBack" title="Back to selection" aria-label="Back to selection">
+                    <i class="bx bx-arrow-back"></i>
+                  </button>
                   <button type="button" class="studio-fab studio-fab-more" id="studioFabMore" title="More options" aria-label="More options">
                     <i class="bx bx-dots-vertical-rounded"></i>
                   </button>
@@ -391,7 +394,7 @@
 
     <!-- Unified Offcanvas Factory (pencil edit reuses createExerciseGroupEditor) -->
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js?v=20251220-01"></script>
-    <script type="module" src="/static/assets/js/components/offcanvas/index.js?v=20260602-08"></script>
+    <script type="module" src="/static/assets/js/components/offcanvas/index.js?v=20260602-09"></script>
 
     <!-- Workout Studio JS -->
     <!-- Exercise detail popup (reused from exercise-database page) -->
@@ -411,6 +414,6 @@
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-07"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-09"></script>
   </body>
 </html>

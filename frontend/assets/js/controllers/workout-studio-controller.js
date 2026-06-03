@@ -174,6 +174,7 @@
       this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
       // Floating FAB row (Page 2 only)
       this.dom.fabs = document.getElementById('studioFloatingFabs');
+      this.dom.fabBack = document.getElementById('studioFabBack');
       this.dom.fabMore = document.getElementById('studioFabMore');
       this.dom.fabSave = document.getElementById('studioFabSave');
       this.dom.fabGo = document.getElementById('studioFabGo');
@@ -1188,6 +1189,9 @@
       }
 
       // Floating FAB row — Page 2's mobile-primary action surface.
+      if (this.dom.fabBack) {
+        this.dom.fabBack.addEventListener('click', () => this._showView('select'));
+      }
       if (this.dom.fabSave) {
         this.dom.fabSave.addEventListener('click', () => this._handleSave());
       }
@@ -1984,12 +1988,8 @@
           if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
         },
       });
-      items.push({
-        icon: 'bx-arrow-back',
-        title: 'Back to selection',
-        description: 'Return to the exercise picker',
-        onClick: () => this._showView('select'),
-      });
+      // 'Back to selection' lives on its own FAB now — no need to
+      // duplicate it inside the More sheet.
       items.push({
         icon: 'bx-trash',
         title: 'Discard workout',

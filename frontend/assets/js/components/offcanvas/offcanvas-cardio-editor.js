@@ -287,12 +287,20 @@ export function createCardioEditor(config) {
                         if (type) {
                             const pill = document.createElement('button');
                             pill.type = 'button';
-                            pill.className = 'activity-type-btn active';
+                            pill.className = 'activity-type-btn active studio-pill-just-added';
                             pill.dataset.activityType = typeId;
                             pill.innerHTML = `<i class="bx ${escapeHtml(type.icon)}"></i><span>${escapeHtml(type.shortName)}</span>`;
                             const moreBtnEl = typeGrid.querySelector('.activity-type-more-btn');
                             if (moreBtnEl) typeGrid.insertBefore(pill, moreBtnEl);
                             else typeGrid.appendChild(pill);
+                            // Scroll into view + flash so the user sees it
+                            // appear (the favorites row wraps to a new line
+                            // once the 8 default favorites are full, so the
+                            // new pill can land below the fold of the sheet).
+                            requestAnimationFrame(() => {
+                                pill.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                                setTimeout(() => pill.classList.remove('studio-pill-just-added'), 1400);
+                            });
                         }
                     }
                     updateConditionalFields(el, id, typeId);
