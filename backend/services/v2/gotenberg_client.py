@@ -1,30 +1,77 @@
 import requests
 import tempfile
+import logging
 from pathlib import Path
 from typing import Optional
 import os
 
+logger = logging.getLogger(__name__)
+
+# Health-check timeout (seconds). Generous enough to absorb Railway cold-start
+# latency spikes — a single slow check should not mark the service unavailable.
+HEALTH_CHECK_TIMEOUT = 10
+HEALTH_CHECK_RETRIES = 2
+
+# Production Gotenberg service URL used as a last-resort default.
+# NOTE: Railway's railway.toml does NOT support an [env] table, so GOTENBERG_URL
+# declared there is ignored. Set GOTENBERG_URL in the Railway dashboard for the
+# canonical configuration; this default keeps exports working if it is missing.
+DEFAULT_PRODUCTION_GOTENBERG_URL = "https://gotenberg-production-c928.up.railway.app"
+DEFAULT_LOCAL_GOTENBERG_URL = "http://localhost:3000"
+
+
+def _resolve_default_url() -> str:
+    """Pick a sensible default Gotenberg URL based on the runtime environment."""
+    is_production = (
+        os.getenv('RAILWAY_ENVIRONMENT') == 'production'
+        or os.getenv('ENVIRONMENT') == 'production'
+        or bool(os.getenv('RAILWAY_PROJECT_ID'))
+    )
+    return DEFAULT_PRODUCTION_GOTENBERG_URL if is_production else DEFAULT_LOCAL_GOTENBERG_URL
+
+
 class GotenbergClient:
     """Client for interacting with Gotenberg service for HTML to PDF conversion"""
-    
+
     def __init__(self, gotenberg_url: str = None):
-        # Use GOTENBERG_URL environment variable to match railway.toml configuration
-        # Also check Railway's auto-generated service URL as fallback
+        # Prefer an explicit URL, then the GOTENBERG_URL env var (set this in the
+        # Railway dashboard — railway.toml's [env] block is ignored by Railway),
+        # then an environment-appropriate default.
         self.gotenberg_url = (
-            gotenberg_url or 
-            os.getenv('GOTENBERG_URL') or 
-            f"https://{os.getenv('RAILWAY_SERVICE_GOTENBERG_URL', 'localhost:3000')}"
-        )
+            gotenberg_url
+            or os.getenv('GOTENBERG_URL')
+            or _resolve_default_url()
+        ).rstrip('/')
         self.available = False
         self._check_availability()
-    
+
     def _check_availability(self):
-        """Check if Gotenberg service is available"""
-        try:
-            response = requests.get(f"{self.gotenberg_url}/health", timeout=5)
-            self.available = response.status_code == 200
-        except Exception:
-            self.available = False
+        """Check if Gotenberg service is available.
+
+        Tries the /health endpoint a few times to tolerate cold-start latency.
+        Logs the URL and any failure so the cause is visible in Railway logs.
+        """
+        last_error = None
+        for attempt in range(1, HEALTH_CHECK_RETRIES + 1):
+            try:
+                response = requests.get(
+                    f"{self.gotenberg_url}/health",
+                    timeout=HEALTH_CHECK_TIMEOUT,
+                )
+                self.available = response.status_code == 200
+                if self.available:
+                    return
+                last_error = f"HTTP {response.status_code}"
+            except Exception as e:
+                last_error = str(e)
+
+        self.available = False
+        logger.warning(
+            "Gotenberg health check failed at %s/health after %d attempt(s): %s",
+            self.gotenberg_url,
+            HEALTH_CHECK_RETRIES,
+            last_error,
+        )
     
     def html_to_pdf(self, html_content: str, filename: str = "document.pdf") -> Optional[Path]:
         """
