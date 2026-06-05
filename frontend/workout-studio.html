@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-11" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-14" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -272,19 +272,19 @@
                   <div class="studio-organize-section-header">
                     <h6 class="studio-section-title">Exercises</h6>
                     <span class="studio-organize-count" id="studioOrganizeCount">0</span>
+                    <!-- Top-right header: Import + Reorder. Matches the legacy
+                         builder's two-button header. Add buttons (Activity,
+                         Note, Block) live at the BOTTOM of the card list. -->
                     <div class="studio-organize-header-actions">
+                      <button class="btn btn-sm btn-outline-primary studio-import-page2-btn"
+                              id="studioImportPage2Btn" type="button"
+                              aria-label="Import workout">
+                        <i class="bx bx-import"></i> Import
+                      </button>
                       <button class="btn btn-sm btn-outline-secondary studio-reorder-btn"
                               id="studioReorderBtn" type="button" hidden
                               aria-label="Reorder">
                         <i class="bx bx-sort"></i> Reorder
-                      </button>
-                      <button class="btn btn-sm btn-outline-secondary studio-add-block-btn"
-                              id="studioAddBlockBtn" type="button" hidden>
-                        <i class="bx bx-collection"></i> Block
-                      </button>
-                      <button class="btn btn-sm btn-outline-secondary studio-add-note-btn"
-                              id="studioAddNoteBtn" type="button" hidden>
-                        <i class="bx bx-note"></i> Note
                       </button>
                     </div>
                   </div>
@@ -293,14 +293,29 @@
                     <!-- Rows injected by controller from the tray -->
                   </div>
 
-                  <!-- Bottom of the list: a soft 'Add another exercise' button
-                       that drops the user back into Page 1 to pick more.
-                       Mirrors the legacy builder's 'Add Exercise' affordance
-                       sitting at the end of the card list. -->
+                  <!-- Bottom-of-list add-buttons cluster — mirrors the legacy
+                       builder's layout exactly: full-width 'Add Exercise'
+                       on top, then a row of three smaller add buttons
+                       (Activity, Note, Block) beneath it. -->
                   <button class="studio-add-more-btn" id="studioAddMoreBtn" type="button" hidden>
                     <i class="bx bx-plus"></i>
-                    <span>Add another exercise</span>
+                    <span>Add Exercise</span>
                   </button>
+
+                  <div class="studio-bottom-add-row" id="studioBottomAddRow" hidden>
+                    <button class="btn btn-sm btn-outline-secondary studio-add-activity-btn"
+                            id="studioAddActivityBtn" type="button">
+                      <i class="bx bx-heart-circle"></i> Activity
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary studio-add-note-btn"
+                            id="studioAddNoteBtn" type="button">
+                      <i class="bx bx-note"></i> Note
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary studio-add-block-btn"
+                            id="studioAddBlockBtn" type="button">
+                      <i class="bx bx-collection"></i> Block
+                    </button>
+                  </div>
 
                   <div class="studio-organize-empty" id="studioOrganizeEmpty" hidden>
                     <i class="bx bx-list-ul"></i>
@@ -423,6 +438,6 @@
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-13"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-14"></script>
   </body>
 </html>

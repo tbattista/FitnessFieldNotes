@@ -1175,6 +1175,58 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   background: rgba(201, 124, 93, 0.12);
 }
 
+/* Row of three add buttons sitting under the Add Exercise CTA — matches
+   the legacy builder's Activity / Note / Block trio. Equal-width pill
+   buttons that wrap on narrow viewports. */
+.studio-bottom-add-row {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+}
+.studio-bottom-add-row[hidden] { display: none; }
+.studio-bottom-add-row .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+.studio-bottom-add-row .bx { font-size: 1rem; line-height: 1; }
+/* Activity pill picks up the cardio accent so it visually pairs with the
+   cardio cards it spawns. */
+.studio-bottom-add-row .studio-add-activity-btn {
+  color: var(--workout-cardio, #3b82f6);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.studio-bottom-add-row .studio-add-activity-btn:hover,
+.studio-bottom-add-row .studio-add-activity-btn:focus-visible {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--workout-cardio, #3b82f6);
+  color: var(--workout-cardio, #3b82f6);
+}
+[data-bs-theme="dark"] .studio-bottom-add-row .studio-add-activity-btn {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+/* Page-2 Import button picks up the brand peach (primary) so the two
+   header buttons read as a deliberate pair (orange + neutral). */
+.studio-import-page2-btn {
+  color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+.studio-import-page2-btn:hover,
+.studio-import-page2-btn:focus-visible {
+  background: rgba(201, 124, 93, 0.08);
+  color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
 .studio-block {
   background: rgba(0, 0, 0, 0.025);
   border-radius: 14px;

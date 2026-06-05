@@ -668,28 +668,28 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await expect(page.locator('#studioTray')).toBeVisible();
     });
 
-    test('section header buttons (Reorder / Block / Note) share a uniform style', async ({ page }) => {
+    test('bottom add-row buttons (Activity / Note / Block) share a uniform style', async ({ page }) => {
         await addNFromGrid(page, 2);
         await page.locator('#studioContinueBtn').click();
 
-        const reorder = page.locator('#studioReorderBtn');
-        const block = page.locator('#studioAddBlockBtn');
+        const activity = page.locator('#studioAddActivityBtn');
         const note = page.locator('#studioAddNoteBtn');
-        await expect(reorder).toBeVisible();
-        await expect(block).toBeVisible();
+        const block = page.locator('#studioAddBlockBtn');
+        await expect(activity).toBeVisible();
         await expect(note).toBeVisible();
+        await expect(block).toBeVisible();
 
-        // All three buttons collapse to the same height + border-radius so the
-        // row reads as a uniform set instead of three differently-shaped pills.
-        const h1 = await reorder.evaluate((el) => el.offsetHeight);
-        const h2 = await block.evaluate((el) => el.offsetHeight);
-        const h3 = await note.evaluate((el) => el.offsetHeight);
+        // All three buttons collapse to the same height + pill radius so the
+        // row reads as a uniform trio (matches the legacy builder's layout).
+        const h1 = await activity.evaluate((el) => el.offsetHeight);
+        const h2 = await note.evaluate((el) => el.offsetHeight);
+        const h3 = await block.evaluate((el) => el.offsetHeight);
         expect(h1).toBe(h2);
         expect(h2).toBe(h3);
 
-        await expect(reorder).toHaveCSS('border-radius', '999px');
-        await expect(block).toHaveCSS('border-radius', '999px');
+        await expect(activity).toHaveCSS('border-radius', '999px');
         await expect(note).toHaveCSS('border-radius', '999px');
+        await expect(block).toHaveCSS('border-radius', '999px');
     });
 
     test('Back to selection returns to Page 1 with the tray intact', async ({ page }) => {
@@ -2753,5 +2753,80 @@ test.describe('Workout library — Edit Workout opens studio first', () => {
         // Studio renders before Edit in Builder
         expect(order[0]).toBe('studio');
         expect(order[1]).toBe('edit');
+    });
+});
+
+test.describe('Workout Studio — Page 2 layout matches the legacy builder', () => {
+    async function setupCard(page) {
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Layout test');
+        await page.locator('#studioContinueBtn').click();
+    }
+
+    test('Page 2 header has exactly Import + Reorder; no Block/Note in header', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await setupCard(page);
+
+        const header = page.locator('.studio-organize-section-header .studio-organize-header-actions');
+        await expect(header.locator('#studioImportPage2Btn')).toBeVisible();
+        await expect(header.locator('#studioReorderBtn')).toHaveCount(1); // hidden until >=2 items
+        // Block + Note are NOT in the header anymore — they live in the
+        // bottom add-row instead.
+        await expect(header.locator('#studioAddBlockBtn')).toHaveCount(0);
+        await expect(header.locator('#studioAddNoteBtn')).toHaveCount(0);
+    });
+
+    test('Bottom of the card list shows + Add Exercise then Activity / Note / Block', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await setupCard(page);
+
+        // The full-width Add Exercise CTA
+        await expect(page.locator('#studioAddMoreBtn')).toBeVisible();
+        await expect(page.locator('#studioAddMoreBtn')).toContainText(/Add Exercise/i);
+
+        // The three-button row below it
+        const row = page.locator('#studioBottomAddRow');
+        await expect(row).toBeVisible();
+        await expect(row.locator('#studioAddActivityBtn')).toBeVisible();
+        await expect(row.locator('#studioAddNoteBtn')).toBeVisible();
+        await expect(row.locator('#studioAddBlockBtn')).toBeVisible();
+
+        // Order in DOM: Activity → Note → Block (matches the legacy layout)
+        const order = await row.evaluate((el) =>
+            Array.from(el.querySelectorAll('button')).map((b) => b.id)
+        );
+        expect(order).toEqual(['studioAddActivityBtn', 'studioAddNoteBtn', 'studioAddBlockBtn']);
+    });
+
+    test('Activity button creates a cardio card and opens the cardio editor', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForFunction(() => !!window.UnifiedOffcanvasFactory, null, { timeout: 15000 });
+
+        // Stub the cardio editor factory to capture the open call
+        await page.evaluate(() => {
+            window.__cardioOpens = [];
+            window.UnifiedOffcanvasFactory.createCardioEditor = (cfg) => {
+                window.__cardioOpens.push({ groupId: cfg.groupId, cardioConfig: cfg.cardioConfig });
+                return { id: 'stub', hide: () => {} };
+            };
+        });
+
+        await setupCard(page);
+
+        // Click Activity in the bottom row
+        await page.locator('#studioAddActivityBtn').click();
+
+        // A new cardio card appears in the organize list
+        const cardio = page.locator('.studio-card.studio-card-cardio');
+        await expect(cardio).toHaveCount(1);
+
+        // The cardio editor was opened on the new card (groupId is studio:<instanceId>)
+        const opens = await page.evaluate(() => window.__cardioOpens);
+        expect(opens.length).toBe(1);
+        expect(opens[0].groupId).toMatch(/^studio:/);
+        // Initial cardio_config is empty (the user hasn't picked an activity yet)
+        expect(Object.keys(opens[0].cardioConfig || {})).toHaveLength(0);
     });
 });

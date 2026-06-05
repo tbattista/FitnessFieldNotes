@@ -150,6 +150,7 @@
       this.dom.addCustomBtn = document.getElementById('studioAddCustomBtn');
       this.dom.addCustomLabel = document.getElementById('studioAddCustomLabel');
       this.dom.importBtn = document.getElementById('studioImportBtn');
+      this.dom.importPage2Btn = document.getElementById('studioImportPage2Btn');
 
       this.dom.filterBtn = document.getElementById('studioFilterBtn');
       this.dom.filterBadge = document.getElementById('studioFilterBadge');
@@ -188,6 +189,8 @@
       this.dom.fabGo = document.getElementById('studioFabGo');
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
       this.dom.addMoreBtn = document.getElementById('studioAddMoreBtn');
+      this.dom.bottomAddRow = document.getElementById('studioBottomAddRow');
+      this.dom.addActivityBtn = document.getElementById('studioAddActivityBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
       this.dom.addNoteBtn = document.getElementById('studioAddNoteBtn');
 
@@ -375,6 +378,11 @@
       }
       if (this.dom.importBtn) {
         this.dom.importBtn.addEventListener('click', () => this._openImportWizard());
+      }
+      // Page 2 also has an Import button — same handler so users can
+      // import additional content into a workout they're already building.
+      if (this.dom.importPage2Btn) {
+        this.dom.importPage2Btn.addEventListener('click', () => this._openImportWizard());
       }
       this._updateAddCustomButton();
     }
@@ -1239,6 +1247,14 @@
       if (this.dom.addNoteBtn) {
         this.dom.addNoteBtn.addEventListener('click', () => this._createNote());
       }
+
+      // 'Activity' bottom-row button — mirrors the legacy builder's add-
+      // cardio shortcut. Creates a blank cardio card and immediately opens
+      // the activity picker offcanvas so the user can choose the activity
+      // type without bouncing through Page 1's catalog.
+      if (this.dom.addActivityBtn) {
+        this.dom.addActivityBtn.addEventListener('click', () => this._createActivityFromPage2());
+      }
     }
 
     _createNote() {
@@ -1253,6 +1269,49 @@
         );
         if (node) node.focus();
       });
+    }
+
+    /**
+     * Bottom-row 'Activity' shortcut — adds a blank cardio card to the
+     * tray + organize order, then immediately opens the cardio editor on
+     * it so the user picks the activity type. Mirrors the legacy builder's
+     * 'Add Cardio' affordance.
+     */
+    _createActivityFromPage2() {
+      if (!this.tray) return;
+      const id = `activity-${Date.now()}`;
+      // Minimal exerciseLike so the tray accepts it as a fresh selection.
+      // group_type='cardio' tells _mountCard to render the cardio summary
+      // template (icon + name + tap-to-open). The actual activity choice
+      // comes from the offcanvas onSave.
+      const exerciseLike = {
+        id,
+        name: 'Activity',
+        targetMuscleGroup: 'Cardio',
+        primaryEquipment: 'Activity',
+        exerciseTier: null,
+        group_type: 'cardio',
+      };
+      // Suppress _onTrayChange so it doesn't auto-push a card onto
+      // organizeOrder — we'll do that ourselves at the desired position.
+      // Same pattern the hydration paths use.
+      this._suppressTrayChange = true;
+      let instanceId;
+      try {
+        instanceId = this.tray.add(exerciseLike);
+      } finally {
+        this._suppressTrayChange = false;
+      }
+      if (!instanceId) return;
+      // Seed an empty cardioConfig so the editor opens to a clean state
+      const state = this._ensureOrganizeState(instanceId);
+      state.cardioConfig = {};
+      // Place at the end of the organize order (top-level card)
+      this.organizeOrder.push({ kind: 'card', instanceId });
+      this._renderOrganize();
+      // Open the cardio editor on the freshly-added card so the user
+      // can pick the activity right away.
+      this._onEditCardio(instanceId);
     }
 
     _onNoteChange(noteId, partial) {
@@ -1598,12 +1657,12 @@
       const hasExercises = items.length > 0;
       if (this.dom.organizeEmpty) this.dom.organizeEmpty.hidden = hasExercises;
       if (this.dom.saveBtn) this.dom.saveBtn.disabled = !hasExercises;
-      // Add-Block + Reorder + Add-Note are irrelevant on the dead-end empty state.
+      // Add buttons live in the bottom row now (Activity / Note / Block)
+      // alongside the Add Exercise CTA above them. Hidden on the empty
+      // state since the picker is the natural starting point.
       if (this.dom.addBlockBtn) this.dom.addBlockBtn.hidden = !hasExercises;
       if (this.dom.addNoteBtn) this.dom.addNoteBtn.hidden = !hasExercises;
-      // The bottom-of-list 'Add another exercise' button is only useful
-      // once at least one card is rendered — on the empty state the user
-      // is implicitly directed to the picker via the section text.
+      if (this.dom.bottomAddRow) this.dom.bottomAddRow.hidden = !hasExercises;
       if (this.dom.addMoreBtn) this.dom.addMoreBtn.hidden = !hasExercises;
       // Reorder needs at least 2 items in the organize order to be useful.
       if (this.dom.reorderBtn) {
