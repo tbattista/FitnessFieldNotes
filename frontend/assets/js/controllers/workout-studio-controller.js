@@ -2048,23 +2048,41 @@
       // shape produced by workout-editor-save-manager.js when sections mode
       // is active. Cardio entries carry cardio_config in place of the
       // sets/reps/rest/weight fields (which don't apply).
-      const exercise_groups = sections.flatMap((s) => (s.exercises || []).map((e) => {
-        const base = {
-          group_id: e.exercise_id,
-          exercises: { a: e.name },
-          group_type: e.group_type || 'standard',
-        };
-        if ((e.group_type || 'standard') === 'cardio') {
-          return Object.assign(base, { cardio_config: e.cardio_config || {} });
-        }
-        return Object.assign(base, {
-          sets: e.sets,
-          reps: e.reps,
-          rest: e.rest,
-          default_weight: e.default_weight,
-          default_weight_unit: e.default_weight_unit || 'lbs',
+      //
+      // CRITICAL: block_id + group_name MUST be propagated to the legacy
+      // exercise_groups when an exercise belongs to a block — workout-mode
+      // reads exercise_groups (not sections) for session init + reorder,
+      // and groups visually by shared block_id. Without this thread, all
+      // block exercises render as loose cards in workout-mode.
+      const exercise_groups = sections.flatMap((s) => {
+        // Each section's name + its own id becomes the block label/id for
+        // every exercise inside it. Sections with a non-null name are
+        // user-created blocks; nameless sections are loose single-exercise
+        // wrappers and don't need block_id.
+        const blockId = (s.exercises && s.exercises.length > 1) ? s.section_id : null;
+        const groupName = s.name || null;
+        return (s.exercises || []).map((e) => {
+          const base = {
+            group_id: e.exercise_id,
+            exercises: { a: e.name },
+            group_type: e.group_type || 'standard',
+          };
+          if (blockId) {
+            base.block_id = blockId;
+            base.group_name = groupName;
+          }
+          if ((e.group_type || 'standard') === 'cardio') {
+            return Object.assign(base, { cardio_config: e.cardio_config || {} });
+          }
+          return Object.assign(base, {
+            sets: e.sets,
+            reps: e.reps,
+            rest: e.rest,
+            default_weight: e.default_weight,
+            default_weight_unit: e.default_weight_unit || 'lbs',
+          });
         });
-      }));
+      });
 
       return {
         name: this.workoutName,

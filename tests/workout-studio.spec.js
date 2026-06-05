@@ -2623,3 +2623,77 @@ test.describe('Workout Studio — notes inside blocks', () => {
         expect(tn.order_index).toBe(0);
     });
 });
+
+test.describe('Workout Studio — save payload integrity', () => {
+    test('block_id + group_name propagate to flattened exercise_groups so workout-mode preserves blocks', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); }
+                catch (_) { postedBody = null; }
+                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'wkt-1', name: postedBody?.name }) });
+            } else { await route.fallback(); }
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await rows.nth(1).locator('.studio-row-add').click();
+        await rows.nth(2).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Block roundtrip');
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+
+        // Create a named block and move 2 cards in
+        await page.locator('#studioAddBlockBtn').click();
+        await page.locator('.studio-block-name-input').first().fill('Push Block');
+        await page.locator('.studio-block-name-input').first().press('Enter');
+        for (let i = 0; i < 2; i++) {
+            const card = page.locator('#studioOrganizeList > .studio-card').first();
+            await card.locator('[data-action="menu"]').click();
+            await card.locator('[data-action="move-to-block"]').click();
+        }
+
+        await page.locator('#studioFabSave').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody).toBeTruthy();
+        const groups = postedBody.exercise_groups || [];
+        // The 2 in-block exercises must share a block_id + carry the
+        // block's name on group_name; the loose 3rd exercise must not.
+        const inBlock = groups.filter((g) => g.block_id);
+        expect(inBlock.length).toBe(2);
+        expect(inBlock[0].block_id).toBe(inBlock[1].block_id);
+        expect(inBlock[0].group_name).toBe('Push Block');
+        const loose = groups.filter((g) => !g.block_id);
+        expect(loose.length).toBe(1);
+    });
+
+    test('single top-level card (no block) does NOT carry a block_id', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); }
+                catch (_) { postedBody = null; }
+                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'wkt-2', name: postedBody?.name }) });
+            } else { await route.fallback(); }
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Lone card');
+        await page.locator('#studioContinueBtn').click();
+        await page.evaluate(() => { delete window.dataManager; });
+
+        await page.locator('#studioFabSave').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        const groups = postedBody.exercise_groups || [];
+        expect(groups.length).toBe(1);
+        expect(groups[0].block_id == null).toBe(true);
+        expect(groups[0].group_name == null).toBe(true);
+    });
+});
