@@ -2892,3 +2892,48 @@ test.describe('Workout Studio — all studio buttons share the same 10px radius'
         }
     });
 });
+
+test.describe('Workout Studio — Page 2 Import and Reorder are visually identical', () => {
+    test('Import and Reorder share the same color + border + radius (just different icon/label)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        // Add 2 exercises so Reorder is visible alongside Import in the header
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await rows.nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Match check');
+        await page.locator('#studioContinueBtn').click();
+
+        const importBtn = page.locator('#studioImportPage2Btn');
+        const reorderBtn = page.locator('#studioReorderBtn');
+        await expect(importBtn).toBeVisible();
+        await expect(reorderBtn).toBeVisible();
+
+        // Sample the computed style properties that determine visual identity.
+        const styles = await page.evaluate(() => {
+            const imp = document.querySelector('#studioImportPage2Btn');
+            const reo = document.querySelector('#studioReorderBtn');
+            const pick = (el) => {
+                const cs = getComputedStyle(el);
+                return {
+                    color: cs.color,
+                    borderColor: cs.borderTopColor, // all four sides identical
+                    backgroundColor: cs.backgroundColor,
+                    borderRadius: cs.borderRadius,
+                    height: el.offsetHeight,
+                    fontSize: cs.fontSize,
+                    fontWeight: cs.fontWeight,
+                };
+            };
+            return { i: pick(imp), r: pick(reo) };
+        });
+
+        expect(styles.i.color).toBe(styles.r.color);
+        expect(styles.i.borderColor).toBe(styles.r.borderColor);
+        expect(styles.i.backgroundColor).toBe(styles.r.backgroundColor);
+        expect(styles.i.borderRadius).toBe(styles.r.borderRadius);
+        expect(styles.i.height).toBe(styles.r.height);
+        expect(styles.i.fontSize).toBe(styles.r.fontSize);
+        expect(styles.i.fontWeight).toBe(styles.r.fontWeight);
+    });
+});
