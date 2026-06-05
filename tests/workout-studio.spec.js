@@ -687,9 +687,11 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         expect(h1).toBe(h2);
         expect(h2).toBe(h3);
 
-        await expect(activity).toHaveCSS('border-radius', '999px');
-        await expect(note).toHaveCSS('border-radius', '999px');
-        await expect(block).toHaveCSS('border-radius', '999px');
+        // Buttons squared off (rectangular with rounded corners) to match
+        // the Import and FAB visual language — no more fully-pill shapes.
+        await expect(activity).toHaveCSS('border-radius', '10px');
+        await expect(note).toHaveCSS('border-radius', '10px');
+        await expect(block).toHaveCSS('border-radius', '10px');
     });
 
     test('Back to selection returns to Page 1 with the tray intact', async ({ page }) => {
@@ -2828,5 +2830,33 @@ test.describe('Workout Studio — Page 2 layout matches the legacy builder', () 
         expect(opens[0].groupId).toMatch(/^studio:/);
         // Initial cardio_config is empty (the user hasn't picked an activity yet)
         expect(Object.keys(opens[0].cardioConfig || {})).toHaveLength(0);
+    });
+});
+
+test.describe('Workout Studio — Page 2 bottom padding clears the FAB row', () => {
+    test('organize view reserves vertical space below the bottom add-row', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Padding test');
+        await page.locator('#studioContinueBtn').click();
+
+        // The organize view's computed padding-bottom should leave room for
+        // the floating FAB row (~52px FAB + 16px viewport gap + safe-area).
+        const pad = await page.locator('#studioViewOrganize').evaluate(
+            (el) => parseInt(getComputedStyle(el).paddingBottom, 10) || 0
+        );
+        expect(pad).toBeGreaterThanOrEqual(80);
+
+        // The Activity / Note / Block trio should sit ABOVE the FAB row
+        // (their bottom edge clears the FAB row's top edge).
+        const rowRect = await page.locator('#studioBottomAddRow').boundingBox();
+        const fabRect = await page.locator('#studioFloatingFabs').boundingBox();
+        expect(rowRect).toBeTruthy();
+        expect(fabRect).toBeTruthy();
+        // The add-row's BOTTOM edge sits at or above the FAB row's TOP edge
+        // (small tolerance for sub-pixel rendering on different viewports).
+        expect(rowRect.y + rowRect.height).toBeLessThanOrEqual(fabRect.y + 4);
     });
 });
