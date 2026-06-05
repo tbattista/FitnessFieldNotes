@@ -3,6 +3,18 @@
  * Unified selection-first workout builder (MyFitnessPal-inspired)
  * ============================================================ */
 
+/* ------------------------------------------------------------------
+   UNIFIED BUTTON RADIUS
+   Every Bootstrap-classed button inside the studio shares the same
+   rounded-rectangle radius as the studio's bespoke buttons. Without
+   this, .btn-sm falls back to its own --bs-btn-border-radius-sm
+   (≈4px) and clashes with the 10px aesthetic used everywhere else
+   (Add Exercise, the Activity/Note/Block trio, the cardio offcanvas
+   pills, the floating count pill, etc.). The FAB buttons keep their
+   own 14px because they're large square targets.
+   ------------------------------------------------------------------ */
+.studio .btn { border-radius: 10px; }
+
 .studio-container {
   padding-top: 0 !important;
   padding-bottom: 96px;
@@ -1151,7 +1163,7 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   padding: 0.7rem 1rem;
   background: transparent;
   border: 1px dashed rgba(0, 0, 0, 0.15);
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--bs-body-color);
   font-size: 0.9rem;
   font-weight: 600;

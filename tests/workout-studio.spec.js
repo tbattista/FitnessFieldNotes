@@ -2860,3 +2860,35 @@ test.describe('Workout Studio — Page 2 bottom padding clears the FAB row', () 
         expect(rowRect.y + rowRect.height).toBeLessThanOrEqual(fabRect.y + 4);
     });
 });
+
+test.describe('Workout Studio — all studio buttons share the same 10px radius', () => {
+    async function setupCard(page) {
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Radius test');
+        await page.locator('#studioContinueBtn').click();
+    }
+
+    test('Page 2 buttons (Import, Reorder, Add Exercise, Activity, Note, Block) all = 10px', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await setupCard(page);
+
+        // Add a second exercise so Reorder is visible too (it needs ≥2 items)
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
+        await page.locator('.studio-row').nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+
+        const ids = [
+            '#studioImportPage2Btn',
+            '#studioReorderBtn',
+            '#studioAddMoreBtn',
+            '#studioAddActivityBtn',
+            '#studioAddNoteBtn',
+            '#studioAddBlockBtn',
+        ];
+        for (const id of ids) {
+            await expect(page.locator(id)).toHaveCSS('border-radius', '10px');
+        }
+    });
+});
