@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-09" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-10" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -293,6 +293,15 @@
                     <!-- Rows injected by controller from the tray -->
                   </div>
 
+                  <!-- Bottom of the list: a soft 'Add another exercise' button
+                       that drops the user back into Page 1 to pick more.
+                       Mirrors the legacy builder's 'Add Exercise' affordance
+                       sitting at the end of the card list. -->
+                  <button class="studio-add-more-btn" id="studioAddMoreBtn" type="button" hidden>
+                    <i class="bx bx-plus"></i>
+                    <span>Add another exercise</span>
+                  </button>
+
                   <div class="studio-organize-empty" id="studioOrganizeEmpty" hidden>
                     <i class="bx bx-list-ul"></i>
                     <p>No exercises selected yet — go back and add a few.</p>
@@ -414,6 +423,6 @@
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-09"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-10"></script>
   </body>
 </html>

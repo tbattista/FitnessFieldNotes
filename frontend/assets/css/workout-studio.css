@@ -1137,6 +1137,44 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
 .studio-reorder-btn .bx,
 .studio-add-note-btn .bx { font-size: 1rem; line-height: 1; }
 
+/* Bottom-of-list 'Add another exercise' button — soft dashed surface so it
+   doesn't compete visually with the populated cards above it. Sits between
+   the card list and the status div, hidden when the tray is empty
+   (the picker is the natural starting point in that case). */
+.studio-add-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  color: var(--bs-body-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.studio-add-more-btn:hover,
+.studio-add-more-btn:focus-visible {
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+  background: rgba(201, 124, 93, 0.06);
+  outline: none;
+}
+.studio-add-more-btn .bx { font-size: 1.1rem; }
+.studio-add-more-btn[hidden] { display: none; }
+[data-bs-theme="dark"] .studio-add-more-btn {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+[data-bs-theme="dark"] .studio-add-more-btn:hover,
+[data-bs-theme="dark"] .studio-add-more-btn:focus-visible {
+  background: rgba(201, 124, 93, 0.12);
+}
+
 .studio-block {
   background: rgba(0, 0, 0, 0.025);
   border-radius: 14px;

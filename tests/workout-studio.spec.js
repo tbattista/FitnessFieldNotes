@@ -2458,3 +2458,37 @@ test.describe('Cardio editor — newly-inserted More pill flashes for visibility
         await expect(pill).toHaveClass(/studio-pill-just-added/);
     });
 });
+
+test.describe('Workout Studio — "Add another exercise" + new-block prepend', () => {
+    test('Bottom "Add another exercise" button returns to selection view', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+
+        // Visible at the bottom of the list once we have at least one card
+        const addMore = page.locator('#studioAddMoreBtn');
+        await expect(addMore).toBeVisible();
+
+        await addMore.click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+    });
+
+    test('New block is prepended (appears at top of the organize list)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        // Add 2 exercises so there's a clear "existing list" to prepend against
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await rows.nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Prepend test');
+        await page.locator('#studioContinueBtn').click();
+
+        // Add a block — it should land at the top, not below the existing cards
+        await page.locator('#studioAddBlockBtn').click();
+
+        const firstChild = page.locator('#studioOrganizeList > *').first();
+        await expect(firstChild).toHaveClass(/studio-block/);
+    });
+});

@@ -179,6 +179,7 @@
       this.dom.fabSave = document.getElementById('studioFabSave');
       this.dom.fabGo = document.getElementById('studioFabGo');
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
+      this.dom.addMoreBtn = document.getElementById('studioAddMoreBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
       this.dom.addNoteBtn = document.getElementById('studioAddNoteBtn');
 
@@ -1205,6 +1206,11 @@
       if (this.dom.addBlockBtn) {
         this.dom.addBlockBtn.addEventListener('click', () => this._createBlock());
       }
+      if (this.dom.addMoreBtn) {
+        // Bottom-of-list shortcut → drop the user back into Page 1's
+        // picker so they can add more exercises to the same workout.
+        this.dom.addMoreBtn.addEventListener('click', () => this._showView('select'));
+      }
 
       if (this.dom.reorderBtn) {
         this.dom.reorderBtn.addEventListener('click', () => this._openReorderSheet());
@@ -1299,14 +1305,22 @@
     _createBlock() {
       const blockId = `block-${Date.now()}-${this._blockSeq++}`;
       this.blocks.set(blockId, { name: '', instanceIds: [] });
-      this.organizeOrder.push({ kind: 'block', blockId });
+      // Prepend, not append — a freshly-added block should appear at the
+      // top of the list so the user can see it (and start filling it)
+      // without scrolling past the existing cards.
+      this.organizeOrder.unshift({ kind: 'block', blockId });
       this._renderOrganize();
-      // Focus the new block's name input so the user can type immediately
+      // Focus the new block's name input + scroll it into view so the
+      // user knows where it landed (the page may have been scrolled down
+      // before they tapped Block).
       requestAnimationFrame(() => {
         const node = this.dom.organizeList && this.dom.organizeList.querySelector(
           `.studio-block[data-block-id="${blockId}"] .studio-block-name-input`
         );
-        if (node) node.focus();
+        if (node) {
+          node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          node.focus();
+        }
       });
     }
 
@@ -1477,6 +1491,10 @@
       // Add-Block + Reorder + Add-Note are irrelevant on the dead-end empty state.
       if (this.dom.addBlockBtn) this.dom.addBlockBtn.hidden = !hasExercises;
       if (this.dom.addNoteBtn) this.dom.addNoteBtn.hidden = !hasExercises;
+      // The bottom-of-list 'Add another exercise' button is only useful
+      // once at least one card is rendered — on the empty state the user
+      // is implicitly directed to the picker via the section text.
+      if (this.dom.addMoreBtn) this.dom.addMoreBtn.hidden = !hasExercises;
       // Reorder needs at least 2 items in the organize order to be useful.
       if (this.dom.reorderBtn) {
         this.dom.reorderBtn.hidden = !hasExercises || this.organizeOrder.length < 2;
