@@ -261,8 +261,11 @@
             const savedWorkout = await response.json();
             console.log('✅ Workout saved, opening editor:', savedWorkout);
 
-            // Redirect to workout builder with the saved workout ID
-            window.location.href = `/workout-builder.html?id=${savedWorkout.id}`;
+            // 'Save and Edit' from the public workouts library — open the
+            // copy in the studio (new default editor) so the user gets the
+            // modern picker + organize flow. Builder still reachable via
+            // the per-card 'Edit in Builder' menu item from the library.
+            window.location.href = `/workout-studio.html?id=${savedWorkout.id}`;
 
         } catch (error) {
             console.error('❌ Error saving workout:', error);

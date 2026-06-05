@@ -238,8 +238,10 @@
                 variant: 'primary',
                 action: function() {
                     console.log('➕ Create new workout FAB clicked');
-                    // Navigate with URL parameter (sessionStorage no longer used)
-                    window.location.href = 'workout-builder.html?new=true';
+                    // New workouts now open in the studio (the new default
+                    // editor). Builder remains reachable via 'Edit in Builder'
+                    // on existing workouts + the Tabata path on workout-database.
+                    window.location.href = 'workout-studio.html?new=true';
                 }
             },
             // Hidden search FAB config (renders the morphing search elements but triggered by button)

@@ -105,6 +105,7 @@
       // "workout not found". Mirror the builder's pattern and gate the
       // loader on waitForAuthReady().
       const urlWorkoutId = this._readWorkoutIdFromUrl();
+      const isExplicitNew = this._urlHasNewFlag();
       if (urlWorkoutId) {
         this._showLoadingState();
         this._waitForDataManagerReady()
@@ -113,6 +114,13 @@
             console.error('[WorkoutStudio] Failed to load workout:', err);
             this._showLoadErrorState(err);
           });
+      } else if (isExplicitNew) {
+        // ?new=true → user clicked a 'New Workout' CTA from the dashboard
+        // or library. Bypass the in-progress draft so they get a clean
+        // start. Drop the draft so a later natural revisit doesn't
+        // resurrect it either — they chose to abandon it.
+        if (window.StudioDraftService) window.StudioDraftService.clear();
+        this._hideDraftBanner();
       } else {
         this._restoreDraftIfPresent();
       }
@@ -758,6 +766,16 @@
         return id && String(id).trim() ? String(id).trim() : null;
       } catch (_err) {
         return null;
+      }
+    }
+
+    /** True when the URL signals an explicit New Workout CTA (?new=true). */
+    _urlHasNewFlag() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('new') === 'true';
+      } catch (_err) {
+        return false;
       }
     }
 

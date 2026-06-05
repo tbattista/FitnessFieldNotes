@@ -262,11 +262,13 @@ function initializeComponents() {
                 }
             ],
             // Configure which actions appear in dropdown menu.
-            // 'studio' is the transitional dual entry — sits next to 'edit'
-            // (Builder) until Studio fully replaces Builder.
+            // 'studio' is now the primary editor (the New Workout CTAs all
+            // open the studio); 'edit' (Builder) sits below it as the
+            // escape hatch for users who prefer the legacy editor or need
+            // Tabata mode (which the studio doesn't have yet).
             // 'permanent-delete' is the hard-delete with type-to-confirm,
             // distinct from 'delete' which still routes to Archive.
-            dropdownActions: ['start', 'history', 'edit', 'studio', 'duplicate', 'share', 'delete', 'permanent-delete'],
+            dropdownActions: ['start', 'history', 'studio', 'edit', 'duplicate', 'share', 'delete', 'permanent-delete'],
             // View details callback for dropdown
             onViewDetails: (workout) => viewWorkoutDetails(workout.id),
             // Card tap also opens detail view
@@ -770,11 +772,13 @@ async function viewWorkoutDetails(workoutId) {
 }
 
 /**
- * Create new workout - Navigate to editor
+ * Create new workout — opens the studio (the new default editor).
+ * Tabata still routes to the builder via the explicit menu item, since
+ * the studio doesn't have a Tabata mode yet.
  */
 function createNewWorkout() {
     console.log('➕ Creating new workout');
-    window.location.href = 'workout-builder.html?new=true';
+    window.location.href = 'workout-studio.html?new=true';
 }
 
 /**

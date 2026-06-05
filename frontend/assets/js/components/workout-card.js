@@ -141,21 +141,23 @@ class WorkoutCard {
             }
         }
 
+        // Studio is now the primary editor — render it first when both are
+        // configured. Builder (Edit in Builder) becomes the secondary
+        // escape hatch for Tabata workouts + users who prefer the legacy UI.
+        if (dropdownActions.includes('studio')) {
+            menuItems += `
+                    <li>
+                        <a class="dropdown-item" href="javascript:void(0);" data-action="studio">
+                            <i class="bx bx-grid-alt me-2"></i>Edit Workout
+                        </a>
+                    </li>`;
+        }
+
         if (dropdownActions.includes('edit')) {
             menuItems += `
                     <li>
                         <a class="dropdown-item" href="javascript:void(0);" data-action="edit">
                             <i class="bx bx-edit me-2"></i>Edit in Builder
-                        </a>
-                    </li>`;
-        }
-
-        if (dropdownActions.includes('studio')) {
-            menuItems += `
-                    <li>
-                        <a class="dropdown-item" href="javascript:void(0);" data-action="studio">
-                            <i class="bx bx-grid-alt me-2"></i>Edit in Studio
-                            <span class="badge bg-label-primary ms-2" style="font-size: 0.65rem;">New</span>
                         </a>
                     </li>`;
         }

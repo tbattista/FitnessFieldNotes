@@ -2697,3 +2697,61 @@ test.describe('Workout Studio — save payload integrity', () => {
         expect(groups[0].group_name == null).toBe(true);
     });
 });
+
+test.describe('Workout Studio — promoted to default editor', () => {
+    test('?new=true clears any existing draft so the studio starts fresh', async ({ page }) => {
+        // Seed a draft so the natural studio open would normally restore it
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.evaluate(() => {
+            if (!window.StudioDraftService) return;
+            window.StudioDraftService.save({
+                workoutName: 'Stale draft',
+                tags: ['old'],
+                description: 'Should be cleared',
+                items: [],
+                organizeOrder: [],
+                blocks: [],
+                notes: [],
+                organizeState: [],
+            });
+        });
+
+        // Open with ?new=true → draft should be wiped
+        await page.goto(`${BASE}/workout-studio.html?new=true`);
+        await page.waitForFunction(() => !!window.workoutStudio, null, { timeout: 10000 });
+        const draftRaw = await page.evaluate(() => {
+            try { return localStorage.getItem('ffn:studio:draft:v1'); } catch (_) { return null; }
+        });
+        expect(draftRaw == null || draftRaw === '').toBeTruthy();
+
+        // Workout name input is empty / placeholder-only (no Stale draft text)
+        const nameVal = await page.locator('#studioWorkoutNameInput').inputValue();
+        expect(nameVal).not.toBe('Stale draft');
+    });
+});
+
+test.describe('Workout library — Edit Workout opens studio first', () => {
+    test('Studio menu item renders before "Edit in Builder" on workout cards', async ({ page }) => {
+        // workout-database.html loads workout-card.js — drive the card
+        // render programmatically there since the database view itself
+        // needs auth + workouts data we'd otherwise have to mock.
+        await page.goto(`${BASE}/workout-database.html`);
+        await page.waitForFunction(() => typeof window.WorkoutCard !== 'undefined', null, { timeout: 15000 });
+
+        const order = await page.evaluate(() => {
+            const card = new window.WorkoutCard(
+                { id: 'wkt-1', name: 'Test', tags: [], is_archived: false },
+                { dropdownActions: ['studio', 'edit'], actions: [] }
+            );
+            const el = card.render();
+            const items = Array.from(el.querySelectorAll('[data-action]'))
+                .map((n) => n.dataset.action)
+                .filter((a) => a === 'studio' || a === 'edit');
+            return items;
+        });
+
+        // Studio renders before Edit in Builder
+        expect(order[0]).toBe('studio');
+        expect(order[1]).toBe('edit');
+    });
+});
