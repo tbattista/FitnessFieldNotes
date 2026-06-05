@@ -1575,6 +1575,13 @@ html[data-bs-theme="dark"] .studio-row-add-badge {
   border-left: 3px solid rgb(234, 179, 8);
   border-radius: 10px;
 }
+/* Notes inside a block — same look as cards-in-blocks (slightly inset
+   left margin so the block's left edge stays visually owned by the
+   block itself, not the note). */
+.studio-block .studio-block-children .studio-note-card,
+.studio-note-card.studio-note-card-in-block {
+  margin-left: 0.25rem;
+}
 .studio-note-icon {
   color: rgb(180, 130, 10);
   font-size: 1.1rem;

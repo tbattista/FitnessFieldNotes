@@ -2492,3 +2492,134 @@ test.describe('Workout Studio — "Add another exercise" + new-block prepend', (
         await expect(firstChild).toHaveClass(/studio-block/);
     });
 });
+
+test.describe('Workout Studio — notes inside blocks', () => {
+    async function setupTwoExercisesAndBlock(page) {
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await rows.nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Notes-in-blocks test');
+        await page.locator('#studioContinueBtn').click();
+        await page.locator('#studioAddBlockBtn').click();
+        await page.locator('.studio-block-name-input').first().fill('Warmup');
+        await page.locator('.studio-block-name-input').first().press('Enter');
+    }
+
+    test('note menu offers "Move to: <block>" once a block exists', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await setupTwoExercisesAndBlock(page);
+
+        // Add a top-level note
+        await page.locator('#studioAddNoteBtn').click();
+        const note = page.locator('.studio-note-card').first();
+        await note.locator('[data-action="menu"]').click();
+
+        // The note menu should now show a "Move to: Warmup" entry
+        const moveToBlock = note.locator('[data-action="move-to-block"]');
+        await expect(moveToBlock).toHaveCount(1);
+        await expect(moveToBlock).toContainText('Warmup');
+    });
+
+    test('moving a note into a block renders it inside the block children slot', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await setupTwoExercisesAndBlock(page);
+
+        await page.locator('#studioAddNoteBtn').click();
+        // Type something so the note is non-trivial
+        await page.locator('.studio-note-card .studio-note-textarea').first().fill('Warm up slow');
+
+        // Drive the move programmatically — the menu's open/render-destroy
+        // timing makes the click flow brittle in the test runner. We're
+        // testing the move-to-block logic, not the menu UX (which has its
+        // own 'menu offers Move to' spec above).
+        await page.evaluate(() => {
+            const ws = window.workoutStudio;
+            const noteId = Array.from(ws.notes.keys())[0];
+            const blockId = Array.from(ws.blocks.keys())[0];
+            ws._moveNoteToBlock(noteId, blockId);
+        });
+
+        // The note now lives inside the block's children slot
+        await expect(
+            page.locator('.studio-block .studio-block-children .studio-note-card')
+        ).toHaveCount(1);
+
+        // Top level no longer holds the note
+        await expect(
+            page.locator('#studioOrganizeList > .studio-note-card')
+        ).toHaveCount(0);
+
+        // The block carries the in-block class on the note for visual sync
+        await expect(
+            page.locator('.studio-block .studio-note-card')
+        ).toHaveClass(/studio-note-card-in-block/);
+    });
+
+    test('"Move out of block" returns the note to top-level after the block', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await setupTwoExercisesAndBlock(page);
+
+        await page.locator('#studioAddNoteBtn').click();
+        // Move into block programmatically (menu UX covered elsewhere)
+        await page.evaluate(() => {
+            const ws = window.workoutStudio;
+            const noteId = Array.from(ws.notes.keys())[0];
+            const blockId = Array.from(ws.blocks.keys())[0];
+            ws._moveNoteToBlock(noteId, blockId);
+        });
+        await expect(page.locator('.studio-block .studio-note-card')).toHaveCount(1);
+
+        // Now move it back out programmatically
+        await page.evaluate(() => {
+            const ws = window.workoutStudio;
+            const noteId = Array.from(ws.notes.keys())[0];
+            ws._moveNoteOutOfBlock(noteId);
+        });
+
+        await expect(page.locator('#studioOrganizeList > .studio-note-card')).toHaveCount(1);
+        await expect(page.locator('.studio-block .studio-block-children .studio-note-card')).toHaveCount(0);
+    });
+
+    test('save payload emits notes-in-block as top-level template_notes at the block slot', async ({ page }) => {
+        let postedBody = null;
+        await page.route('**/api/v3/workouts', async (route) => {
+            if (route.request().method() === 'POST') {
+                try { postedBody = JSON.parse(route.request().postData() || '{}'); }
+                catch (_) { postedBody = null; }
+                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'wkt-1', name: postedBody?.name }) });
+            } else { await route.fallback(); }
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await setupTwoExercisesAndBlock(page);
+        await page.evaluate(() => { delete window.dataManager; });
+
+        // Add a note + move into block + move both exercises in too
+        await page.locator('#studioAddNoteBtn').click();
+        await page.locator('.studio-note-card .studio-note-textarea').first().fill('Block note');
+        await page.evaluate(() => {
+            const ws = window.workoutStudio;
+            const noteId = Array.from(ws.notes.keys())[0];
+            const blockId = Array.from(ws.blocks.keys())[0];
+            ws._moveNoteToBlock(noteId, blockId);
+        });
+
+        // Move the 2 loose cards into the block
+        for (let i = 0; i < 2; i++) {
+            const card = page.locator('#studioOrganizeList > .studio-card').first();
+            await card.locator('[data-action="menu"]').click();
+            await card.locator('[data-action="move-to-block"]').click();
+        }
+
+        await page.locator('#studioFabSave').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/saved/i, { timeout: 5000 });
+
+        expect(postedBody).toBeTruthy();
+        const tn = (postedBody.template_notes || []).find((n) => n.content === 'Block note');
+        expect(tn).toBeTruthy();
+        // The block has 2 exercises starting at flat slot 0; the in-block
+        // note's order_index should land at 0 (block's first slot).
+        expect(tn.order_index).toBe(0);
+    });
+});

@@ -23,10 +23,15 @@
   }
 
   class StudioNoteCard {
-    constructor({ noteId, content, callbacks } = {}) {
+    constructor({ noteId, content, callbacks, inBlock, blockOptions } = {}) {
       this.noteId = noteId;
       this.content = String(content || '');
       this.callbacks = callbacks || {};
+      // Notes mirror exercise cards' block-membership shape:
+      //   inBlock: { blockId, blockName } | null
+      //   blockOptions: [{ blockId, name }] — candidates for "Move to: …"
+      this.inBlock = inBlock || null;
+      this.blockOptions = Array.isArray(blockOptions) ? blockOptions : [];
       this.el = null;
       this._handleDocClickForMenu = null;
     }
@@ -62,8 +67,11 @@
     _templateHtml() {
       const safeId = escapeHtml(this.noteId);
       const safeContent = escapeHtml(this.content);
+      const inBlockClass = this.inBlock ? ' studio-note-card-in-block' : '';
+      const inBlockAttr = this.inBlock ? ` data-block-id="${escapeHtml(this.inBlock.blockId)}"` : '';
+      const moveItems = this._buildMoveMenuItems();
       return `
-        <div class="studio-note-card" role="listitem" data-note-id="${safeId}">
+        <div class="studio-note-card${inBlockClass}" role="listitem" data-note-id="${safeId}"${inBlockAttr}>
           <span class="studio-note-icon" aria-hidden="true"><i class="bx bx-note"></i></span>
           <textarea class="studio-note-textarea"
                     placeholder="Type a note (e.g. focus on form, drop set on final rep)"
@@ -84,6 +92,7 @@
               <button class="studio-note-menu-item" role="menuitem" data-action="move-down" type="button">
                 <i class="bx bx-down-arrow-alt"></i> Move down
               </button>
+              ${moveItems}
               <button class="studio-note-menu-item studio-note-menu-item-danger"
                       role="menuitem" data-action="delete" type="button">
                 <i class="bx bx-trash"></i> Remove note
@@ -92,6 +101,37 @@
           </div>
         </div>
       `;
+    }
+
+    /**
+     * Same block-membership menu items the exercise card builds — a note
+     * can be moved into any block (except its current one) and out of its
+     * current block back to top-level.
+     */
+    _buildMoveMenuItems() {
+      const parts = [];
+      if (this.inBlock) {
+        parts.push(`
+          <button class="studio-note-menu-item" role="menuitem" data-action="move-out-of-block" type="button">
+            <i class="bx bx-exit"></i> Move out of block
+          </button>
+        `);
+      }
+      const targets = this.blockOptions.filter((b) => !this.inBlock || b.blockId !== this.inBlock.blockId);
+      if (targets.length > 0) {
+        for (const b of targets) {
+          const safeName = escapeHtml(b.name || '');
+          const safeBlockId = escapeHtml(b.blockId);
+          const label = safeName || '<span class="studio-card-menu-muted">(unnamed)</span>';
+          parts.push(`
+            <button class="studio-note-menu-item" role="menuitem"
+                    data-action="move-to-block" data-block-id="${safeBlockId}" type="button">
+              <i class="bx bx-collection"></i> Move to: ${label}
+            </button>
+          `);
+        }
+      }
+      return parts.join('');
     }
 
     _bindEvents() {
@@ -118,8 +158,9 @@
           if (!item) return;
           e.stopPropagation();
           const action = item.dataset.action;
+          const blockId = item.dataset.blockId || null;
           this._toggleMenu(true); // close
-          if (action) this._fire('onMenuAction', action);
+          if (action) this._fire('onMenuAction', action, blockId);
         });
         this._handleDocClickForMenu = (e) => {
           if (!menu.hidden && !this.el.contains(e.target)) this._toggleMenu(true);

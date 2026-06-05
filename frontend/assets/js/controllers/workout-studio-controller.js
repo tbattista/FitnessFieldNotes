@@ -455,7 +455,7 @@
             // Start a new block for this run
             const newBlockId = `block-${Date.now()}-${this._blockSeq++}`;
             const blockName = String(group.group_name || group.block_name || '').trim();
-            this.blocks.set(newBlockId, { name: blockName, instanceIds: [] });
+            this.blocks.set(newBlockId, { name: blockName, instanceIds: [], noteIds: [] });
             // Find this entry in organizeOrder (just appended as a card) and
             // replace it with a block whose first child is this instance.
             const lastIdx = this.organizeOrder.length - 1;
@@ -916,7 +916,7 @@
             const iid = this._addLoadedExerciseToTray(ex, sIdx, eIdx);
             if (iid) instanceIds.push(iid);
           });
-          this.blocks.set(blockId, { name: blockName, instanceIds });
+          this.blocks.set(blockId, { name: blockName, instanceIds, noteIds: [] });
           this.organizeOrder.push({ kind: 'block', blockId });
         }
       });
@@ -940,7 +940,7 @@
           if (bid !== currentBlockKey) {
             const newBlockId = `block-${Date.now()}-${this._blockSeq++}`;
             const blockName = String(group.group_name || group.block_name || '').trim();
-            this.blocks.set(newBlockId, { name: blockName, instanceIds: [instanceId] });
+            this.blocks.set(newBlockId, { name: blockName, instanceIds: [instanceId], noteIds: [] });
             this.organizeOrder.push({ kind: 'block', blockId: newBlockId });
             currentBlockKey = bid;
             currentBlockId = newBlockId;
@@ -1064,6 +1064,7 @@
           this.blocks = new Map(draft.blocks.map(([k, v]) => [k, {
             name: String(v?.name || ''),
             instanceIds: Array.isArray(v?.instanceIds) ? v.instanceIds.slice() : [],
+            noteIds: Array.isArray(v?.noteIds) ? v.noteIds.slice() : [],
           }]));
         }
         if (Array.isArray(draft.notes)) {
@@ -1170,6 +1171,7 @@
         blocks: Array.from(this.blocks.entries()).map(([k, v]) => [k, {
           name: v.name,
           instanceIds: v.instanceIds.slice(),
+          noteIds: Array.isArray(v.noteIds) ? v.noteIds.slice() : [],
         }]),
         notes: Array.from(this.notes.entries()).map(([k, v]) => [k, { content: v.content }]),
         organizeState: Array.from(this.organizeState.entries()).map(([k, v]) => [k, Object.assign({}, v)]),
@@ -1244,13 +1246,19 @@
       }
     }
 
-    _onNoteMenuAction(noteId, action) {
+    _onNoteMenuAction(noteId, action, blockId) {
       switch (action) {
         case 'move-up':
-          this._moveOrderEntry({ kind: 'note', noteId }, -1);
+          this._moveNoteUpDown(noteId, -1);
           break;
         case 'move-down':
-          this._moveOrderEntry({ kind: 'note', noteId }, +1);
+          this._moveNoteUpDown(noteId, +1);
+          break;
+        case 'move-to-block':
+          if (blockId) this._moveNoteToBlock(noteId, blockId);
+          break;
+        case 'move-out-of-block':
+          this._moveNoteOutOfBlock(noteId);
           break;
         case 'delete':
           this._deleteNote(noteId);
@@ -1258,11 +1266,87 @@
       }
     }
 
-    _deleteNote(noteId) {
-      this.notes.delete(noteId);
+    /**
+     * Move a note up/down. If the note is inside a block, the reorder
+     * happens within the block's noteIds. Otherwise it's a top-level
+     * organize-order shuffle (existing behavior).
+     */
+    _moveNoteUpDown(noteId, delta) {
+      const inBlock = this._findBlockContainingNote(noteId);
+      if (inBlock) {
+        const arr = inBlock.block.noteIds;
+        const i = arr.indexOf(noteId);
+        const j = i + delta;
+        if (i < 0 || j < 0 || j >= arr.length) return;
+        arr.splice(i, 1);
+        arr.splice(j, 0, noteId);
+        this._renderOrganize();
+      } else {
+        this._moveOrderEntry({ kind: 'note', noteId }, delta);
+      }
+    }
+
+    /**
+     * Add a note to a block's noteIds (at the end) and remove it from
+     * wherever it currently lives — either top-level organizeOrder or
+     * another block.
+     */
+    _moveNoteToBlock(noteId, blockId) {
+      const target = this.blocks.get(blockId);
+      if (!target) return;
+      // Strip from any current location first
       this.organizeOrder = this.organizeOrder.filter(
         (e) => !(e.kind === 'note' && e.noteId === noteId)
       );
+      this.blocks.forEach((b) => {
+        if (Array.isArray(b.noteIds)) {
+          const i = b.noteIds.indexOf(noteId);
+          if (i !== -1) b.noteIds.splice(i, 1);
+        }
+      });
+      if (!Array.isArray(target.noteIds)) target.noteIds = [];
+      if (!target.noteIds.includes(noteId)) target.noteIds.push(noteId);
+      this._renderOrganize();
+    }
+
+    /**
+     * Pop a note out of its block back to top-level organizeOrder. The
+     * note lands right after the block it was in so the user can see
+     * where it came from.
+     */
+    _moveNoteOutOfBlock(noteId) {
+      const inBlock = this._findBlockContainingNote(noteId);
+      if (!inBlock) return;
+      inBlock.block.noteIds = inBlock.block.noteIds.filter((id) => id !== noteId);
+      // Insert just after the host block in organizeOrder
+      const blockIdx = this.organizeOrder.findIndex(
+        (e) => e.kind === 'block' && e.blockId === inBlock.blockId
+      );
+      const insertAt = blockIdx >= 0 ? blockIdx + 1 : this.organizeOrder.length;
+      this.organizeOrder.splice(insertAt, 0, { kind: 'note', noteId });
+      this._renderOrganize();
+    }
+
+    _findBlockContainingNote(noteId) {
+      for (const [bid, b] of this.blocks.entries()) {
+        if (Array.isArray(b.noteIds) && b.noteIds.includes(noteId)) {
+          return { blockId: bid, block: b };
+        }
+      }
+      return null;
+    }
+
+    _deleteNote(noteId) {
+      this.notes.delete(noteId);
+      // Strip from top-level + any block's noteIds
+      this.organizeOrder = this.organizeOrder.filter(
+        (e) => !(e.kind === 'note' && e.noteId === noteId)
+      );
+      this.blocks.forEach((b) => {
+        if (Array.isArray(b.noteIds)) {
+          b.noteIds = b.noteIds.filter((id) => id !== noteId);
+        }
+      });
       this._renderOrganize();
     }
 
@@ -1304,7 +1388,12 @@
 
     _createBlock() {
       const blockId = `block-${Date.now()}-${this._blockSeq++}`;
-      this.blocks.set(blockId, { name: '', instanceIds: [] });
+      // noteIds: notes that live inside this block. They render at the
+      // top of the block's children area (above the exercise cards) and
+      // hoist back to top-level template_notes on save — the backend
+      // section model doesn't carry notes, so the roundtrip is lossy by
+      // design: notes inside blocks pop out as top-level notes on reload.
+      this.blocks.set(blockId, { name: '', instanceIds: [], noteIds: [] });
       // Prepend, not append — a freshly-added block should appear at the
       // top of the list so the user can see it (and start filling it)
       // without scrolling past the existing cards.
@@ -1353,10 +1442,13 @@
         (e) => e.kind === 'block' && e.blockId === blockId
       );
       if (blockOrderIdx === -1) return;
-      // Promote each child instanceId back to a top-level card at the block's position,
-      // preserving their internal order.
-      const promoted = block.instanceIds.map((iid) => ({ kind: 'card', instanceId: iid }));
-      this.organizeOrder.splice(blockOrderIdx, 1, ...promoted);
+      // Promote each child (notes first, then cards) back to top level at
+      // the block's slot, preserving internal order. Matches the visual
+      // order they were rendered in inside the block.
+      const noteIds = Array.isArray(block.noteIds) ? block.noteIds : [];
+      const promotedNotes = noteIds.map((nid) => ({ kind: 'note', noteId: nid }));
+      const promotedCards = block.instanceIds.map((iid) => ({ kind: 'card', instanceId: iid }));
+      this.organizeOrder.splice(blockOrderIdx, 1, ...promotedNotes, ...promotedCards);
       this.blocks.delete(blockId);
       this._renderOrganize();
     }
@@ -1527,9 +1619,13 @@
           const noteComp = new window.StudioNoteCard({
             noteId: entry.noteId,
             content: note.content,
+            // Top-level note — no inBlock, but pass blockOptions so the
+            // 'Move to: <block>' menu items can populate when blocks exist.
+            inBlock: null,
+            blockOptions,
             callbacks: {
               onChange: (noteId, partial) => this._onNoteChange(noteId, partial),
-              onMenuAction: (noteId, action) => this._onNoteMenuAction(noteId, action),
+              onMenuAction: (noteId, action, blockId) => this._onNoteMenuAction(noteId, action, blockId),
             },
           });
           const noteNode = noteComp.render();
@@ -1552,20 +1648,49 @@
           blockComp.setIndex(idx, total);
           this.studioBlocks.set(entry.blockId, blockComp);
 
-          // Mount each child card into the block's children slot
+          // Mount the block's children into its slot: notes first (they
+          // typically describe the block — "warm up slow", "focus on
+          // form"), then exercise cards. The childCount used for the
+          // block's header pill counts BOTH so the user sees a true total.
           const slot = blockComp.getChildrenSlot();
-          const childCount = block.instanceIds.length;
+          const noteIds = Array.isArray(block.noteIds) ? block.noteIds : [];
+          const cardCount = block.instanceIds.length;
+          const childCount = noteIds.length + cardCount;
+          const inBlockMeta = { blockId: entry.blockId, blockName: block.name || '' };
+
+          noteIds.forEach((nid, nIdx) => {
+            const note = this.notes.get(nid);
+            if (!note || !window.StudioNoteCard) return;
+            const noteComp = new window.StudioNoteCard({
+              noteId: nid,
+              content: note.content,
+              inBlock: inBlockMeta,
+              blockOptions,
+              callbacks: {
+                onChange: (noteId, partial) => this._onNoteChange(noteId, partial),
+                onMenuAction: (noteId, action, blockId) => this._onNoteMenuAction(noteId, action, blockId),
+              },
+            });
+            const noteNode = noteComp.render();
+            slot.appendChild(noteNode);
+            // Only the note's position WITHIN the block matters for move
+            // up/down inside the slot — bound to the full childCount so
+            // edge buttons disable at the absolute ends.
+            noteComp.setIndex(nIdx, childCount);
+            this.studioNotes.set(nid, noteComp);
+          });
+
           block.instanceIds.forEach((iid, childIdx) => {
             const item = itemMap.get(iid);
             if (!item) return;
             const card = this._mountCard(item, {
-              idx: childIdx,
+              idx: noteIds.length + childIdx,
               total: childCount,
               container: slot,
               blockOptions,
-              inBlock: { blockId: entry.blockId, blockName: block.name || '' },
+              inBlock: inBlockMeta,
             });
-            card.setIndex(childIdx, childCount);
+            card.setIndex(noteIds.length + childIdx, childCount);
           });
           blockComp.setChildCount(childCount);
         }
@@ -1883,6 +2008,22 @@
             })
             .filter(Boolean);
           if (exercises.length === 0) return;
+          // Any notes living inside this block hoist out to top-level
+          // template_notes, positioned at the block's first exercise slot.
+          // The backend section model has no in-section note slot, so
+          // this is a deliberately lossy roundtrip — on reload the notes
+          // appear immediately before the block (acceptable trade for
+          // keeping the backend simple).
+          const noteIds = Array.isArray(block.noteIds) ? block.noteIds : [];
+          noteIds.forEach((nid) => {
+            const note = this.notes.get(nid);
+            if (!note) return;
+            template_notes.push({
+              id: nid,
+              content: String(note.content || '').slice(0, 500),
+              order_index: flatGroupCount,
+            });
+          });
           sections.push({
             section_id: `section-${ts}-${idx}`,
             type: 'standard',
