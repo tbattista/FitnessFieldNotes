@@ -1132,6 +1132,7 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
 }
 .studio-add-block-btn,
 .studio-reorder-btn,
+.studio-import-page2-btn,
 .studio-add-note-btn {
   height: 32px;
   padding: 0 0.7rem;
@@ -1147,6 +1148,7 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
 }
 .studio-add-block-btn .bx,
 .studio-reorder-btn .bx,
+.studio-import-page2-btn .bx,
 .studio-add-note-btn .bx { font-size: 1rem; line-height: 1; }
 
 /* Bottom-of-list 'Add another exercise' button — soft dashed surface so it
@@ -1233,18 +1235,10 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   border-color: rgba(96, 165, 250, 0.4);
 }
 
-/* Page-2 Import button picks up the brand peach (primary) so the two
-   header buttons read as a deliberate pair (orange + neutral). */
-.studio-import-page2-btn {
-  color: var(--bs-primary);
-  border-color: var(--bs-primary);
-}
-.studio-import-page2-btn:hover,
-.studio-import-page2-btn:focus-visible {
-  background: rgba(201, 124, 93, 0.08);
-  color: var(--bs-primary);
-  border-color: var(--bs-primary);
-}
+/* Page-2 Import button shares the same outline-secondary style as Reorder
+   so the two header buttons read as a uniform pair — no color hierarchy
+   between them, just two equally-weighted secondary actions. */
+
 
 .studio-block {
   background: rgba(0, 0, 0, 0.025);
