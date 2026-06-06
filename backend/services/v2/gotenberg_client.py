@@ -42,6 +42,9 @@ class GotenbergClient:
             or os.getenv('GOTENBERG_URL')
             or _resolve_default_url()
         ).rstrip('/')
+        # Whether GOTENBERG_URL came from the environment (vs. a code default).
+        self.url_from_env = bool(gotenberg_url or os.getenv('GOTENBERG_URL'))
+        self.last_error: Optional[str] = None
         self.available = False
         self._check_availability()
 
@@ -60,18 +63,29 @@ class GotenbergClient:
                 )
                 self.available = response.status_code == 200
                 if self.available:
+                    self.last_error = None
                     return
                 last_error = f"HTTP {response.status_code}"
             except Exception as e:
-                last_error = str(e)
+                last_error = f"{type(e).__name__}: {e}"
 
         self.available = False
+        self.last_error = last_error
         logger.warning(
             "Gotenberg health check failed at %s/health after %d attempt(s): %s",
             self.gotenberg_url,
             HEALTH_CHECK_RETRIES,
             last_error,
         )
+
+    def diagnostics(self) -> dict:
+        """Return connection diagnostics for troubleshooting (no secrets)."""
+        return {
+            "gotenberg_url": self.gotenberg_url,
+            "url_from_env": self.url_from_env,
+            "available": self.available,
+            "last_error": self.last_error,
+        }
     
     def html_to_pdf(self, html_content: str, filename: str = "document.pdf") -> Optional[Path]:
         """

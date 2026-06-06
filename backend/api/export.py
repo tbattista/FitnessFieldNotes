@@ -182,5 +182,8 @@ async def get_export_status():
         "text_export": True,  # Always available
         "image_export": gotenberg_available,
         "print_export": gotenberg_available,
-        "gotenberg_status": "available" if gotenberg_available else "unavailable"
+        "gotenberg_status": "available" if gotenberg_available else "unavailable",
+        # Diagnostics: which URL was resolved and why a health check failed.
+        # No secrets are exposed (only the service URL the app is targeting).
+        "diagnostics": client.diagnostics(),
     }
