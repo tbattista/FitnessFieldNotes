@@ -275,7 +275,34 @@ export function createCardioEditor(config) {
                     // Update grid selection
                     typeGrid.querySelectorAll('.activity-type-btn').forEach(b => b.classList.remove('active'));
                     const existing = typeGrid.querySelector(`[data-activity-type="${typeId}"]`);
-                    if (existing) existing.classList.add('active');
+                    if (existing) {
+                        existing.classList.add('active');
+                    } else {
+                        // Picked activity isn't in the favorites row — insert a
+                        // temporary pill before the More button so the user can
+                        // see what they selected (and one-tap back to it)
+                        // without re-opening the picker. Session-only; gone on
+                        // next open unless they explicitly favorite it.
+                        const type = Registry.getById(typeId);
+                        if (type) {
+                            const pill = document.createElement('button');
+                            pill.type = 'button';
+                            pill.className = 'activity-type-btn active studio-pill-just-added';
+                            pill.dataset.activityType = typeId;
+                            pill.innerHTML = `<i class="bx ${escapeHtml(type.icon)}"></i><span>${escapeHtml(type.shortName)}</span>`;
+                            const moreBtnEl = typeGrid.querySelector('.activity-type-more-btn');
+                            if (moreBtnEl) typeGrid.insertBefore(pill, moreBtnEl);
+                            else typeGrid.appendChild(pill);
+                            // Scroll into view + flash so the user sees it
+                            // appear (the favorites row wraps to a new line
+                            // once the 8 default favorites are full, so the
+                            // new pill can land below the fold of the sheet).
+                            requestAnimationFrame(() => {
+                                pill.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                                setTimeout(() => pill.classList.remove('studio-pill-just-added'), 1400);
+                            });
+                        }
+                    }
                     updateConditionalFields(el, id, typeId);
                     calculatePace(el, id);
                 });

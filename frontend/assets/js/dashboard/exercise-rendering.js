@@ -101,14 +101,20 @@ function _buildPairsWellWithHTML(exercise, escapeHtml) {
             html += `
                 <div class="pairing-exercise-chip"
                      data-pairing-exercise-id="${ex.id}"
-                     role="button" tabindex="0"
                      title="${escapeHtml(category.description)}">
                     <span class="pairing-exercise-name">${escapeHtml(ex.name)}</span>
                     <span class="badge bg-label-secondary pairing-exercise-meta">${escapeHtml(ex.targetMuscleGroup || '')}</span>
+                    <button type="button" class="pairing-info-btn"
+                            data-exercise-id="${ex.id}"
+                            title="See exercise details"
+                            aria-label="See ${escapeHtml(ex.name)} details">
+                        <i class="bx bx-info-circle"></i>
+                    </button>
                     <button type="button" class="pairing-add-btn"
                             data-exercise-id="${ex.id}"
                             data-exercise-name="${escapeHtml(ex.name)}"
-                            title="Add to workout builder">
+                            title="Add to workout"
+                            aria-label="Add ${escapeHtml(ex.name)}">
                         <i class="bx bx-plus"></i>
                     </button>
                 </div>
@@ -777,19 +783,17 @@ async function deleteExercise(exerciseId) {
  */
 function _wirePairingChipClicks(container, navigateFn) {
     if (!container) return;
-    container.querySelectorAll('.pairing-exercise-chip').forEach(chip => {
-        chip.addEventListener('click', (e) => {
-            // Don't navigate if the add button was clicked
-            if (e.target.closest('.pairing-add-btn')) return;
-            const targetId = chip.dataset.pairingExerciseId;
+
+    // The chip body itself is no longer interactive — the two explicit
+    // action buttons (info / add) carry the affordances. The body just
+    // displays the exercise name and meta.
+
+    // Wire "Info" buttons → navigate to that exercise's detail view
+    container.querySelectorAll('.pairing-info-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const targetId = btn.dataset.exerciseId;
             if (targetId && navigateFn) navigateFn(targetId);
-        });
-        chip.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                const targetId = chip.dataset.pairingExerciseId;
-                if (targetId && navigateFn) navigateFn(targetId);
-            }
         });
     });
 

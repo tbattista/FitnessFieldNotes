@@ -369,7 +369,15 @@ async function restoreWorkoutFromArchive(workoutId, workoutName) {
  * Permanently delete a workout (from archived view)
  */
 async function permanentDeleteWorkout(workoutId, workoutName) {
-    ffnModalManager.confirm('Delete Permanently', `Permanently delete "${workoutName}"?\n\nThis cannot be undone.`, async () => {
+    const safeName = String(workoutName || 'Untitled Workout')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    const body = `
+        Permanently delete <strong>"${safeName}"</strong>?<br>
+        <span class="text-danger">This will NOT go to your archive. This cannot be undone.</span>
+    `;
+    const doDelete = async () => {
         try {
             console.log('🗑️ Permanently deleting workout:', workoutId);
             await window.dataManager.permanentDeleteWorkout(workoutId);
@@ -395,7 +403,20 @@ async function permanentDeleteWorkout(workoutId, workoutName) {
                 window.showToast('Failed to delete workout', 'error');
             }
         }
-    }, { confirmText: 'Delete Permanently', confirmClass: 'btn-danger', size: 'sm' });
+    };
+
+    // Prefer type-to-confirm if available; fall back to plain confirm.
+    if (typeof ffnModalManager.typeToConfirm === 'function') {
+        ffnModalManager.typeToConfirm('Delete permanently', body, 'delete', doDelete, {
+            confirmText: 'Delete permanently',
+            confirmClass: 'btn-danger',
+            size: 'sm',
+        });
+    } else {
+        ffnModalManager.confirm('Delete permanently', `Permanently delete "${workoutName}"? This cannot be undone.`, doDelete, {
+            confirmText: 'Delete permanently', confirmClass: 'btn-danger', size: 'sm',
+        });
+    }
 }
 
 /**

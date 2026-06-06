@@ -1,0 +1,2100 @@
+/* ============================================================
+ * Workout Studio — Phase 1, Commit 1
+ * Unified selection-first workout builder (MyFitnessPal-inspired)
+ * ============================================================ */
+
+/* ------------------------------------------------------------------
+   UNIFIED BUTTON RADIUS
+   Every Bootstrap-classed button inside the studio shares the same
+   rounded-rectangle radius as the studio's bespoke buttons. Without
+   this, .btn-sm falls back to its own --bs-btn-border-radius-sm
+   (≈4px) and clashes with the 10px aesthetic used everywhere else
+   (Add Exercise, the Activity/Note/Block trio, the cardio offcanvas
+   pills, the floating count pill, etc.). The FAB buttons keep their
+   own 14px because they're large square targets.
+   ------------------------------------------------------------------ */
+.studio .btn { border-radius: 10px; }
+
+.studio-container {
+  padding-top: 0 !important;
+  padding-bottom: 96px;
+  max-width: 760px;
+}
+
+.studio {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 4rem);
+}
+
+/* -------------------- Slim Header (workout meta card) -------------------- */
+.studio-slim-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem 0.5rem 0.7rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+  margin: 0.5rem 0.25rem 0;
+  transition: gap 0.15s ease;
+}
+/* Collapsed state: no trailing gap between name row and the hidden meta row */
+.studio-slim-header:not(.is-meta-expanded) { gap: 0; }
+
+.studio-slim-name-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.studio-slim-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 42px;
+  padding: 0 0.75rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  color: var(--bs-body-color);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* Chevron toggle button */
+.studio-meta-toggle {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-secondary-color);
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-meta-toggle .bx {
+  font-size: 1.4rem;
+  transition: transform 0.18s ease;
+}
+.studio-meta-toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--bs-body-color);
+}
+.studio-slim-header.is-meta-expanded .studio-meta-toggle .bx {
+  transform: rotate(180deg);
+}
+/* Filled-state indicator dot: shown when either Tags or Description has text.
+   Driven by :has(input:not(:placeholder-shown)) so no JS class flip is needed. */
+.studio-slim-header:has(.studio-meta-input:not(:placeholder-shown)) .studio-meta-toggle::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bs-primary);
+}
+.studio-slim-name::placeholder {
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+}
+.studio-slim-name:focus {
+  outline: none;
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 2px rgba(201, 124, 93, 0.12);
+}
+
+/* Tags + Description metadata row */
+.studio-meta-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.studio-meta-field {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 34px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  cursor: text;
+  transition: border-color 0.12s, background 0.12s;
+}
+.studio-meta-field:focus-within {
+  border-color: var(--bs-primary);
+  background: var(--bs-body-bg);
+}
+.studio-meta-field .bx {
+  color: var(--bs-secondary-color);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.studio-meta-field:focus-within .bx { color: var(--bs-primary); }
+.studio-meta-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 0.82rem;
+  padding: 0;
+}
+.studio-meta-input::placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 0.85;
+}
+
+html[data-bs-theme="dark"] .studio-slim-name { background: var(--bs-tertiary-bg); }
+html[data-bs-theme="dark"] .studio-meta-toggle { background: var(--bs-tertiary-bg); }
+html[data-bs-theme="dark"] .studio-meta-toggle:hover { background: rgba(255, 255, 255, 0.08); }
+html[data-bs-theme="dark"] .studio-meta-field { background: rgba(255, 255, 255, 0.04); }
+html[data-bs-theme="dark"] .studio-meta-field:focus-within { background: var(--bs-tertiary-bg); }
+
+/* -------------------- Tray (sticky chip row) -------------------- */
+.studio-tray {
+  position: sticky;
+  top: 0;
+  z-index: 29;
+  background: var(--bs-body-bg);
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.25rem;
+  /* Cap how tall the wrapped chip area can grow so it doesn't push
+     the rest of the page off-screen when many exercises are selected. */
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.studio-tray-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--bs-secondary-color);
+  font-size: 0.82rem;
+}
+.studio-tray-empty .bx {
+  font-size: 1rem;
+}
+.studio-tray[data-empty="false"] .studio-tray-empty {
+  display: none;
+}
+.studio-tray[data-empty="true"] .studio-tray-chips {
+  display: none;
+}
+
+.studio-tray-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0 0.25rem;
+}
+
+.studio-tray-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bs-primary-bg-subtle, rgba(201, 124, 93, 0.12));
+  color: var(--bs-primary);
+  font-size: 0.83rem;
+  font-weight: 500;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  user-select: none;
+}
+.studio-tray-chip-label {
+  /* Allow long names to wrap rather than truncate */
+  word-break: break-word;
+}
+.studio-tray-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.studio-tray-chip-remove:hover {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* -------------------- Search bar -------------------- */
+.studio-search-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin: 0.75rem 0.25rem 0.5rem;
+}
+.studio-search {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.studio-search input {
+  width: 100%;
+  height: 44px;
+  padding: 0 2.5rem 0 2.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--bs-body-color);
+  font-size: 0.95rem;
+}
+.studio-search input:focus {
+  outline: none;
+  border-color: var(--bs-primary);
+  background: var(--bs-body-bg);
+}
+.studio-search .bx-search {
+  position: absolute;
+  left: 0.95rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--bs-secondary-color);
+  font-size: 1.15rem;
+  pointer-events: none;
+}
+.studio-search-clear {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+/* -------------------- Add-custom button (inline with search) -------------------- */
+.studio-add-custom-btn {
+  flex: 0 0 auto;
+  /* Compact pill that takes ~1/4 of the row, sized to fit "Add \"…\"" labels
+     up to about 8 chars before truncating with an ellipsis. */
+  max-width: 30%;
+  min-width: 96px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 12px;
+  border: 1px solid var(--bs-primary);
+  border-radius: 10px;
+  background: rgba(201, 124, 93, 0.08);
+  color: var(--bs-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-add-custom-btn .bx {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+.studio-add-custom-btn:hover {
+  background: rgba(201, 124, 93, 0.16);
+}
+.studio-add-custom-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+html[data-bs-theme="dark"] .studio-add-custom-btn {
+  background: rgba(201, 124, 93, 0.12);
+}
+
+/* -------------------- Import button (inline, persistent) -------------------- */
+.studio-import-btn {
+  flex: 0 0 auto;
+  min-width: 96px;
+  max-width: 30%;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 12px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-import-btn .bx {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  color: var(--bs-primary);
+}
+.studio-import-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+}
+html[data-bs-theme="dark"] .studio-import-btn { background: var(--bs-tertiary-bg); }
+html[data-bs-theme="dark"] .studio-import-btn:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* -------------------- Section header (label + filter) -------------------- */
+.studio-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0.25rem 0.5rem;
+}
+.studio-section-header-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+.studio-section-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.studio-section-count {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.studio-section-count.is-hint {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+.studio-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--bs-border-color);
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-filter-btn:hover { background: rgba(0, 0, 0, 0.04); }
+.studio-filter-btn[aria-expanded="true"],
+.studio-filter-btn.has-active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+.studio-filter-btn .bx { font-size: 1.05rem; }
+.studio-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.studio-filter-chevron {
+  transition: transform 0.18s ease;
+}
+.studio-filter-btn[aria-expanded="true"] .studio-filter-chevron {
+  transform: rotate(180deg);
+}
+
+/* -------------------- Filter panel (inline, below section header) -------------------- */
+.studio-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.5rem;
+  margin: 0 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 12px;
+  /* Slide-down reveal when the Filter pill is tapped */
+  animation: studio-filter-panel-in 0.18s ease;
+  transform-origin: top;
+}
+@keyframes studio-filter-panel-in {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.96); }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+.studio-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.studio-filter-group-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+/* -------------------------------------------------------------------------
+   Cardio editor offcanvas — restyle the activity-type and RPE pills to
+   match the studio's filter-chip aesthetic (pill-shaped, peach on active)
+   so the Edit Activity sheet feels native to the studio rather than the
+   legacy activity log page.
+
+   Scope: ID-prefix selectors keep these overrides confined to the cardio
+   editor offcanvas. The standalone activity-log page (which uses the same
+   class names) is untouched.
+   ------------------------------------------------------------------------- */
+[id^="cardioEditorOffcanvas-"] .activity-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  min-height: 0;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn i {
+  font-size: 1.05rem;
+  color: var(--bs-primary);
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn span {
+  white-space: nowrap;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn.active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn.active i { color: white; }
+
+/* Flash animation for pills inserted from the More picker — a quick
+   ring pulse so the user notices the new pill appearing inline. */
+@keyframes studio-pill-just-added-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(201, 124, 93, 0.55); }
+  60%  { box-shadow: 0 0 0 8px rgba(201, 124, 93, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 124, 93, 0); }
+}
+[id^="cardioEditorOffcanvas-"] .activity-type-btn.studio-pill-just-added {
+  animation: studio-pill-just-added-pulse 1.2s ease-out 2;
+}
+[data-bs-theme="dark"] [id^="cardioEditorOffcanvas-"] .activity-type-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[id^="cardioEditorOffcanvas-"] .rpe-selector {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+[id^="cardioEditorOffcanvas-"] .rpe-btn {
+  flex: 1 1 auto;
+  min-width: 32px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+[id^="cardioEditorOffcanvas-"] .rpe-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+}
+[id^="cardioEditorOffcanvas-"] .rpe-btn.active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+[data-bs-theme="dark"] [id^="cardioEditorOffcanvas-"] .rpe-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.studio-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.studio-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: transparent;
+  border: 1px solid var(--bs-border-color);
+  color: var(--bs-body-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-filter-chip .bx { font-size: 0.95rem; }
+.studio-filter-chip:hover { background: rgba(0, 0, 0, 0.04); }
+.studio-filter-chip.is-active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+.studio-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}
+.studio-filter-clear {
+  background: transparent;
+  border: none;
+  color: var(--bs-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.studio-filter-clear:hover { text-decoration: underline; }
+
+/* -------------------- Exercise list (compact rows) -------------------- */
+.studio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.studio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  min-height: 56px;
+}
+.studio-row:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.studio-row-body {
+  flex: 1;
+  min-width: 0;
+}
+.studio-row-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  /* Wrap long names instead of truncating with an ellipsis */
+  word-break: break-word;
+  line-height: 1.25;
+}
+.studio-row-title span {
+  word-break: break-word;
+}
+.studio-row-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bs-success);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.studio-row-subtitle {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.studio-row-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  font-size: 1.25rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.studio-row-info:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--bs-primary);
+}
+.studio-row-info:active {
+  background: rgba(0, 0, 0, 0.14);
+}
+html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 255, 0.08); }
+
+.studio-row-add {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--bs-primary);
+  font-size: 1.4rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.studio-row-add:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+.studio-row-add:active {
+  transform: scale(0.88);
+}
+.studio-row-add.has-count {
+  background: var(--bs-primary);
+  color: white;
+}
+.studio-row-add-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--bs-primary);
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bs-body-bg);
+}
+.studio-row-add.has-count .studio-row-add-badge {
+  background: white;
+  color: var(--bs-primary);
+}
+
+/* Subtle "just added" pulse on the row */
+.studio-row.is-added {
+  animation: studio-row-pulse 0.4s ease;
+}
+@keyframes studio-row-pulse {
+  0%   { background: rgba(201, 124, 93, 0.18); }
+  100% { background: rgba(0, 0, 0, 0.035); }
+}
+
+/* -------------------- Views + iOS-style push transition -------------------- */
+.studio-view {
+  transition: transform 0.28s ease, opacity 0.2s ease;
+  will-change: transform, opacity;
+}
+.studio[data-view="select"]   .studio-view-select   { transform: translateX(0); }
+.studio[data-view="select"]   .studio-view-organize { display: none; }
+.studio[data-view="organize"] .studio-view-select   { display: none; }
+.studio[data-view="organize"] .studio-view-organize { transform: translateX(0); }
+
+/* Initial slide-in direction when switching views (cosmetic, JS may toggle classes) */
+.studio-view-organize.is-incoming { transform: translateX(20px); opacity: 0; }
+.studio-view-organize.is-active   { transform: translateX(0);    opacity: 1; }
+
+/* -------------------- Page 2: Organize -------------------- */
+.studio-organize-section-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem 0.25rem 0.5rem;
+}
+.studio-organize-count {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  font-weight: 500;
+}
+.studio-organize-count::before { content: '('; }
+.studio-organize-count::after { content: ')'; }
+
+.studio-organize-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 0.25rem;
+}
+
+/* -------------------- Studio Exercise Card (Page 2) -------------------- */
+.studio-card {
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 12px;
+  padding: 0.55rem 0.8rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* Type-card accents — left-border treatment carried over from the legacy
+   builder so cardio/note cards are visually distinct from standard
+   strength cards at a glance. Tokens (--workout-cardio / --workout-note)
+   live in workout-mode/_variables.css and are already loaded site-wide. */
+.studio-card[data-card-type="cardio"] {
+  border-left: 3px solid var(--workout-cardio, #3b82f6);
+}
+.studio-card[data-card-type="note"] {
+  border-left: 3px solid var(--workout-note, #64748b);
+}
+[data-bs-theme="dark"] .studio-card[data-card-type="cardio"] {
+  border-left-color: #60a5fa;
+}
+[data-bs-theme="dark"] .studio-card[data-card-type="note"] {
+  border-left-color: #94a3b8;
+}
+
+/* Inline activity icon next to the card name (Stair Climber → trending-up,
+   etc.) */
+.studio-card-type-icon {
+  font-size: 1.05em;
+  color: var(--workout-cardio, #3b82f6);
+  vertical-align: -0.05em;
+  margin-right: 0.15rem;
+}
+[data-bs-theme="dark"] .studio-card-type-icon {
+  color: #60a5fa;
+}
+
+/* Cardio cards render a summary-only body — the whole surface opens the
+   activity offcanvas. Style it as a tappable area, not a button row. */
+.studio-card-cardio .studio-card-body { display: none; }
+.studio-card-cardio-summary {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.studio-card-cardio-summary:hover,
+.studio-card-cardio-summary:focus-visible {
+  border-color: var(--workout-cardio, #3b82f6);
+  background: rgba(59, 130, 246, 0.05);
+  outline: none;
+}
+[data-bs-theme="dark"] .studio-card-cardio-summary {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-bs-theme="dark"] .studio-card-cardio-summary:hover,
+[data-bs-theme="dark"] .studio-card-cardio-summary:focus-visible {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.08);
+}
+.studio-card-cardio-meta {
+  font-size: 0.92rem;
+  color: var(--bs-body-color);
+}
+.studio-card-cardio-empty {
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color, #6c757d);
+  font-style: italic;
+}
+
+.studio-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.studio-card-name-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.studio-card-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  word-break: break-word;
+  line-height: 1.2;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.studio-card-name:hover { background: rgba(0, 0, 0, 0.05); }
+.studio-card-name:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 1px;
+}
+.studio-card-name-input {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  line-height: 1.2;
+  padding: 2px 6px;
+  border: 1px solid var(--bs-primary);
+  border-radius: 6px;
+  background: var(--bs-body-bg);
+  outline: none;
+  font-family: inherit;
+}
+html[data-bs-theme="dark"] .studio-card-name:hover { background: rgba(255, 255, 255, 0.06); }
+html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertiary-bg); }
+.studio-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.studio-card-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.studio-card-icon-btn:hover { background: rgba(0, 0, 0, 0.06); }
+
+/* 3-dot menu dropdown (positioned relative to its wrap) */
+.studio-card-menu-wrap {
+  position: relative;
+}
+.studio-card-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 180px;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  padding: 4px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.studio-card-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--bs-body-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+}
+.studio-card-menu-item:hover { background: rgba(0, 0, 0, 0.06); }
+.studio-card-menu-item:disabled,
+.studio-card-menu-item[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.studio-card-menu-item-danger { color: var(--bs-danger); }
+.studio-card-menu-item-danger:hover { background: rgba(220, 53, 69, 0.08); }
+.studio-card-menu-item .bx { font-size: 1.05rem; }
+
+/* Card body: stacked labeled rows */
+.studio-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Each field row: a flex row with a label on the left and value on the right */
+.studio-card-field {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+/* Single card-level commit row — one ✓ Save + ✗ Cancel for the whole
+   card, shown only while the card is in unified edit mode. Mirrors the
+   workout-mode pattern where one explicit action commits all fields. */
+.studio-card-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+[data-bs-theme="dark"] .studio-card-edit-actions {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+.studio-card-edit-actions .btn {
+  height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+}
+.studio-card-edit-actions .btn i { font-size: 16px; }
+
+/* Subtle ring while a card is actively being edited so the user knows
+   which card their typing is going into. */
+.studio-card.studio-card-editing {
+  box-shadow: 0 0 0 2px rgba(201, 124, 93, 0.25);
+}
+[data-bs-theme="dark"] .studio-card.studio-card-editing {
+  box-shadow: 0 0 0 2px rgba(201, 124, 93, 0.4);
+}
+.studio-card-field-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+  flex-shrink: 0;
+  width: 68px;
+}
+.studio-card-field-value-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+/* Display states (.click-to-edit) — both repssets and weight share this */
+.studio-card-field .click-to-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+.studio-card-field .click-to-edit:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.studio-card-field .weight-value,
+.studio-card-field .weight-unit,
+.studio-card-field .repssets-value-text,
+.studio-card-field .studio-rest-value-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+.studio-card-field .weight-unit {
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+}
+
+/* Editor layout — the editor's visibility is owned by the inline `style`
+ * attribute on the editor div (none by default, set to flex by the field
+ * controllers when entering edit mode). Don't force display here or both
+ * the display and editor end up visible at the same time. */
+.studio-card-field .repssets-editor,
+.studio-card-field .studio-weight-editor,
+.studio-card-field .studio-rest-editor {
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  width: 100%;
+}
+.studio-card-field-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 36px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+.studio-card-field-input:focus {
+  outline: none;
+  border-color: var(--bs-primary);
+}
+
+/* Weight editor: single input that morphs type when DIY pill is tapped,
+   sitting next to the unit selector in a horizontal row. */
+.studio-card-weight-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.studio-card-weight-field .weight-input {
+  flex: 1;
+  min-width: 90px;
+}
+
+/* Unit selector pills */
+.studio-card-field .weight-unit-selector {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  padding: 2px;
+}
+.studio-card-field .weight-unit-selector .unit-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+}
+.studio-card-field .weight-unit-selector .unit-btn.active {
+  background: var(--bs-body-bg);
+  color: var(--bs-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* -------------------- Studio Block (Page 2) -------------------- */
+.studio-organize-header-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+}
+.studio-add-block-btn,
+.studio-reorder-btn,
+.studio-import-page2-btn,
+.studio-add-note-btn {
+  height: 32px;
+  padding: 0 0.7rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  /* Equal flex basis so the three buttons read as a uniform set */
+  flex: 0 0 auto;
+}
+.studio-add-block-btn .bx,
+.studio-reorder-btn .bx,
+.studio-import-page2-btn .bx,
+.studio-add-note-btn .bx { font-size: 1rem; line-height: 1; }
+
+/* Bottom-of-list 'Add another exercise' button — soft dashed surface so it
+   doesn't compete visually with the populated cards above it. Sits between
+   the card list and the status div, hidden when the tray is empty
+   (the picker is the natural starting point in that case). */
+.studio-add-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  color: var(--bs-body-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.studio-add-more-btn:hover,
+.studio-add-more-btn:focus-visible {
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+  background: rgba(201, 124, 93, 0.06);
+  outline: none;
+}
+.studio-add-more-btn .bx { font-size: 1.1rem; }
+.studio-add-more-btn[hidden] { display: none; }
+[data-bs-theme="dark"] .studio-add-more-btn {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+[data-bs-theme="dark"] .studio-add-more-btn:hover,
+[data-bs-theme="dark"] .studio-add-more-btn:focus-visible {
+  background: rgba(201, 124, 93, 0.12);
+}
+
+/* Row of three add buttons sitting under the Add Exercise CTA — matches
+   the legacy builder's Activity / Note / Block trio. Equal-width pill
+   buttons that wrap on narrow viewports. */
+.studio-bottom-add-row {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+}
+/* Page 2 reserves space at the bottom so the floating FAB row (Back /
+   More / Save / Go, ~52px tall, anchored 16px from the viewport bottom)
+   doesn't sit on top of the Activity / Note / Block trio. The
+   safe-area inset keeps it correct on iOS notched devices. */
+.studio[data-view="organize"] .studio-view-organize {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+.studio-bottom-add-row[hidden] { display: none; }
+.studio-bottom-add-row .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+.studio-bottom-add-row .bx { font-size: 1rem; line-height: 1; }
+/* Activity pill picks up the cardio accent so it visually pairs with the
+   cardio cards it spawns. */
+.studio-bottom-add-row .studio-add-activity-btn {
+  color: var(--workout-cardio, #3b82f6);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.studio-bottom-add-row .studio-add-activity-btn:hover,
+.studio-bottom-add-row .studio-add-activity-btn:focus-visible {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--workout-cardio, #3b82f6);
+  color: var(--workout-cardio, #3b82f6);
+}
+[data-bs-theme="dark"] .studio-bottom-add-row .studio-add-activity-btn {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+/* Page-2 Import button shares the same outline-secondary style as Reorder
+   so the two header buttons read as a uniform pair — no color hierarchy
+   between them, just two equally-weighted secondary actions. */
+
+
+.studio-block {
+  background: rgba(0, 0, 0, 0.025);
+  border-radius: 14px;
+  padding: 0.4rem 0.4rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.studio-block.is-empty {
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  background: transparent;
+}
+
+.studio-block-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.4rem;
+}
+.studio-block-icon {
+  color: var(--bs-primary);
+  font-size: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.studio-block-name-input {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--bs-body-color);
+  padding: 0.1rem 0.25rem;
+  min-width: 0;
+}
+.studio-block-name-input::placeholder {
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+  opacity: 0.7;
+}
+.studio-block-name-input:focus {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+}
+
+.studio-block-icon-btn {
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--bs-secondary-color);
+  font-size: 1.1rem;
+  flex: 0 0 auto;
+}
+.studio-block-icon-btn:hover { background: rgba(0, 0, 0, 0.06); }
+
+.studio-block-menu-wrap { position: relative; }
+.studio-block-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.3rem;
+  z-index: 20;
+}
+.studio-block-menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.studio-block-menu-item:hover { background: rgba(0, 0, 0, 0.06); }
+.studio-block-menu-item[disabled] { opacity: 0.4; cursor: not-allowed; }
+.studio-block-menu-item-danger { color: var(--bs-danger); }
+.studio-block-menu-item-danger:hover { background: rgba(220, 53, 69, 0.08); }
+.studio-block-menu-item .bx { font-size: 1.05rem; }
+
+.studio-block-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 0.25rem;
+}
+.studio-block-children:empty { display: none; }
+.studio-block-placeholder {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  text-align: center;
+  padding: 0.65rem 0.5rem;
+  font-style: italic;
+}
+.studio-block:not(.is-empty) .studio-block-placeholder { display: none; }
+
+/* Card-in-block visual treatment: subtle left rail, no own background. */
+.studio-card.studio-card-in-block {
+  background: var(--bs-body-bg);
+  border-left: 3px solid var(--bs-primary);
+}
+
+/* Card menu separator + muted label hint for "Move to: …" */
+.studio-card-menu-sep {
+  height: 1px;
+  background: var(--bs-border-color);
+  margin: 0.25rem 0.1rem;
+}
+
+/* Dark-mode parity */
+html[data-bs-theme="dark"] .studio-card,
+html[data-bs-theme="dark"] .studio-card-icon-btn:hover,
+html[data-bs-theme="dark"] .studio-card-field .click-to-edit:hover,
+html[data-bs-theme="dark"] .studio-card-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-bs-theme="dark"] .studio-block { background: rgba(255, 255, 255, 0.04); }
+html[data-bs-theme="dark"] .studio-block.is-empty {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: transparent;
+}
+html[data-bs-theme="dark"] .studio-block-name-input:focus { background: rgba(255, 255, 255, 0.06); }
+html[data-bs-theme="dark"] .studio-block-icon-btn:hover,
+html[data-bs-theme="dark"] .studio-block-menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+html[data-bs-theme="dark"] .studio-block-menu {
+  background: var(--bs-tertiary-bg);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .studio-card.studio-card-in-block { background: var(--bs-tertiary-bg); }
+
+html[data-bs-theme="dark"] .studio-card-field-input,
+html[data-bs-theme="dark"] .studio-card-menu {
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-bs-theme="dark"] .studio-card-field .weight-unit-selector {
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-bs-theme="dark"] .studio-card-field .weight-unit-selector .unit-btn.active {
+  background: var(--bs-body-bg);
+}
+
+.studio-organize-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--bs-secondary-color);
+}
+.studio-organize-empty .bx { font-size: 2.5rem; opacity: 0.6; }
+
+.studio-organize-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.5rem 0.25rem 0;
+}
+.studio-organize-actions .btn { font-weight: 600; }
+
+.studio-organize-status {
+  margin: 0.75rem 0.25rem;
+  min-height: 22px;
+  font-size: 0.88rem;
+  color: var(--bs-secondary-color);
+}
+.studio-organize-status.is-error { color: var(--bs-danger); }
+.studio-organize-status.is-success { color: var(--bs-success); }
+
+/* Dark mode adjustments for new Page 2 elements */
+html[data-bs-theme="dark"] .studio-org-row,
+html[data-bs-theme="dark"] .studio-org-row-remove {
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-bs-theme="dark"] .studio-org-row-remove:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .studio-org-field-input {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* -------------------- Infinite-scroll sentinel (invisible) -------------------- */
+.studio-list-sentinel {
+  height: 1px;
+  width: 100%;
+}
+.studio-list-sentinel[hidden] {
+  display: none;
+}
+
+/* -------------------- Empty / loading states -------------------- */
+.studio-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: var(--bs-secondary-color);
+  text-align: center;
+}
+.studio-empty .bx {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+/* -------------------- Floating CTA -------------------- */
+.studio-cta {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(560px, calc(100% - 2rem));
+}
+/* Floating CTA is only meaningful on Page 1 */
+.studio[data-view="organize"] .studio-cta { display: none !important; }
+
+/* Floating FABs — ported from .builder-floating-fabs so the studio's
+   bottom-right action surface matches the builder's. Only shown on
+   Page 2 (the Continue CTA owns Page 1's bottom). */
+.studio-floating-fabs {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  z-index: 1050;
+  pointer-events: none;
+}
+.studio-floating-fabs[hidden] { display: none; }
+/* Page 1 owns the centered Continue CTA — hide FABs while selecting */
+.studio[data-view="select"] .studio-floating-fabs { display: none; }
+
+.studio-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+}
+.studio-fab:active { transform: scale(0.93); }
+.studio-fab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.studio-fab-back {
+  background: #fff;
+  color: var(--bs-secondary, #6c757d);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.studio-fab-more {
+  background: #fff;
+  color: var(--bs-warning);
+}
+.studio-fab-save {
+  background: var(--bs-primary);
+}
+.studio-fab-go {
+  background: var(--bs-success);
+}
+.studio-fab-save.is-saved {
+  background: var(--bs-success);
+}
+[data-bs-theme="dark"] .studio-fab-back,
+[data-bs-theme="dark"] .studio-fab-more {
+  background: var(--bs-body-bg);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-bs-theme="dark"] .studio-fab {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+/* Tray chips are redundant on Page 2 (each exercise renders as a card below) */
+.studio[data-view="organize"] .studio-tray { display: none !important; }
+
+/* -------------------- Floating list-count pill -------------------- */
+.studio-floating-count {
+  position: fixed;
+  left: 1rem;
+  bottom: 1.25rem;
+  z-index: 38;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 6px 12px;
+  background: var(--bs-body-color);
+  color: var(--bs-body-bg);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.studio-floating-count[hidden] { display: none; }
+.studio-floating-count.is-visible {
+  opacity: 0.9;
+  transform: translateY(0);
+}
+.studio-floating-count .bx { font-size: 0.95rem; }
+/* Hide on Page 2 — the floating count is about browsing the catalog */
+.studio[data-view="organize"] .studio-floating-count { display: none !important; }
+.studio-cta-btn {
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 0.98rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+.studio-cta-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* -------------------- Dark mode -------------------- */
+html[data-bs-theme="dark"] .studio-slim-header,
+html[data-bs-theme="dark"] .studio-tray {
+  background: var(--bs-body-bg);
+}
+html[data-bs-theme="dark"] .studio-tray-chip-remove,
+html[data-bs-theme="dark"] .studio-row,
+html[data-bs-theme="dark"] .studio-filter-panel,
+html[data-bs-theme="dark"] .studio-row-add {
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-bs-theme="dark"] .studio-row:hover,
+html[data-bs-theme="dark"] .studio-filter-btn:hover,
+html[data-bs-theme="dark"] .studio-filter-chip:hover,
+html[data-bs-theme="dark"] .studio-row-add:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+html[data-bs-theme="dark"] .studio-search input {
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-bs-theme="dark"] .studio-search input:focus {
+  background: var(--bs-body-bg);
+}
+html[data-bs-theme="dark"] .studio-row-add-badge {
+  border-color: var(--bs-body-bg);
+}
+
+/* -------------------- Responsive: desktop tweaks -------------------- */
+@media (min-width: 992px) {
+  .studio-container {
+    max-width: 820px;
+    padding-bottom: 120px;
+  }
+  .studio-slim-header {
+    padding: 0.75rem 0.5rem;
+  }
+}
+
+/* -------------------- Studio Note Card (Page 2) -------------------- */
+.studio-note-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(252, 211, 77, 0.10); /* warm yellow tint */
+  border: 1px solid rgba(252, 211, 77, 0.30);
+  border-left: 3px solid rgb(234, 179, 8);
+  border-radius: 10px;
+}
+/* Notes inside a block — same look as cards-in-blocks (slightly inset
+   left margin so the block's left edge stays visually owned by the
+   block itself, not the note). */
+.studio-block .studio-block-children .studio-note-card,
+.studio-note-card.studio-note-card-in-block {
+  margin-left: 0.25rem;
+}
+.studio-note-icon {
+  color: rgb(180, 130, 10);
+  font-size: 1.1rem;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+.studio-note-textarea {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--bs-body-color);
+  line-height: 1.35;
+  padding: 0.1rem 0.15rem;
+  min-height: 1.6em;
+  font-family: inherit;
+}
+.studio-note-textarea::placeholder {
+  color: var(--bs-secondary-color);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.studio-note-menu-wrap { position: relative; flex: 0 0 auto; }
+.studio-note-icon-btn {
+  background: transparent;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--bs-secondary-color);
+  font-size: 1.05rem;
+}
+.studio-note-icon-btn:hover { background: rgba(0, 0, 0, 0.06); }
+
+.studio-note-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 160px;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.3rem;
+  z-index: 20;
+}
+.studio-note-menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.studio-note-menu-item:hover { background: rgba(0, 0, 0, 0.06); }
+.studio-note-menu-item[disabled] { opacity: 0.4; cursor: not-allowed; }
+.studio-note-menu-item-danger { color: var(--bs-danger); }
+.studio-note-menu-item-danger:hover { background: rgba(220, 53, 69, 0.08); }
+.studio-note-menu-item .bx { font-size: 1.05rem; }
+
+/* Reorder sheet — note row variant */
+.studio-reorder-note-row {
+  background: rgba(252, 211, 77, 0.10);
+  border-color: rgba(252, 211, 77, 0.30);
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+}
+.studio-reorder-note-icon { color: rgb(180, 130, 10); font-size: 1rem; }
+.studio-reorder-note-label { font-style: italic; color: var(--bs-secondary-color); }
+
+html[data-bs-theme="dark"] .studio-note-card {
+  background: rgba(252, 211, 77, 0.08);
+  border-color: rgba(252, 211, 77, 0.20);
+}
+html[data-bs-theme="dark"] .studio-note-menu {
+  background: var(--bs-tertiary-bg);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-bs-theme="dark"] .studio-note-icon-btn:hover,
+html[data-bs-theme="dark"] .studio-note-menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+html[data-bs-theme="dark"] .studio-reorder-note-row {
+  background: rgba(252, 211, 77, 0.08);
+  border-color: rgba(252, 211, 77, 0.20);
+}
+
+/* -------------------- Studio Reorder Sheet -------------------- */
+/* Height is controlled by the .offcanvas-bottom-tall utility (height:auto,
+   max-height:90vh) defined in components/unified-offcanvas.css — Bootstrap's
+   .offcanvas.offcanvas-bottom rule (two-class selector) would otherwise
+   pin this sheet to ~30vh and clip the list to 2-3 visible rows. */
+.studio-reorder-sheet {
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  display: flex;
+  flex-direction: column;
+}
+.studio-reorder-header {
+  padding: 0.85rem 1rem 0.5rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex: 0 0 auto;
+}
+.studio-reorder-body {
+  padding: 0.75rem 1rem;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  /* Leave room for the sticky header + footer so the scrollable list area
+     uses the full remaining height inside the 90vh container. */
+  min-height: 0;
+}
+.studio-reorder-hint {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  margin: 0 0 0.6rem;
+}
+.studio-reorder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.studio-reorder-empty {
+  text-align: center;
+  font-style: italic;
+  color: var(--bs-secondary-color);
+  padding: 1rem;
+}
+.studio-reorder-row {
+  display: flex;
+  flex-direction: column;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  user-select: none;
+}
+.studio-reorder-card-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+}
+.studio-reorder-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bs-secondary-color);
+  font-size: 1.15rem;
+  cursor: grab;
+  padding: 0.1rem 0.2rem;
+  touch-action: none;
+}
+.studio-reorder-handle:active { cursor: grabbing; }
+.studio-reorder-row-label {
+  flex: 1 1 auto;
+  font-size: 0.95rem;
+  color: var(--bs-body-color);
+  overflow-wrap: anywhere;
+}
+.studio-reorder-block-row {
+  background: rgba(0, 0, 0, 0.025);
+  padding: 0.5rem 0.55rem;
+  gap: 0.4rem;
+}
+.studio-reorder-block-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+}
+.studio-reorder-block-icon {
+  color: var(--bs-primary);
+  font-size: 1rem;
+}
+.studio-reorder-block-label { font-weight: 600; }
+.studio-reorder-block-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-left: 0.5rem;
+  min-height: 36px;
+}
+.studio-reorder-block-children:empty::before {
+  content: 'Drop a card here';
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  font-style: italic;
+  text-align: center;
+  padding: 0.5rem;
+  display: block;
+}
+.studio-reorder-block-children .studio-reorder-card-row {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+.studio-reorder-footer {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 0.6rem 1rem 0.85rem;
+  border-top: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  flex: 0 0 auto;
+}
+.studio-reorder-status {
+  font-size: 0.8rem;
+  min-height: 1.1em;
+  color: var(--bs-secondary-color);
+  margin-top: 0.5rem;
+}
+.studio-reorder-status.is-error { color: var(--bs-danger); }
+
+/* SortableJS drag states */
+.studio-reorder-ghost { opacity: 0.4; }
+.studio-reorder-chosen { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); }
+.studio-reorder-fallback {
+  opacity: 0.9;
+  background: var(--bs-body-bg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* Dark-mode parity */
+html[data-bs-theme="dark"] .studio-reorder-block-row { background: rgba(255, 255, 255, 0.04); }
+html[data-bs-theme="dark"] .studio-reorder-row { background: var(--bs-tertiary-bg); }
+
+/* -------------------- Exercise Detail Offcanvas (studio context) -------------------- */
+.studio-offcanvas-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.studio-offcanvas-btn {
+  flex: 1 1 0;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.studio-offcanvas-btn .bx { font-size: 1.15rem; flex-shrink: 0; }
+
+.studio-offcanvas-btn-primary {
+  background: var(--bs-primary);
+  color: white;
+  border-color: var(--bs-primary);
+}
+.studio-offcanvas-btn-primary:hover {
+  filter: brightness(0.95);
+}
+
+.studio-offcanvas-btn-secondary {
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+.studio-offcanvas-btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--bs-primary);
+  color: var(--bs-primary);
+}
+.studio-offcanvas-btn-secondary.is-favorited {
+  color: var(--bs-danger);
+  border-color: var(--bs-danger);
+  background: rgba(220, 53, 69, 0.06);
+}
+.studio-offcanvas-btn-secondary.is-favorited:hover {
+  background: rgba(220, 53, 69, 0.12);
+}
+
+html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary { background: var(--bs-tertiary-bg); }
+html[data-bs-theme="dark"] .studio-offcanvas-btn-secondary:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* -------------------- Detail offcanvas: pairing recommendations -------------------- */
+/* The exercise-database stylesheet isn't loaded on the studio page, so its
+   .pairing-exercise-chip + .pairing-add-btn styles don't apply. Provide a
+   studio-flavored version scoped to #exerciseDetailOffcanvas so we don't
+   leak into the legacy detail-panel layout. */
+#exerciseDetailOffcanvas .pairing-category-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.4rem;
+}
+#exerciseDetailOffcanvas .pairing-exercise-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.35rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid var(--bs-border-color);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+#exerciseDetailOffcanvas .pairing-exercise-chip:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: var(--bs-primary);
+}
+#exerciseDetailOffcanvas .pairing-exercise-chip:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 1px;
+}
+#exerciseDetailOffcanvas .pairing-exercise-name {
+  font-size: 0.92rem;
+  font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#exerciseDetailOffcanvas .pairing-exercise-meta {
+  font-size: 0.7rem;
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+}
+#exerciseDetailOffcanvas .pairing-info-btn,
+#exerciseDetailOffcanvas .pairing-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin-left: 0.25rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 1.05rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease, transform 0.12s ease, color 0.12s ease;
+}
+#exerciseDetailOffcanvas .pairing-info-btn { color: var(--bs-secondary-color); }
+#exerciseDetailOffcanvas .pairing-add-btn { color: var(--bs-primary); }
+#exerciseDetailOffcanvas .pairing-info-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--bs-primary);
+}
+#exerciseDetailOffcanvas .pairing-add-btn:hover {
+  background: var(--bs-primary);
+  color: white;
+}
+#exerciseDetailOffcanvas .pairing-info-btn:active,
+#exerciseDetailOffcanvas .pairing-add-btn:active {
+  transform: scale(0.9);
+}
+
+/* Body no longer a click target — kill the row's cursor + remove the
+   hover bg that suggested "tap me". */
+#exerciseDetailOffcanvas .pairing-exercise-chip { cursor: default; }
+#exerciseDetailOffcanvas .pairing-exercise-chip:hover {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: var(--bs-border-color);
+}
+
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-exercise-chip {
+  background: rgba(255, 255, 255, 0.04);
+}
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-exercise-chip:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--bs-border-color);
+}
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-info-btn,
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-add-btn {
+  background: rgba(255, 255, 255, 0.08);
+}
+html[data-bs-theme="dark"] #exerciseDetailOffcanvas .pairing-info-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* -------------------- Draft restored banner -------------------- */
+.studio-draft-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  margin: 0.5rem 0.25rem 0;
+  background: rgba(13, 110, 253, 0.06);
+  border: 1px solid rgba(13, 110, 253, 0.20);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: var(--bs-body-color);
+}
+.studio-draft-banner-icon {
+  font-size: 1.05rem;
+  color: rgb(13, 110, 253);
+  flex-shrink: 0;
+}
+.studio-draft-banner-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+.studio-draft-banner-action {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(13, 110, 253, 0.4);
+  background: transparent;
+  color: rgb(13, 110, 253);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+.studio-draft-banner-action:hover { background: rgba(13, 110, 253, 0.10); }
+.studio-draft-banner-dismiss {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.studio-draft-banner-dismiss:hover { background: rgba(0, 0, 0, 0.06); }
+
+html[data-bs-theme="dark"] .studio-draft-banner {
+  background: rgba(13, 110, 253, 0.10);
+  border-color: rgba(13, 110, 253, 0.25);
+}
+html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba(255, 255, 255, 0.08); }

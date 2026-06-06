@@ -522,7 +522,8 @@
     flex-shrink: 0;
 }
 
-/* Add button on pairing chips */
+/* Info + Add buttons on pairing chips */
+.pairing-info-btn,
 .pairing-add-btn {
     display: flex;
     align-items: center;
@@ -542,14 +543,19 @@
     transition: opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 
+.pairing-info-btn { color: var(--bs-secondary-color); }
+
+.pairing-exercise-chip:hover .pairing-info-btn,
 .pairing-exercise-chip:hover .pairing-add-btn {
     opacity: 1;
 }
 
+.pairing-info-btn:hover,
 .pairing-add-btn:hover {
     opacity: 1;
     border-color: var(--bs-primary);
     background-color: rgba(var(--bs-primary-rgb), 0.1);
+    color: var(--bs-primary);
 }
 
 /* Hide cart panel column on mobile */

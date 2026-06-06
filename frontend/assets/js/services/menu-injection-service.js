@@ -94,10 +94,10 @@ class MenuInjectionService {
         // Inject sidebar menu HTML
         menuContainer.innerHTML = window.getMenuHTML(activePage);
 
-        // Inject global log FAB (skip on workout-mode and workout-builder)
+        // Inject global log FAB (skip on workout-mode, workout-builder, and workout-studio)
         if (window.getGlobalLogFabHTML) {
             const filename = window.location.pathname.split('/').pop() || '';
-            const excludedPages = ['workout-mode', 'workout-builder'];
+            const excludedPages = ['workout-mode', 'workout-builder', 'workout-studio'];
             const isExcluded = excludedPages.some(p => filename.includes(p));
             if (!isExcluded) {
                 const fabWrapper = document.createElement('div');
@@ -157,6 +157,7 @@ class MenuInjectionService {
         if (filename.includes('exercise-edit')) return 'exercise-database';
 
         // Lab Projects
+        if (filename.includes('workout-studio')) return 'workout-studio';
         if (filename.includes('spin-ride-history')) return 'spin-ride-history';
         if (filename.includes('spin-ride')) return 'spin-ride';
         if (filename.includes('tabata-kettlebell')) return 'tabata-kettlebell';

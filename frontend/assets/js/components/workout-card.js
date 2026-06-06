@@ -141,11 +141,23 @@ class WorkoutCard {
             }
         }
 
+        // Studio is now the primary editor — render it first when both are
+        // configured. Builder (Edit in Builder) becomes the secondary
+        // escape hatch for Tabata workouts + users who prefer the legacy UI.
+        if (dropdownActions.includes('studio')) {
+            menuItems += `
+                    <li>
+                        <a class="dropdown-item" href="javascript:void(0);" data-action="studio">
+                            <i class="bx bx-grid-alt me-2"></i>Edit Workout
+                        </a>
+                    </li>`;
+        }
+
         if (dropdownActions.includes('edit')) {
             menuItems += `
                     <li>
                         <a class="dropdown-item" href="javascript:void(0);" data-action="edit">
-                            <i class="bx bx-edit me-2"></i>Edit
+                            <i class="bx bx-edit me-2"></i>Edit in Builder
                         </a>
                     </li>`;
         }
@@ -197,6 +209,15 @@ class WorkoutCard {
                     <li>
                         <a class="dropdown-item text-danger" href="javascript:void(0);" data-action="delete">
                             <i class="bx bx-archive-in me-2"></i>Archive
+                        </a>
+                    </li>`;
+        }
+
+        if (dropdownActions.includes('permanent-delete')) {
+            menuItems += `
+                    <li>
+                        <a class="dropdown-item text-danger" href="javascript:void(0);" data-action="permanent-delete">
+                            <i class="bx bx-trash me-2"></i>Delete permanently
                         </a>
                     </li>`;
         }
@@ -683,6 +704,17 @@ class WorkoutCard {
                     const editAction = this.config.actions.find(a => a.id === 'edit');
                     if (editAction && editAction.onClick) {
                         editAction.onClick(this.workout);
+                    }
+                } else if (actionId === 'studio') {
+                    // Transitional dual entry: open the same workout in the
+                    // new studio surface. Default lives in workout-database
+                    // controller; this fallback covers callers that didn't
+                    // override the actions list.
+                    const studioAction = (this.config.actions || []).find(a => a.id === 'studio');
+                    if (studioAction && studioAction.onClick) {
+                        studioAction.onClick(this.workout);
+                    } else {
+                        window.location.href = `/workout-studio.html?id=${encodeURIComponent(this.workout.id)}`;
                     }
                 } else if (actionId === 'history') {
                     // History action from dropdown
