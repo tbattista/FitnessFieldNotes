@@ -32,6 +32,10 @@ service cloud.firestore {
       match /favorites/{favoriteId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      match /spin_rides/{rideId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // ========================================================================
@@ -88,17 +92,35 @@ service cloud.firestore {
     match /feedback/{feedbackId} {
       // Anyone can create feedback (authenticated or anonymous)
       allow create: if true;
-      
+
       // Only admin email can read feedback
       // Hardcoded admin email for security
       allow read: if request.auth != null
                   && request.auth.token.email == 'tbattista@gmail.com';
-      
+
       // Only admin email can update feedback (for status changes, notes, etc.)
       allow update: if request.auth != null
                     && request.auth.token.email == 'tbattista@gmail.com';
-      
+
       // Only admin email can delete feedback
+      allow delete: if request.auth != null
+                    && request.auth.token.email == 'tbattista@gmail.com';
+    }
+
+    // ========================================================================
+    // SPIN RIDE FEEDBACK - Mirrors /feedback. Anyone can submit a rating,
+    // only admin can review/curate the few-shot examples.
+    // ========================================================================
+
+    match /spin_ride_feedback/{feedbackId} {
+      allow create: if true;
+
+      allow read: if request.auth != null
+                  && request.auth.token.email == 'tbattista@gmail.com';
+
+      allow update: if request.auth != null
+                    && request.auth.token.email == 'tbattista@gmail.com';
+
       allow delete: if request.auth != null
                     && request.auth.token.email == 'tbattista@gmail.com';
     }

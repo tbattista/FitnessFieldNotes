@@ -579,36 +579,37 @@ test.describe('Spin Ride Page', () => {
     expect(bg).toBe('rgb(185, 28, 28)');
   });
 
-  test('select screen shows numbered 1-2-3-4 steps in order', async ({ page }) => {
+  test('select screen shows numbered 1-2-3-4-5 steps in order', async ({ page }) => {
     await page.goto(`${BASE}/spin-ride`);
     await page.waitForLoadState('domcontentloaded');
 
     const steps = page.locator('#selectState .spin-step');
-    await expect(steps).toHaveCount(4);
+    await expect(steps).toHaveCount(5);
 
-    // Step numbers should be 1, 2, 3, 4 in order
+    // Step numbers should be 1, 2, 3, 4, 5 in order
     const numbers = await steps.locator('.spin-step-number').allTextContents();
-    expect(numbers).toEqual(['1', '2', '3', '4']);
+    expect(numbers).toEqual(['1', '2', '3', '4', '5']);
 
     // Each step contains the expected controls
     await expect(steps.nth(0).locator('#durationButtons')).toBeVisible();
     await expect(steps.nth(0).locator('#customDurationInput')).toBeVisible();
     await expect(steps.nth(1).locator('#recoveryGearInput')).toBeVisible();
     await expect(steps.nth(1).locator('#maxGearInput')).toBeVisible();
-    await expect(steps.nth(2).locator('#allOutsButtons')).toBeVisible();
-    await expect(steps.nth(3).locator('#difficultyButtons')).toBeVisible();
+    await expect(steps.nth(2).locator('#lowRpmInput')).toBeVisible();
+    await expect(steps.nth(2).locator('#maxRpmInput')).toBeVisible();
+    await expect(steps.nth(3).locator('#allOutsButtons')).toBeVisible();
+    await expect(steps.nth(4).locator('#difficultyButtons')).toBeVisible();
 
     // Gear inputs should no longer be hidden in a collapse
     expect(await page.locator('#bikeSetupCollapse').count()).toBe(0);
 
     // Steps should be vertically ordered
-    const box1 = await steps.nth(0).boundingBox();
-    const box2 = await steps.nth(1).boundingBox();
-    const box3 = await steps.nth(2).boundingBox();
-    const box4 = await steps.nth(3).boundingBox();
-    expect(box2.y).toBeGreaterThan(box1.y);
-    expect(box3.y).toBeGreaterThan(box2.y);
-    expect(box4.y).toBeGreaterThan(box3.y);
+    const boxes = await Promise.all(
+      [0, 1, 2, 3, 4].map((i) => steps.nth(i).boundingBox()),
+    );
+    for (let i = 1; i < boxes.length; i++) {
+      expect(boxes[i].y).toBeGreaterThan(boxes[i - 1].y);
+    }
   });
 
   test('difficulty selection persists and is sent in the generate request', async ({ page }) => {

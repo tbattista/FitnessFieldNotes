@@ -158,6 +158,7 @@ class MenuInjectionService {
 
         // Lab Projects
         if (filename.includes('workout-studio')) return 'workout-studio';
+        if (filename.includes('spin-ride-history')) return 'spin-ride-history';
         if (filename.includes('spin-ride')) return 'spin-ride';
         if (filename.includes('tabata-kettlebell')) return 'tabata-kettlebell';
 

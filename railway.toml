@@ -8,6 +8,10 @@ healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-[env]
-ENVIRONMENT = "production"
-GOTENBERG_URL = "https://gotenberg-production-c928.up.railway.app"
+# NOTE: Railway's railway.toml does NOT support an [env] table — environment
+# variables declared here are silently ignored. Set these in the Railway
+# dashboard (Service > Variables) instead:
+#   ENVIRONMENT  = production
+#   GOTENBERG_URL = https://gotenberg-production-c928.up.railway.app
+# If GOTENBERG_URL is unset, the app falls back to the production default in
+# backend/services/v2/gotenberg_client.py.

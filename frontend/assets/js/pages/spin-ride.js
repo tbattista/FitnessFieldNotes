@@ -16,6 +16,10 @@
   // timers stay correct across tab backgrounding, browser close, and reload.
 
   let ridePlan = null;
+  // If the current ride was launched from a saved history entry, this holds
+  // its document ID. On finish we bump the existing record's completion_count
+  // instead of creating a duplicate.
+  let savedRideId = null;
   let segments = [];
   let segmentOffsets = [];    // Cumulative start-time (seconds) of each segment
   let currentSegmentIndex = 0;
@@ -31,9 +35,15 @@
   const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 from SVG viewBox
   const SESSION_KEY = 'spinRideSession';
   const BIKE_GEARS_KEY = 'spinRideBikeGears';
+  const BIKE_RPM_KEY = 'spinRideBikeRpm';
   const INCLUDE_ALL_OUTS_KEY = 'spinRideIncludeAllOuts';
   const DIFFICULTY_KEY = 'spinRideDifficulty';
   const WINDOW_MODE_KEY = 'spinRideWindowMode';
+
+  // The AI's RPM range — anything it outputs maps from this interval onto
+  // the user's configured min/max when RPM mapping is enabled.
+  const AI_RPM_MIN = 50;
+  const AI_RPM_MAX = 130;
 
   // Number of upcoming segments visible in windowed mode (kept in sync with
   // the adjacent-sibling chains in spin-ride.css).
@@ -92,6 +102,48 @@
     return Math.round(gear);
   }
 
+  // ── Bike RPM mapping ───────────────────────────────────────────────────
+  // Mirrors the gear mapping above: the AI emits RPM values in 50..130, and
+  // the user can remap that range onto whatever min/max their bike reads.
+  // Stored in localStorage so it persists across sessions/devices.
+
+  let bikeRpm = null; // { min: number, max: number } or null
+
+  function loadBikeRpm() {
+    try {
+      const raw = localStorage.getItem(BIKE_RPM_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (typeof data.min === 'number' && typeof data.max === 'number' && data.max > data.min) {
+        return data;
+      }
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function saveBikeRpm(min, max) {
+    try {
+      localStorage.setItem(BIKE_RPM_KEY, JSON.stringify({ min, max }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearBikeRpm() {
+    try { localStorage.removeItem(BIKE_RPM_KEY); } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Map an AI RPM value (50..130) onto the user's configured range via
+   * linear interpolation. Returns the rounded mapped RPM, or null if no
+   * mapping is configured.
+   */
+  function mapRpm(rpm) {
+    if (!bikeRpm) return null;
+    const clamped = Math.max(AI_RPM_MIN, Math.min(AI_RPM_MAX, Number(rpm) || AI_RPM_MIN));
+    const span = AI_RPM_MAX - AI_RPM_MIN;
+    const mapped = bikeRpm.min + ((clamped - AI_RPM_MIN) / span) * (bikeRpm.max - bikeRpm.min);
+    return Math.round(mapped);
+  }
+
   // ── DOM refs ───────────────────────────────────────────────────────────
 
   const $ = (id) => document.getElementById(id);
@@ -120,6 +172,11 @@
       bikeGearsSaveBtn: $('bikeGearsSaveBtn'),
       bikeGearsClearBtn: $('bikeGearsClearBtn'),
       bikeGearsStatus: $('bikeGearsStatus'),
+      lowRpmInput: $('lowRpmInput'),
+      maxRpmInput: $('maxRpmInput'),
+      bikeRpmSaveBtn: $('bikeRpmSaveBtn'),
+      bikeRpmClearBtn: $('bikeRpmClearBtn'),
+      bikeRpmStatus: $('bikeRpmStatus'),
       segmentResistanceLabel: $('segmentResistanceLabel'),
       segmentResistanceSuffix: $('segmentResistanceSuffix'),
       rideTitle: $('rideTitle'),
@@ -246,10 +303,12 @@
     const dur = formatTime(seg.duration_seconds);
     const gear = mapResistanceToGear(seg.resistance);
     const resistanceLabel = gear !== null ? `G${gear}` : `R${seg.resistance}`;
+    const rpmLow = mapRpm(seg.rpm_low) ?? seg.rpm_low;
+    const rpmHigh = mapRpm(seg.rpm_high) ?? seg.rpm_high;
     return `<div class="spin-segment-row" data-index="${i}">
       <span class="spin-segment-type-dot type-${seg.segment_type}"></span>
       <span class="spin-segment-name">${seg.name}</span>
-      <span class="spin-segment-meta">${resistanceLabel} &middot; ${seg.rpm_low}-${seg.rpm_high}rpm &middot; ${dur}</span>
+      <span class="spin-segment-meta">${resistanceLabel} &middot; ${rpmLow}-${rpmHigh}rpm &middot; ${dur}</span>
     </div>`;
   }
 
@@ -328,9 +387,11 @@
       els.segmentResistanceSuffix.textContent = '/10';
     }
 
-    els.segmentRpm.textContent = seg.rpm_low === seg.rpm_high
-      ? `${seg.rpm_low}`
-      : `${seg.rpm_low}-${seg.rpm_high}`;
+    const displayRpmLow = mapRpm(seg.rpm_low) ?? seg.rpm_low;
+    const displayRpmHigh = mapRpm(seg.rpm_high) ?? seg.rpm_high;
+    els.segmentRpm.textContent = displayRpmLow === displayRpmHigh
+      ? `${displayRpmLow}`
+      : `${displayRpmLow}-${displayRpmHigh}`;
     els.segmentCue.textContent = seg.cue || '';
     els.totalElapsed.textContent = formatTime(getElapsedSeconds());
 
@@ -434,6 +495,7 @@
     try {
       const data = {
         ridePlan,
+        savedRideId,
         rideStartedAt: rideStartedAt ? rideStartedAt.toISOString() : null,
         pausedAt: pausedAt ? pausedAt.toISOString() : null,
         timerRunning: !!timerRunning,
@@ -467,6 +529,7 @@
 
   function restoreSession(data) {
     ridePlan = data.ridePlan;
+    savedRideId = data.savedRideId || null;
     segments = ridePlan.segments || [];
     computeSegmentOffsets();
 
@@ -641,9 +704,23 @@
     const widget = els.rideFeedbackWidget;
     const starsContainer = els.rideFeedbackStars;
     const commentEl = els.rideFeedbackComment;
-    const submitBtn = els.rideFeedbackSubmitBtn;
     const statusEl = els.rideFeedbackStatus;
-    if (!widget || !starsContainer || !submitBtn) return;
+    if (!widget || !starsContainer || !els.rideFeedbackSubmitBtn) return;
+
+    // Clone the stars + submit button FIRST to drop any listeners left
+    // attached from a previous ride. Capturing references before cloning
+    // would leave us holding detached nodes — clicks would update DOM the
+    // user never sees.
+    Array.from(starsContainer.querySelectorAll('.ride-feedback-star')).forEach((btn) => {
+      btn.parentNode.replaceChild(btn.cloneNode(true), btn);
+    });
+    const oldSubmit = els.rideFeedbackSubmitBtn;
+    const submitBtn = oldSubmit.cloneNode(true);
+    oldSubmit.parentNode.replaceChild(submitBtn, oldSubmit);
+    els.rideFeedbackSubmitBtn = submitBtn;
+
+    // Now query the fresh nodes — these are the ones in the DOM.
+    const starButtons = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
 
     // Reset widget state every time finishRide runs (handles "Start Another Ride").
     widget.classList.remove('d-none');
@@ -656,7 +733,6 @@
     if (statusEl) statusEl.textContent = 'Optional — helps tune future rides.';
 
     let selectedRating = 0;
-    const starButtons = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
 
     function paintStars(active) {
       starButtons.forEach((btn) => {
@@ -672,12 +748,6 @@
     }
 
     starButtons.forEach((btn) => {
-      // Re-bind safely by cloning to drop any prior listeners from a previous ride.
-      const fresh = btn.cloneNode(true);
-      btn.parentNode.replaceChild(fresh, btn);
-    });
-    const refreshedStars = Array.from(starsContainer.querySelectorAll('.ride-feedback-star'));
-    refreshedStars.forEach((btn) => {
       btn.addEventListener('click', () => {
         selectedRating = parseInt(btn.dataset.rating, 10) || 0;
         paintStars(selectedRating);
@@ -685,15 +755,10 @@
       });
     });
 
-    // Replace the submit button to drop any previous click handler.
-    const freshSubmit = submitBtn.cloneNode(true);
-    submitBtn.parentNode.replaceChild(freshSubmit, submitBtn);
-    els.rideFeedbackSubmitBtn = freshSubmit;
-
-    freshSubmit.addEventListener('click', async () => {
+    submitBtn.addEventListener('click', async () => {
       if (selectedRating < 1) return;
-      freshSubmit.disabled = true;
-      freshSubmit.textContent = 'Submitting…';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
       try {
         if (!window.spinRideFeedbackService) {
           throw new Error('Feedback service not loaded');
@@ -707,14 +772,14 @@
           includeAllOuts: context.includeAllOuts,
         });
         if (statusEl) statusEl.textContent = 'Thanks — feedback submitted.';
-        freshSubmit.textContent = 'Submitted';
+        submitBtn.textContent = 'Submitted';
         if (commentEl) commentEl.disabled = true;
-        refreshedStars.forEach((b) => { b.disabled = true; });
+        starButtons.forEach((b) => { b.disabled = true; });
       } catch (err) {
         console.error('Spin ride feedback submission failed:', err);
         if (statusEl) statusEl.textContent = `Couldn't submit: ${err.message}`;
-        freshSubmit.disabled = false;
-        freshSubmit.textContent = 'Try again';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Try again';
       }
     });
 
@@ -733,6 +798,10 @@
     const actualMinutes = Math.round(actualSeconds / 60);
     const segmentsCompleted = Math.min(currentSegmentIndex + 1, segments.length);
     const allCompleted = currentSegmentIndex >= segments.length;
+
+    // Persist to personal history (fire-and-forget — never blocks the
+    // activity-log save flow or the rating widget).
+    persistRideToHistory(actualSeconds);
     const startedAtIso = rideStartedAt ? rideStartedAt.toISOString() : new Date().toISOString();
 
     // Build summary
@@ -756,7 +825,9 @@
       `Segments: ${segmentsCompleted}/${segments.length}`,
     ];
     segments.slice(0, segmentsCompleted).forEach((seg) => {
-      notesLines.push(`  ${seg.name}: R${seg.resistance}, ${seg.rpm_low}-${seg.rpm_high}rpm, ${formatTime(seg.duration_seconds)}`);
+      const noteRpmLow = mapRpm(seg.rpm_low) ?? seg.rpm_low;
+      const noteRpmHigh = mapRpm(seg.rpm_high) ?? seg.rpm_high;
+      notesLines.push(`  ${seg.name}: R${seg.resistance}, ${noteRpmLow}-${noteRpmHigh}rpm, ${formatTime(seg.duration_seconds)}`);
     });
     const notes = notesLines.join('\n').substring(0, 500);
 
@@ -832,6 +903,8 @@
   // ── Generate Ride ──────────────────────────────────────────────────────
 
   async function generateRide(durationMinutes) {
+    // A freshly generated plan is brand-new history, not a re-ride.
+    savedRideId = null;
     showState('generatingState');
 
     try {
@@ -904,6 +977,7 @@
     releaseWakeLock();
     clearSession();
     ridePlan = null;
+    savedRideId = null;
     segments = [];
     segmentOffsets = [];
     currentSegmentIndex = 0;
@@ -911,7 +985,113 @@
     totalRemaining = 0;
     rideStartedAt = null;
     pausedAt = null;
+    // Clear ?savedId from the URL so a "New ride" press doesn't re-trigger
+    // the saved-ride loader on the next reload.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('savedId')) {
+        url.searchParams.delete('savedId');
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch (e) { /* ignore */ }
     showState('selectState');
+  }
+
+  // ── Saved Ride History ─────────────────────────────────────────────────
+  //
+  // Auto-save every completed ride to the user's history so they can star
+  // favorites and re-ride them later. The two helpers below also handle the
+  // re-ride hand-off: when ?savedId=... is present, loadSavedRide() fetches
+  // the stored plan and drops straight into the ride state, skipping
+  // generation.
+
+  const SAVED_RIDES_API = '/api/v3/firebase/spin-rides';
+
+  async function authHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (window.authService && window.authService.currentUser) {
+      try {
+        const token = await window.authService.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      } catch (e) { /* ignore */ }
+    }
+    return headers;
+  }
+
+  async function persistRideToHistory(actualSeconds) {
+    if (!ridePlan) return;
+    try {
+      if (savedRideId) {
+        // Re-ride of an existing saved entry: bump completion + refresh timestamp.
+        await fetch(`${SAVED_RIDES_API}/${encodeURIComponent(savedRideId)}`, {
+          method: 'PATCH',
+          headers: await authHeaders(),
+          body: JSON.stringify({
+            increment_completion: true,
+            last_actual_seconds: actualSeconds,
+          }),
+        });
+      } else {
+        // Brand-new ride: save it to history.
+        const res = await fetch(SAVED_RIDES_API, {
+          method: 'POST',
+          headers: await authHeaders(),
+          body: JSON.stringify({
+            plan: ridePlan,
+            last_actual_seconds: actualSeconds,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.id) savedRideId = data.id;
+        }
+      }
+    } catch (err) {
+      // Never block ride completion on history persistence.
+      console.warn('Failed to persist ride to history:', err);
+    }
+  }
+
+  async function loadSavedRide(rideId) {
+    try {
+      const res = await fetch(`${SAVED_RIDES_API}/${encodeURIComponent(rideId)}`, {
+        headers: await authHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data || !data.plan || !Array.isArray(data.plan.segments) || !data.plan.segments.length) {
+        throw new Error('Saved ride is missing its plan');
+      }
+
+      savedRideId = data.id;
+      ridePlan = data.plan;
+      segments = ridePlan.segments;
+
+      computeSegmentOffsets();
+      currentSegmentIndex = 0;
+      segmentRemaining = segments[0].duration_seconds;
+      totalRemaining = ridePlan.total_seconds;
+      rideStartedAt = null;
+      pausedAt = null;
+
+      populateRideUI();
+      updateSegmentDisplay();
+
+      // Reset controls — ride is loaded but not yet started.
+      els.startBtn.classList.remove('d-none');
+      els.pauseBtn.classList.add('d-none');
+      els.resumeBtn.classList.add('d-none');
+      els.endBtn.classList.add('d-none');
+
+      showState('rideState');
+      saveSession(false);
+      return true;
+    } catch (err) {
+      console.error('Failed to load saved ride:', err);
+      els.errorMessage.textContent = `Couldn't load saved ride: ${err.message}`;
+      showState('errorState');
+      return false;
+    }
   }
 
   // ── Init ───────────────────────────────────────────────────────────────
@@ -986,6 +1166,15 @@
       els.bikeGearsStatus.textContent = `Mapped: gears ${bikeGears.min}–${bikeGears.max} → resistance 1-10.`;
     } else {
       els.bikeGearsStatus.textContent = '';
+    }
+  }
+
+  function updateBikeRpmStatus() {
+    if (!els.bikeRpmStatus) return;
+    if (bikeRpm) {
+      els.bikeRpmStatus.textContent = `Mapped: AI RPM ${AI_RPM_MIN}–${AI_RPM_MAX} → your ${bikeRpm.min}–${bikeRpm.max}.`;
+    } else {
+      els.bikeRpmStatus.textContent = '';
     }
   }
 
@@ -1084,6 +1273,42 @@
       });
     }
 
+    // Bike RPM save / clear (mirrors gear save / clear above)
+    if (els.bikeRpmSaveBtn) {
+      els.bikeRpmSaveBtn.addEventListener('click', () => {
+        const min = parseInt(els.lowRpmInput.value, 10);
+        const max = parseInt(els.maxRpmInput.value, 10);
+        if (Number.isNaN(min) || Number.isNaN(max) || min < 1 || max < 1) {
+          els.bikeRpmStatus.textContent = 'Enter both RPMs as positive numbers.';
+          return;
+        }
+        if (max <= min) {
+          els.bikeRpmStatus.textContent = 'Max RPM must be higher than low RPM.';
+          return;
+        }
+        saveBikeRpm(min, max);
+        bikeRpm = { min, max };
+        updateBikeRpmStatus();
+        if (ridePlan && segments.length) {
+          renderSegmentList();
+          updateSegmentDisplay();
+        }
+      });
+    }
+    if (els.bikeRpmClearBtn) {
+      els.bikeRpmClearBtn.addEventListener('click', () => {
+        clearBikeRpm();
+        bikeRpm = null;
+        els.lowRpmInput.value = '';
+        els.maxRpmInput.value = '';
+        els.bikeRpmStatus.textContent = `Using AI RPM range ${AI_RPM_MIN}-${AI_RPM_MAX}.`;
+        if (ridePlan && segments.length) {
+          renderSegmentList();
+          updateSegmentDisplay();
+        }
+      });
+    }
+
     // Ride controls
     els.startBtn.addEventListener('click', onStart);
     els.pauseBtn.addEventListener('click', onPause);
@@ -1147,6 +1372,14 @@
     }
     updateBikeGearsStatus();
 
+    // Load saved bike-RPM mapping and prefill the setup form.
+    bikeRpm = loadBikeRpm();
+    if (bikeRpm) {
+      if (els.lowRpmInput) els.lowRpmInput.value = bikeRpm.min;
+      if (els.maxRpmInput) els.maxRpmInput.value = bikeRpm.max;
+    }
+    updateBikeRpmStatus();
+
     // Restore include-all-outs preference
     try {
       setIncludeAllOuts(localStorage.getItem(INCLUDE_ALL_OUTS_KEY) === '1');
@@ -1167,16 +1400,31 @@
       return;
     }
 
-    // Restore in-progress ride if session exists
+    // Re-ride hand-off: ?savedId=... loads a stored plan and jumps straight
+    // to the ride screen, skipping the generator. An in-progress session in
+    // sessionStorage takes precedence so a refresh during a ride doesn't
+    // discard the user's progress.
+    const savedIdParam = (() => {
+      try { return new URLSearchParams(window.location.search).get('savedId'); }
+      catch (e) { return null; }
+    })();
+
     const saved = loadSession();
     if (saved && saved.ridePlan) {
       restoreSession(saved);
+    } else if (savedIdParam) {
+      const ok = await loadSavedRide(savedIdParam);
+      if (!ok) showState('selectState');
     } else {
       showState('selectState');
     }
   }
 
   // ── Bootstrap ──────────────────────────────────────────────────────────
+
+  // Test-only hook for exercising the feedback widget without going
+  // through the auth-gated ride flow. Read by tests/spin-ride-feedback.spec.js.
+  window.__spinRideTestHooks = { setupRideFeedbackWidget };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

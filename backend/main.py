@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import routers
-from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride, tabata_kettlebell
+from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride, spin_ride_history, tabata_kettlebell
 from .services.sharing_service import sharing_service
 import re
 import html
@@ -65,9 +65,10 @@ app.include_router(universal_log_routes.router)  # Universal Logger (AI session 
 app.include_router(cron.router)  # Scheduled task endpoints (daily workout generator)
 app.include_router(exercise_images.router)  # Exercise GIF proxy/cache
 app.include_router(spin_ride.router)  # Spin Ride generator (experimental)
+app.include_router(spin_ride_history.router)  # Saved spin rides (per-user history)
 app.include_router(tabata_kettlebell.router)  # Tabata Kettlebell generator (experimental)
 
-logger.info("✅ All routers included successfully (22 routers total)")
+logger.info("✅ All routers included successfully (23 routers total)")
 
 # ============================================
 # SEO Routes (robots.txt, sitemap.xml, llms.txt)
@@ -493,6 +494,19 @@ async def serve_spin_ride():
     except FileNotFoundError:
         return HTMLResponse(
             content="<h1>Spin Ride not found</h1><p>Please ensure frontend/spin-ride.html exists</p>",
+            status_code=404
+        )
+
+@app.get("/spin-ride-history", response_class=HTMLResponse)
+@app.get("/spin-ride-history.html", response_class=HTMLResponse)
+async def serve_spin_ride_history():
+    """Serve the Spin Ride History page (per-user saved rides)."""
+    try:
+        with open("frontend/spin-ride-history.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Spin Ride History not found</h1><p>Please ensure frontend/spin-ride-history.html exists</p>",
             status_code=404
         )
 
