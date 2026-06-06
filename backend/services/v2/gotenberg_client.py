@@ -37,11 +37,19 @@ class GotenbergClient:
         # Prefer an explicit URL, then the GOTENBERG_URL env var (set this in the
         # Railway dashboard — railway.toml's [env] block is ignored by Railway),
         # then an environment-appropriate default.
-        self.gotenberg_url = (
+        raw_url = (
             gotenberg_url
             or os.getenv('GOTENBERG_URL')
             or _resolve_default_url()
-        ).rstrip('/')
+        )
+        # Normalize: a GOTENBERG_URL set without a scheme (e.g.
+        # "gotenberg-production-c928.up.railway.app") makes requests raise
+        # MissingSchema. Default a bare host to https:// so a common
+        # dashboard misconfiguration cannot break PDF/image generation.
+        url = raw_url.strip().rstrip('/')
+        if url and not url.startswith(('http://', 'https://')):
+            url = f"https://{url}"
+        self.gotenberg_url = url
         # Whether GOTENBERG_URL came from the environment (vs. a code default).
         self.url_from_env = bool(gotenberg_url or os.getenv('GOTENBERG_URL'))
         self.last_error: Optional[str] = None
