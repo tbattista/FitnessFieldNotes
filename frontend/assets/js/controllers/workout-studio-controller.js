@@ -36,11 +36,21 @@
       this.favoriteIds = new Set();
       this._searchDebounceTimer = null;
       this.currentView = 'select'; // 'select' | 'organize'
+      // Page 2 mode: 'plan' edits the template; 'log' records what you did.
+      // Persisted per workout in localStorage so the user's last intent
+      // sticks for the next visit to the same workout.
+      this.mode = 'plan'; // 'plan' | 'log'
       // Per-tray-instance editor state for Page 2:
       //   key = instanceId, value = { sets, reps, rest, weight, weightUnit }
       this.organizeState = new Map();
+      // Log-mode actuals — separate from plan state so flipping the toggle
+      // doesn't clobber template edits. Key = instanceId, value =
+      // { actualSets, actualReps, actualWeight, actualNotes, isDone, doneAt }
+      this.logState = new Map();
       // Live card components mounted on Page 2, keyed by instanceId
       this.studioCards = new Map();
+      // Live log-card components mounted on Page 2 (Log mode only)
+      this.studioLogCards = new Map();
       // Live block components mounted on Page 2, keyed by blockId
       this.studioBlocks = new Map();
       // Live note components mounted on Page 2, keyed by noteId
@@ -193,6 +203,9 @@
       this.dom.addActivityBtn = document.getElementById('studioAddActivityBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
       this.dom.addNoteBtn = document.getElementById('studioAddNoteBtn');
+      // Plan / Log segmented toggle in the Page 2 header
+      this.dom.modePlanBtn = document.getElementById('studioModePlanBtn');
+      this.dom.modeLogBtn = document.getElementById('studioModeLogBtn');
 
       this.dom.draftBanner = document.getElementById('studioDraftBanner');
       this.dom.draftBannerTime = document.getElementById('studioDraftBannerTime');
@@ -1231,6 +1244,15 @@
         this.dom.fabMore.addEventListener('click', () => this._openMoreSheet());
       }
 
+      // Plan / Log segmented toggle — flips the card variants below and
+      // swaps the Go-FAB's behavior between 'start workout' and 'save log'.
+      if (this.dom.modePlanBtn) {
+        this.dom.modePlanBtn.addEventListener('click', () => this._setMode('plan'));
+      }
+      if (this.dom.modeLogBtn) {
+        this.dom.modeLogBtn.addEventListener('click', () => this._setMode('log'));
+      }
+
       if (this.dom.addBlockBtn) {
         this.dom.addBlockBtn.addEventListener('click', () => this._createBlock());
       }
@@ -1633,6 +1655,18 @@
       if (this.dom.fabs) this.dom.fabs.hidden = view !== 'organize';
       this._refreshFabState();
 
+      // Entering Page 2 — restore the user's previously-chosen mode for
+      // this workout. New workouts default to Plan; logged workouts may
+      // re-open in Log if that's where the user left off.
+      if (view === 'organize') {
+        const remembered = this._loadModePreference();
+        if (remembered !== this.mode) {
+          this.mode = remembered;
+        }
+        this._reflectModeToggle();
+        this._reflectFabForMode();
+      }
+
       if (view === 'organize') {
         this._renderOrganize();
         // If the workout has no name yet, nudge the user to fill the slim
@@ -1672,6 +1706,7 @@
       // Full rebuild — card count per workout is typically <20 so a diff is overkill,
       // and re-binding live field controllers cleanly is easier with a fresh tree.
       this._destroyAllCards();
+      this._destroyAllLogCards();
       this._destroyAllBlocks();
       this._destroyAllNotes();
       this.dom.organizeList.innerHTML = '';
@@ -1687,8 +1722,16 @@
         if (entry.kind === 'card') {
           const item = itemMap.get(entry.instanceId);
           if (!item) return; // referenced item was removed
-          const card = this._mountCard(item, { idx, total, container: this.dom.organizeList, blockOptions, inBlock: null });
-          card.setIndex(idx, total);
+          // Log mode mounts a different card variant — same instanceId,
+          // different body. The plan card's setIndex/move-up/down menu
+          // doesn't apply to log cards (the user logs in order; reorder
+          // is a Plan-mode concern).
+          if (this.mode === 'log') {
+            this._mountLogCard(item, { container: this.dom.organizeList });
+          } else {
+            const card = this._mountCard(item, { idx, total, container: this.dom.organizeList, blockOptions, inBlock: null });
+            card.setIndex(idx, total);
+          }
         } else if (entry.kind === 'note') {
           const note = this.notes.get(entry.noteId);
           if (!note) return;
@@ -1760,14 +1803,21 @@
           block.instanceIds.forEach((iid, childIdx) => {
             const item = itemMap.get(iid);
             if (!item) return;
-            const card = this._mountCard(item, {
-              idx: noteIds.length + childIdx,
-              total: childCount,
-              container: slot,
-              blockOptions,
-              inBlock: inBlockMeta,
-            });
-            card.setIndex(noteIds.length + childIdx, childCount);
+            // Same mode branch as the top-level case — log cards render
+            // inside blocks too, so the user can fill in actuals for a
+            // grouped warmup or superset just like loose exercises.
+            if (this.mode === 'log') {
+              this._mountLogCard(item, { container: slot });
+            } else {
+              const card = this._mountCard(item, {
+                idx: noteIds.length + childIdx,
+                total: childCount,
+                container: slot,
+                blockOptions,
+                inBlock: inBlockMeta,
+              });
+              card.setIndex(noteIds.length + childIdx, childCount);
+            }
           });
           blockComp.setChildCount(childCount);
         }
@@ -2184,9 +2234,12 @@
       // inside _handleSave so users get a friendly "Give your workout a
       // name first" error rather than a silent disabled button.
       const canSave = !!trayHas;
-      // Go additionally requires both name + a saved workoutId, since
-      // workout-mode is loaded by id.
-      const canGo = canSave && nameSet && !!this.workoutId;
+      // Go has different rules per mode:
+      //   plan → start workout-mode session; needs saved template + name
+      //   log  → save log entry; only needs ≥1 exercise (name check lives
+      //          inside _handleSaveLog with a friendly error)
+      const inLog = this.mode === 'log';
+      const canGo = inLog ? !!trayHas : (canSave && nameSet && !!this.workoutId);
       if (this.dom.fabSave) {
         this.dom.fabSave.disabled = !canSave;
         this.dom.fabSave.title = canSave ? 'Save workout' : 'Add an exercise first';
@@ -2194,8 +2247,10 @@
       if (this.dom.fabGo) {
         this.dom.fabGo.disabled = !canGo;
         this.dom.fabGo.title = canGo
-          ? 'Start workout'
-          : (trayHas ? (nameSet ? 'Save first to start' : 'Add a name then save') : 'Add an exercise to start');
+          ? (inLog ? 'Save log' : 'Start workout')
+          : inLog
+            ? 'Add an exercise to log'
+            : (trayHas ? (nameSet ? 'Save first to start' : 'Add a name then save') : 'Add an exercise to start');
       }
     }
 
@@ -2206,6 +2261,12 @@
      * back to a friendly status hint when prerequisites are missing.
      */
     async _handleStartFromFab() {
+      // The Go FAB does different things depending on the active Page 2
+      // mode: Plan mode → save + launch the full workout-mode session;
+      // Log mode → record the field log entry without leaving the page.
+      if (this.mode === 'log') {
+        return this._handleSaveLog();
+      }
       if (!this.tray || this.tray.size() === 0) {
         this._setStatus('Add at least one exercise first.', 'error');
         return;
@@ -2222,6 +2283,248 @@
       } catch (_) { /* status already surfaced by _handleSave */ }
       if (!this.workoutId) return; // save failed → don't navigate
       window.location.href = `/workout-mode.html?id=${encodeURIComponent(this.workoutId)}`;
+    }
+
+    // ============================================================
+    // LOG MODE — Plan/Log toggle, log-card mounting, save handler
+    // ============================================================
+
+    _modeStorageKey() {
+      const wid = this.workoutId || 'new';
+      return `ffn:studio:mode:${wid}`;
+    }
+
+    _loadModePreference() {
+      try {
+        const v = localStorage.getItem(this._modeStorageKey());
+        return v === 'log' ? 'log' : 'plan';
+      } catch (_) { return 'plan'; }
+    }
+
+    _saveModePreference() {
+      try { localStorage.setItem(this._modeStorageKey(), this.mode); }
+      catch (_) {}
+    }
+
+    /**
+     * Flip Page 2's mode. Re-renders the organize list with the matching
+     * card variant, swaps the Go FAB's affordance, and persists the choice.
+     */
+    _setMode(mode) {
+      if (mode !== 'plan' && mode !== 'log') return;
+      if (this.mode === mode) return;
+      this.mode = mode;
+      this._reflectModeToggle();
+      this._reflectFabForMode();
+      this._refreshFabState();
+      this._renderOrganize();
+      this._saveModePreference();
+    }
+
+    _reflectModeToggle() {
+      const plan = this.dom.modePlanBtn;
+      const log = this.dom.modeLogBtn;
+      const onPlan = this.mode === 'plan';
+      if (plan) {
+        plan.classList.toggle('is-active', onPlan);
+        plan.setAttribute('aria-pressed', onPlan ? 'true' : 'false');
+      }
+      if (log) {
+        log.classList.toggle('is-active', !onPlan);
+        log.setAttribute('aria-pressed', onPlan ? 'false' : 'true');
+      }
+    }
+
+    _reflectFabForMode() {
+      const fab = this.dom.fabGo;
+      if (!fab) return;
+      const icon = fab.querySelector('i');
+      if (this.mode === 'log') {
+        fab.title = 'Save log';
+        fab.setAttribute('aria-label', 'Save log');
+        if (icon) icon.className = 'bx bx-check';
+      } else {
+        fab.title = 'Start workout';
+        fab.setAttribute('aria-label', 'Start workout');
+        if (icon) icon.className = 'bx bx-play';
+      }
+    }
+
+    /**
+     * Pull (or seed) the per-instance log state. Defaults clone the plan's
+     * weight so the common "did exactly the plan" case needs zero typing —
+     * user only touches actuals when reality diverged.
+     */
+    _ensureLogState(instanceId) {
+      let s = this.logState.get(instanceId);
+      if (!s) {
+        const plan = this._ensureOrganizeState(instanceId) || {};
+        s = {
+          actualSets: '',
+          actualReps: '',
+          actualWeight: plan.weight || '',
+          actualNotes: '',
+          isDone: false,
+          doneAt: null,
+        };
+        this.logState.set(instanceId, s);
+      }
+      return s;
+    }
+
+    /** Mount a log card for an exercise instance in the organize list. */
+    _mountLogCard(item, { container }) {
+      const planState = this._ensureOrganizeState(item.instanceId);
+      const logState = this._ensureLogState(item.instanceId);
+      const src = item.exercise || {};
+      const groupType = String(src.group_type || 'standard').toLowerCase();
+      const activityId = src._activityId || src.activity_id
+        || (planState.cardioConfig && planState.cardioConfig.activity_type) || '';
+      const activityIcon = groupType === 'cardio'
+        ? (this._resolveActivityIcon(activityId) || 'bx-pulse')
+        : '';
+
+      const card = new window.StudioLogCard({
+        instanceId: item.instanceId,
+        name: item.name,
+        planState,
+        logState,
+        groupType,
+        activityIcon,
+        cardioConfig: planState.cardioConfig || {},
+        callbacks: {
+          onLogChange: (instanceId, partial) => this._onLogCardChange(instanceId, partial),
+          onMarkDone: (instanceId) => this._onMarkDone(instanceId, true),
+          onMarkUndone: (instanceId) => this._onMarkDone(instanceId, false),
+        },
+      });
+      const node = card.render();
+      container.appendChild(node);
+      this.studioLogCards.set(item.instanceId, card);
+      return card;
+    }
+
+    _destroyAllLogCards() {
+      this.studioLogCards.forEach((c) => c.destroy && c.destroy());
+      this.studioLogCards.clear();
+    }
+
+    _onLogCardChange(instanceId, partial) {
+      const s = this._ensureLogState(instanceId);
+      Object.assign(s, partial || {});
+      // Keep the draft service in sync so a half-filled log survives a
+      // reload (the user's "as quick as possible" promise depends on this
+      // — no Firestore writes mid-log).
+      this._scheduleDraftSave();
+    }
+
+    _onMarkDone(instanceId, done) {
+      const s = this._ensureLogState(instanceId);
+      s.isDone = !!done;
+      s.doneAt = done ? Date.now() : null;
+      this._scheduleDraftSave();
+    }
+
+    /**
+     * Save Log → POST a quick_log session record to the backend. Uses the
+     * atomic create-and-complete endpoint so the network round-trip is a
+     * single call. On success: clear the log draft + return the user to
+     * Page 2 in Plan mode so they can edit the template next time without
+     * the log noise.
+     */
+    async _handleSaveLog() {
+      if (!this.tray || this.tray.size() === 0) {
+        this._setStatus('Add at least one exercise first.', 'error');
+        return;
+      }
+      const items = this.tray.getItems();
+      const performed = items
+        .filter((it) => {
+          const s = this.logState.get(it.instanceId);
+          // Include exercises marked done OR ones with any actual filled in
+          if (!s) return false;
+          return !!(s.isDone || s.actualSets || s.actualReps || s.actualWeight || s.actualNotes);
+        })
+        .map((it, idx) => {
+          const s = this.logState.get(it.instanceId) || {};
+          const plan = this.organizeState.get(it.instanceId) || {};
+          // sets_completed is int in the backend model; coerce best-effort.
+          const setsInt = parseInt(s.actualSets || plan.sets || '0', 10);
+          return {
+            exercise_name: it.name,
+            group_id: it.instanceId,
+            order_index: idx,
+            sets_completed: Number.isFinite(setsInt) ? setsInt : 0,
+            target_sets: String(plan.sets || '3'),
+            target_reps: String(plan.reps || '8-12'),
+            weight: s.actualWeight || plan.weight || null,
+            weight_unit: plan.weightUnit || 'lbs',
+            notes: s.actualNotes || null,
+            is_modified: !!(s.actualWeight && s.actualWeight !== (plan.weight || '')),
+            original_weight: plan.weight || null,
+            original_sets: String(plan.sets || ''),
+            original_reps: String(plan.reps || ''),
+          };
+        });
+
+      if (performed.length === 0) {
+        this._setStatus('Mark at least one exercise done first.', 'error');
+        return;
+      }
+
+      if (this._saveInFlight) return;
+      this._saveInFlight = true;
+      this._setStatus('Saving log…', null);
+      if (this.dom.fabGo) this.dom.fabGo.disabled = true;
+
+      const payload = {
+        workout_id: this.workoutId || `studio-${Date.now()}`,
+        workout_name: this.workoutName || 'Untitled workout',
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        exercises_performed: performed,
+        session_mode: 'quick_log',
+        notes: null,
+      };
+
+      try {
+        let saved;
+        if (window.dataManager && typeof window.dataManager.authenticatedFetch === 'function') {
+          const url = window.config.api.getUrl('/api/v3/workout-sessions/create-and-complete');
+          const resp = await window.dataManager.authenticatedFetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!resp.ok) throw new Error(`Save log failed (${resp.status})`);
+          saved = await resp.json();
+        } else {
+          // Anonymous / test fallback — try a plain fetch, surface a clear
+          // error if the endpoint rejects (it requires auth in production).
+          const resp = await fetch('/api/v3/workout-sessions/create-and-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!resp.ok) throw new Error(`Save log failed (${resp.status})`);
+          saved = await resp.json();
+        }
+        this._setStatus('Logged!', 'success');
+        console.log('[WorkoutStudio] Log saved:', saved && saved.id);
+        // Clear the in-memory log state so re-opening the workout starts a
+        // fresh entry. The draft is updated on next render.
+        this.logState = new Map();
+        this._scheduleDraftSave();
+        // Flip back to Plan mode — the next visit defaults to editing the
+        // template, not logging again.
+        this._setMode('plan');
+      } catch (err) {
+        console.error('[WorkoutStudio] Save log failed:', err);
+        this._setStatus(`Could not save log: ${err.message || 'unknown error'}`, 'error');
+      } finally {
+        this._saveInFlight = false;
+        if (this.dom.fabGo) this.dom.fabGo.disabled = false;
+      }
     }
 
     /**

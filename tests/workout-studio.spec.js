@@ -2937,3 +2937,131 @@ test.describe('Workout Studio — Page 2 Import and Reorder are visually identic
         expect(styles.i.fontWeight).toBe(styles.r.fontWeight);
     });
 });
+
+test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
+    async function continueToOrganize(page) {
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await rows.nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Log mode test');
+        await page.locator('#studioContinueBtn').click();
+    }
+
+    test('Page 2 shows a Plan/Log segmented toggle; defaults to Plan', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        await expect(page.locator('#studioModePlanBtn')).toBeVisible();
+        await expect(page.locator('#studioModeLogBtn')).toBeVisible();
+        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
+        await expect(page.locator('#studioModeLogBtn')).not.toHaveClass(/is-active/);
+    });
+
+    test('Flipping to Log swaps cards to log variants; flipping back restores plan cards', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        // Plan mode → standard cards
+        await expect(page.locator('.studio-card').first()).toBeVisible();
+        await expect(page.locator('.studio-log-card')).toHaveCount(0);
+
+        // Flip to Log
+        await page.locator('#studioModeLogBtn').click();
+        await expect(page.locator('.studio-log-card')).toHaveCount(2);
+        await expect(page.locator('#studioModeLogBtn')).toHaveClass(/is-active/);
+        // Plan input editors should not be rendered in log mode
+        await expect(page.locator('.workout-repssets-field')).toHaveCount(0);
+
+        // Flip back → plan cards return
+        await page.locator('#studioModePlanBtn').click();
+        await expect(page.locator('.studio-log-card')).toHaveCount(0);
+        await expect(page.locator('.studio-card')).toHaveCount(2);
+    });
+
+    test('Log card pre-fills actual weight from the plan; Done button marks complete', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        // Set a known plan weight on the first plan card
+        const planCard = page.locator('.studio-card').first();
+        await planCard.locator('.weight-display').click();
+        await planCard.locator('.weight-input').fill('135');
+        await planCard.locator('.studio-card-edit-save').click();
+        await expect(planCard.locator('.weight-value')).toHaveText('135');
+
+        // Flip to Log; the first log card's weight input is pre-filled
+        await page.locator('#studioModeLogBtn').click();
+        const logCard = page.locator('.studio-log-card').first();
+        const weightInput = logCard.locator('[data-field="actualWeight"]');
+        await expect(weightInput).toHaveValue('135');
+
+        // Mark done → card gets the is-done class + summary appears
+        await logCard.locator('[data-action="toggle-done"]').click();
+        await expect(logCard).toHaveClass(/is-done/);
+        await expect(logCard.locator('.studio-log-summary')).toBeVisible();
+
+        // Tap summary to re-open + edit
+        await logCard.locator('.studio-log-summary').click();
+        await expect(logCard).not.toHaveClass(/is-done/);
+    });
+
+    test('Save Log POSTs a quick_log session to /api/v3/workout-sessions/create-and-complete', async ({ page }) => {
+        let posted = null;
+        await page.route('**/api/v3/workout-sessions/create-and-complete', async (route) => {
+            try { posted = JSON.parse(route.request().postData() || '{}'); }
+            catch (_) { posted = null; }
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ id: 'session-test-1', workout_name: posted?.workout_name }),
+            });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        // Anon fallback path so authenticatedFetch isn't required
+        await page.evaluate(() => { delete window.dataManager; });
+
+        // Flip to Log + mark one card done + tap the Go FAB (now Save Log)
+        await page.locator('#studioModeLogBtn').click();
+        await page.locator('.studio-log-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/logged/i, { timeout: 5000 });
+        expect(posted).toBeTruthy();
+        expect(posted.session_mode).toBe('quick_log');
+        expect(Array.isArray(posted.exercises_performed)).toBe(true);
+        expect(posted.exercises_performed.length).toBeGreaterThanOrEqual(1);
+        // The Done-flagged exercise carries an order_index + group_id
+        const first = posted.exercises_performed[0];
+        expect(first.exercise_name).toBeTruthy();
+        expect(first.group_id).toBeTruthy();
+        expect(typeof first.order_index).toBe('number');
+    });
+
+    test('Save Log refuses when no exercise is marked Done (no actuals to record)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        await page.evaluate(() => { delete window.dataManager; });
+
+        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioFabGo').click();
+        await expect(page.locator('#studioOrganizeStatus')).toContainText(/Mark at least one exercise done/i, { timeout: 5000 });
+    });
+
+    test('Go FAB icon + tooltip swap based on mode', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        const fab = page.locator('#studioFabGo');
+        // Plan mode → play icon, 'Start workout' title
+        await expect(fab.locator('i')).toHaveClass(/bx-play/);
+        await expect(fab).toHaveAttribute('title', 'Start workout');
+
+        await page.locator('#studioModeLogBtn').click();
+        // Log mode → check icon, 'Save log' title
+        await expect(fab.locator('i')).toHaveClass(/bx-check/);
+        await expect(fab).toHaveAttribute('title', 'Save log');
+    });
+});
