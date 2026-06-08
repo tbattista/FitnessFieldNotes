@@ -780,6 +780,48 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
 .studio-organize-count::before { content: '('; }
 .studio-organize-count::after { content: ')'; }
 
+/* ------------------------------------------------------------------
+   Plan / Log segmented toggle
+   Sits on the left of the Page 2 section header. Matches the studio's
+   10px button-radius family so it reads as part of the same control
+   set as Import + Reorder beside it.
+   ------------------------------------------------------------------ */
+.studio-mode-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 2px;
+  gap: 2px;
+}
+[data-bs-theme="dark"] .studio-mode-toggle {
+  background: rgba(255, 255, 255, 0.06);
+}
+.studio-mode-toggle-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.studio-mode-toggle-btn:hover {
+  color: var(--bs-body-color);
+}
+.studio-mode-toggle-btn.is-active {
+  background: var(--bs-body-bg);
+  color: var(--bs-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+[data-bs-theme="dark"] .studio-mode-toggle-btn.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--bs-primary);
+}
+
 .studio-organize-list {
   display: flex;
   flex-direction: column;
@@ -1243,6 +1285,159 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
 /* Page-2 Import button shares the same outline-secondary style as Reorder
    so the two header buttons read as a uniform pair — no color hierarchy
    between them, just two equally-weighted secondary actions. */
+
+
+/* ------------------------------------------------------------------
+   Log card — Page 2's Log-mode card variant
+   ------------------------------------------------------------------ */
+.studio-log-card {
+  /* Same shell as the plan card so visual continuity is preserved when
+     the user flips the mode toggle. Slightly muted background signals
+     "logging" state vs the editable plan card. */
+  background: rgba(0, 0, 0, 0.025);
+  gap: 0.45rem;
+}
+.studio-log-card.is-done {
+  background: rgba(46, 160, 67, 0.06);
+  border-left: 3px solid var(--bs-success, #28a745);
+}
+[data-bs-theme="dark"] .studio-log-card.is-done {
+  background: rgba(46, 160, 67, 0.10);
+}
+
+.studio-log-plan-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  padding: 0 0.1rem;
+}
+.studio-log-plan-label {
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.65rem;
+}
+.studio-log-plan-text {
+  flex: 1 1 auto;
+}
+
+.studio-log-actuals {
+  display: flex;
+  gap: 0.4rem;
+}
+.studio-log-actuals[data-actuals="strength"] .studio-log-field-sets { flex: 0 0 22%; }
+.studio-log-actuals[data-actuals="strength"] .studio-log-field-reps { flex: 1 1 auto; min-width: 0; }
+.studio-log-actuals[data-actuals="strength"] .studio-log-field-weight { flex: 0 0 30%; }
+.studio-log-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.studio-log-field-full { flex: 1 1 auto; }
+.studio-log-field-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--bs-secondary-color);
+  margin: 0;
+}
+.studio-log-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+.studio-log-actuals[data-actuals="strength"] .studio-log-input { text-align: center; }
+.studio-log-actuals[data-actuals="cardio"] .studio-log-input { text-align: left; padding: 0 12px; }
+.studio-log-input::placeholder {
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+  opacity: 0.7;
+}
+.studio-log-input:focus {
+  outline: none;
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 2px rgba(201, 124, 93, 0.15);
+}
+
+.studio-log-done-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.studio-log-done-btn .bx { font-size: 1.05rem; line-height: 1; }
+.studio-log-done-btn:hover {
+  border-color: var(--bs-success, #28a745);
+  color: var(--bs-success, #28a745);
+}
+.studio-log-card.is-done .studio-log-done-btn {
+  background: var(--bs-success, #28a745);
+  border-color: var(--bs-success, #28a745);
+  color: white;
+}
+
+.studio-log-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--bs-success, #28a745);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.studio-log-summary[hidden] { display: none; }
+.studio-log-summary .bx { font-size: 1.15rem; }
+
+.studio-log-notes-row {
+  display: block;
+  margin: 0;
+}
+.studio-log-notes-row[hidden] { display: none; }
+.studio-log-notes {
+  width: 100%;
+  resize: none;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  font-size: 0.85rem;
+  color: var(--bs-body-color);
+  line-height: 1.4;
+  min-height: 32px;
+}
+[data-bs-theme="dark"] .studio-log-notes {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.studio-log-notes:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--bs-primary);
+}
+.studio-log-notes::placeholder {
+  color: var(--bs-secondary-color);
+  font-style: italic;
+}
 
 
 .studio-block {

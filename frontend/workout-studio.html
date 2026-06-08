@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260608-01" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260608-02" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -273,7 +273,17 @@
                 <!-- View: Page 2 (Organize) -->
                 <div class="studio-view studio-view-organize" id="studioViewOrganize" hidden>
                   <div class="studio-organize-section-header">
-                    <h6 class="studio-section-title">Exercises</h6>
+                    <!-- Plan / Log mode toggle — flips the card variants below
+                         between editable-template (Plan) and field-log (Log).
+                         Persists per workout in localStorage. -->
+                    <div class="studio-mode-toggle" role="group" aria-label="Mode">
+                      <button class="studio-mode-toggle-btn is-active"
+                              id="studioModePlanBtn" type="button"
+                              data-mode="plan" aria-pressed="true">Plan</button>
+                      <button class="studio-mode-toggle-btn"
+                              id="studioModeLogBtn" type="button"
+                              data-mode="log" aria-pressed="false">Log</button>
+                    </div>
                     <span class="studio-organize-count" id="studioOrganizeCount">0</span>
                     <!-- Top-right header: Import + Reorder. Matches the legacy
                          builder's two-button header. Add buttons (Activity,
@@ -438,9 +448,10 @@
     <script src="/static/assets/js/components/exercise-tray.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-exercise-card.js?v=20260602-06"></script>
+    <script src="/static/assets/js/components/studio-log-card.js?v=20260605-01"></script>
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260602-14"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260608-02"></script>
   </body>
 </html>
