@@ -315,7 +315,7 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         expect(flexWrap).toBe('wrap');
     });
 
-    test('add-custom button is hidden until search has text, then reveals on the same row', async ({ page }) => {
+    test('add-custom button is hidden until search has text, then reveals at the top of the results list', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         const btn = page.locator('#studioAddCustomBtn');
         // Hidden when search is empty — no purpose, no visual weight
@@ -325,13 +325,18 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(btn).toBeVisible();
         await expect(btn).toContainText('Hex Bar Deadlift');
 
-        // Verify it shares a row with the search input (same parent)
-        const sharedParent = await page.evaluate(() => {
-            const a = document.getElementById('studioSearchInput');
+        // Lives at the top of the results list, immediately before the list —
+        // no longer bolted onto the search row.
+        const placement = await page.evaluate(() => {
             const b = document.getElementById('studioAddCustomBtn');
-            return a && b && a.closest('.studio-search-row') === b.parentElement;
+            const list = document.getElementById('studioList');
+            return {
+                notInSearchRow: !b.closest('.studio-search-row'),
+                precedesList: !!(b && list && b.nextElementSibling === list),
+            };
         });
-        expect(sharedParent).toBe(true);
+        expect(placement.notInSearchRow).toBe(true);
+        expect(placement.precedesList).toBe(true);
 
         await page.locator('#studioSearchClear').click();
         await expect(btn).toBeHidden();

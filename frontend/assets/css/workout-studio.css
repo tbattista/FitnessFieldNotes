@@ -290,25 +290,26 @@ html[data-bs-theme="dark"] .studio-meta-field:focus-within { background: var(--b
   font-size: 1.1rem;
 }
 
-/* -------------------- Add-custom button (inline with search) -------------------- */
+/* -------------------- Add-custom row (top of results list) --------------------
+   Sits as the first item in the results list, hidden until the user types.
+   Styled as a full-width row so it reads as the leading entry above the
+   exercise rows rather than a button bolted onto the search bar. */
 .studio-add-custom-btn {
-  flex: 0 0 auto;
-  /* Compact pill that takes ~1/4 of the row, sized to fit "Add \"…\"" labels
-     up to about 8 chars before truncating with an ellipsis. */
-  max-width: 30%;
-  min-width: 96px;
-  height: 44px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0 12px;
-  border: 1px solid var(--bs-primary);
-  border-radius: 10px;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  width: calc(100% - 0.5rem);
+  margin: 0 0.25rem 0.5rem;
+  min-height: 52px;
+  padding: 0 1rem;
+  border: 1px dashed var(--bs-primary);
+  border-radius: 12px;
   background: rgba(201, 124, 93, 0.08);
   color: var(--bs-primary);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  text-align: left;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -316,8 +317,12 @@ html[data-bs-theme="dark"] .studio-meta-field:focus-within { background: var(--b
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 .studio-add-custom-btn .bx {
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   flex-shrink: 0;
+}
+.studio-add-custom-btn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .studio-add-custom-btn:hover {
   background: rgba(201, 124, 93, 0.16);

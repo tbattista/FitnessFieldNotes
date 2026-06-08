@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260602-17" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260608-01" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -161,7 +161,7 @@
                     </button>
                   </div>
 
-                  <!-- Search bar + inline add-custom (button reveals when input has text) -->
+                  <!-- Search bar (add-custom moved to the top of the results list) -->
                   <div class="studio-search-row">
                     <div class="studio-search">
                       <i class="bx bx-search"></i>
@@ -175,10 +175,6 @@
                         <i class="bx bx-x"></i>
                       </button>
                     </div>
-                    <button class="studio-add-custom-btn" id="studioAddCustomBtn" type="button" hidden>
-                      <i class="bx bx-plus-circle"></i>
-                      <span id="studioAddCustomLabel">Add custom</span>
-                    </button>
                     <button class="studio-import-btn" id="studioImportBtn" type="button" aria-label="Import workout">
                       <i class="bx bx-import"></i>
                       <span>Import</span>
@@ -253,6 +249,13 @@
                       <button class="studio-filter-clear" id="studioFilterClear" type="button">Clear all</button>
                     </div>
                   </div>
+
+                  <!-- Top-of-list add-custom row — hidden until the user types,
+                       then reveals as the first item in the results list. -->
+                  <button class="studio-add-custom-btn" id="studioAddCustomBtn" type="button" hidden>
+                    <i class="bx bx-plus-circle"></i>
+                    <span id="studioAddCustomLabel">Add custom</span>
+                  </button>
 
                   <!-- Exercise list -->
                   <div class="studio-list" id="studioList" role="list" aria-live="polite">
