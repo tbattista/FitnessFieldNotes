@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260609-03" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260609-04" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -364,17 +364,17 @@
                 </div>
 
                 <!-- Floating FAB row — visible on Page 2 (Organize) only.
-                     Mirrors the legacy builder's More / Save / Go affordance
-                     so the action surface feels familiar coming from the
-                     builder. The Page-2 inline Save button below remains
-                     as a desktop-friendly fallback; the FABs are the mobile
-                     primary path. -->
+                     Back FAB sits left-justified; Discard / Save / Go are
+                     right-justified. Metadata edits live in the slim header
+                     (the chevron next to the workout name), so there's no
+                     "More" overflow menu — Discard is the only destructive
+                     action that needed surfacing. -->
                 <div class="studio-floating-fabs" id="studioFloatingFabs" hidden>
                   <button type="button" class="studio-fab studio-fab-back" id="studioFabBack" title="Back to selection" aria-label="Back to selection">
                     <i class="bx bx-arrow-back"></i>
                   </button>
-                  <button type="button" class="studio-fab studio-fab-more" id="studioFabMore" title="More options" aria-label="More options">
-                    <i class="bx bx-dots-vertical-rounded"></i>
+                  <button type="button" class="studio-fab studio-fab-discard" id="studioFabDiscard" title="Discard workout" aria-label="Discard workout">
+                    <i class="bx bx-trash"></i>
                   </button>
                   <button type="button" class="studio-fab studio-fab-save" id="studioFabSave" title="Save workout" aria-label="Save workout">
                     <i class="bx bx-save"></i>
@@ -455,10 +455,10 @@
 
     <script src="/static/assets/js/components/exercise-tray.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=20260601-01"></script>
-    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260609-03"></script>
+    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260609-04"></script>
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260609-02"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260609-04"></script>
   </body>
 </html>

@@ -2434,6 +2434,56 @@ test.describe('Workout Studio — Back FAB (4th button)', () => {
         // FAB row is hidden again on Page 1
         await expect(page.locator('#studioFloatingFabs')).toBeHidden();
     });
+
+    test('FAB row: Back is left-justified, Discard/Save/Go are right-justified — no More overflow menu', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('FAB layout test');
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+
+        // Old More FAB is gone; Discard FAB replaces it.
+        await expect(page.locator('#studioFabMore')).toHaveCount(0);
+        await expect(page.locator('#studioFabDiscard')).toBeVisible();
+
+        // Geometry: Back's left edge sits well to the LEFT of Discard,
+        // and the three right-side FABs are clustered together.
+        const back = await page.locator('#studioFabBack').boundingBox();
+        const discard = await page.locator('#studioFabDiscard').boundingBox();
+        const save = await page.locator('#studioFabSave').boundingBox();
+        const go = await page.locator('#studioFabGo').boundingBox();
+
+        expect(back.x).toBeLessThan(discard.x - 50);     // Back is far left
+        expect(discard.x).toBeLessThan(save.x);          // Right cluster order
+        expect(save.x).toBeLessThan(go.x);
+        // Right cluster is tight (consecutive FABs within ~20px of each other)
+        expect(save.x - (discard.x + discard.width)).toBeLessThan(20);
+        expect(go.x - (save.x + save.width)).toBeLessThan(20);
+    });
+
+    test('Discard FAB confirms then clears the in-progress workout', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Discard FAB test');
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+
+        // Auto-accept the confirm prompt
+        page.on('dialog', dialog => dialog.accept());
+
+        // Pre-state: tray had at least one exercise added above
+        await expect(page.locator('#studioFabDiscard')).toBeVisible();
+
+        await page.locator('#studioFabDiscard').click();
+
+        // Discard navigates back to Page 1 with a cleared tray (new-workout path)
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(0);
+    });
 });
 
 test.describe('Cardio editor — newly-inserted More pill flashes for visibility', () => {

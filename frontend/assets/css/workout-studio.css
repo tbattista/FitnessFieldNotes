@@ -1650,13 +1650,25 @@ html[data-bs-theme="dark"] .studio-org-field-input {
 .studio-floating-fabs {
   position: fixed;
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
   right: 16px;
   display: flex;
   flex-direction: row;
+  align-items: center;
   gap: 10px;
   z-index: 1050;
   pointer-events: none;
 }
+/* Desktop sidebar (Sneat layout-menu) is fixed at the left edge; nudge
+   the FAB row past it so Back doesn't sit under the menu. */
+@media (min-width: 992px) {
+  .studio-floating-fabs {
+    left: calc(var(--bs-menu-width, 16.25rem) + 16px);
+  }
+}
+/* Back FAB sits on the LEFT, the rest cluster on the RIGHT. margin-right
+   auto pushes the right group away from Back without needing a wrapper. */
+.studio-fab-back { margin-right: auto; }
 .studio-floating-fabs[hidden] { display: none; }
 /* Page 1 owns the centered Continue CTA — hide FABs while selecting */
 .studio[data-view="select"] .studio-floating-fabs { display: none; }
@@ -1686,9 +1698,10 @@ html[data-bs-theme="dark"] .studio-org-field-input {
   color: var(--bs-secondary, #6c757d);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
-.studio-fab-more {
+.studio-fab-discard {
   background: #fff;
-  color: var(--bs-warning);
+  color: var(--bs-danger, #dc3545);
+  border: 1px solid rgba(220, 53, 69, 0.25);
 }
 .studio-fab-save {
   background: var(--bs-primary);
@@ -1699,10 +1712,13 @@ html[data-bs-theme="dark"] .studio-org-field-input {
 .studio-fab-save.is-saved {
   background: var(--bs-success);
 }
-[data-bs-theme="dark"] .studio-fab-back,
-[data-bs-theme="dark"] .studio-fab-more {
+[data-bs-theme="dark"] .studio-fab-back {
   background: var(--bs-body-bg);
   border-color: rgba(255, 255, 255, 0.1);
+}
+[data-bs-theme="dark"] .studio-fab-discard {
+  background: var(--bs-body-bg);
+  border-color: rgba(220, 53, 69, 0.4);
 }
 [data-bs-theme="dark"] .studio-fab {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);

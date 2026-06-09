@@ -205,7 +205,7 @@
       // Floating FAB row (Page 2 only)
       this.dom.fabs = document.getElementById('studioFloatingFabs');
       this.dom.fabBack = document.getElementById('studioFabBack');
-      this.dom.fabMore = document.getElementById('studioFabMore');
+      this.dom.fabDiscard = document.getElementById('studioFabDiscard');
       this.dom.fabSave = document.getElementById('studioFabSave');
       this.dom.fabGo = document.getElementById('studioFabGo');
       this.dom.addBlockBtn = document.getElementById('studioAddBlockBtn');
@@ -1255,8 +1255,8 @@
       if (this.dom.fabGo) {
         this.dom.fabGo.addEventListener('click', () => this._handleStartFromFab());
       }
-      if (this.dom.fabMore) {
-        this.dom.fabMore.addEventListener('click', () => this._openMoreSheet());
+      if (this.dom.fabDiscard) {
+        this.dom.fabDiscard.addEventListener('click', () => this._confirmDiscard());
       }
 
       // Plan / Log segmented toggle — flips the card variants below and
@@ -2734,44 +2734,16 @@
     }
 
     /**
-     * More-FAB sheet — quick actions that don't fit the always-visible
-     * header. Prefer UnifiedOffcanvasFactory for parity with the rest of
-     * the app; fall back to a native confirm for Discard if the factory
-     * isn't loaded (defensive — the studio page may load before some
-     * shared services).
+     * Discard FAB — straight to confirmation, no overflow menu. Metadata
+     * editing lives in the slim header (the chevron next to the name
+     * input), so the only destructive action the user might want here is
+     * "throw this away".
      */
-    _openMoreSheet() {
-      const items = [];
-      items.push({
-        icon: 'bx-edit-alt',
-        title: 'Edit metadata',
-        description: 'Open the name / tags / description card',
-        onClick: () => {
-          if (typeof this._setMetaExpanded === 'function') this._setMetaExpanded(true);
-          if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
-        },
-      });
-      // 'Back to selection' lives on its own FAB now — no need to
-      // duplicate it inside the More sheet.
-      items.push({
-        icon: 'bx-trash',
-        title: 'Discard workout',
-        description: this.workoutId ? 'Close without further edits' : 'Clear the in-progress workout',
-        onClick: () => this._handleDiscardFromFab(),
-        danger: true,
-      });
-
-      if (window.UnifiedOffcanvasFactory && typeof window.UnifiedOffcanvasFactory.createMenuOffcanvas === 'function') {
-        window.UnifiedOffcanvasFactory.createMenuOffcanvas({
-          id: 'studioMoreSheet',
-          title: 'More options',
-          icon: 'bx-dots-vertical-rounded',
-          menuItems: items,
-        });
-      } else {
-        // Native fallback — keeps the FAB useful when the factory isn't loaded.
-        if (window.confirm('Discard this workout and start fresh?')) this._handleDiscardFromFab();
-      }
+    _confirmDiscard() {
+      const msg = this.workoutId
+        ? 'Close this workout? Your saved version stays intact.'
+        : 'Discard this workout and start fresh?';
+      if (window.confirm(msg)) this._handleDiscardFromFab();
     }
 
     _handleDiscardFromFab() {
