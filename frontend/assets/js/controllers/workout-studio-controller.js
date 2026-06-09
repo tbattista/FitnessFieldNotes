@@ -2367,6 +2367,11 @@
         log.classList.toggle('is-active', !onPlan);
         log.setAttribute('aria-pressed', onPlan ? 'false' : 'true');
       }
+      // Import is a planning action — irrelevant once the user is logging
+      // a live session. Hide the Page-2 Import button in Log mode.
+      if (this.dom.importPage2Btn) {
+        this.dom.importPage2Btn.hidden = !onPlan;
+      }
     }
 
     _reflectFabForMode() {

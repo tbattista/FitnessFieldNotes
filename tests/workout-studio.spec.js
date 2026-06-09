@@ -3131,4 +3131,22 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         await page.locator('#studioModePlanBtn').click();
         await expect(card.locator('.studio-card-last-line')).toHaveCount(0);
     });
+
+    test('Page-2 Import button is hidden in Log mode and visible in Plan mode', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        const importBtn = page.locator('#studioImportPage2Btn');
+
+        // Plan (default) → Import visible
+        await expect(importBtn).toBeVisible();
+
+        // Log → Import hides (planning action irrelevant during a live session)
+        await page.locator('#studioModeLogBtn').click();
+        await expect(importBtn).toBeHidden();
+
+        // Back to Plan → Import returns
+        await page.locator('#studioModePlanBtn').click();
+        await expect(importBtn).toBeVisible();
+    });
 });
