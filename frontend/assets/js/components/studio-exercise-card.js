@@ -54,7 +54,7 @@
   }
 
   class StudioExerciseCard {
-    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId } = {}) {
+    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId, showDoneButton, isDone } = {}) {
       this.instanceId = instanceId;
       this.name = name || 'Exercise';
       this.state = Object.assign({
@@ -89,6 +89,12 @@
       // the cardio offcanvas, not inline.
       this.cardioConfig = cardioConfig ? Object.assign({}, cardioConfig) : {};
       this.activityId = activityId ? String(activityId) : '';
+      // Log-mode affordance — when true, the header sprouts a small Done
+      // check button next to the info icon. The card visually morphs into
+      // a 'logged' state when isDone is flipped. Plan mode never sets
+      // these, so the default-usage card surface is unchanged.
+      this.showDoneButton = !!showDoneButton;
+      this.isDone = !!isDone;
       this.el = null;
       this._repsSetsCtl = null;
       this._handleDocClickForMenu = null;
@@ -140,6 +146,26 @@
     setState(partial) {
       Object.assign(this.state, partial || {});
       this.refresh();
+    }
+
+    /**
+     * Flip the log-mode Done state without a full re-render. Toggles the
+     * .is-done class on the card and swaps the Done button's icon/title
+     * so the user gets immediate feedback without losing scroll position.
+     */
+    setDone(next) {
+      this.isDone = !!next;
+      if (!this.el) return;
+      this.el.classList.toggle('is-done', this.isDone);
+      const btn = this.el.querySelector('[data-action="toggle-done"]');
+      if (btn) {
+        btn.setAttribute('aria-pressed', this.isDone ? 'true' : 'false');
+        const label = this.isDone ? 'Mark not done' : 'Mark done';
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = `bx ${this.isDone ? 'bx-check-circle' : 'bx-check'}`;
+      }
     }
 
     setIndex(index, total) {
@@ -200,8 +226,22 @@
         return this._templateCardio({ safeId, safeName, iconHtml, blockClass, blockAttr, typeAttr, moveMenuItems });
       }
 
+      // Log-mode Done button — only rendered when the controller asked
+      // for it. Sits in the header actions next to info + 3-dot menu so
+      // it reads as a primary card action. The is-done class on the
+      // card body green-tints it via CSS.
+      const doneBtnHtml = this.showDoneButton ? `
+              <button class="studio-card-icon-btn studio-card-done-btn"
+                      data-action="toggle-done" type="button"
+                      aria-pressed="${this.isDone ? 'true' : 'false'}"
+                      aria-label="${this.isDone ? 'Mark not done' : 'Mark done'}"
+                      title="${this.isDone ? 'Mark not done' : 'Mark done'}">
+                <i class="bx ${this.isDone ? 'bx-check-circle' : 'bx-check'}"></i>
+              </button>` : '';
+      const doneClass = (this.showDoneButton && this.isDone) ? ' is-done' : '';
+
       return `
-        <div class="studio-card${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
+        <div class="studio-card${blockClass}${doneClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
           <div class="studio-card-header">
             <div class="studio-card-name-wrap">
               <div class="studio-card-name click-to-edit" tabindex="0">${iconHtml}${safeName}</div>
@@ -215,7 +255,7 @@
             <div class="studio-card-actions">
               <button class="studio-card-icon-btn" data-action="info" type="button" aria-label="Details for ${safeName}" title="Details">
                 <i class="bx bx-info-circle"></i>
-              </button>
+              </button>${doneBtnHtml}
               <div class="studio-card-menu-wrap">
                 <button class="studio-card-icon-btn" data-action="menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More actions" title="More">
                   <i class="bx bx-dots-vertical-rounded"></i>
@@ -324,6 +364,19 @@
         infoBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           this._fire('onInfo');
+        });
+      }
+
+      // Done button (log mode only) → flip isDone + fire callback. The
+      // controller persists the new state into logState; we toggle the
+      // class locally so the user sees instant feedback.
+      const doneBtn = this.el.querySelector('[data-action="toggle-done"]');
+      if (doneBtn) {
+        doneBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const next = !this.isDone;
+          this.setDone(next);
+          this._fire('onMarkDone', next);
         });
       }
 
@@ -558,8 +611,17 @@
         ? escapeHtml(summary)
         : 'Tap to set duration, distance, pace…';
       const summaryClass = summary ? 'studio-card-cardio-meta' : 'studio-card-cardio-empty';
+      const doneBtnHtml = this.showDoneButton ? `
+              <button class="studio-card-icon-btn studio-card-done-btn"
+                      data-action="toggle-done" type="button"
+                      aria-pressed="${this.isDone ? 'true' : 'false'}"
+                      aria-label="${this.isDone ? 'Mark not done' : 'Mark done'}"
+                      title="${this.isDone ? 'Mark not done' : 'Mark done'}">
+                <i class="bx ${this.isDone ? 'bx-check-circle' : 'bx-check'}"></i>
+              </button>` : '';
+      const doneClass = (this.showDoneButton && this.isDone) ? ' is-done' : '';
       return `
-        <div class="studio-card studio-card-cardio${blockClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
+        <div class="studio-card studio-card-cardio${blockClass}${doneClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
           <div class="studio-card-header">
             <div class="studio-card-name-wrap">
               <div class="studio-card-name">${iconHtml}${safeName}</div>
@@ -567,7 +629,7 @@
             <div class="studio-card-actions">
               <button class="studio-card-icon-btn" data-action="edit-cardio" type="button" aria-label="Edit activity" title="Edit activity">
                 <i class="bx bx-pencil"></i>
-              </button>
+              </button>${doneBtnHtml}
               <div class="studio-card-menu-wrap">
                 <button class="studio-card-icon-btn" data-action="menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More actions" title="More">
                   <i class="bx bx-dots-vertical-rounded"></i>

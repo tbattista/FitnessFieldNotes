@@ -2963,52 +2963,40 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#studioModeLogBtn')).not.toHaveClass(/is-active/);
     });
 
-    test('Flipping to Log swaps cards to log variants; flipping back restores plan cards', async ({ page }) => {
+    test('Flipping to Log keeps the plan-card shell; flipping back stays in plan mode unchanged', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
 
-        // Plan mode → standard cards
+        // Plan mode → no Done buttons on the cards
         await expect(page.locator('.studio-card').first()).toBeVisible();
-        await expect(page.locator('.studio-log-card')).toHaveCount(0);
+        await expect(page.locator('.studio-card-done-btn')).toHaveCount(0);
 
-        // Flip to Log
+        // Flip to Log — cards remain studio-cards (same shell as Plan)
+        // but each now sprouts a Done check button in the header actions.
         await page.locator('#studioModeLogBtn').click();
-        await expect(page.locator('.studio-log-card')).toHaveCount(2);
         await expect(page.locator('#studioModeLogBtn')).toHaveClass(/is-active/);
-        // Plan input editors should not be rendered in log mode
-        await expect(page.locator('.workout-repssets-field')).toHaveCount(0);
+        await expect(page.locator('.studio-card')).toHaveCount(2);
+        await expect(page.locator('.studio-card-done-btn')).toHaveCount(2);
 
-        // Flip back → plan cards return
+        // Flip back → Done buttons are gone, plan cards unchanged
         await page.locator('#studioModePlanBtn').click();
-        await expect(page.locator('.studio-log-card')).toHaveCount(0);
+        await expect(page.locator('.studio-card-done-btn')).toHaveCount(0);
         await expect(page.locator('.studio-card')).toHaveCount(2);
     });
 
-    test('Log card pre-fills actual weight from the plan; Done button marks complete', async ({ page }) => {
+    test('Done button toggles is-done class + persists across mode flips', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
 
-        // Set a known plan weight on the first plan card
-        const planCard = page.locator('.studio-card').first();
-        await planCard.locator('.weight-display').click();
-        await planCard.locator('.weight-input').fill('135');
-        await planCard.locator('.studio-card-edit-save').click();
-        await expect(planCard.locator('.weight-value')).toHaveText('135');
-
-        // Flip to Log; the first log card's weight input is pre-filled
+        // Flip to Log + mark the first card Done
         await page.locator('#studioModeLogBtn').click();
-        const logCard = page.locator('.studio-log-card').first();
-        const weightInput = logCard.locator('[data-field="actualWeight"]');
-        await expect(weightInput).toHaveValue('135');
+        const card = page.locator('.studio-card').first();
+        await card.locator('[data-action="toggle-done"]').click();
+        await expect(card).toHaveClass(/is-done/);
 
-        // Mark done → card gets the is-done class + summary appears
-        await logCard.locator('[data-action="toggle-done"]').click();
-        await expect(logCard).toHaveClass(/is-done/);
-        await expect(logCard.locator('.studio-log-summary')).toBeVisible();
-
-        // Tap summary to re-open + edit
-        await logCard.locator('.studio-log-summary').click();
-        await expect(logCard).not.toHaveClass(/is-done/);
+        // Tap Done again → card un-dones
+        await card.locator('[data-action="toggle-done"]').click();
+        await expect(card).not.toHaveClass(/is-done/);
     });
 
     test('Save Log POSTs a quick_log session to /api/v3/workout-sessions/create-and-complete', async ({ page }) => {
@@ -3030,7 +3018,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
 
         // Flip to Log + mark one card done + tap the Go FAB (now Save Log)
         await page.locator('#studioModeLogBtn').click();
-        await page.locator('.studio-log-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
 
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/logged/i, { timeout: 5000 });

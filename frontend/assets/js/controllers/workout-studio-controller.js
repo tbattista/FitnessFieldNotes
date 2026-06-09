@@ -49,8 +49,6 @@
       this.logState = new Map();
       // Live card components mounted on Page 2, keyed by instanceId
       this.studioCards = new Map();
-      // Live log-card components mounted on Page 2 (Log mode only)
-      this.studioLogCards = new Map();
       // Live block components mounted on Page 2, keyed by blockId
       this.studioBlocks = new Map();
       // Live note components mounted on Page 2, keyed by noteId
@@ -1705,8 +1703,9 @@
 
       // Full rebuild — card count per workout is typically <20 so a diff is overkill,
       // and re-binding live field controllers cleanly is easier with a fresh tree.
+      // Log cards live in the same studioCards map as plan cards, so
+      // _destroyAllCards covers both.
       this._destroyAllCards();
-      this._destroyAllLogCards();
       this._destroyAllBlocks();
       this._destroyAllNotes();
       this.dom.organizeList.innerHTML = '';
@@ -2355,15 +2354,20 @@
      * weight so the common "did exactly the plan" case needs zero typing —
      * user only touches actuals when reality diverged.
      */
+    /**
+     * Per-instance log state. Mirrors organizeState's shape (protocol,
+     * sets, reps, rest, weight, weightUnit) so the shared
+     * StudioExerciseCard can render it without translation. Fields are
+     * blank until the user edits them, at which point the merged display
+     * state (plan + this override) shifts to reflect what the user
+     * actually did.
+     */
     _ensureLogState(instanceId) {
       let s = this.logState.get(instanceId);
       if (!s) {
-        const plan = this._ensureOrganizeState(instanceId) || {};
         s = {
-          actualSets: '',
-          actualReps: '',
-          actualWeight: plan.weight || '',
-          actualNotes: '',
+          // Sparse — only fields the user has logged appear here.
+          // Display defaults to the plan values for everything else.
           isDone: false,
           doneAt: null,
         };
@@ -2373,9 +2377,23 @@
     }
 
     /** Mount a log card for an exercise instance in the organize list. */
+    /**
+     * Mount a log-mode card. We reuse the SAME StudioExerciseCard shell
+     * the plan view uses — same PROTOCOL / WEIGHT / REST rows, same
+     * unified ✓/✗ inline editor — so logging visually matches editing
+     * the template. The only Log-mode adds are:
+     *   1. A Done check button in the header
+     *   2. Field commits write to logState (NOT organizeState), so the
+     *      template is untouched while you fill in your actuals.
+     * The card receives a merged state (plan values + any logged
+     * overrides) so what you see defaults to the plan and morphs to
+     * your actuals as you edit.
+     */
     _mountLogCard(item, { container }) {
       const planState = this._ensureOrganizeState(item.instanceId);
       const logState = this._ensureLogState(item.instanceId);
+      const displayState = Object.assign({}, planState, logState);
+
       const src = item.exercise || {};
       const groupType = String(src.group_type || 'standard').toLowerCase();
       const activityId = src._activityId || src.activity_id
@@ -2384,29 +2402,33 @@
         ? (this._resolveActivityIcon(activityId) || 'bx-pulse')
         : '';
 
-      const card = new window.StudioLogCard({
+      const card = new window.StudioExerciseCard({
         instanceId: item.instanceId,
         name: item.name,
-        planState,
-        logState,
+        state: displayState,
+        inBlock: null,
+        blockOptions: [],
         groupType,
         activityIcon,
         cardioConfig: planState.cardioConfig || {},
+        activityId,
+        showDoneButton: true,
+        isDone: !!logState.isDone,
         callbacks: {
-          onLogChange: (instanceId, partial) => this._onLogCardChange(instanceId, partial),
-          onMarkDone: (instanceId) => this._onMarkDone(instanceId, true),
-          onMarkUndone: (instanceId) => this._onMarkDone(instanceId, false),
+          // Inline edits → write to logState (NOT organizeState) so the
+          // template stays untouched while you're logging.
+          onChange: (instanceId, partial) => this._onLogCardChange(instanceId, partial),
+          onInfo: (instanceId) => this._onCardInfo(instanceId),
+          onEditCardio: (instanceId) => this._onEditCardio(instanceId),
+          onMarkDone: (instanceId, done) => this._onMarkDone(instanceId, done),
         },
       });
       const node = card.render();
       container.appendChild(node);
-      this.studioLogCards.set(item.instanceId, card);
+      // Share the same map as plan cards — the destroy path treats them
+      // uniformly and we don't need a second studioLogCards index.
+      this.studioCards.set(item.instanceId, card);
       return card;
-    }
-
-    _destroyAllLogCards() {
-      this.studioLogCards.forEach((c) => c.destroy && c.destroy());
-      this.studioLogCards.clear();
     }
 
     _onLogCardChange(instanceId, partial) {
@@ -2441,15 +2463,23 @@
       const performed = items
         .filter((it) => {
           const s = this.logState.get(it.instanceId);
-          // Include exercises marked done OR ones with any actual filled in
           if (!s) return false;
-          return !!(s.isDone || s.actualSets || s.actualReps || s.actualWeight || s.actualNotes);
+          // Include exercises marked Done OR any with the user-typed
+          // override that diverges from the plan (any field present).
+          return !!(
+            s.isDone || s.protocol || s.sets || s.reps || s.weight || s.rest
+          );
         })
         .map((it, idx) => {
           const s = this.logState.get(it.instanceId) || {};
           const plan = this.organizeState.get(it.instanceId) || {};
-          // sets_completed is int in the backend model; coerce best-effort.
-          const setsInt = parseInt(s.actualSets || plan.sets || '0', 10);
+          // Display state = plan + log overrides. The values that
+          // actually got recorded are this merge — same shape the card
+          // showed the user.
+          const merged = Object.assign({}, plan, s);
+          const setsInt = parseInt(merged.sets || '0', 10);
+          const planWeight = plan.weight || '';
+          const actualWeight = (s.weight != null) ? s.weight : planWeight;
           return {
             exercise_name: it.name,
             group_id: it.instanceId,
@@ -2457,11 +2487,11 @@
             sets_completed: Number.isFinite(setsInt) ? setsInt : 0,
             target_sets: String(plan.sets || '3'),
             target_reps: String(plan.reps || '8-12'),
-            weight: s.actualWeight || plan.weight || null,
-            weight_unit: plan.weightUnit || 'lbs',
-            notes: s.actualNotes || null,
-            is_modified: !!(s.actualWeight && s.actualWeight !== (plan.weight || '')),
-            original_weight: plan.weight || null,
+            weight: actualWeight || null,
+            weight_unit: merged.weightUnit || 'lbs',
+            notes: null,
+            is_modified: !!(actualWeight && actualWeight !== planWeight),
+            original_weight: planWeight || null,
             original_sets: String(plan.sets || ''),
             original_reps: String(plan.reps || ''),
           };
