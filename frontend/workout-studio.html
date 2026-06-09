@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260608-02" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260608-03" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -284,6 +284,14 @@
                               id="studioModeLogBtn" type="button"
                               data-mode="log" aria-pressed="false">Log</button>
                     </div>
+                    <!-- Session timer — visible only in Log mode. Counts
+                         wall-clock seconds since the user entered Log;
+                         persisted to localStorage so a reload doesn't
+                         reset it. Used as duration_minutes on Complete. -->
+                    <span class="studio-mode-timer" id="studioModeTimer" hidden aria-live="off">
+                      <i class="bx bx-time-five"></i>
+                      <span class="studio-mode-timer-text">00:00</span>
+                    </span>
                     <span class="studio-organize-count" id="studioOrganizeCount">0</span>
                     <!-- Top-right header: Import + Reorder. Matches the legacy
                          builder's two-button header. Add buttons (Activity,
@@ -447,10 +455,10 @@
 
     <script src="/static/assets/js/components/exercise-tray.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=20260601-01"></script>
-    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260608-02"></script>
+    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260608-03"></script>
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260608-02"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260608-03"></script>
   </body>
 </html>

@@ -47,6 +47,19 @@
       // doesn't clobber template edits. Key = instanceId, value =
       // { actualSets, actualReps, actualWeight, actualNotes, isDone, doneAt }
       this.logState = new Map();
+      // Per-exercise-name snapshot of the user's last logged session for
+      // this workout. Fetched once on entering Log mode (when a saved
+      // workoutId exists) and rendered as a 'Last: 135 lbs · 3d ago'
+      // subtitle on each log card. Key = exercise_name, value =
+      // { weight, unit, daysAgo, sessionDate }.
+      this.exerciseHistory = new Map();
+      this._exerciseHistoryFetched = false;
+      // Session timer state — set when the user enters Log mode, cleared
+      // on Complete. Persisted in localStorage so a reload doesn't reset
+      // elapsed time. _timerIntervalId is the requestAnimationFrame-ish
+      // setInterval handle for the per-second redraw.
+      this._timerStartedAt = null;
+      this._timerIntervalId = null;
       // Live card components mounted on Page 2, keyed by instanceId
       this.studioCards = new Map();
       // Live block components mounted on Page 2, keyed by blockId
@@ -204,6 +217,10 @@
       // Plan / Log segmented toggle in the Page 2 header
       this.dom.modePlanBtn = document.getElementById('studioModePlanBtn');
       this.dom.modeLogBtn = document.getElementById('studioModeLogBtn');
+      this.dom.modeTimer = document.getElementById('studioModeTimer');
+      this.dom.modeTimerText = this.dom.modeTimer
+        ? this.dom.modeTimer.querySelector('.studio-mode-timer-text')
+        : null;
 
       this.dom.draftBanner = document.getElementById('studioDraftBanner');
       this.dom.draftBannerTime = document.getElementById('studioDraftBannerTime');
@@ -1663,6 +1680,14 @@
         }
         this._reflectModeToggle();
         this._reflectFabForMode();
+        // If we restored into Log mode, also start the timer + fetch
+        // history. Both are idempotent — the timer resumes from any
+        // persisted start, the history fetch is gated by a fetched flag.
+        if (this.mode === 'log') {
+          this._startSessionTimer();
+          this._loadExerciseHistory();
+        }
+        this._renderTimer();
       }
 
       if (view === 'organize') {
@@ -2246,7 +2271,7 @@
       if (this.dom.fabGo) {
         this.dom.fabGo.disabled = !canGo;
         this.dom.fabGo.title = canGo
-          ? (inLog ? 'Save log' : 'Start workout')
+          ? (inLog ? 'Complete' : 'Start workout')
           : inLog
             ? 'Add an exercise to log'
             : (trayHas ? (nameSet ? 'Save first to start' : 'Add a name then save') : 'Add an exercise to start');
@@ -2316,6 +2341,16 @@
       this._reflectModeToggle();
       this._reflectFabForMode();
       this._refreshFabState();
+      if (mode === 'log') {
+        this._startSessionTimer();
+        // Fetch last-session weights for this workout's exercises so the
+        // log cards can show 'Last: 135 lbs · 3d ago' as a memory aid.
+        // Fires once per workout; subsequent toggle flips reuse the cache.
+        this._loadExerciseHistory();
+      } else {
+        this._stopSessionTimer({ keep: true });
+      }
+      this._renderTimer();
       this._renderOrganize();
       this._saveModePreference();
     }
@@ -2339,13 +2374,128 @@
       if (!fab) return;
       const icon = fab.querySelector('i');
       if (this.mode === 'log') {
-        fab.title = 'Save log';
-        fab.setAttribute('aria-label', 'Save log');
+        // Gym-app convention: 'Complete' is the user-facing word for
+        // 'end the session + write a record'. Reads cleaner than 'Save
+        // log' which implies preserving a draft.
+        fab.title = 'Complete';
+        fab.setAttribute('aria-label', 'Complete workout');
         if (icon) icon.className = 'bx bx-check';
       } else {
         fab.title = 'Start workout';
         fab.setAttribute('aria-label', 'Start workout');
         if (icon) icon.className = 'bx bx-play';
+      }
+    }
+
+    // ---------------- session timer (Log mode only) ----------------
+
+    _timerStorageKey() {
+      const wid = this.workoutId || 'new';
+      return `ffn:studio:timer:${wid}`;
+    }
+
+    _startSessionTimer() {
+      // Resume from persisted start time if one exists for this workout —
+      // a reload mid-log shouldn't lose elapsed minutes. New sessions
+      // start now and write the start time so the next reload resumes.
+      let startedAt = null;
+      try {
+        const raw = localStorage.getItem(this._timerStorageKey());
+        if (raw) {
+          const t = parseInt(raw, 10);
+          if (Number.isFinite(t) && t > 0) startedAt = t;
+        }
+      } catch (_) {}
+      if (!startedAt) {
+        startedAt = Date.now();
+        try { localStorage.setItem(this._timerStorageKey(), String(startedAt)); }
+        catch (_) {}
+      }
+      this._timerStartedAt = startedAt;
+      if (this._timerIntervalId) clearInterval(this._timerIntervalId);
+      this._timerIntervalId = setInterval(() => this._renderTimer(), 1000);
+    }
+
+    /**
+     * Pause the redraw timer. opts.keep=true leaves the stored start
+     * time in localStorage so flipping back to Log resumes the same
+     * elapsed window; opts.keep=false (used by Complete) clears the
+     * persisted start so the next session starts at 00:00.
+     */
+    _stopSessionTimer({ keep = true } = {}) {
+      if (this._timerIntervalId) {
+        clearInterval(this._timerIntervalId);
+        this._timerIntervalId = null;
+      }
+      if (!keep) {
+        this._timerStartedAt = null;
+        try { localStorage.removeItem(this._timerStorageKey()); } catch (_) {}
+      }
+    }
+
+    _renderTimer() {
+      const el = this.dom.modeTimer;
+      const text = this.dom.modeTimerText;
+      if (!el || !text) return;
+      if (this.mode !== 'log' || !this._timerStartedAt) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = false;
+      const elapsed = Math.max(0, Math.floor((Date.now() - this._timerStartedAt) / 1000));
+      const hours = Math.floor(elapsed / 3600);
+      const mins = Math.floor((elapsed % 3600) / 60);
+      const secs = elapsed % 60;
+      const pad = (n) => (n < 10 ? `0${n}` : String(n));
+      text.textContent = hours > 0
+        ? `${hours}:${pad(mins)}:${pad(secs)}`
+        : `${pad(mins)}:${pad(secs)}`;
+    }
+
+    _elapsedMinutes() {
+      if (!this._timerStartedAt) return 0;
+      return Math.max(0, Math.round((Date.now() - this._timerStartedAt) / 60000));
+    }
+
+    // -------------- exercise history (last-session lookup) --------------
+
+    async _loadExerciseHistory() {
+      if (this._exerciseHistoryFetched) return;
+      if (!this.workoutId) return; // No saved id → no history to fetch
+      if (!window.dataManager || typeof window.dataManager.authenticatedFetch !== 'function') return;
+      this._exerciseHistoryFetched = true;
+      try {
+        const url = window.config.api.getUrl(
+          `/api/v3/firebase/workouts/exercise-history/workout/${encodeURIComponent(this.workoutId)}`
+        );
+        const resp = await window.dataManager.authenticatedFetch(url);
+        if (!resp.ok) return;
+        const json = await resp.json();
+        // Backend returns { [exercise_name]: ExerciseHistory.model_dump() }
+        const now = Date.now();
+        Object.entries(json || {}).forEach(([name, h]) => {
+          if (!h || !h.last_weight) return;
+          const dateStr = h.last_session_date;
+          let daysAgo = null;
+          if (dateStr) {
+            const then = new Date(dateStr).getTime();
+            if (Number.isFinite(then)) {
+              daysAgo = Math.max(0, Math.floor((now - then) / 86400000));
+            }
+          }
+          this.exerciseHistory.set(name, {
+            weight: String(h.last_weight),
+            unit: h.last_weight_unit || 'lbs',
+            daysAgo,
+            sessionDate: dateStr || null,
+          });
+        });
+        // Re-render Page 2 if we're in log mode so the new history shows
+        if (this.mode === 'log' && this.currentView === 'organize') {
+          this._renderOrganize();
+        }
+      } catch (err) {
+        console.warn('[WorkoutStudio] Could not load exercise history:', err);
       }
     }
 
@@ -2402,6 +2552,12 @@
         ? (this._resolveActivityIcon(activityId) || 'bx-pulse')
         : '';
 
+      // Look up the per-exercise last-session snapshot (populated by
+      // _loadExerciseHistory when entering Log mode with a saved
+      // workoutId). Cardio exercises don't track weight history this
+      // way, so they only carry it when an explicit entry exists.
+      const lastSession = this.exerciseHistory.get(item.name) || null;
+
       const card = new window.StudioExerciseCard({
         instanceId: item.instanceId,
         name: item.name,
@@ -2409,6 +2565,7 @@
         inBlock: null,
         blockOptions: [],
         groupType,
+        lastSession,
         activityIcon,
         cardioConfig: planState.cardioConfig || {},
         activityId,
@@ -2504,14 +2661,21 @@
 
       if (this._saveInFlight) return;
       this._saveInFlight = true;
-      this._setStatus('Saving log…', null);
+      this._setStatus('Completing…', null);
       if (this.dom.fabGo) this.dom.fabGo.disabled = true;
 
+      // Use the session timer's start as started_at when we have one,
+      // so the saved duration matches the timer the user was watching.
+      const startedAt = this._timerStartedAt
+        ? new Date(this._timerStartedAt).toISOString()
+        : new Date().toISOString();
+      const durationMinutes = this._elapsedMinutes();
       const payload = {
         workout_id: this.workoutId || `studio-${Date.now()}`,
         workout_name: this.workoutName || 'Untitled workout',
-        started_at: new Date().toISOString(),
+        started_at: startedAt,
         completed_at: new Date().toISOString(),
+        duration_minutes: durationMinutes,
         exercises_performed: performed,
         session_mode: 'quick_log',
         notes: null,
@@ -2539,12 +2703,19 @@
           if (!resp.ok) throw new Error(`Save log failed (${resp.status})`);
           saved = await resp.json();
         }
-        this._setStatus('Logged!', 'success');
+        this._setStatus('Completed!', 'success');
         console.log('[WorkoutStudio] Log saved:', saved && saved.id);
         // Clear the in-memory log state so re-opening the workout starts a
         // fresh entry. The draft is updated on next render.
         this.logState = new Map();
         this._scheduleDraftSave();
+        // Stop + clear the session timer (Complete = end of session, the
+        // next time the user enters Log mode it starts fresh at 00:00).
+        this._stopSessionTimer({ keep: false });
+        // Invalidate the history cache so the very next entry into Log
+        // mode re-fetches and reflects what the user just completed.
+        this._exerciseHistoryFetched = false;
+        this.exerciseHistory = new Map();
         // Flip back to Plan mode — the next visit defaults to editing the
         // template, not logging again.
         this._setMode('plan');

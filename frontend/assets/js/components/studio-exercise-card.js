@@ -54,7 +54,7 @@
   }
 
   class StudioExerciseCard {
-    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId, showDoneButton, isDone } = {}) {
+    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId, showDoneButton, isDone, lastSession } = {}) {
       this.instanceId = instanceId;
       this.name = name || 'Exercise';
       this.state = Object.assign({
@@ -95,6 +95,11 @@
       // these, so the default-usage card surface is unchanged.
       this.showDoneButton = !!showDoneButton;
       this.isDone = !!isDone;
+      // Last-session snapshot for this exercise — { weight, unit, daysAgo }.
+      // Rendered as a small 'Last: 135 lbs · 3d ago' subtitle under the
+      // name when present. Only the controller passes this; null in the
+      // default case (plan mode) so plan cards stay clean.
+      this.lastSession = (lastSession && lastSession.weight) ? lastSession : null;
       this.el = null;
       this._repsSetsCtl = null;
       this._handleDocClickForMenu = null;
@@ -168,6 +173,25 @@
       }
     }
 
+    /**
+     * Stringify a positive integer day-delta into a compact label —
+     * 'today' for 0, '1d ago' / '3d ago' for small counts, '2w ago'
+     * once we're past two weeks, then 'Nmo ago' / 'Ny ago'. Keeps the
+     * last-session subtitle short enough to fit on one line.
+     */
+    _formatDaysAgo(days) {
+      const d = Number(days) || 0;
+      if (d <= 0) return 'today';
+      if (d === 1) return 'yesterday';
+      if (d < 14) return `${d}d ago`;
+      const w = Math.round(d / 7);
+      if (w < 9) return `${w}w ago`;
+      const m = Math.round(d / 30);
+      if (m < 18) return `${m}mo ago`;
+      const y = Math.round(d / 365);
+      return `${y}y ago`;
+    }
+
     setIndex(index, total) {
       if (!this.el) return;
       this.el.dataset.index = String(index);
@@ -239,6 +263,15 @@
                 <i class="bx ${this.isDone ? 'bx-check-circle' : 'bx-check'}"></i>
               </button>` : '';
       const doneClass = (this.showDoneButton && this.isDone) ? ' is-done' : '';
+      // Last-session snippet — only rendered when the controller passed
+      // a non-empty snapshot (log mode + the exercise has prior history).
+      // Inserted right under the card header so it sits between the
+      // exercise name and the PROTOCOL row.
+      const lastHtml = this.lastSession ? `
+          <div class="studio-card-last-line" aria-label="Last session">
+            <i class="bx bx-history"></i>
+            <span>Last: ${escapeHtml(this.lastSession.weight)}${this.lastSession.unit ? ' ' + escapeHtml(this.lastSession.unit) : ''}${this.lastSession.daysAgo != null ? ' · ' + escapeHtml(this._formatDaysAgo(this.lastSession.daysAgo)) : ''}</span>
+          </div>` : '';
 
       return `
         <div class="studio-card${blockClass}${doneClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
@@ -278,7 +311,7 @@
               </div>
             </div>
           </div>
-
+${lastHtml}
           <div class="studio-card-body">
             <!-- Protocol — free-text. Whatever the user types is what they
                  see; backend sets/reps are derived best-effort on save. -->

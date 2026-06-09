@@ -3021,7 +3021,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
 
-        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/logged/i, { timeout: 5000 });
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
         expect(posted).toBeTruthy();
         expect(posted.session_mode).toBe('quick_log');
         expect(Array.isArray(posted.exercises_performed)).toBe(true);
@@ -3053,8 +3053,82 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(fab).toHaveAttribute('title', 'Start workout');
 
         await page.locator('#studioModeLogBtn').click();
-        // Log mode → check icon, 'Save log' title
+        // Log mode → check icon, 'Complete' title
         await expect(fab.locator('i')).toHaveClass(/bx-check/);
-        await expect(fab).toHaveAttribute('title', 'Save log');
+        await expect(fab).toHaveAttribute('title', 'Complete');
+    });
+});
+
+test.describe('Workout Studio — Log mode session timer + Last-session line', () => {
+    async function continueToOrganize(page) {
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Timer test');
+        await page.locator('#studioContinueBtn').click();
+    }
+
+    test('Session timer pill is hidden in Plan mode, visible + ticking in Log mode', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        // Plan → timer hidden
+        await expect(page.locator('#studioModeTimer')).toBeHidden();
+
+        // Log → timer visible, starts at 00:00
+        await page.locator('#studioModeLogBtn').click();
+        const timer = page.locator('#studioModeTimer');
+        await expect(timer).toBeVisible();
+        await expect(timer.locator('.studio-mode-timer-text')).toHaveText(/^00:00$/);
+
+        // Wait > 1s and confirm the seconds counter has advanced
+        await page.waitForTimeout(1300);
+        const text = await timer.locator('.studio-mode-timer-text').textContent();
+        expect(text).not.toBe('00:00');
+        expect(/^\d{2}:\d{2}$/.test(text)).toBe(true);
+
+        // Flip back to Plan → timer hides; flip to Log → resumes from same start
+        await page.locator('#studioModePlanBtn').click();
+        await expect(timer).toBeHidden();
+        await page.locator('#studioModeLogBtn').click();
+        await expect(timer).toBeVisible();
+        // The elapsed time should be > 0 (not reset to 00:00)
+        const resumedText = await timer.locator('.studio-mode-timer-text').textContent();
+        expect(resumedText).not.toBe('00:00');
+    });
+
+    test('Last-session line renders on a log card when the controller has history for that exercise', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        // Plant a fake history entry directly in the controller's Map for
+        // the exercise name shown in the first card. Easier than mocking
+        // the auth'd Firebase endpoint and equivalent for what we're
+        // testing (the rendering path, not the fetch).
+        const firstExerciseName = await page.locator('.studio-card .studio-card-name').first().textContent();
+        await page.evaluate((name) => {
+            const ws = window.workoutStudio;
+            ws.exerciseHistory.set((name || '').trim(), {
+                weight: '185',
+                unit: 'lbs',
+                daysAgo: 3,
+                sessionDate: new Date(Date.now() - 3 * 86400000).toISOString(),
+            });
+            // Also short-circuit the fetched flag so the fetch attempt
+            // doesn't overwrite our planted history.
+            ws._exerciseHistoryFetched = true;
+        }, firstExerciseName);
+
+        // Flip to Log → the planted history should appear as a subtitle
+        await page.locator('#studioModeLogBtn').click();
+        const card = page.locator('.studio-card').first();
+        const lastLine = card.locator('.studio-card-last-line');
+        await expect(lastLine).toBeVisible();
+        await expect(lastLine).toContainText('Last: 185 lbs');
+        await expect(lastLine).toContainText(/3d ago/);
+
+        // Plan mode strips it (plan cards stay clean)
+        await page.locator('#studioModePlanBtn').click();
+        await expect(card.locator('.studio-card-last-line')).toHaveCount(0);
     });
 });

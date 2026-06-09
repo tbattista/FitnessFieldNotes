@@ -822,6 +822,28 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   color: var(--bs-primary);
 }
 
+/* Session timer pill — Log mode only. Sits next to the mode toggle so
+   it reads as part of the same control cluster. tabular-nums keeps the
+   MM:SS column-aligned as digits change so the pill doesn't jitter. */
+.studio-mode-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(40, 167, 69, 0.10);
+  color: var(--bs-success, #28a745);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.studio-mode-timer[hidden] { display: none; }
+.studio-mode-timer .bx { font-size: 0.95rem; line-height: 1; }
+[data-bs-theme="dark"] .studio-mode-timer {
+  background: rgba(40, 167, 69, 0.18);
+}
+
 .studio-organize-list {
   display: flex;
   flex-direction: column;
@@ -1297,6 +1319,24 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
    ------------------------------------------------------------------ */
 .studio-card-done-btn {
   color: var(--bs-secondary-color);
+}
+
+/* 'Last: 135 lbs · 3d ago' subtitle. Only renders on log cards that
+   have prior session history for this exercise — sits between the
+   card header and the PROTOCOL row. Small icon + dim text so it
+   reads as memory aid, not primary content. */
+.studio-card-last-line {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.1rem 0.2rem;
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+}
+.studio-card-last-line .bx {
+  font-size: 0.9rem;
+  opacity: 0.85;
 }
 .studio-card-done-btn:hover {
   color: var(--bs-success, #28a745);
