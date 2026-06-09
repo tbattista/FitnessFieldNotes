@@ -2999,6 +2999,37 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(card).not.toHaveClass(/is-done/);
     });
 
+    test('Completed state surfaces a "Completed" pill label + locks click-to-edit on fields', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        // Flip to Log
+        await page.locator('#studioModeLogBtn').click();
+        const card = page.locator('.studio-card').first();
+        const doneBtn = card.locator('[data-action="toggle-done"]');
+
+        // Pre-toggle: no "Completed" text label, click-to-edit interactive
+        await expect(card.locator('.studio-card-done-text')).toHaveCount(0);
+
+        // Toggle done → pill text appears, button aria swaps to "Mark incomplete"
+        await doneBtn.click();
+        await expect(card.locator('.studio-card-done-text')).toHaveText('Completed');
+        await expect(doneBtn).toHaveAttribute('aria-label', 'Mark incomplete');
+        await expect(doneBtn).toHaveAttribute('aria-pressed', 'true');
+
+        // click-to-edit on the protocol field must be inert (pointer-events: none)
+        const editable = card.locator('.studio-card-field .click-to-edit').first();
+        const pe = await editable.evaluate(el => getComputedStyle(el).pointerEvents);
+        expect(pe).toBe('none');
+
+        // Toggle off → label gone, aria-label flips back, pointer-events restored
+        await doneBtn.click();
+        await expect(card.locator('.studio-card-done-text')).toHaveCount(0);
+        await expect(doneBtn).toHaveAttribute('aria-label', 'Mark complete');
+        const pe2 = await editable.evaluate(el => getComputedStyle(el).pointerEvents);
+        expect(pe2).not.toBe('none');
+    });
+
     test('Save Log POSTs a quick_log session to /api/v3/workout-sessions/create-and-complete', async ({ page }) => {
         let posted = null;
         await page.route('**/api/v3/workout-sessions/create-and-complete', async (route) => {

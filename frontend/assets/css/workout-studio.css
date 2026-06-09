@@ -1319,6 +1319,16 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
    ------------------------------------------------------------------ */
 .studio-card-done-btn {
   color: var(--bs-secondary-color);
+  /* Smooth transition between the round icon shape and the expanded
+     "Completed" pill so toggling feels alive, not janky. */
+  transition: background 0.15s ease, color 0.15s ease,
+              padding 0.15s ease, width 0.15s ease;
+}
+.studio-card-done-btn .studio-card-done-text {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 /* 'Last: 135 lbs · 3d ago' subtitle. Only renders on log cards that
@@ -1342,15 +1352,48 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   color: var(--bs-success, #28a745);
   background: rgba(40, 167, 69, 0.06);
 }
+
+/* Completed card — strong visual treatment matching workout-mode's
+   .workout-card.logged: green left border, tinted bg, dimmed editable
+   fields, struck-through name. Reads at a glance as "this one is done". */
 .studio-card.is-done {
-  background: rgba(40, 167, 69, 0.05);
+  background: rgba(40, 167, 69, 0.08);
   border-left: 3px solid var(--bs-success, #28a745);
 }
+.studio-card.is-done .studio-card-name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(40, 167, 69, 0.6);
+  text-decoration-thickness: 2px;
+  opacity: 0.75;
+}
+.studio-card.is-done .studio-card-body,
+.studio-card.is-done .studio-card-last-line {
+  opacity: 0.65;
+}
+/* Lock the click-to-edit affordance on completed cards so users don't
+   accidentally tweak a value they've already committed to. Match the
+   pattern workout-mode uses on .logged cards. */
+.studio-card.is-done .studio-card-field .click-to-edit {
+  pointer-events: none;
+  cursor: default;
+}
+
+/* Done button morphs into a green "Completed" pill the moment the
+   card is marked done — the strongest possible visual confirmation. */
 .studio-card.is-done .studio-card-done-btn {
-  color: var(--bs-success, #28a745);
+  background: var(--bs-success, #28a745);
+  color: #fff;
+  border-radius: 999px;
+  width: auto;
+  padding: 0.3rem 0.65rem;
+  gap: 0.3rem;
+}
+.studio-card.is-done .studio-card-done-btn:hover {
+  background: #208537;
+  color: #fff;
 }
 [data-bs-theme="dark"] .studio-card.is-done {
-  background: rgba(40, 167, 69, 0.10);
+  background: rgba(40, 167, 69, 0.14);
 }
 
 .studio-block {

@@ -155,8 +155,10 @@
 
     /**
      * Flip the log-mode Done state without a full re-render. Toggles the
-     * .is-done class on the card and swaps the Done button's icon/title
-     * so the user gets immediate feedback without losing scroll position.
+     * .is-done class on the card and swaps the Done button between its
+     * icon-only 'mark complete' shape and the pill-shaped 'Completed'
+     * label so the user gets a strong visual confirmation without losing
+     * scroll position.
      */
     setDone(next) {
       this.isDone = !!next;
@@ -165,11 +167,12 @@
       const btn = this.el.querySelector('[data-action="toggle-done"]');
       if (btn) {
         btn.setAttribute('aria-pressed', this.isDone ? 'true' : 'false');
-        const label = this.isDone ? 'Mark not done' : 'Mark done';
+        const label = this.isDone ? 'Mark incomplete' : 'Mark complete';
         btn.setAttribute('aria-label', label);
         btn.setAttribute('title', label);
-        const icon = btn.querySelector('i');
-        if (icon) icon.className = `bx ${this.isDone ? 'bx-check-circle' : 'bx-check'}`;
+        btn.innerHTML = this.isDone
+          ? `<i class="bx bx-check"></i><span class="studio-card-done-text">Completed</span>`
+          : `<i class="bx bx-check"></i>`;
       }
     }
 
@@ -252,16 +255,20 @@
 
       // Log-mode Done button — only rendered when the controller asked
       // for it. Sits in the header actions next to info + 3-dot menu so
-      // it reads as a primary card action. The is-done class on the
-      // card body green-tints it via CSS.
+      // it reads as a primary card action. When pressed, the button
+      // morphs into a pill-shaped 'Completed' label; the card root gets
+      // .is-done which dims the editable fields + strikes through the
+      // exercise name to match workout-mode's logged-card treatment.
+      const doneInner = this.isDone
+        ? `<i class="bx bx-check"></i><span class="studio-card-done-text">Completed</span>`
+        : `<i class="bx bx-check"></i>`;
+      const doneLabel = this.isDone ? 'Mark incomplete' : 'Mark complete';
       const doneBtnHtml = this.showDoneButton ? `
               <button class="studio-card-icon-btn studio-card-done-btn"
                       data-action="toggle-done" type="button"
                       aria-pressed="${this.isDone ? 'true' : 'false'}"
-                      aria-label="${this.isDone ? 'Mark not done' : 'Mark done'}"
-                      title="${this.isDone ? 'Mark not done' : 'Mark done'}">
-                <i class="bx ${this.isDone ? 'bx-check-circle' : 'bx-check'}"></i>
-              </button>` : '';
+                      aria-label="${doneLabel}"
+                      title="${doneLabel}">${doneInner}</button>` : '';
       const doneClass = (this.showDoneButton && this.isDone) ? ' is-done' : '';
       // Last-session snippet — only rendered when the controller passed
       // a non-empty snapshot (log mode + the exercise has prior history).
@@ -644,14 +651,16 @@ ${lastHtml}
         ? escapeHtml(summary)
         : 'Tap to set duration, distance, pace…';
       const summaryClass = summary ? 'studio-card-cardio-meta' : 'studio-card-cardio-empty';
+      const doneInner = this.isDone
+        ? `<i class="bx bx-check"></i><span class="studio-card-done-text">Completed</span>`
+        : `<i class="bx bx-check"></i>`;
+      const doneLabel = this.isDone ? 'Mark incomplete' : 'Mark complete';
       const doneBtnHtml = this.showDoneButton ? `
               <button class="studio-card-icon-btn studio-card-done-btn"
                       data-action="toggle-done" type="button"
                       aria-pressed="${this.isDone ? 'true' : 'false'}"
-                      aria-label="${this.isDone ? 'Mark not done' : 'Mark done'}"
-                      title="${this.isDone ? 'Mark not done' : 'Mark done'}">
-                <i class="bx ${this.isDone ? 'bx-check-circle' : 'bx-check'}"></i>
-              </button>` : '';
+                      aria-label="${doneLabel}"
+                      title="${doneLabel}">${doneInner}</button>` : '';
       const doneClass = (this.showDoneButton && this.isDone) ? ' is-done' : '';
       return `
         <div class="studio-card studio-card-cardio${blockClass}${doneClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
