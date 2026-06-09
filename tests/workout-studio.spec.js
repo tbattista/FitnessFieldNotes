@@ -2999,6 +2999,43 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(card).not.toHaveClass(/is-done/);
     });
 
+    test('Completed button lives in the card footer (not the header) and Cancel/Save slide in to its LEFT during edit', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        await page.locator('#studioModeLogBtn').click();
+
+        const card = page.locator('.studio-card').first();
+
+        // The Done button must sit in the persistent footer, NOT in the
+        // header actions row anymore.
+        await expect(card.locator('.studio-card-footer [data-action="toggle-done"]')).toHaveCount(1);
+        await expect(card.locator('.studio-card-header [data-action="toggle-done"]')).toHaveCount(0);
+
+        // Cancel/Save row is hidden in steady state, even though it's
+        // rendered inside the footer.
+        const editActions = card.locator('.studio-card-edit-actions');
+        await expect(editActions).toBeHidden();
+
+        // Open a field edit (Protocol) → Cancel/Save appear in the footer
+        // and DOM-order before the Done button (i.e. visually to the LEFT).
+        await card.locator('.repssets-display').click();
+        await expect(editActions).toBeVisible();
+
+        const childrenOrder = await card.locator('.studio-card-footer').evaluate((el) => {
+            return Array.from(el.children).map(c =>
+                c.classList.contains('studio-card-edit-actions') ? 'edit'
+                : c.classList.contains('studio-card-done-btn') ? 'done'
+                : 'other'
+            ).filter(s => s !== 'other');
+        });
+        expect(childrenOrder).toEqual(['edit', 'done']);
+
+        // Tap Cancel → edit actions hide again; Done stays visible (always-on).
+        await card.locator('.studio-card-edit-cancel').click();
+        await expect(editActions).toBeHidden();
+        await expect(card.locator('.studio-card-done-btn')).toBeVisible();
+    });
+
     test('Completed state surfaces a "Completed" pill label + locks click-to-edit on fields', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);

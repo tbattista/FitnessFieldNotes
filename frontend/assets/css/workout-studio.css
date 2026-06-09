@@ -1049,20 +1049,37 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   min-height: 28px;
 }
 
-/* Single card-level commit row — one ✓ Save + ✗ Cancel for the whole
-   card, shown only while the card is in unified edit mode. Mirrors the
-   workout-mode pattern where one explicit action commits all fields. */
-.studio-card-edit-actions {
+/* Card footer — host for the commit actions (Cancel/Save during inline
+   edit) and the persistent "Completed" button in log mode. Always
+   right-aligned. Separator dashed-rule only appears when something is
+   actually visible in the footer — otherwise plan-mode cards would
+   carry an empty rule beneath the body. */
+.studio-card-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
   margin-top: 6px;
   padding-top: 6px;
+}
+/* has-done = log mode → footer is always visible (Completed lives there).
+   .studio-card-editing = unified-edit is open → Cancel/Save are visible. */
+.studio-card-footer.has-done,
+.studio-card.studio-card-editing .studio-card-footer {
   border-top: 1px dashed rgba(0, 0, 0, 0.08);
 }
-[data-bs-theme="dark"] .studio-card-edit-actions {
+[data-bs-theme="dark"] .studio-card-footer.has-done,
+[data-bs-theme="dark"] .studio-card.studio-card-editing .studio-card-footer {
   border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Cancel/Save pair — slides in to the LEFT of the persistent Completed
+   button when the user opens an inline edit. Hidden by default; the JS
+   flips display:flex on edit entry. */
+.studio-card-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .studio-card-edit-actions .btn {
   height: 30px;

@@ -295,7 +295,7 @@
             <div class="studio-card-actions">
               <button class="studio-card-icon-btn" data-action="info" type="button" aria-label="Details for ${safeName}" title="Details">
                 <i class="bx bx-info-circle"></i>
-              </button>${doneBtnHtml}
+              </button>
               <div class="studio-card-menu-wrap">
                 <button class="studio-card-icon-btn" data-action="menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More actions" title="More">
                   <i class="bx bx-dots-vertical-rounded"></i>
@@ -384,12 +384,18 @@ ${lastHtml}
             </div>
           </div>
 
-          <!-- Single card-level commit row, only visible during edit mode.
-               Tapping any field's display opens all three editors and shows
-               this footer; ✓ commits all, ✗ reverts all (workout-mode parity). -->
-          <div class="studio-card-edit-actions" style="display: none;">
-            <button class="btn btn-sm btn-outline-secondary studio-card-edit-cancel" type="button" aria-label="Cancel edits" title="Cancel"><i class="bx bx-x"></i> Cancel</button>
-            <button class="btn btn-sm btn-success studio-card-edit-save" type="button" aria-label="Save edits" title="Save"><i class="bx bx-check"></i> Save</button>
+          <!-- Card footer: the Completed button (log mode) lives here as a
+               persistent right-anchored action. When the user opens any
+               field for inline edit, the Cancel/Save pair slides in to the
+               LEFT of Completed (same dashed-rule separator the standalone
+               edit row used to use). One persistent location for "commit
+               this card" — Plan cards just see Cancel/Save during edit. -->
+          <div class="studio-card-footer${this.showDoneButton ? ' has-done' : ''}">
+            <div class="studio-card-edit-actions" style="display: none;">
+              <button class="btn btn-sm btn-outline-secondary studio-card-edit-cancel" type="button" aria-label="Cancel edits" title="Cancel"><i class="bx bx-x"></i> Cancel</button>
+              <button class="btn btn-sm btn-success studio-card-edit-save" type="button" aria-label="Save edits" title="Save"><i class="bx bx-check"></i> Save</button>
+            </div>
+            ${doneBtnHtml}
           </div>
         </div>
       `;
@@ -671,7 +677,7 @@ ${lastHtml}
             <div class="studio-card-actions">
               <button class="studio-card-icon-btn" data-action="edit-cardio" type="button" aria-label="Edit activity" title="Edit activity">
                 <i class="bx bx-pencil"></i>
-              </button>${doneBtnHtml}
+              </button>
               <div class="studio-card-menu-wrap">
                 <button class="studio-card-icon-btn" data-action="menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More actions" title="More">
                   <i class="bx bx-dots-vertical-rounded"></i>
@@ -698,6 +704,10 @@ ${lastHtml}
           <button class="studio-card-cardio-summary" data-action="edit-cardio" type="button">
             <span class="${summaryClass}">${summaryHtml}</span>
           </button>
+          ${this.showDoneButton ? `
+          <div class="studio-card-footer has-done">
+            ${doneBtnHtml}
+          </div>` : ''}
         </div>
       `;
     }
