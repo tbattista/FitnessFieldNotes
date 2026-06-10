@@ -1327,26 +1327,24 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
 
 
 /* ------------------------------------------------------------------
-   Log mode — Done button + done-state card styling
-   In log mode, StudioExerciseCard renders a small Done check button in
-   the header actions (handled by the JS template). When the user marks
-   the exercise done, .is-done is applied to the card root; we tint the
-   surface green + swap the check icon for a filled circle. The body
-   stays editable so the user can still tweak after marking done.
+   Log mode — Complete button + done-state card styling
+   In log mode, StudioExerciseCard renders a Complete button in the
+   card footer next to the Cancel/Save pair, using the same btn-sm
+   bubble shape (icon + text). When the user marks the exercise done,
+   .is-done is applied to the card root and the button flips to a
+   filled green 'Completed'. The body stays editable until then.
    ------------------------------------------------------------------ */
+/* Same geometry as .studio-card-edit-actions .btn so all three footer
+   bubbles read as one consistent row. */
 .studio-card-done-btn {
-  color: var(--bs-secondary-color);
-  /* Smooth transition between the round icon shape and the expanded
-     "Completed" pill so toggling feels alive, not janky. */
-  transition: background 0.15s ease, color 0.15s ease,
-              padding 0.15s ease, width 0.15s ease;
-}
-.studio-card-done-btn .studio-card-done-text {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   line-height: 1;
 }
+.studio-card-done-btn i { font-size: 16px; }
 
 /* 'Last: 135 lbs · 3d ago' subtitle. Only renders on log cards that
    have prior session history for this exercise — sits between the
@@ -1365,11 +1363,6 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   font-size: 0.9rem;
   opacity: 0.85;
 }
-.studio-card-done-btn:hover {
-  color: var(--bs-success, #28a745);
-  background: rgba(40, 167, 69, 0.06);
-}
-
 /* Completed card — strong visual treatment matching workout-mode's
    .workout-card.logged: green left border, tinted bg, dimmed editable
    fields, struck-through name. Reads at a glance as "this one is done". */
@@ -1395,20 +1388,6 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   cursor: default;
 }
 
-/* Done button morphs into a green "Completed" pill the moment the
-   card is marked done — the strongest possible visual confirmation. */
-.studio-card.is-done .studio-card-done-btn {
-  background: var(--bs-success, #28a745);
-  color: #fff;
-  border-radius: 999px;
-  width: auto;
-  padding: 0.3rem 0.65rem;
-  gap: 0.3rem;
-}
-.studio-card.is-done .studio-card-done-btn:hover {
-  background: #208537;
-  color: #fff;
-}
 [data-bs-theme="dark"] .studio-card.is-done {
   background: rgba(40, 167, 69, 0.14);
 }

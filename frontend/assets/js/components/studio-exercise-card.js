@@ -155,10 +155,10 @@
 
     /**
      * Flip the log-mode Done state without a full re-render. Toggles the
-     * .is-done class on the card and swaps the Done button between its
-     * icon-only 'mark complete' shape and the pill-shaped 'Completed'
-     * label so the user gets a strong visual confirmation without losing
-     * scroll position.
+     * .is-done class on the card and swaps the Complete button between
+     * its outline 'Complete' shape and the filled green 'Completed'
+     * shape so the user gets a strong visual confirmation without losing
+     * scroll position. Same btn-sm bubble as the footer Cancel/Save pair.
      */
     setDone(next) {
       this.isDone = !!next;
@@ -170,9 +170,11 @@
         const label = this.isDone ? 'Mark incomplete' : 'Mark complete';
         btn.setAttribute('aria-label', label);
         btn.setAttribute('title', label);
+        btn.classList.toggle('btn-success', this.isDone);
+        btn.classList.toggle('btn-outline-success', !this.isDone);
         btn.innerHTML = this.isDone
-          ? `<i class="bx bx-check"></i><span class="studio-card-done-text">Completed</span>`
-          : `<i class="bx bx-check"></i>`;
+          ? `<i class="bx bx-check-circle"></i> <span class="studio-card-done-text">Completed</span>`
+          : `<i class="bx bx-check"></i> <span class="studio-card-done-text">Complete</span>`;
       }
     }
 
@@ -253,18 +255,19 @@
         return this._templateCardio({ safeId, safeName, iconHtml, blockClass, blockAttr, typeAttr, moveMenuItems });
       }
 
-      // Log-mode Done button — only rendered when the controller asked
-      // for it. Sits in the header actions next to info + 3-dot menu so
-      // it reads as a primary card action. When pressed, the button
-      // morphs into a pill-shaped 'Completed' label; the card root gets
-      // .is-done which dims the editable fields + strikes through the
-      // exercise name to match workout-mode's logged-card treatment.
+      // Log-mode Complete button — only rendered when the controller
+      // asked for it. Lives in the card footer next to the Cancel/Save
+      // pair and uses the same btn-sm bubble shape (icon + text) so the
+      // footer reads as one consistent action row. Toggling flips it to
+      // a filled green 'Completed' and the card root gets .is-done which
+      // dims the editable fields + strikes through the exercise name to
+      // match workout-mode's logged-card treatment.
       const doneInner = this.isDone
-        ? `<i class="bx bx-check"></i><span class="studio-card-done-text">Completed</span>`
-        : `<i class="bx bx-check"></i>`;
+        ? `<i class="bx bx-check-circle"></i> <span class="studio-card-done-text">Completed</span>`
+        : `<i class="bx bx-check"></i> <span class="studio-card-done-text">Complete</span>`;
       const doneLabel = this.isDone ? 'Mark incomplete' : 'Mark complete';
       const doneBtnHtml = this.showDoneButton ? `
-              <button class="studio-card-icon-btn studio-card-done-btn"
+              <button class="btn btn-sm ${this.isDone ? 'btn-success' : 'btn-outline-success'} studio-card-done-btn"
                       data-action="toggle-done" type="button"
                       aria-pressed="${this.isDone ? 'true' : 'false'}"
                       aria-label="${doneLabel}"
@@ -658,11 +661,11 @@ ${lastHtml}
         : 'Tap to set duration, distance, pace…';
       const summaryClass = summary ? 'studio-card-cardio-meta' : 'studio-card-cardio-empty';
       const doneInner = this.isDone
-        ? `<i class="bx bx-check"></i><span class="studio-card-done-text">Completed</span>`
-        : `<i class="bx bx-check"></i>`;
+        ? `<i class="bx bx-check-circle"></i> <span class="studio-card-done-text">Completed</span>`
+        : `<i class="bx bx-check"></i> <span class="studio-card-done-text">Complete</span>`;
       const doneLabel = this.isDone ? 'Mark incomplete' : 'Mark complete';
       const doneBtnHtml = this.showDoneButton ? `
-              <button class="studio-card-icon-btn studio-card-done-btn"
+              <button class="btn btn-sm ${this.isDone ? 'btn-success' : 'btn-outline-success'} studio-card-done-btn"
                       data-action="toggle-done" type="button"
                       aria-pressed="${this.isDone ? 'true' : 'false'}"
                       aria-label="${doneLabel}"

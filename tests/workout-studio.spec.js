@@ -3086,7 +3086,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(card.locator('.studio-card-done-btn')).toBeVisible();
     });
 
-    test('Completed state surfaces a "Completed" pill label + locks click-to-edit on fields', async ({ page }) => {
+    test('Complete bubble flips to filled "Completed" + locks click-to-edit on fields', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
 
@@ -3095,12 +3095,16 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         const card = page.locator('.studio-card').first();
         const doneBtn = card.locator('[data-action="toggle-done"]');
 
-        // Pre-toggle: no "Completed" text label, click-to-edit interactive
-        await expect(card.locator('.studio-card-done-text')).toHaveCount(0);
+        // Pre-toggle: outline bubble with icon + "Complete" text, like the
+        // Cancel/Save pair. click-to-edit interactive.
+        await expect(card.locator('.studio-card-done-text')).toHaveText('Complete');
+        await expect(doneBtn).toHaveClass(/btn-outline-success/);
 
-        // Toggle done → pill text appears, button aria swaps to "Mark incomplete"
+        // Toggle done → filled green "Completed", aria swaps to "Mark incomplete"
         await doneBtn.click();
         await expect(card.locator('.studio-card-done-text')).toHaveText('Completed');
+        await expect(doneBtn).toHaveClass(/btn-success/);
+        await expect(doneBtn).not.toHaveClass(/btn-outline-success/);
         await expect(doneBtn).toHaveAttribute('aria-label', 'Mark incomplete');
         await expect(doneBtn).toHaveAttribute('aria-pressed', 'true');
 
@@ -3109,9 +3113,10 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         const pe = await editable.evaluate(el => getComputedStyle(el).pointerEvents);
         expect(pe).toBe('none');
 
-        // Toggle off → label gone, aria-label flips back, pointer-events restored
+        // Toggle off → back to outline "Complete", pointer-events restored
         await doneBtn.click();
-        await expect(card.locator('.studio-card-done-text')).toHaveCount(0);
+        await expect(card.locator('.studio-card-done-text')).toHaveText('Complete');
+        await expect(doneBtn).toHaveClass(/btn-outline-success/);
         await expect(doneBtn).toHaveAttribute('aria-label', 'Mark complete');
         const pe2 = await editable.evaluate(el => getComputedStyle(el).pointerEvents);
         expect(pe2).not.toBe('none');
