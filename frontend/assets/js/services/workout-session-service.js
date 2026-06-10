@@ -120,8 +120,8 @@ class WorkoutSessionService {
     // SESSION LIFECYCLE FACADES
     // ============================================
 
-    async startSession(workoutId, workoutName, workoutData = null) {
-        return this.lifecycleApiService.startSession(workoutId, workoutName, workoutData);
+    async startSession(workoutId, workoutName, workoutData = null, options = {}) {
+        return this.lifecycleApiService.startSession(workoutId, workoutName, workoutData, options);
     }
 
     async completeSession(exercisesPerformed, durationMinutes = null, sessionCalories = null) {

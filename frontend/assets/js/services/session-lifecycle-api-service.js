@@ -70,9 +70,11 @@ class SessionLifecycleApiService {
      * @param {Object|null} workoutData - Optional workout template data
      * @returns {Promise<Object>} Session object
      */
-    async startSession(workoutId, workoutName, workoutData = null) {
+    async startSession(workoutId, workoutName, workoutData = null, options = {}) {
         try {
-            const sessionMode = 'timed';
+            // Callers (workout-mode default to 'timed'; studio Log mode
+            // passes 'quick_log' since it's retrospective logging).
+            const sessionMode = (options && options.sessionMode) || 'timed';
             console.log(`🏋️ Starting workout session:`, workoutName);
 
             // Auto-detect program_id from active program

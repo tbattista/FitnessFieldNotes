@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260610-01" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260610-02" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -384,6 +384,28 @@
                   </button>
                 </div>
 
+                <!-- Three-button choice dialog shown when the user
+                     toggles Plan with an active session. Hidden until
+                     _promptModeSwitch() fires; controller resolves with
+                     'complete' | 'discard' | 'cancel'. -->
+                <div class="studio-mode-switch-dialog" id="studioModeSwitchDialog" role="alertdialog"
+                     aria-modal="true" aria-labelledby="studioModeSwitchTitle" hidden>
+                  <div class="studio-mode-switch-card">
+                    <h6 class="studio-mode-switch-title" id="studioModeSwitchTitle">Active workout in progress</h6>
+                    <p class="studio-mode-switch-body">
+                      You have an active session. What would you like to do?
+                    </p>
+                    <div class="studio-mode-switch-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary"
+                              data-mode-switch-action="cancel">Cancel</button>
+                      <button type="button" class="btn btn-sm btn-outline-danger"
+                              data-mode-switch-action="discard">Discard session</button>
+                      <button type="button" class="btn btn-sm btn-success"
+                              data-mode-switch-action="complete">Complete now</button>
+                    </div>
+                  </div>
+                </div>
+
               </section>
               <!-- / Studio shell -->
 
@@ -459,6 +481,25 @@
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260609-04"></script>
+
+    <!-- Session service stack (parity with workout-mode.html). Studio's
+         Log mode instantiates WorkoutSessionService against this stack so
+         session lifecycle, incremental persistence, weight history, and
+         per-exercise state all behave the same way they do in the legacy
+         workout-mode page. Load order matters: sub-services first, then
+         the orchestrator facade. -->
+    <script src="/static/assets/js/services/weight-history-service.js?v=1.0.0"></script>
+    <script src="/static/assets/js/services/session-notes-service.js?v=1.0.0"></script>
+    <script src="/static/assets/js/services/pre-session-editing-service.js?v=1.0.0"></script>
+    <script src="/static/assets/js/services/session-persistence-service.js?v=1.0.0"></script>
+    <script src="/static/assets/js/services/auto-save-service.js?v=1.0.0"></script>
+    <script src="/static/assets/js/services/session-exercise-state-service.js?v=1.0.0"></script>
+    <script src="/static/assets/js/services/session-lifecycle-api-service.js?v=20260610-01"></script>
+    <script src="/static/assets/js/services/workout-session-service.js?v=20260610-01"></script>
+    <!-- UnifiedNotesController binds to .workout-unified-notes blocks
+         the studio card emits in session mode (per-exercise notes). -->
+    <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
+
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260610-02"></script>
   </body>
 </html>

@@ -60,6 +60,11 @@
       // setInterval handle for the per-second redraw.
       this._timerStartedAt = null;
       this._timerIntervalId = null;
+      // WorkoutSessionService instance for Log mode. Lazily constructed by
+      // _initSessionService() on first need so plan-mode-only sessions
+      // don't pay the cost. Once built, this is the shared facade for
+      // session create / auto-save / complete / history fetch.
+      this.sessionService = null;
       // Live card components mounted on Page 2, keyed by instanceId
       this.studioCards = new Map();
       // Live block components mounted on Page 2, keyed by blockId
@@ -2287,9 +2292,10 @@
     async _handleStartFromFab() {
       // The Go FAB does different things depending on the active Page 2
       // mode: Plan mode → save + launch the full workout-mode session;
-      // Log mode → record the field log entry without leaving the page.
+      // Log mode → complete the active session (writes a session record
+      // + updates exercise history) and return to Plan.
       if (this.mode === 'log') {
-        return this._handleSaveLog();
+        return this._handleComplete();
       }
       if (!this.tray || this.tray.size() === 0) {
         this._setStatus('Add at least one exercise first.', 'error');
@@ -2334,25 +2340,92 @@
      * Flip Page 2's mode. Re-renders the organize list with the matching
      * card variant, swaps the Go FAB's affordance, and persists the choice.
      */
-    _setMode(mode) {
+    /**
+     * Toggle between Plan and Log mode. The Plan→Log direction kicks off a
+     * real `WorkoutSession` (via WorkoutSessionService) so every edit the
+     * user makes inside Log auto-persists, exercise history loads, and
+     * Complete posts to the proper finalize endpoint. The Log→Plan
+     * direction, if a session is active, asks the user what to do
+     * (Complete now / Discard / Cancel) — gym-app convention so they
+     * don't lose a started session by accident. Async because session
+     * setup may need to save the template first and start the session.
+     */
+    async _setMode(mode) {
       if (mode !== 'plan' && mode !== 'log') return;
       if (this.mode === mode) return;
+
+      // Log → Plan with a session the user has actually touched needs
+      // explicit intent — otherwise the flip is harmless and the
+      // in-memory session stays alive (the timer + organize state stay
+      // intact so flipping back resumes where they left off).
+      if (mode === 'plan' && this.mode === 'log' && this._hasDirtySession()) {
+        const choice = await this._promptModeSwitch();
+        if (choice === 'cancel') return;
+        if (choice === 'complete') {
+          return this._handleComplete();
+        }
+        this._discardActiveSession();
+      }
+
+      // Plan → Log needs a saved workout id + a name + at least one
+      // exercise so the session has a template to reference. We save the
+      // template first if needed (mirrors how _handleStartFromFab gates
+      // the legacy Start FAB).
+      if (mode === 'log') {
+        const ok = await this._ensureLogPrereqs();
+        if (!ok) return; // status already surfaced
+      }
+
       this.mode = mode;
       this._reflectModeToggle();
       this._reflectFabForMode();
       this._refreshFabState();
       if (mode === 'log') {
         this._startSessionTimer();
-        // Fetch last-session weights for this workout's exercises so the
-        // log cards can show 'Last: 135 lbs · 3d ago' as a memory aid.
-        // Fires once per workout; subsequent toggle flips reuse the cache.
-        this._loadExerciseHistory();
+        await this._ensureActiveSession();
+        // fetchExerciseHistory populates Last weights for every card via
+        // the shared sessionService cache. Falls back gracefully when
+        // anonymous / offline.
+        await this._loadExerciseHistory();
       } else {
         this._stopSessionTimer({ keep: true });
       }
       this._renderTimer();
       this._renderOrganize();
       this._saveModePreference();
+    }
+
+    /**
+     * Prerequisites to enter Log mode: tray non-empty + workout has a
+     * name + template is saved (auto-save it if it isn't). Returns true
+     * if we should proceed, false if we surfaced a friendly error and
+     * the caller should bail.
+     */
+    async _ensureLogPrereqs() {
+      if (!this.tray || this.tray.size() === 0) {
+        this._setStatus('Add at least one exercise before logging.', 'error');
+        return false;
+      }
+      if (!this.workoutName || !this.workoutName.trim()) {
+        this._setStatus('Give your workout a name before logging.', 'error');
+        if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
+        return false;
+      }
+      // Authenticated users without a saved workoutId yet: save the
+      // template first so the session can reference a real id (and
+      // exercise history can be aggregated across sessions). Anonymous
+      // users skip this — the session service creates a local-only
+      // session with whatever placeholder id we hand it.
+      const isAuthed = !!(window.authService &&
+                          typeof window.authService.isUserAuthenticated === 'function' &&
+                          window.authService.isUserAuthenticated());
+      if (!this.workoutId && isAuthed) {
+        try {
+          await this._handleSave();
+        } catch (_) { /* status surfaced by _handleSave */ }
+        if (!this.workoutId) return false;
+      }
+      return true;
     }
 
     _reflectModeToggle() {
@@ -2462,39 +2535,197 @@
       return Math.max(0, Math.round((Date.now() - this._timerStartedAt) / 60000));
     }
 
+    // ============================================================
+    // SESSION SERVICE BRIDGE
+    // The studio doesn't own session persistence — WorkoutSessionService
+    // does. These helpers wrap construction, history fetch, lifecycle
+    // gates, and the choice dialog that fires when the user toggles back
+    // to Plan with an active session.
+    // ============================================================
+
+    _initSessionService() {
+      if (this.sessionService) return this.sessionService;
+      // workout-session-service.js auto-instantiates window.workoutSessionService
+      // on load. Reuse it so we share state with anything else on the
+      // page that may want session info (and so the persisted-session
+      // resume on reload finds the same instance).
+      const svc = (typeof window !== 'undefined') && window.workoutSessionService;
+      if (!svc) return null;
+      this.sessionService = svc;
+      // Whenever the service updates an exercise (weight, complete, skip,
+      // notes...) it fires events. We re-render Page 2 cards so the UI
+      // mirrors the persisted state. Cheap because _renderOrganize is
+      // already incremental.
+      this.sessionService.addListener?.((event/*, data */) => {
+        if (event === 'weightUpdated' || event === 'exerciseDetailsUpdated' ||
+            event === 'sessionSaved' || event === 'historyLoaded') {
+          // History refresh updates Last-line subtitles too.
+          if (event === 'historyLoaded') this._syncHistoryFromService();
+        }
+      });
+      return this.sessionService;
+    }
+
+    _hasActiveSession() {
+      return !!(this.sessionService && this.sessionService.isSessionActive &&
+                this.sessionService.isSessionActive());
+    }
+
+    /**
+     * Active session WITH user input — at least one exercise marked done,
+     * skipped, or weight-modified, OR a session note exists. Used to
+     * decide whether toggling back to Plan needs a confirmation dialog;
+     * an untouched active session can be silently discarded.
+     */
+    _hasDirtySession() {
+      if (!this._hasActiveSession()) return false;
+      const sess = this.sessionService.getCurrentSession?.();
+      if (!sess || !sess.exercises) return false;
+      const exercises = Object.values(sess.exercises);
+      const anyTouched = exercises.some((e) =>
+        e && (e.is_completed || e.is_skipped || e.is_modified ||
+              (e.notes && e.notes.length > 0)));
+      const sessionNotes = this.sessionService.getSessionNotes?.() || [];
+      // Also count tray-level Done marks (controller logState) since those
+      // happen before the service may have absorbed them.
+      const trayDone = this.logState && Array.from(this.logState.values())
+        .some((s) => s && s.isDone);
+      return anyTouched || sessionNotes.length > 0 || trayDone;
+    }
+
+    /**
+     * Make sure a session exists for the current workout. If the service
+     * already has one for THIS workoutId, reuse it; otherwise start fresh.
+     * Anonymous users get a local-only session (the service handles that
+     * branch internally — no Firestore writes).
+     */
+    async _ensureActiveSession() {
+      const svc = this._initSessionService();
+      if (!svc) return null;
+      const existing = svc.getCurrentSession?.();
+      if (existing && existing.workoutId === this.workoutId &&
+          existing.status === 'in_progress') {
+        return existing;
+      }
+      try {
+        const shape = this._buildWorkoutShapeForSession();
+        // 'quick_log' tells the backend this is a retrospective log
+        // surface, not a live timed workout. duration_minutes is the
+        // source of truth in this mode (vs. computed from started/at).
+        await svc.startSession(this.workoutId, this.workoutName, shape,
+                               { sessionMode: 'quick_log' });
+        return svc.getCurrentSession?.();
+      } catch (err) {
+        console.warn('[WorkoutStudio] startSession failed:', err);
+        // We let the user keep logging locally — the studio's logState
+        // Map is still our source of truth for Complete payload building,
+        // so this degrades to the old behavior rather than breaking.
+        return null;
+      }
+    }
+
+    /**
+     * Build a workout-template-shaped object for the session service to
+     * seed currentSession.exercises with. The service's
+     * _initializeExercisesFromTemplate expects { exercise_groups: [...] }
+     * with default_weight/sets/reps/rest on each — we already build a
+     * superset of that in _buildSavePayload, but slimmer is faster here
+     * since we don't need block_id / order_index for in-memory seeding.
+     */
+    _buildWorkoutShapeForSession() {
+      if (!this.tray) return { exercise_groups: [] };
+      const items = this.tray.getItems();
+      const groups = items.map((it, idx) => {
+        const s = this.organizeState.get(it.instanceId) || {};
+        const groupType = String((it.exercise && it.exercise.group_type) || 'standard').toLowerCase();
+        if (groupType === 'cardio') {
+          return {
+            group_type: 'cardio',
+            exercises: { a: it.name },
+            order_index: idx,
+            cardio_config: s.cardioConfig || {},
+          };
+        }
+        return {
+          group_type: 'standard',
+          exercises: { a: it.name },
+          sets: s.sets || '3',
+          reps: s.reps || '8-12',
+          rest: s.rest || '60s',
+          default_weight: s.weight || null,
+          default_weight_unit: s.weightUnit || 'lbs',
+          order_index: idx,
+        };
+      });
+      return { exercise_groups: groups };
+    }
+
+    _discardActiveSession() {
+      const svc = this.sessionService;
+      if (!svc) return;
+      try { svc.clearSession?.(); } catch (_) {}
+      try { svc.clearPersistedSession?.(); } catch (_) {}
+      this.logState = new Map();
+      this._stopSessionTimer({ keep: false });
+    }
+
+    /**
+     * Three-button modal: Complete / Discard / Cancel. The dialog DOM is
+     * the #studioModeSwitchDialog block in workout-studio.html. Resolves
+     * with one of those three strings.
+     */
+    _promptModeSwitch() {
+      return new Promise((resolve) => {
+        const dlg = document.getElementById('studioModeSwitchDialog');
+        if (!dlg) {
+          // No dialog markup → fall back to a confirm-cancel pair so we
+          // never silently strand a session.
+          if (window.confirm('Complete the workout now? (Cancel to discard the session instead)')) {
+            return resolve('complete');
+          }
+          if (window.confirm('Discard the active session? (Cancel to stay in Log)')) {
+            return resolve('discard');
+          }
+          return resolve('cancel');
+        }
+        const cleanup = () => {
+          dlg.removeEventListener('click', onClick);
+          dlg.hidden = true;
+        };
+        const onClick = (e) => {
+          const action = e.target && e.target.closest('[data-mode-switch-action]');
+          if (!action) return;
+          const choice = action.getAttribute('data-mode-switch-action');
+          cleanup();
+          resolve(choice);
+        };
+        dlg.addEventListener('click', onClick);
+        dlg.hidden = false;
+        // Focus the safe default (Cancel) so a stray Enter doesn't
+        // commit a destructive action.
+        const cancelBtn = dlg.querySelector('[data-mode-switch-action="cancel"]');
+        if (cancelBtn) cancelBtn.focus();
+      });
+    }
+
     // -------------- exercise history (last-session lookup) --------------
 
     async _loadExerciseHistory() {
-      if (this._exerciseHistoryFetched) return;
-      if (!this.workoutId) return; // No saved id → no history to fetch
-      if (!window.dataManager || typeof window.dataManager.authenticatedFetch !== 'function') return;
+      const svc = this._initSessionService();
+      if (!svc) return;
+      if (!this.workoutId) return;
+      // Anonymous (no authService) → skip the fetch; the service's
+      // weight-history sub-service early-returns to {} anyway, but
+      // calling it when window.authService is undefined throws.
+      if (!window.authService) return;
+      if (this._exerciseHistoryFetched) {
+        this._syncHistoryFromService();
+        return;
+      }
       this._exerciseHistoryFetched = true;
       try {
-        const url = window.config.api.getUrl(
-          `/api/v3/firebase/workouts/exercise-history/workout/${encodeURIComponent(this.workoutId)}`
-        );
-        const resp = await window.dataManager.authenticatedFetch(url);
-        if (!resp.ok) return;
-        const json = await resp.json();
-        // Backend returns { [exercise_name]: ExerciseHistory.model_dump() }
-        const now = Date.now();
-        Object.entries(json || {}).forEach(([name, h]) => {
-          if (!h || !h.last_weight) return;
-          const dateStr = h.last_session_date;
-          let daysAgo = null;
-          if (dateStr) {
-            const then = new Date(dateStr).getTime();
-            if (Number.isFinite(then)) {
-              daysAgo = Math.max(0, Math.floor((now - then) / 86400000));
-            }
-          }
-          this.exerciseHistory.set(name, {
-            weight: String(h.last_weight),
-            unit: h.last_weight_unit || 'lbs',
-            daysAgo,
-            sessionDate: dateStr || null,
-          });
-        });
+        await svc.fetchExerciseHistory?.(this.workoutId);
+        this._syncHistoryFromService();
         // Re-render Page 2 if we're in log mode so the new history shows
         if (this.mode === 'log' && this.currentView === 'organize') {
           this._renderOrganize();
@@ -2502,6 +2733,36 @@
       } catch (err) {
         console.warn('[WorkoutStudio] Could not load exercise history:', err);
       }
+    }
+
+    /**
+     * Bridge the session service's exerciseHistory dict (keyed by
+     * exercise name, holds the full ExerciseHistory shape) into the
+     * studio's Map<name, {weight, unit, daysAgo, sessionDate}> that the
+     * StudioExerciseCard already knows how to render.
+     */
+    _syncHistoryFromService() {
+      const svc = this.sessionService;
+      if (!svc) return;
+      const dict = svc.exerciseHistory || {};
+      const now = Date.now();
+      Object.entries(dict).forEach(([name, h]) => {
+        if (!h || !h.last_weight) return;
+        const dateStr = h.last_session_date;
+        let daysAgo = null;
+        if (dateStr) {
+          const then = new Date(dateStr).getTime();
+          if (Number.isFinite(then)) {
+            daysAgo = Math.max(0, Math.floor((now - then) / 86400000));
+          }
+        }
+        this.exerciseHistory.set(name, {
+          weight: String(h.last_weight),
+          unit: h.last_weight_unit || 'lbs',
+          daysAgo,
+          sessionDate: dateStr || null,
+        });
+      });
     }
 
     /**
@@ -2596,10 +2857,34 @@
     _onLogCardChange(instanceId, partial) {
       const s = this._ensureLogState(instanceId);
       Object.assign(s, partial || {});
-      // Keep the draft service in sync so a half-filled log survives a
-      // reload (the user's "as quick as possible" promise depends on this
-      // — no Firestore writes mid-log).
       this._scheduleDraftSave();
+      // Mirror the edit into the live session so auto-save (PUT every
+      // 30s) carries it to Firestore for resume-on-reload. Skip when
+      // there's no live session yet (anonymous, or service unavailable).
+      const svc = this.sessionService;
+      const item = this._findTrayItem(instanceId);
+      if (!svc || !item || !this._hasActiveSession()) return;
+      const name = item.name;
+      if (partial && (partial.weight !== undefined || partial.weightUnit !== undefined)) {
+        const fresh = this.logState.get(instanceId) || {};
+        try { svc.updateExerciseWeight?.(name, fresh.weight, fresh.weightUnit || 'lbs'); } catch (_) {}
+      }
+      if (partial && (partial.sets !== undefined || partial.reps !== undefined ||
+                      partial.rest !== undefined || partial.protocol !== undefined)) {
+        const fresh = this.logState.get(instanceId) || {};
+        try {
+          svc.updateExerciseDetails?.(name, {
+            target_sets: fresh.sets,
+            target_reps: fresh.reps,
+            rest: fresh.rest,
+          });
+        } catch (_) {}
+      }
+    }
+
+    _findTrayItem(instanceId) {
+      if (!this.tray || typeof this.tray.getItems !== 'function') return null;
+      return this.tray.getItems().find((it) => it.instanceId === instanceId) || null;
     }
 
     _onMarkDone(instanceId, done) {
@@ -2607,59 +2892,67 @@
       s.isDone = !!done;
       s.doneAt = done ? Date.now() : null;
       this._scheduleDraftSave();
+      // Push completion state into the live session — workout-mode's
+      // history endpoint reads is_completed from the session, so marking
+      // Done here is what makes "Last: X lbs" appear on the next visit.
+      const svc = this.sessionService;
+      const item = this._findTrayItem(instanceId);
+      if (!svc || !item || !this._hasActiveSession()) return;
+      try {
+        if (done) svc.completeExercise?.(item.name);
+        else svc.uncompleteExercise?.(item.name);
+      } catch (_) {}
     }
 
     /**
-     * Save Log → POST a quick_log session record to the backend. Uses the
-     * atomic create-and-complete endpoint so the network round-trip is a
-     * single call. On success: clear the log draft + return the user to
-     * Page 2 in Plan mode so they can edit the template next time without
-     * the log noise.
+     * Complete the active workout session. Delegates to
+     * WorkoutSessionService.completeSession which handles the POST
+     * /workout-sessions/{id}/complete call, atomic-recovery fallback
+     * for orphaned sessions, and the local-only branch for anonymous
+     * users. On success the studio flips back to Plan and clears state.
      */
-    async _handleSaveLog() {
+    async _handleComplete() {
       if (!this.tray || this.tray.size() === 0) {
         this._setStatus('Add at least one exercise first.', 'error');
         return;
       }
-      const items = this.tray.getItems();
-      const performed = items
-        .filter((it) => {
-          const s = this.logState.get(it.instanceId);
-          if (!s) return false;
-          // Include exercises marked Done OR any with the user-typed
-          // override that diverges from the plan (any field present).
-          return !!(
-            s.isDone || s.protocol || s.sets || s.reps || s.weight || s.rest
-          );
-        })
-        .map((it, idx) => {
-          const s = this.logState.get(it.instanceId) || {};
-          const plan = this.organizeState.get(it.instanceId) || {};
-          // Display state = plan + log overrides. The values that
-          // actually got recorded are this merge — same shape the card
-          // showed the user.
-          const merged = Object.assign({}, plan, s);
-          const setsInt = parseInt(merged.sets || '0', 10);
-          const planWeight = plan.weight || '';
-          const actualWeight = (s.weight != null) ? s.weight : planWeight;
-          return {
-            exercise_name: it.name,
-            group_id: it.instanceId,
-            order_index: idx,
-            sets_completed: Number.isFinite(setsInt) ? setsInt : 0,
-            target_sets: String(plan.sets || '3'),
-            target_reps: String(plan.reps || '8-12'),
-            weight: actualWeight || null,
-            weight_unit: merged.weightUnit || 'lbs',
-            notes: null,
-            is_modified: !!(actualWeight && actualWeight !== planWeight),
-            original_weight: planWeight || null,
-            original_sets: String(plan.sets || ''),
-            original_reps: String(plan.reps || ''),
-          };
-        });
 
-      if (performed.length === 0) {
+      // Build exercises_performed from the tray + merged plan/log state.
+      // We include EVERY tray item (not just Done ones) so the session
+      // record is a complete snapshot of what was on the workout — the
+      // is_completed / weight values discriminate done vs untouched.
+      const items = this.tray.getItems();
+      const performed = items.map((it, idx) => {
+        const log = this.logState.get(it.instanceId) || {};
+        const plan = this.organizeState.get(it.instanceId) || {};
+        const merged = Object.assign({}, plan, log);
+        const setsInt = parseInt(merged.sets || '0', 10);
+        const planWeight = plan.weight || '';
+        const actualWeight = (log.weight != null) ? log.weight : planWeight;
+        return {
+          exercise_name: it.name,
+          group_id: it.instanceId,
+          order_index: idx,
+          sets_completed: Number.isFinite(setsInt) ? setsInt : 0,
+          target_sets: String(plan.sets || '3'),
+          target_reps: String(plan.reps || '8-12'),
+          weight: actualWeight || null,
+          weight_unit: merged.weightUnit || 'lbs',
+          notes: null,
+          is_modified: !!(actualWeight && actualWeight !== planWeight),
+          is_skipped: !!log.isSkipped,
+          original_weight: planWeight || null,
+          original_sets: String(plan.sets || ''),
+          original_reps: String(plan.reps || ''),
+        };
+      });
+
+      // Require at least one Done so accidental taps don't write empty sessions.
+      const anyDone = items.some((it) => {
+        const log = this.logState.get(it.instanceId);
+        return log && log.isDone;
+      });
+      if (!anyDone) {
         this._setStatus('Mark at least one exercise done first.', 'error');
         return;
       }
@@ -2669,64 +2962,35 @@
       this._setStatus('Completing…', null);
       if (this.dom.fabGo) this.dom.fabGo.disabled = true;
 
-      // Use the session timer's start as started_at when we have one,
-      // so the saved duration matches the timer the user was watching.
-      const startedAt = this._timerStartedAt
-        ? new Date(this._timerStartedAt).toISOString()
-        : new Date().toISOString();
       const durationMinutes = this._elapsedMinutes();
-      const payload = {
-        workout_id: this.workoutId || `studio-${Date.now()}`,
-        workout_name: this.workoutName || 'Untitled workout',
-        started_at: startedAt,
-        completed_at: new Date().toISOString(),
-        duration_minutes: durationMinutes,
-        exercises_performed: performed,
-        session_mode: 'quick_log',
-        notes: null,
-      };
 
       try {
-        let saved;
-        if (window.dataManager && typeof window.dataManager.authenticatedFetch === 'function') {
-          const url = window.config.api.getUrl('/api/v3/workout-sessions/create-and-complete');
-          const resp = await window.dataManager.authenticatedFetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          if (!resp.ok) throw new Error(`Save log failed (${resp.status})`);
-          saved = await resp.json();
-        } else {
-          // Anonymous / test fallback — try a plain fetch, surface a clear
-          // error if the endpoint rejects (it requires auth in production).
-          const resp = await fetch('/api/v3/workout-sessions/create-and-complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          if (!resp.ok) throw new Error(`Save log failed (${resp.status})`);
-          saved = await resp.json();
+        const svc = this._initSessionService();
+        // Make sure there IS a session to complete. If the toggle never
+        // started one (anonymous, or the user reloaded), start now so
+        // the service's completeSession has something to operate on.
+        if (svc && !this._hasActiveSession()) {
+          await this._ensureActiveSession();
         }
+        if (!svc || !this._hasActiveSession()) {
+          throw new Error('Could not start a session to complete');
+        }
+        const saved = await svc.completeSession(performed, durationMinutes || null, null);
         this._setStatus('Completed!', 'success');
-        console.log('[WorkoutStudio] Log saved:', saved && saved.id);
+        console.log('[WorkoutStudio] Session completed:', saved && saved.id);
         // Clear the in-memory log state so re-opening the workout starts a
         // fresh entry. The draft is updated on next render.
         this.logState = new Map();
         this._scheduleDraftSave();
-        // Stop + clear the session timer (Complete = end of session, the
-        // next time the user enters Log mode it starts fresh at 00:00).
         this._stopSessionTimer({ keep: false });
         // Invalidate the history cache so the very next entry into Log
         // mode re-fetches and reflects what the user just completed.
         this._exerciseHistoryFetched = false;
         this.exerciseHistory = new Map();
-        // Flip back to Plan mode — the next visit defaults to editing the
-        // template, not logging again.
         this._setMode('plan');
       } catch (err) {
-        console.error('[WorkoutStudio] Save log failed:', err);
-        this._setStatus(`Could not save log: ${err.message || 'unknown error'}`, 'error');
+        console.error('[WorkoutStudio] Complete failed:', err);
+        this._setStatus(`Could not complete: ${err.message || 'unknown error'}`, 'error');
       } finally {
         this._saveInFlight = false;
         if (this.dom.fabGo) this.dom.fabGo.disabled = false;

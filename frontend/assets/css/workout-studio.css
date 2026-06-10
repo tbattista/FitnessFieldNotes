@@ -2266,3 +2266,51 @@ html[data-bs-theme="dark"] .studio-draft-banner {
   border-color: rgba(13, 110, 253, 0.25);
 }
 html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* ------------------------------------------------------------------
+   Plan/Log switch — choice dialog
+   Three-button alertdialog ('Complete now / Discard / Cancel') shown
+   when the user flips Plan with an in-progress session. Lives inside
+   the studio shell as a viewport-fixed overlay; backdrop dims the
+   page so the user can't tap through to anything else.
+   ------------------------------------------------------------------ */
+.studio-mode-switch-dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 16px;
+}
+.studio-mode-switch-dialog[hidden] { display: none !important; }
+.studio-mode-switch-card {
+  background: var(--bs-body-bg);
+  border-radius: 14px;
+  max-width: 360px;
+  width: 100%;
+  padding: 1rem 1.1rem 0.9rem;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.25);
+}
+.studio-mode-switch-title {
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+}
+.studio-mode-switch-body {
+  margin: 0 0 1rem;
+  color: var(--bs-secondary-color);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+.studio-mode-switch-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.studio-mode-switch-actions .btn {
+  height: 32px;
+  padding: 0 12px;
+  line-height: 1;
+}

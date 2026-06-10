@@ -3122,38 +3122,101 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         expect(pe2).not.toBe('none');
     });
 
-    test('Save Log POSTs a quick_log session to /api/v3/workout-sessions/create-and-complete', async ({ page }) => {
-        let posted = null;
-        await page.route('**/api/v3/workout-sessions/create-and-complete', async (route) => {
-            try { posted = JSON.parse(route.request().postData() || '{}'); }
-            catch (_) { posted = null; }
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({ id: 'session-test-1', workout_name: posted?.workout_name }),
-            });
+    test('Anonymous Complete in Log mode finishes a local-only session (no API call)', async ({ page }) => {
+        // Studio Log mode now runs through WorkoutSessionService. For
+        // anonymous users (no authService), the service builds a
+        // local-only session and completion writes nothing to the
+        // network — completed state surfaces in the status banner and
+        // the studio flips back to Plan with logState cleared.
+        let networkCalls = 0;
+        await page.route('**/api/v3/workout-sessions**', async (route) => {
+            networkCalls++;
+            await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         });
 
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
-        // Anon fallback path so authenticatedFetch isn't required
-        await page.evaluate(() => { delete window.dataManager; });
+        // Force anonymous: no dataManager AND no isUserAuthenticated.
+        await page.evaluate(() => {
+            delete window.dataManager;
+            if (window.authService) window.authService.isUserAuthenticated = () => false;
+        });
 
-        // Flip to Log + mark one card done + tap the Go FAB (now Save Log)
         await page.locator('#studioModeLogBtn').click();
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
 
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
-        expect(posted).toBeTruthy();
-        expect(posted.session_mode).toBe('quick_log');
-        expect(Array.isArray(posted.exercises_performed)).toBe(true);
-        expect(posted.exercises_performed.length).toBeGreaterThanOrEqual(1);
-        // The Done-flagged exercise carries an order_index + group_id
-        const first = posted.exercises_performed[0];
-        expect(first.exercise_name).toBeTruthy();
-        expect(first.group_id).toBeTruthy();
-        expect(typeof first.order_index).toBe('number');
+        // Local-only session means no /workout-sessions HTTP calls at all
+        expect(networkCalls).toBe(0);
+        // After complete, studio flips back to Plan (Plan/Log toggle reflects)
+        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
+    });
+
+    test('Authenticated Complete in Log mode POSTs start + complete to the session endpoints', async ({ page }) => {
+        // With an authenticated user, the session lifecycle service
+        // creates a session up front (POST /workout-sessions) and then
+        // finalizes it (POST /workout-sessions/{id}/complete).
+        const calls = { create: null, complete: null };
+        await page.route('**/api/v3/workout-sessions', async (route) => {
+            if (route.request().method() !== 'POST') return route.continue();
+            try { calls.create = JSON.parse(route.request().postData() || '{}'); }
+            catch (_) { calls.create = null; }
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    id: 'session-test-1',
+                    workout_id: calls.create?.workout_id,
+                    workout_name: calls.create?.workout_name,
+                    status: 'in_progress',
+                }),
+            });
+        });
+        await page.route('**/api/v3/workout-sessions/*/complete', async (route) => {
+            try { calls.complete = JSON.parse(route.request().postData() || '{}'); }
+            catch (_) { calls.complete = null; }
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ id: 'session-test-1', status: 'completed' }),
+            });
+        });
+        // History endpoint can stay empty
+        await page.route('**/api/v3/workout-sessions/history/**', async (route) => {
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ workout_id: 'x', workout_name: 'x', exercises: {} }) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        // Stub the auth surface so the session service follows the
+        // authenticated branch.
+        await page.evaluate(() => {
+            window.authService = {
+                isUserAuthenticated: () => true,
+                getIdToken: async () => 'test-token',
+            };
+            // Studio's _ensureLogPrereqs auto-saves the template first
+            // when authed without a workoutId; short-circuit that path
+            // by planting a workoutId directly so we focus this test on
+            // the session endpoints.
+            if (window.workoutStudio) window.workoutStudio.workoutId = 'wk-test-1';
+        });
+
+        await page.locator('#studioModeLogBtn').click();
+        // Give the start call time to land
+        await page.waitForTimeout(200);
+        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
+        expect(calls.create).toBeTruthy();
+        expect(calls.create.session_mode).toBe('quick_log');
+        expect(calls.create.workout_id).toBe('wk-test-1');
+        expect(calls.complete).toBeTruthy();
+        expect(Array.isArray(calls.complete.exercises_performed)).toBe(true);
+        expect(calls.complete.exercises_performed.length).toBeGreaterThanOrEqual(1);
     });
 
     test('Save Log refuses when no exercise is marked Done (no actuals to record)', async ({ page }) => {
@@ -3179,6 +3242,60 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         // Log mode → check icon, 'Complete' title
         await expect(fab.locator('i')).toHaveClass(/bx-check/);
         await expect(fab).toHaveAttribute('title', 'Complete');
+    });
+
+    test('Plan toggle with dirty session opens choice dialog (Complete / Discard / Cancel)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+
+        // Enter Log + dirty the session by marking one card Done
+        await page.locator('#studioModeLogBtn').click();
+        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+
+        // Dialog is hidden in steady state
+        const dialog = page.locator('#studioModeSwitchDialog');
+        await expect(dialog).toBeHidden();
+
+        // Flip Plan → dialog opens
+        await page.locator('#studioModePlanBtn').click();
+        await expect(dialog).toBeVisible();
+        // All three actions present
+        await expect(dialog.locator('[data-mode-switch-action="cancel"]')).toBeVisible();
+        await expect(dialog.locator('[data-mode-switch-action="discard"]')).toBeVisible();
+        await expect(dialog.locator('[data-mode-switch-action="complete"]')).toBeVisible();
+
+        // Cancel → dialog closes + we stay in Log mode
+        await dialog.locator('[data-mode-switch-action="cancel"]').click();
+        await expect(dialog).toBeHidden();
+        await expect(page.locator('#studioModeLogBtn')).toHaveClass(/is-active/);
+    });
+
+    test('Plan toggle with dirty session — Discard wipes the in-memory session and flips to Plan', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        await page.locator('#studioModeLogBtn').click();
+        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+
+        await page.locator('#studioModePlanBtn').click();
+        const dialog = page.locator('#studioModeSwitchDialog');
+        await expect(dialog).toBeVisible();
+        await dialog.locator('[data-mode-switch-action="discard"]').click();
+        await expect(dialog).toBeHidden();
+        // We end up in Plan mode
+        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
+        // logState was cleared — Done badge is gone, card back to outline
+        await expect(page.locator('.studio-card').first()).not.toHaveClass(/is-done/);
+    });
+
+    test('Plan toggle with NO dirty edits flips silently — no dialog', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        await page.locator('#studioModeLogBtn').click();
+        // No Done taps, no weight edits — session is untouched
+        await page.locator('#studioModePlanBtn').click();
+
+        await expect(page.locator('#studioModeSwitchDialog')).toBeHidden();
+        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
     });
 });
 
