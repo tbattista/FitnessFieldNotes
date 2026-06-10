@@ -2435,7 +2435,7 @@ test.describe('Workout Studio — Back FAB (4th button)', () => {
         await expect(page.locator('#studioFloatingFabs')).toBeHidden();
     });
 
-    test('FAB row: Back is left-justified, Discard/Save/Go are right-justified text+icon pills', async ({ page }) => {
+    test('FAB row: Back is left-justified, Discard/Save/Go are right-justified — no More overflow menu', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         const firstRow = page.locator('.studio-row').first();
         await firstRow.waitFor({ state: 'visible', timeout: 10000 });
@@ -2448,16 +2448,6 @@ test.describe('Workout Studio — Back FAB (4th button)', () => {
         await expect(page.locator('#studioFabMore')).toHaveCount(0);
         await expect(page.locator('#studioFabDiscard')).toBeVisible();
 
-        // Pill style: Discard / Save / Go each carry both an icon AND a
-        // text label (Cancel/Save card-footer parity). Back stays icon-only.
-        await expect(page.locator('#studioFabDiscard')).toHaveClass(/studio-fab-pill/);
-        await expect(page.locator('#studioFabSave')).toHaveClass(/studio-fab-pill/);
-        await expect(page.locator('#studioFabGo')).toHaveClass(/studio-fab-pill/);
-        await expect(page.locator('#studioFabBack')).not.toHaveClass(/studio-fab-pill/);
-        await expect(page.locator('#studioFabDiscard .studio-fab-label')).toHaveText('Discard');
-        await expect(page.locator('#studioFabSave .studio-fab-label')).toHaveText('Save');
-        await expect(page.locator('#studioFabGo .studio-fab-label')).toHaveText('Start');
-
         // Geometry: Back's left edge sits well to the LEFT of Discard,
         // and the three right-side FABs are clustered together.
         const back = await page.locator('#studioFabBack').boundingBox();
@@ -2465,8 +2455,7 @@ test.describe('Workout Studio — Back FAB (4th button)', () => {
         const save = await page.locator('#studioFabSave').boundingBox();
         const go = await page.locator('#studioFabGo').boundingBox();
 
-        // Back sits near the left edge; Discard begins well to its right.
-        expect(back.x).toBeLessThan(discard.x - 25);
+        expect(back.x).toBeLessThan(discard.x - 50);     // Back is far left
         expect(discard.x).toBeLessThan(save.x);          // Right cluster order
         expect(save.x).toBeLessThan(go.x);
         // Right cluster is tight (consecutive FABs within ~20px of each other)
@@ -3172,20 +3161,18 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#studioOrganizeStatus')).toContainText(/Mark at least one exercise done/i, { timeout: 5000 });
     });
 
-    test('Go FAB icon + label + tooltip swap based on mode', async ({ page }) => {
+    test('Go FAB icon + tooltip swap based on mode', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
 
         const fab = page.locator('#studioFabGo');
-        // Plan mode → play icon, "Start" pill label, 'Start workout' title
+        // Plan mode → play icon, 'Start workout' title
         await expect(fab.locator('i')).toHaveClass(/bx-play/);
-        await expect(fab.locator('.studio-fab-label')).toHaveText('Start');
         await expect(fab).toHaveAttribute('title', 'Start workout');
 
         await page.locator('#studioModeLogBtn').click();
-        // Log mode → check icon, "Complete" pill label, 'Complete' title
+        // Log mode → check icon, 'Complete' title
         await expect(fab.locator('i')).toHaveClass(/bx-check/);
-        await expect(fab.locator('.studio-fab-label')).toHaveText('Complete');
         await expect(fab).toHaveAttribute('title', 'Complete');
     });
 });

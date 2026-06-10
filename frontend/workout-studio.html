@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260609-05" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260609-04" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -364,24 +364,23 @@
                 </div>
 
                 <!-- Floating FAB row — visible on Page 2 (Organize) only.
-                     Back sits left-justified as a round icon-FAB; Discard /
-                     Save / Go are right-justified as text+icon pill buttons
-                     that read like the card-footer Cancel/Save pair. -->
+                     Back FAB sits left-justified; Discard / Save / Go are
+                     right-justified. Metadata edits live in the slim header
+                     (the chevron next to the workout name), so there's no
+                     "More" overflow menu — Discard is the only destructive
+                     action that needed surfacing. -->
                 <div class="studio-floating-fabs" id="studioFloatingFabs" hidden>
                   <button type="button" class="studio-fab studio-fab-back" id="studioFabBack" title="Back to selection" aria-label="Back to selection">
                     <i class="bx bx-arrow-back"></i>
                   </button>
-                  <button type="button" class="studio-fab studio-fab-pill studio-fab-discard" id="studioFabDiscard" title="Discard workout" aria-label="Discard workout">
+                  <button type="button" class="studio-fab studio-fab-discard" id="studioFabDiscard" title="Discard workout" aria-label="Discard workout">
                     <i class="bx bx-trash"></i>
-                    <span class="studio-fab-label">Discard</span>
                   </button>
-                  <button type="button" class="studio-fab studio-fab-pill studio-fab-save" id="studioFabSave" title="Save workout" aria-label="Save workout">
+                  <button type="button" class="studio-fab studio-fab-save" id="studioFabSave" title="Save workout" aria-label="Save workout">
                     <i class="bx bx-save"></i>
-                    <span class="studio-fab-label">Save</span>
                   </button>
-                  <button type="button" class="studio-fab studio-fab-pill studio-fab-go" id="studioFabGo" title="Start workout" aria-label="Start workout">
+                  <button type="button" class="studio-fab studio-fab-go" id="studioFabGo" title="Start workout" aria-label="Start workout">
                     <i class="bx bx-play"></i>
-                    <span class="studio-fab-label">Start</span>
                   </button>
                 </div>
 
@@ -460,6 +459,6 @@
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260609-05"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260609-04"></script>
   </body>
 </html>

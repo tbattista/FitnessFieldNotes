@@ -1693,24 +1693,6 @@ html[data-bs-theme="dark"] .studio-org-field-input {
   opacity: 0.55;
   cursor: not-allowed;
 }
-
-/* Pill variant — Discard / Save / Go read like the card-footer Cancel/Save
-   pair: icon + text in a rounded bubble. Back stays as the round icon-only
-   FAB so the back-arrow affordance is unmistakable. */
-.studio-fab-pill {
-  width: auto;
-  min-height: 44px;
-  height: auto;
-  padding: 0 16px;
-  border-radius: 999px;
-  gap: 6px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1;
-}
-.studio-fab-pill i { font-size: 20px; }
-.studio-fab-pill .studio-fab-label { white-space: nowrap; }
-
 .studio-fab-back {
   background: #fff;
   color: var(--bs-secondary, #6c757d);

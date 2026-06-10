@@ -2378,7 +2378,6 @@
       const fab = this.dom.fabGo;
       if (!fab) return;
       const icon = fab.querySelector('i');
-      const label = fab.querySelector('.studio-fab-label');
       if (this.mode === 'log') {
         // Gym-app convention: 'Complete' is the user-facing word for
         // 'end the session + write a record'. Reads cleaner than 'Save
@@ -2386,12 +2385,10 @@
         fab.title = 'Complete';
         fab.setAttribute('aria-label', 'Complete workout');
         if (icon) icon.className = 'bx bx-check';
-        if (label) label.textContent = 'Complete';
       } else {
         fab.title = 'Start workout';
         fab.setAttribute('aria-label', 'Start workout');
         if (icon) icon.className = 'bx bx-play';
-        if (label) label.textContent = 'Start';
       }
     }
 
