@@ -3146,6 +3146,11 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
 
+        // End Workout offcanvas now intercepts the Go FAB — confirm the
+        // user has to tap "Save Session" before completion lands.
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        await page.locator('#confirmCompleteBtn').click();
+
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
         // Local-only session means no /workout-sessions HTTP calls at all
         expect(networkCalls).toBe(0);
@@ -3210,6 +3215,11 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
 
+        // End Workout offcanvas appears first — confirm to actually
+        // complete the session.
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        await page.locator('#confirmCompleteBtn').click();
+
         await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
         expect(calls.create).toBeTruthy();
         expect(calls.create.session_mode).toBe('quick_log');
@@ -3217,6 +3227,103 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         expect(calls.complete).toBeTruthy();
         expect(Array.isArray(calls.complete.exercises_performed)).toBe(true);
         expect(calls.complete.exercises_performed.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('End Workout offcanvas opens on Go FAB; values pass through to completeSession', async ({ page }) => {
+        // The End Workout bottom-sheet is the same one workout-mode
+        // uses to finish a live session. In studio Log mode it gates
+        // the Complete action so the user can confirm duration + enter
+        // calories before the session is finalized.
+        let completePayload = null;
+        await page.route('**/api/v3/workout-sessions', async (route) => {
+            if (route.request().method() !== 'POST') return route.continue();
+            await route.fulfill({
+                status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 'wss-1', status: 'in_progress' }),
+            });
+        });
+        await page.route('**/api/v3/workout-sessions/*/complete', async (route) => {
+            try { completePayload = JSON.parse(route.request().postData() || '{}'); }
+            catch (_) { completePayload = null; }
+            await route.fulfill({
+                status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 'wss-1', status: 'completed' }),
+            });
+        });
+        await page.route('**/api/v3/workout-sessions/history/**', async (route) => {
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ workout_id: 'x', workout_name: 'x', exercises: {} }) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        await page.evaluate(() => {
+            window.authService = {
+                isUserAuthenticated: () => true,
+                getIdToken: async () => 'test-token',
+            };
+            if (window.workoutStudio) window.workoutStudio.workoutId = 'wk-end-offcanvas';
+        });
+
+        await page.locator('#studioModeLogBtn').click();
+        await page.waitForTimeout(200);
+        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+
+        // Offcanvas attaches and is visible. Title is "Session Complete".
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        await expect(page.locator('#completeWorkoutOffcanvasLabel')).toContainText(/Session Complete/i);
+        // Duration + Calories inputs are present
+        await expect(page.locator('#sessionDurationInput')).toBeAttached();
+        await expect(page.locator('#sessionCaloriesInput')).toBeAttached();
+        // Discard link is hidden (studio has its own Discard FAB; this
+        // discard would call into workout-mode's controller which
+        // doesn't exist on this page).
+        const discardDisplay = await page.locator('#cancelDiscardBtn').evaluate(el => getComputedStyle(el).display);
+        expect(discardDisplay).toBe('none');
+
+        // Type a duration + calories and Save → the values pass through
+        // into the completeSession payload.
+        await page.locator('#sessionDurationInput').fill('48');
+        await page.locator('#sessionCaloriesInput').fill('325');
+        await page.locator('#confirmCompleteBtn').click();
+
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
+        await expect.poll(() => completePayload, { timeout: 5000 }).toBeTruthy();
+        expect(completePayload.duration_minutes).toBe(48);
+        expect(completePayload.calories).toBe(325);
+    });
+
+    test('End Workout offcanvas dismissed without Save → no completion fires', async ({ page }) => {
+        let completed = false;
+        await page.route('**/api/v3/workout-sessions/*/complete', async (route) => {
+            completed = true;
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 'wss-noop', status: 'completed' }) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await continueToOrganize(page);
+        await page.evaluate(() => {
+            delete window.dataManager;
+            if (window.authService) window.authService.isUserAuthenticated = () => false;
+        });
+
+        await page.locator('#studioModeLogBtn').click();
+        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+
+        const offcanvas = page.locator('#completeWorkoutOffcanvas');
+        await expect(offcanvas).toBeAttached({ timeout: 3000 });
+
+        // Tap the bottom-sheet's Resume (data-bs-dismiss) — the offcanvas
+        // closes and nothing should be completed.
+        await offcanvas.locator('[data-bs-dismiss="offcanvas"]').first().click();
+        await page.waitForTimeout(600);
+
+        expect(completed).toBe(false);
+        // Still in Log mode — Plan toggle isn't active
+        await expect(page.locator('#studioModeLogBtn')).toHaveClass(/is-active/);
     });
 
     test('Save Log refuses when no exercise is marked Done (no actuals to record)', async ({ page }) => {

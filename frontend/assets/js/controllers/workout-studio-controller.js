@@ -2909,7 +2909,9 @@
      * WorkoutSessionService.completeSession which handles the POST
      * /workout-sessions/{id}/complete call, atomic-recovery fallback
      * for orphaned sessions, and the local-only branch for anonymous
-     * users. On success the studio flips back to Plan and clears state.
+     * users. Wraps the actual completion in the same End Workout
+     * bottom-sheet workout-mode uses so the user can confirm duration
+     * + enter calories before the session is finalized.
      */
     async _handleComplete() {
       if (!this.tray || this.tray.size() === 0) {
@@ -2958,12 +2960,56 @@
       }
 
       if (this._saveInFlight) return;
+
+      const durationMinutes = this._elapsedMinutes();
+      const totalExercises = items.length;
+
+      // Open the End Workout offcanvas (same bottom-sheet workout-mode
+      // shows on finish). If the factory isn't available for some
+      // reason, fall back to the direct-complete path so the user can
+      // still finalize the session.
+      const factory = window.UnifiedOffcanvasFactory;
+      if (!factory || typeof factory.createCompleteWorkout !== 'function') {
+        return this._completeSessionWithMetadata(performed, durationMinutes || null, null);
+      }
+
+      factory.createCompleteWorkout({
+        workoutName: this.workoutName || 'Workout',
+        minutes: durationMinutes || 0,
+        totalExercises,
+        isBuildMode: false,
+      }, async (chosenDuration, _templateOpts, sessionCalories) => {
+        // chosenDuration is the user-edited duration from the input;
+        // sessionCalories is the user's calories entry (or null).
+        await this._completeSessionWithMetadata(
+          performed,
+          chosenDuration || durationMinutes || null,
+          sessionCalories
+        );
+      });
+
+      // The offcanvas's Discard link is hard-wired to workout-mode's
+      // controller (window.workoutModeController.resetToFreshState),
+      // which doesn't exist on the studio page. Hide it here so the
+      // user only sees Save / Resume — Discard already lives on the
+      // studio toolbar as its own FAB.
+      setTimeout(() => {
+        const discardBtn = document.getElementById('cancelDiscardBtn');
+        if (discardBtn) discardBtn.style.display = 'none';
+      }, 50);
+    }
+
+    /**
+     * Actually finalize the session via the WorkoutSessionService.
+     * Pulled out of _handleComplete so the End Workout offcanvas's
+     * Save callback can call it after the user confirms the duration +
+     * calories.
+     */
+    async _completeSessionWithMetadata(performed, durationMinutes, sessionCalories) {
+      if (this._saveInFlight) return;
       this._saveInFlight = true;
       this._setStatus('Completing…', null);
       if (this.dom.fabGo) this.dom.fabGo.disabled = true;
-
-      const durationMinutes = this._elapsedMinutes();
-
       try {
         const svc = this._initSessionService();
         // Make sure there IS a session to complete. If the toggle never
@@ -2975,7 +3021,7 @@
         if (!svc || !this._hasActiveSession()) {
           throw new Error('Could not start a session to complete');
         }
-        const saved = await svc.completeSession(performed, durationMinutes || null, null);
+        const saved = await svc.completeSession(performed, durationMinutes, sessionCalories);
         this._setStatus('Completed!', 'success');
         console.log('[WorkoutStudio] Session completed:', saved && saved.id);
         // Clear the in-memory log state so re-opening the workout starts a
