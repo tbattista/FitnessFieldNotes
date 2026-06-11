@@ -225,10 +225,17 @@
       this.dom.viewBuildBtn = document.getElementById('studioViewBuildBtn');
       this.dom.viewPlanBtn = document.getElementById('studioViewPlanBtn');
       this.dom.viewLogBtn = document.getElementById('studioViewLogBtn');
-      // Log view container + list
+      // Log view container, landing block, and active-session list
       this.dom.viewLog = document.getElementById('studioViewLog');
       this.dom.logList = document.getElementById('studioLogList');
       this.dom.logStatus = document.getElementById('studioLogStatus');
+      this.dom.logLanding = document.getElementById('studioLogLanding');
+      this.dom.logLandingTitle = document.getElementById('studioLogLandingTitle');
+      this.dom.logLandingMeta = document.getElementById('studioLogLandingMeta');
+      this.dom.logLandingLast = document.getElementById('studioLogLandingLast');
+      this.dom.logLandingHint = document.getElementById('studioLogLandingHint');
+      this.dom.logStartBtn = document.getElementById('studioLogStartBtn');
+      this.dom.logStartBtnText = document.getElementById('studioLogStartBtnText');
       this.dom.modeTimer = document.getElementById('studioModeTimer');
       this.dom.modeTimerText = this.dom.modeTimer
         ? this.dom.modeTimer.querySelector('.studio-mode-timer-text')
@@ -1284,6 +1291,12 @@
       if (this.dom.viewLogBtn) {
         this.dom.viewLogBtn.addEventListener('click', () => this._showView('log'));
       }
+      // Start Workout button on the Log landing — gated by tray + name +
+      // (when authed) a saved template. _handleStartWorkout owns the
+      // friendly-error path so the button itself just delegates.
+      if (this.dom.logStartBtn) {
+        this.dom.logStartBtn.addEventListener('click', () => this._handleStartWorkout());
+      }
 
       if (this.dom.addBlockBtn) {
         this.dom.addBlockBtn.addEventListener('click', () => this._createBlock());
@@ -1719,15 +1732,17 @@
           setTimeout(() => this.dom.workoutNameInput.focus(), 150);
         }
       } else if (view === 'log') {
-        // Bootstrap the session lifecycle when entering Log if a session
-        // is already active (e.g. resumed from localStorage). For the
-        // initial "tap Log → see Start button" experience, the landing
-        // state is handled inside _renderLog. The full Start Workout
-        // flow + landing markup arrives in a follow-up commit; for now
-        // we render the same session card list the legacy Log mode
-        // showed so existing tests + behavior keep working.
+        // Active session continues running across tabs — bootstrap the
+        // timer + history refresh so the Log view paints up-to-date
+        // info. When no session is running, _renderLog falls back to
+        // the landing block; tapping Start fires _handleStartWorkout.
         if (this._hasActiveSession()) {
           this._startSessionTimer();
+          this._loadExerciseHistory();
+        } else {
+          // Lazy-load exercise history so the landing's "Last completed"
+          // line populates even without an active session. Cheap if
+          // already fetched (gated by _exerciseHistoryFetched).
           this._loadExerciseHistory();
         }
         this._renderLog();
@@ -1743,7 +1758,7 @@
      */
     _renderActiveView() {
       if (this.currentView === 'plan') {
-        this._renderActiveView();
+        this._renderOrganize();
       } else if (this.currentView === 'log') {
         this._renderLog();
       }
@@ -2405,14 +2420,144 @@
     }
 
     /**
-     * Render the Log view — for this commit it mirrors the Plan list but
-     * mounts log-mode cards (Done buttons, last-session subtitle, log
-     * field overrides) into #studioLogList. The dedicated landing state
-     * (Start Workout button + workout summary preview) arrives in the
-     * follow-up commit; until then this method is what fills the Log tab
-     * when the user navigates to it.
+     * Render the Log view in one of two states:
+     *   - No active session → landing: workout name + summary +
+     *     Start Workout (or Resume Workout when a persisted session
+     *     for this workout already exists).
+     *   - Active session → session cards mounted into #studioLogList
+     *     using the existing _mountLogCard machinery.
+     * Switching between states is a hidden-attribute swap on the two
+     * blocks so DOM doesn't churn unnecessarily.
      */
     _renderLog() {
+      if (!this.dom.viewLog || !this.tray) return;
+      const sessionRunning = this._hasActiveSession();
+      // Toggle landing vs. session list visibility.
+      if (this.dom.logLanding) this.dom.logLanding.hidden = !!sessionRunning;
+      if (this.dom.logList)    this.dom.logList.hidden    = !sessionRunning;
+
+      if (!sessionRunning) {
+        this._renderLogLanding();
+        return;
+      }
+      this._renderLogSession();
+    }
+
+    /**
+     * Populate the Log landing's preview line + Start button label.
+     * - Title: this.workoutName, with a placeholder when blank.
+     * - Meta: "<n> exercises" (uses tray size as the source of truth so
+     *   it tracks Build adds/removes live).
+     * - Last: aggregated max date across exerciseHistory. Falls back to
+     *   "Not yet completed" if no history is known.
+     * - Button: "Resume Workout" when the persisted session matches the
+     *   loaded workout id, otherwise "Start Workout".
+     */
+    _renderLogLanding() {
+      const trayCount = this.tray ? this.tray.size() : 0;
+      const name = (this.workoutName && this.workoutName.trim()) || 'Untitled workout';
+      if (this.dom.logLandingTitle) this.dom.logLandingTitle.textContent = name;
+      if (this.dom.logLandingMeta) {
+        this.dom.logLandingMeta.textContent = trayCount === 1
+          ? '1 exercise'
+          : `${trayCount} exercises`;
+      }
+      if (this.dom.logLandingLast) {
+        this.dom.logLandingLast.textContent = this._lastCompletedLabel();
+      }
+      // Resume vs Start label — driven by whether a persisted session
+      // for THIS workout exists. We don't auto-resume; the user clicks
+      // Resume to opt in (so a stale session doesn't surprise them).
+      const isResume = this._hasPersistedSessionForWorkout();
+      if (this.dom.logStartBtnText) {
+        this.dom.logStartBtnText.textContent = isResume ? 'Resume Workout' : 'Start Workout';
+      }
+      if (this.dom.logStartBtn) {
+        const icon = this.dom.logStartBtn.querySelector('i');
+        if (icon) icon.className = isResume ? 'bx bx-history' : 'bx bx-play';
+        // Disable when the workout has zero exercises — the prereq
+        // check would just bounce them back with a message anyway,
+        // surface it on the button itself for clarity.
+        this.dom.logStartBtn.disabled = trayCount === 0;
+        this.dom.logStartBtn.title = trayCount === 0
+          ? 'Add an exercise on Build first'
+          : (isResume ? 'Resume the in-progress session' : 'Start a new session');
+      }
+    }
+
+    /**
+     * Aggregate the controller's exerciseHistory Map to a human-readable
+     * "Last completed" line for the Log landing. Picks the most-recent
+     * sessionDate across all exercises and formats it as
+     * today / yesterday / N days ago.
+     */
+    _lastCompletedLabel() {
+      if (!this.exerciseHistory || this.exerciseHistory.size === 0) {
+        return 'Not yet completed';
+      }
+      let mostRecent = -Infinity;
+      for (const h of this.exerciseHistory.values()) {
+        if (!h || !h.sessionDate) continue;
+        const t = new Date(h.sessionDate).getTime();
+        if (Number.isFinite(t) && t > mostRecent) mostRecent = t;
+      }
+      if (!Number.isFinite(mostRecent) || mostRecent < 0) return 'Not yet completed';
+      const days = Math.max(0, Math.floor((Date.now() - mostRecent) / 86400000));
+      if (days === 0) return 'Last completed today';
+      if (days === 1) return 'Last completed yesterday';
+      return `Last completed ${days} days ago`;
+    }
+
+    /**
+     * True when a persisted session in localStorage matches the loaded
+     * workout id — drives the Resume vs Start label on the landing.
+     * Falls back to false for anonymous / no-service environments.
+     */
+    _hasPersistedSessionForWorkout() {
+      try {
+        const svc = this._initSessionService();
+        if (!svc || !svc.sessionPersistenceService) return false;
+        const persistence = svc.sessionPersistenceService;
+        if (typeof persistence.hasPersistedSession !== 'function') return false;
+        if (!persistence.hasPersistedSession()) return false;
+        // The service caches a peek; some versions expose
+        // peekPersistedSession, others restoreSession. Use peek if
+        // present; otherwise treat any persisted session as a match
+        // (safe — the worst case is a label mismatch that won't matter
+        // until §3's reconciliation step lands).
+        const peek = typeof persistence.peekPersistedSession === 'function'
+          ? persistence.peekPersistedSession()
+          : null;
+        if (!peek) return !!this.workoutId; // some persisted session exists
+        return !!(this.workoutId && peek.workoutId === this.workoutId);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    /**
+     * Start (or resume) a session from the Log landing. Runs the same
+     * prereq checks the legacy Log toggle used to do, then starts the
+     * session, fetches exercise history, and re-renders the Log view —
+     * the landing block hides and the session card list takes over.
+     */
+    async _handleStartWorkout() {
+      const ok = await this._ensureLogPrereqs();
+      if (!ok) return;
+      this._startSessionTimer();
+      await this._ensureActiveSession();
+      await this._loadExerciseHistory();
+      this._renderTimer();
+      this._renderLog();
+      this._refreshFabState();
+    }
+
+    /**
+     * Mount the session card list into #studioLogList. Identical to the
+     * legacy log-mode renderer that lived inside _renderOrganize — split
+     * out so the landing path can early-return without doing this work.
+     */
+    _renderLogSession() {
       if (!this.dom.logList || !this.tray) return;
       const items = this.tray.getItems();
       const itemMap = new Map(items.map((it) => [it.instanceId, it]));

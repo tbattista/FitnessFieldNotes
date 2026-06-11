@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-01" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-02" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -357,12 +357,35 @@
                   <div class="studio-organize-status" id="studioOrganizeStatus" role="status" aria-live="polite"></div>
                 </div>
 
-                <!-- View: Log (live session). For commit 1 this hosts the
-                     session card list as-is; commit 2 adds the landing
-                     state with Start/Resume button. Cards re-render in
-                     sessionMode here so the user gets Done / weight
-                     badges / direction chips / skip menu items. -->
+                <!-- View: Log (live session). Two states, swapped at
+                     render time by _renderLog:
+                       - No active session → landing block with workout
+                         summary + Start Workout (or Resume Workout when
+                         a persisted session for this workout exists).
+                       - Active session → #studioLogList with session
+                         cards (Done buttons, last-session subtitle,
+                         and session-mode affordances). -->
                 <div class="studio-view studio-view-log" id="studioViewLog" hidden>
+                  <!-- Landing — visible only when no session is in
+                       progress. Controller toggles between landing and
+                       list via the hidden attr. -->
+                  <div class="studio-log-landing" id="studioLogLanding" hidden>
+                    <div class="studio-log-landing-card">
+                      <div class="studio-log-landing-title" id="studioLogLandingTitle">Workout</div>
+                      <div class="studio-log-landing-summary">
+                        <span class="studio-log-landing-meta" id="studioLogLandingMeta">0 exercises</span>
+                        <span class="studio-log-landing-meta-sep" aria-hidden="true">·</span>
+                        <span class="studio-log-landing-last" id="studioLogLandingLast">Not yet completed</span>
+                      </div>
+                      <button class="btn btn-primary studio-log-landing-start" id="studioLogStartBtn" type="button">
+                        <i class="bx bx-play" aria-hidden="true"></i>
+                        <span class="studio-log-landing-start-text" id="studioLogStartBtnText">Start Workout</span>
+                      </button>
+                      <p class="studio-log-landing-hint" id="studioLogLandingHint">
+                        Starts the timer + tracks your reps and weights. You can switch back to Build or Plan during the session.
+                      </p>
+                    </div>
+                  </div>
                   <div class="studio-log-list" id="studioLogList" role="list">
                     <!-- Rows injected by controller when a session is active -->
                   </div>
@@ -498,6 +521,6 @@
          the studio card emits in session mode (per-exercise notes). -->
     <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
 
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260610-03"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260611-01"></script>
   </body>
 </html>

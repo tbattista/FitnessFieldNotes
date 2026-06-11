@@ -2273,3 +2273,73 @@ html[data-bs-theme="dark"] .studio-draft-banner {
 }
 html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba(255, 255, 255, 0.08); }
 
+
+/* ------------------------------------------------------------------
+   Log view — landing state
+   Shown when the Log tab is entered but no session is yet active.
+   Centered preview card with the workout name + a quick summary
+   line + the primary Start/Resume Workout button. Sized to feel
+   intentional but not overwhelming on either mobile or desktop.
+   ------------------------------------------------------------------ */
+.studio-log-landing {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0 2rem;
+}
+.studio-log-landing[hidden] { display: none !important; }
+.studio-log-landing-card {
+  background: var(--bs-body-bg);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 1.3rem 1.2rem 1.4rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+[data-bs-theme="dark"] .studio-log-landing-card {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+.studio-log-landing-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  word-break: break-word;
+}
+.studio-log-landing-summary {
+  color: var(--bs-secondary-color);
+  font-size: 0.88rem;
+  margin-bottom: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.studio-log-landing-meta-sep {
+  opacity: 0.55;
+}
+.studio-log-landing-start {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 200px;
+  padding: 0.55rem 1.2rem;
+  font-weight: 600;
+  border-radius: 10px;
+}
+.studio-log-landing-start[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.studio-log-landing-start i {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.studio-log-landing-hint {
+  margin: 0.9rem 0 0;
+  color: var(--bs-secondary-color);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
