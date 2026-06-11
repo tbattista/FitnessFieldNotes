@@ -786,31 +786,29 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
    10px button-radius family so it reads as part of the same control
    set as Import + Reorder beside it.
    ------------------------------------------------------------------ */
-/* Slim-header view tabs — Plan / Build / Log. Three equal pills
-   spanning the full width of the slim header. Build is centered by
-   design — users land on Build by default, then step left (Plan,
-   edit the template) or right (Log, run a session). Each pill is a
-   discrete chip with its own border + bg so the three options read
-   as visually separate, not as one squished segmented control. */
+/* Slim-header view tabs — Build / Plan / Log. Compact pills above
+   the workout name; they're a navigation hint, not a primary CTA, so
+   they stay smaller than the title and align flush-left. Each pill is
+   its own chip with a border + bg so the three options read as
+   visually separate. The active pill gets the primary fill. */
 .studio-view-tabs {
-  display: flex;
-  align-items: stretch;
-  width: 100%;
-  gap: 8px;
-  margin-top: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0.45rem;
 }
 .studio-view-tab {
-  flex: 1;
   appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.10);
   background: rgba(0, 0, 0, 0.03);
   color: var(--bs-secondary-color);
-  font-size: 0.92rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 9px 0;
-  border-radius: 10px;
+  letter-spacing: 0.01em;
+  padding: 3px 9px;
+  border-radius: 999px;
   cursor: pointer;
-  text-align: center;
+  line-height: 1.2;
   transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
 }
 [data-bs-theme="dark"] .studio-view-tab {
@@ -828,7 +826,7 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   background: var(--bs-primary);
   color: #fff;
   border-color: var(--bs-primary);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
 }
 [data-bs-theme="dark"] .studio-view-tab.is-active {
   color: #fff;

@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-03" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-04" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -94,6 +94,26 @@
                      user can navigate between picking exercises, editing the
                      template, and running/logging a session from any view. -->
                 <header class="studio-slim-header" id="studioSlimHeader">
+                  <!-- View tabs — small inline pills above the workout
+                       name, so navigation lives ABOVE the title (where
+                       users glance first) and the title gets to keep
+                       its prominence. Build / Plan / Log left-to-right;
+                       Build is the default first step. -->
+                  <div class="studio-view-tabs" role="tablist" aria-label="Studio view">
+                    <button class="studio-view-tab is-active"
+                            id="studioViewBuildBtn" type="button"
+                            role="tab" aria-selected="true"
+                            data-view="build">Build</button>
+                    <button class="studio-view-tab"
+                            id="studioViewPlanBtn" type="button"
+                            role="tab" aria-selected="false"
+                            data-view="plan">Plan</button>
+                    <button class="studio-view-tab"
+                            id="studioViewLogBtn" type="button"
+                            role="tab" aria-selected="false"
+                            data-view="log">Log</button>
+                  </div>
+
                   <div class="studio-slim-name-row">
                     <input
                       type="text"
@@ -135,32 +155,6 @@
                         maxlength="500"
                         autocomplete="off" />
                     </label>
-                  </div>
-
-                  <!-- View tabs — Build / Plan / Log. The selected pill is
-                       kept in sync with the controller's currentView; users
-                       can tap any one from any view (no linear nav). The
-                       timer pill sits to the right; it shows once a Log
-                       session is running and stays visible across all tabs. -->
-                  <!-- View tabs — Build / Plan / Log. The pills span the
-                       full width of the slim header in three equal
-                       segments with a visible gap between them. Build is
-                       the leftmost default since picking exercises is
-                       the natural first step; Plan is the template
-                       editor; Log runs the session. -->
-                  <div class="studio-view-tabs" role="tablist" aria-label="Studio view">
-                    <button class="studio-view-tab is-active"
-                            id="studioViewBuildBtn" type="button"
-                            role="tab" aria-selected="true"
-                            data-view="build">Build</button>
-                    <button class="studio-view-tab"
-                            id="studioViewPlanBtn" type="button"
-                            role="tab" aria-selected="false"
-                            data-view="plan">Plan</button>
-                    <button class="studio-view-tab"
-                            id="studioViewLogBtn" type="button"
-                            role="tab" aria-selected="false"
-                            data-view="log">Log</button>
                   </div>
                   <span class="studio-mode-timer" id="studioModeTimer" hidden aria-live="off">
                     <i class="bx bx-time-five"></i>

@@ -3418,22 +3418,20 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(cta).toBeVisible();
     });
 
-    test('Tabs span the full width with equal-flex segments', async ({ page }) => {
+    test('Tabs are compact inline pills positioned above the workout name', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await page.waitForLoadState('domcontentloaded');
-        const widths = await page.locator('.studio-view-tabs > .studio-view-tab').evaluateAll(
-            els => els.map(el => el.getBoundingClientRect().width)
-        );
+        const tabs = page.locator('.studio-view-tabs > .studio-view-tab');
+        const widths = await tabs.evaluateAll(els => els.map(el => el.getBoundingClientRect().width));
         expect(widths).toHaveLength(3);
-        // All three tabs share the same width (within 1px tolerance for
-        // sub-pixel rounding). Equal-width means the flex distribution
-        // is working as designed.
-        const [w1, w2, w3] = widths;
-        expect(Math.abs(w1 - w2)).toBeLessThanOrEqual(1);
-        expect(Math.abs(w2 - w3)).toBeLessThanOrEqual(1);
-        // Each tab is meaningfully wide (>= 60px) so the full row spans
-        // a reasonable share of the header.
-        expect(w1).toBeGreaterThan(60);
+        // Compact pills — each tab is small (well below 100px wide so
+        // they read as navigation hints, not primary CTAs).
+        for (const w of widths) expect(w).toBeLessThan(100);
+
+        // Pills sit ABOVE the workout name input (smaller top value).
+        const tabsTop = await page.locator('.studio-view-tabs').evaluate(el => el.getBoundingClientRect().top);
+        const nameTop = await page.locator('#studioWorkoutNameInput').evaluate(el => el.getBoundingClientRect().top);
+        expect(tabsTop).toBeLessThan(nameTop);
     });
 
     test('Tapping Plan with an empty tray surfaces a flash and stays on Build', async ({ page }) => {
