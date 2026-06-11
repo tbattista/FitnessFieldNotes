@@ -101,11 +101,11 @@ class ExerciseCardRenderer {
                         <div class="workout-exercise-meta">${sets} × ${reps} • ${rest}</div>
                         <div class="workout-state-row">
                             ${currentWeight ? `<div class="workout-state-item highlight">Today: ${currentWeight} ${currentUnit}</div>` : ''}
-                            ${lastWeight ? `<div class="workout-state-item"><span class="tree-branch">└─</span> Last: ${lastWeight} ${lastWeightUnit}</div>` : ''}
                             ${currentDirection === 'up' ? '<span class="workout-state-item next-up"><i class="bx bx-up-arrow-alt"></i> Increase</span>' : ''}
                             ${currentDirection === 'down' ? '<span class="workout-state-item next-down"><i class="bx bx-down-arrow-alt"></i> Decrease</span>' : ''}
                             ${currentDirection === 'same' ? '<span class="workout-state-item"><i class="bx bx-minus"></i> No Change</span>' : ''}
                         </div>
+                        ${this._renderCollapsedHistoryStack(lastWeight, lastWeightUnit, lastSessionDate, recentSessions)}
                         ${notes ? `<div class="workout-note-preview">${this._escapeHtml(notes)}</div>` : ''}
                     </div>
                 </div>
@@ -162,13 +162,9 @@ class ExerciseCardRenderer {
                             </div>
                         </div>
                         
-                        <!-- Weight History -->
-                        ${lastWeight ? `
-                            <div class="workout-section">
-                                <div class="workout-section-label"><i class="bx bx-history"></i>Weight History</div>
-                                ${this._renderWeightHistory(mainExercise, lastWeight, lastWeightUnit, lastSessionDate, recentSessions)}
-                            </div>
-                        ` : ''}
+                        <!-- Weight History was here — promoted into the
+                             collapsed header so it's visible without
+                             tapping. See _renderCollapsedHistoryStack. -->
 
                         <!-- Direction Chips (During Active Session) -->
                         ${isSessionActive ? `
@@ -728,26 +724,16 @@ class ExerciseCardRenderer {
         if (!lastWeight || !lastSessionDate) {
             return '';
         }
-        
-        // Helper to format date - relative within 2 weeks, absolute otherwise
-        const formatDate = (dateStr) => {
-            if (!dateStr) return '';
-            const diffDays = getCalendarDaysAgo(dateStr);
-            if (diffDays === 0) return 'today';
-            if (diffDays === 1) return 'yesterday';
-            if (diffDays < 14) return `${diffDays} days ago`;
-            return 'on ' + new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        };
-        
+
         // Show up to 3 additional sessions (4 total including primary)
         const sessionsToShow = recentSessions ? recentSessions.slice(1, 4) : [];
-        
+
         return `
             <div class="workout-history">
                 <div class="workout-history-primary">
                     <span class="history-label">Last:</span>
                     <span class="history-weight">${lastWeight}${lastWeightUnit !== 'other' ? ` ${lastWeightUnit}` : ''}</span>
-                    <span class="history-date">${formatDate(lastSessionDate)}</span>
+                    <span class="history-date">${this._formatHistoryDate(lastSessionDate)}</span>
                 </div>
                 ${sessionsToShow.length > 0 ? `
                     <div class="workout-history-tree">
@@ -760,7 +746,7 @@ class ExerciseCardRenderer {
                                 <div class="workout-history-tree-item">
                                     <span class="tree-branch">${connector}</span>
                                     <span class="history-weight">${weight}${unit !== 'other' ? ` ${unit}` : ''}</span>
-                                    <span>${formatDate(session.date)}</span>
+                                    <span>${this._formatHistoryDate(session.date)}</span>
                                 </div>
                             `;
                         }).join('')}
@@ -768,6 +754,65 @@ class ExerciseCardRenderer {
                 ` : ''}
             </div>
         `;
+    }
+
+    /**
+     * Compact "Last + up to 3 previous" stack shown in the COLLAPSED card
+     * header so the user can see the recent weight history at a glance
+     * without expanding the card. Each row carries the weight + a dated
+     * label ("today" / "yesterday" / "N days ago" up to 10 / "Jan 5"
+     * past that). Returns '' when there's no history yet.
+     * @private
+     */
+    _renderCollapsedHistoryStack(lastWeight, lastWeightUnit, lastSessionDate, recentSessions) {
+        if (!lastWeight || !lastSessionDate) return '';
+        // We want up to 4 rows total — the primary Last + 3 previous.
+        // recent_sessions usually duplicates the primary at index 0, so
+        // slice(1, 4) gives the 3 follow-ups.
+        const previous = Array.isArray(recentSessions) ? recentSessions.slice(1, 4) : [];
+        const unitFor = (u) => (u && u !== 'other') ? ` ${u}` : '';
+        const rows = [];
+        rows.push(`
+            <div class="workout-history-row workout-history-primary-row">
+                <span class="history-label">Last:</span>
+                <span class="history-weight">${lastWeight}${unitFor(lastWeightUnit)}</span>
+                <span class="history-sep">·</span>
+                <span class="history-date">${this._formatHistoryDate(lastSessionDate)}</span>
+            </div>
+        `);
+        previous.forEach((session, index) => {
+            const isLast = index === previous.length - 1;
+            const connector = isLast ? '└─' : '├─';
+            const w = session.weight || '—';
+            const u = session.weight_unit || 'lbs';
+            rows.push(`
+                <div class="workout-history-row workout-history-prev-row">
+                    <span class="tree-branch">${connector}</span>
+                    <span class="history-weight">${w}${unitFor(u)}</span>
+                    <span class="history-sep">·</span>
+                    <span class="history-date">${this._formatHistoryDate(session.date)}</span>
+                </div>
+            `);
+        });
+        return `<div class="workout-history-stack">${rows.join('')}</div>`;
+    }
+
+    /**
+     * Format a session date for the Last/history rows.
+     *   today / yesterday for very recent
+     *   "N days ago" for 2 – 10 days
+     *   short calendar date (e.g. "Jan 5") past 10 days, so it's clear
+     *     we're far enough from the last session that "ago" stops being
+     *     useful as a memory aid.
+     * @private
+     */
+    _formatHistoryDate(dateStr) {
+        if (!dateStr) return '';
+        const diffDays = getCalendarDaysAgo(dateStr);
+        if (diffDays === 0) return 'today';
+        if (diffDays === 1) return 'yesterday';
+        if (diffDays <= 10) return `${diffDays} days ago`;
+        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
     
     /**

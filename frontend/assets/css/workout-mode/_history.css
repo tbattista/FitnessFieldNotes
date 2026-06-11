@@ -113,3 +113,44 @@
     font-weight: 500;
     color: var(--workout-muted);
 }
+
+/* ------------------------------------------------------------------
+   Collapsed-header history stack
+   Promoted from the expanded body so users can see the recent weight
+   history (Last + up to 3 previous) without tapping. Each row is a
+   single line: weight · dated label. The primary row stays prominent;
+   the previous rows shrink with a tree-branch connector.
+   ------------------------------------------------------------------ */
+.workout-history-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    margin-top: 0.25rem;
+}
+.workout-history-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    color: var(--workout-muted, #6c757d);
+}
+.workout-history-primary-row .history-label {
+    font-weight: 600;
+    color: var(--workout-text, inherit);
+}
+.workout-history-primary-row .history-weight {
+    font-weight: 600;
+    color: var(--workout-text, inherit);
+}
+.workout-history-prev-row {
+    padding-left: 0.45rem;
+    font-size: 0.72rem;
+}
+.workout-history-row .history-sep {
+    opacity: 0.6;
+}
+.workout-history-row .tree-branch {
+    opacity: 0.55;
+    font-family: var(--bs-font-monospace, monospace);
+}
