@@ -512,6 +512,12 @@
     <!-- Offcanvas Manager (for workout filter) -->
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js?v=20251220-01"></script>
 
+    <!-- Unified Offcanvas Factory (used by openSummaryOffcanvas to reuse
+         the End Workout offcanvas for editing a completed session's
+         duration + calories). Module so the export resolves via the
+         index facade onto window.UnifiedOffcanvasFactory. -->
+    <script type="module" src="/static/assets/js/components/offcanvas/index.js?v=20260610-01"></script>
+
     <!-- SortableJS (for PR reorder offcanvas on mobile) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.1/Sortable.min.js"></script>
 
@@ -526,8 +532,8 @@
     <script src="/static/assets/js/dashboard/workout-history-calendar.js?v=1.0.0"></script>
     <script src="/static/assets/js/dashboard/workout-history-filters.js?v=2.0.0"></script>
     <script src="/static/assets/js/dashboard/workout-history-workout-filter.js?v=1.0.0"></script>
-    <script src="/static/assets/js/dashboard/workout-history-sessions.js?v=1.3.0"></script>
-    <script src="/static/assets/js/dashboard/workout-history-edit.js?v=1.0.0"></script>
+    <script src="/static/assets/js/dashboard/workout-history-sessions.js?v=1.4.0"></script>
+    <script src="/static/assets/js/dashboard/workout-history-edit.js?v=1.2.0"></script>
     <script src="/static/assets/js/data/exercise-seed-data.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
     <script src="/static/assets/js/services/exercise-cache-service.js"></script>

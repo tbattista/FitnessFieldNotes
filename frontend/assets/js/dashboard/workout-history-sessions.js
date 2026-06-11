@@ -288,6 +288,12 @@ function createSessionEntry(session) {
         <ul class="dropdown-menu dropdown-menu-end">
           <li>
             <a class="dropdown-item" href="javascript:void(0);"
+               onclick="openSummaryOffcanvas('${session.id}');">
+              <i class="bx bx-check-circle me-2"></i>Edit Summary
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="javascript:void(0);"
                onclick="openEditSessionModal('${session.id}');">
               <i class="bx bx-edit-alt me-2"></i>Edit Session
             </a>

@@ -639,9 +639,130 @@ async function saveCardioSessionEdits(sessionId, originalSession) {
    EXPORTS
    ============================================ */
 
+/* ============================================
+   SUMMARY OFFCANVAS — reuse End Workout sheet
+   Surfaces the same bottom-sheet that finishes a live workout, but
+   pre-filled with this completed session's duration + calories so
+   users can adjust those two numbers without opening the full Edit
+   Session form. Save patches the session via the same endpoint.
+   ============================================ */
+
+function openSummaryOffcanvas(sessionId) {
+  const session = (window.ffn?.workoutHistory?.sessions || []).find(s => s.id === sessionId);
+  if (!session) {
+    console.error('Session not found for summary offcanvas:', sessionId);
+    return;
+  }
+  const factory = window.UnifiedOffcanvasFactory;
+  if (!factory || typeof factory.createCompleteWorkout !== 'function') {
+    console.error('UnifiedOffcanvasFactory not available — falling back to Edit Session modal');
+    if (typeof openEditSessionModal === 'function') openEditSessionModal(sessionId);
+    return;
+  }
+
+  const totalExercises = (session.exercises_performed || []).length;
+  const offcanvas = factory.createCompleteWorkout({
+    workoutName: session.workout_name || 'Workout',
+    minutes: session.duration_minutes || 0,
+    totalExercises,
+    // Build-mode toggles a "save as template" switch we don't want here
+    // — this is an existing completed session, not a draft.
+    isBuildMode: false,
+  }, async (durationMinutes, _templateOpts, sessionCalories) => {
+    // The offcanvas already hides itself before invoking the callback.
+    try {
+      await patchSessionSummary(sessionId, session, {
+        duration_minutes: durationMinutes,
+        calories: sessionCalories,
+      });
+    } catch (err) {
+      console.error('Error saving summary edits:', err);
+      if (window.ffnModalManager) {
+        window.ffnModalManager.alert('Save Failed',
+          `Could not save summary: ${err.message}`, 'danger');
+      }
+    }
+  });
+
+  // Adjust the bottom sheet for the EDIT-A-COMPLETED-SESSION case once
+  // it's mounted: pre-fill calories, hide the Discard link (this
+  // session is already saved — discard would no-op against the
+  // workoutModeController that doesn't exist on this page), retitle
+  // the header, and replace the "Session will be added..." helper
+  // line since the session already exists in the log.
+  setTimeout(() => {
+    if (session.calories != null) {
+      const caloriesInput = document.getElementById('sessionCaloriesInput');
+      if (caloriesInput) caloriesInput.value = session.calories;
+    }
+    const discardBtn = document.getElementById('cancelDiscardBtn');
+    if (discardBtn) discardBtn.style.display = 'none';
+    const title = document.getElementById('completeWorkoutOffcanvasLabel');
+    if (title) title.innerHTML = '<i class="bx bx-edit-alt me-2"></i>Edit Summary';
+    const confirmBtn = document.getElementById('confirmCompleteBtn');
+    if (confirmBtn) confirmBtn.innerHTML = '<i class="bx bx-save me-1"></i>Save Changes';
+    // The helper line below the buttons defaults to "Session will be
+    // added to your training log." which is misleading when editing.
+    const body = document.getElementById('completeWorkoutOffcanvas');
+    if (body) {
+      const helper = body.querySelector('.offcanvas-body small.text-muted.d-block');
+      if (helper) helper.textContent = 'Updates apply to this completed session.';
+    }
+  }, 50);
+
+  return offcanvas;
+}
+
+/**
+ * PATCH only the fields the summary offcanvas controls (duration,
+ * calories). Skips the call entirely if neither changed so we don't
+ * spam the API with no-op writes.
+ */
+async function patchSessionSummary(sessionId, originalSession, edits) {
+  if (!window.dataManager || !window.dataManager.isUserAuthenticated()) {
+    throw new Error('Authentication required');
+  }
+  const body = {};
+  const newDuration = edits.duration_minutes;
+  if (newDuration != null && Number(newDuration) !== Number(originalSession.duration_minutes || 0)) {
+    body.duration_minutes = parseInt(newDuration, 10);
+  }
+  const newCalories = edits.calories;
+  const prevCalories = originalSession.calories != null ? Number(originalSession.calories) : null;
+  if (newCalories != null && Number(newCalories) !== prevCalories) {
+    body.calories = parseInt(newCalories, 10);
+  }
+  if (Object.keys(body).length === 0) {
+    if (window.showToast) window.showToast('No changes to save', 'info');
+    return;
+  }
+  const token = await window.dataManager.getAuthToken();
+  const response = await fetch(`/api/v3/workout-sessions/${sessionId}`, {
+    method: 'PATCH',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Failed to save changes');
+  }
+  const updated = await response.json();
+  const sessions = window.ffn?.workoutHistory?.sessions || [];
+  const idx = sessions.findIndex(s => s.id === sessionId);
+  if (idx !== -1) sessions[idx] = updated;
+  if (typeof renderSessionHistory === 'function') renderSessionHistory();
+  if (typeof calculateStatistics === 'function') calculateStatistics();
+  if (typeof renderStatistics === 'function') renderStatistics();
+  if (window.ffn?.workoutHistory?.calendarView) {
+    window.ffn.workoutHistory.calendarView.setSessionData(sessions);
+  }
+  if (window.showToast) window.showToast('Summary updated', 'success');
+}
+
 window.openEditSessionModal = openEditSessionModal;
 window.saveSessionEdits = saveSessionEdits;
 window.openEditCardioSessionModal = openEditCardioSessionModal;
 window.saveCardioSessionEdits = saveCardioSessionEdits;
+window.openSummaryOffcanvas = openSummaryOffcanvas;
 
-console.log('Workout History Edit module loaded (v1.1.0)');
+console.log('Workout History Edit module loaded (v1.2.0)');

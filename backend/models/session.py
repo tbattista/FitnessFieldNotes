@@ -351,6 +351,10 @@ class EditSessionRequest(BaseModel):
     duration_minutes: Optional[int] = Field(None, ge=1, le=600, description="Updated duration in minutes")
     workout_name: Optional[str] = Field(None, max_length=100, description="Updated workout name")
     notes: Optional[str] = Field(None, max_length=500, description="Updated session notes")
+    # Calories burned during the session — surfaced by the Edit Summary
+    # bottom sheet on the history page so users can adjust the number
+    # they may have skipped at completion time.
+    calories: Optional[int] = Field(None, ge=0, le=9999, description="Updated session calories")
     exercises_performed: Optional[List[ExercisePerformance]] = Field(
         None,
         description="Updated list of exercises performed"

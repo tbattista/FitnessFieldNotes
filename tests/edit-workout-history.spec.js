@@ -319,4 +319,169 @@ test.describe('Edit Cardio Activity History', () => {
     expect(dur).toBe('45');
   });
 
+  /* ============================================================
+     Edit Summary offcanvas — reuses the End Workout bottom sheet
+     from workout-mode but pre-fills it with this completed
+     session's duration + calories. Save → PATCH the session.
+     ============================================================ */
+
+  test('summary offcanvas function is registered on the history page', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+    // Both the wrapper + the underlying factory should be there.
+    const present = await page.evaluate(() => ({
+      summary: typeof window.openSummaryOffcanvas,
+      factory: typeof window.UnifiedOffcanvasFactory?.createCompleteWorkout,
+    }));
+    expect(present.summary).toBe('function');
+    expect(present.factory).toBe('function');
+  });
+
+  test('session dropdown includes "Edit Summary" alongside "Edit Session"', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+    const html = await page.evaluate(() => {
+      if (!window.ffn) window.ffn = {};
+      window.ffn.workoutHistory = window.ffn.workoutHistory || {};
+      window.ffn.workoutHistory.sessions = [{
+        // _sessionType: 'strength' is the discriminator the renderer
+        // uses to NOT route to the cardio path — without it, some
+        // upstream loader can flag the row as cardio depending on
+        // device viewport state.
+        _sessionType: 'strength',
+        id: 's-1', workout_id: 'w-1', workout_name: 'Test', status: 'completed',
+        duration_minutes: 45, calories: 220, exercises_performed: [],
+        started_at: '2026-03-28T10:00:00Z', completed_at: '2026-03-28T10:45:00Z',
+      }];
+      window.ffn.workoutHistory.expandedSessions = new Set();
+      window.ffn.workoutHistory.isAllMode = false;
+      window.ffn.workoutHistory.deleteMode = false;
+      window.ffn.workoutHistory.selectedSessionIds = new Set();
+      return typeof window.createSessionEntry === 'function'
+        ? window.createSessionEntry(window.ffn.workoutHistory.sessions[0])
+        : '';
+    });
+    expect(html).toContain('Edit Summary');
+    expect(html).toContain('Edit Session');
+    expect(html).toContain("openSummaryOffcanvas('s-1')");
+  });
+
+  test('Edit Summary offcanvas opens pre-filled with duration + calories', async ({ page }) => {
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+    await page.evaluate(() => {
+      if (!window.ffn) window.ffn = {};
+      window.ffn.workoutHistory = window.ffn.workoutHistory || {};
+      window.ffn.workoutHistory.sessions = [{
+        id: 's-summary', workout_id: 'w-2', workout_name: 'Pull Day',
+        status: 'completed', duration_minutes: 55, calories: 310,
+        exercises_performed: [
+          { exercise_name: 'Pull-up', group_id: 'g1', order_index: 0,
+            weight: '0', weight_unit: 'lbs', target_sets: '3', target_reps: '8' },
+        ],
+        started_at: '2026-03-28T08:00:00Z', completed_at: '2026-03-28T08:55:00Z',
+      }];
+      window.openSummaryOffcanvas('s-summary');
+    });
+
+    // Bottom sheet should be in the DOM with our retitled header
+    await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 4000 });
+    await expect(page.locator('#completeWorkoutOffcanvasLabel')).toContainText(/Edit Summary/i);
+    // Duration prefilled to 55, calories prefilled to 310
+    await expect(page.locator('#sessionDurationInput')).toHaveValue('55');
+    await expect(page.locator('#sessionCaloriesInput')).toHaveValue('310');
+    // Discard link is hidden in edit mode (no live session to discard)
+    const discardDisplay = await page.locator('#cancelDiscardBtn').evaluate(el => getComputedStyle(el).display);
+    expect(discardDisplay).toBe('none');
+    // Save button retitled
+    await expect(page.locator('#confirmCompleteBtn')).toContainText(/Save Changes/i);
+  });
+
+  test('Edit Summary save PATCHes the session with the new duration + calories', async ({ page }) => {
+    let patched = null;
+    await page.route('**/api/v3/workout-sessions/s-patch', async (route) => {
+      if (route.request().method() !== 'PATCH') return route.continue();
+      try { patched = JSON.parse(route.request().postData() || '{}'); }
+      catch (_) { patched = null; }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 's-patch', workout_name: 'Squats Day',
+          duration_minutes: patched?.duration_minutes ?? 60,
+          calories: patched?.calories ?? 0,
+          status: 'completed',
+          exercises_performed: [],
+          started_at: '2026-03-28T07:00:00Z',
+          completed_at: '2026-03-28T08:00:00Z',
+        }),
+      });
+    });
+
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+    await page.evaluate(() => {
+      // Force an authed dataManager so the patch wrapper doesn't bail.
+      window.dataManager = {
+        isUserAuthenticated: () => true,
+        getAuthToken: async () => 'test-token',
+      };
+      if (!window.ffn) window.ffn = {};
+      window.ffn.workoutHistory = window.ffn.workoutHistory || {};
+      window.ffn.workoutHistory.sessions = [{
+        id: 's-patch', workout_id: 'w-3', workout_name: 'Squats Day',
+        status: 'completed', duration_minutes: 60, calories: 200,
+        exercises_performed: [],
+        started_at: '2026-03-28T07:00:00Z',
+        completed_at: '2026-03-28T08:00:00Z',
+      }];
+      window.openSummaryOffcanvas('s-patch');
+    });
+
+    await expect(page.locator('#sessionDurationInput')).toHaveValue('60');
+    await page.locator('#sessionDurationInput').fill('75');
+    await page.locator('#sessionCaloriesInput').fill('420');
+    await page.locator('#confirmCompleteBtn').click();
+
+    // Wait for the PATCH to land
+    await expect.poll(() => patched, { timeout: 5000 }).toBeTruthy();
+    expect(patched.duration_minutes).toBe(75);
+    expect(patched.calories).toBe(420);
+  });
+
+  test('Edit Summary save with no field changes skips the PATCH', async ({ page }) => {
+    let patched = null;
+    await page.route('**/api/v3/workout-sessions/s-nop', async (route) => {
+      if (route.request().method() !== 'PATCH') return route.continue();
+      patched = true;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+
+    await page.goto(`${BASE}/workout-history.html`);
+    await waitForAppReady(page);
+    await page.evaluate(() => {
+      window.dataManager = {
+        isUserAuthenticated: () => true,
+        getAuthToken: async () => 'test-token',
+      };
+      if (!window.ffn) window.ffn = {};
+      window.ffn.workoutHistory = window.ffn.workoutHistory || {};
+      window.ffn.workoutHistory.sessions = [{
+        id: 's-nop', workout_id: 'w-4', workout_name: 'Mobility',
+        status: 'completed', duration_minutes: 30, calories: 80,
+        exercises_performed: [],
+        started_at: '2026-03-28T06:00:00Z',
+        completed_at: '2026-03-28T06:30:00Z',
+      }];
+      window.openSummaryOffcanvas('s-nop');
+    });
+
+    // Save without touching either input
+    await expect(page.locator('#sessionDurationInput')).toHaveValue('30');
+    await page.locator('#confirmCompleteBtn').click();
+    // No PATCH should land
+    await page.waitForTimeout(800);
+    expect(patched).toBeNull();
+  });
+
 });
