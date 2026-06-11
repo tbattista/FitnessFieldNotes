@@ -3418,20 +3418,42 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(cta).toBeVisible();
     });
 
-    test('Tabs are compact inline pills positioned above the workout name', async ({ page }) => {
+    test('Tabs sit outside the title card, full-row, with Plan centered between Build (left) and Log (right)', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await page.waitForLoadState('domcontentloaded');
-        const tabs = page.locator('.studio-view-tabs > .studio-view-tab');
-        const widths = await tabs.evaluateAll(els => els.map(el => el.getBoundingClientRect().width));
-        expect(widths).toHaveLength(3);
-        // Compact pills — each tab is small (well below 100px wide so
-        // they read as navigation hints, not primary CTAs).
-        for (const w of widths) expect(w).toBeLessThan(100);
 
-        // Pills sit ABOVE the workout name input (smaller top value).
-        const tabsTop = await page.locator('.studio-view-tabs').evaluate(el => el.getBoundingClientRect().top);
-        const nameTop = await page.locator('#studioWorkoutNameInput').evaluate(el => el.getBoundingClientRect().top);
-        expect(tabsTop).toBeLessThan(nameTop);
+        // Tabs row is a SIBLING of the slim-header card (not inside it).
+        const slimHeaderContains = await page.locator('#studioSlimHeader').evaluate((slim) => {
+            return slim.querySelector('.studio-view-tabs') !== null;
+        });
+        expect(slimHeaderContains).toBe(false);
+
+        // Tabs row sits ABOVE the title card.
+        const tabsBottom = await page.locator('.studio-view-tabs').evaluate(el => el.getBoundingClientRect().bottom);
+        const headerTop = await page.locator('#studioSlimHeader').evaluate(el => el.getBoundingClientRect().top);
+        expect(tabsBottom).toBeLessThanOrEqual(headerTop);
+
+        // The three tabs are justified Build-left, Plan-center, Log-right.
+        // We confirm by sampling their bounding-rect centers vs the row's
+        // overall horizontal midpoint.
+        const rects = await page.locator('.studio-view-tabs > .studio-view-tab').evaluateAll(
+            els => els.map(el => {
+                const r = el.getBoundingClientRect();
+                return { id: el.id, left: r.left, center: r.left + r.width / 2, right: r.right };
+            })
+        );
+        const rowRect = await page.locator('.studio-view-tabs').evaluate(el => {
+            const r = el.getBoundingClientRect();
+            return { left: r.left, right: r.right, center: r.left + r.width / 2 };
+        });
+        expect(rects).toHaveLength(3);
+        const [build, plan, log] = rects;
+        // Build hugs the left edge — within 4px.
+        expect(Math.abs(build.left - rowRect.left)).toBeLessThanOrEqual(4);
+        // Log hugs the right edge — within 4px.
+        expect(Math.abs(log.right - rowRect.right)).toBeLessThanOrEqual(4);
+        // Plan is centered — within 4px of the row's midpoint.
+        expect(Math.abs(plan.center - rowRect.center)).toBeLessThanOrEqual(4);
     });
 
     test('Tapping Plan with an empty tray surfaces a flash and stays on Build', async ({ page }) => {

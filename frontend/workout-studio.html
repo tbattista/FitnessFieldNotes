@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-04" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-05" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -89,31 +89,30 @@
               <!-- Studio shell: slim header + tray + view container -->
               <section class="studio" id="studio" data-view="build">
 
-                <!-- Slim header: workout name input (top row) + 3-pill view
-                     tabs (Build | Plan | Log). Tabs are always visible so the
-                     user can navigate between picking exercises, editing the
-                     template, and running/logging a session from any view. -->
-                <header class="studio-slim-header" id="studioSlimHeader">
-                  <!-- View tabs — small inline pills above the workout
-                       name, so navigation lives ABOVE the title (where
-                       users glance first) and the title gets to keep
-                       its prominence. Build / Plan / Log left-to-right;
-                       Build is the default first step. -->
-                  <div class="studio-view-tabs" role="tablist" aria-label="Studio view">
-                    <button class="studio-view-tab is-active"
-                            id="studioViewBuildBtn" type="button"
-                            role="tab" aria-selected="true"
-                            data-view="build">Build</button>
-                    <button class="studio-view-tab"
-                            id="studioViewPlanBtn" type="button"
-                            role="tab" aria-selected="false"
-                            data-view="plan">Plan</button>
-                    <button class="studio-view-tab"
-                            id="studioViewLogBtn" type="button"
-                            role="tab" aria-selected="false"
-                            data-view="log">Log</button>
-                  </div>
+                <!-- View tabs — sit OUTSIDE the slim-header title box,
+                     full-width with Build flush-left, Plan dead-center,
+                     and Log flush-right (justify-content: space-between).
+                     Styled as page-style tabs with an underline accent
+                     on the active one. Always visible; users can tap any
+                     one from any view (no linear nav). -->
+                <nav class="studio-view-tabs" role="tablist" aria-label="Studio view">
+                  <button class="studio-view-tab is-active"
+                          id="studioViewBuildBtn" type="button"
+                          role="tab" aria-selected="true"
+                          data-view="build">Build</button>
+                  <button class="studio-view-tab"
+                          id="studioViewPlanBtn" type="button"
+                          role="tab" aria-selected="false"
+                          data-view="plan">Plan</button>
+                  <button class="studio-view-tab"
+                          id="studioViewLogBtn" type="button"
+                          role="tab" aria-selected="false"
+                          data-view="log">Log</button>
+                </nav>
 
+                <!-- Slim header: workout name input + meta toggle. The
+                     view-tabs row lives ABOVE this card. -->
+                <header class="studio-slim-header" id="studioSlimHeader">
                   <div class="studio-slim-name-row">
                     <input
                       type="text"

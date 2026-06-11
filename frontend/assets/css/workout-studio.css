@@ -786,50 +786,52 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
    10px button-radius family so it reads as part of the same control
    set as Import + Reorder beside it.
    ------------------------------------------------------------------ */
-/* Slim-header view tabs — Build / Plan / Log. Compact pills above
-   the workout name; they're a navigation hint, not a primary CTA, so
-   they stay smaller than the title and align flush-left. Each pill is
-   its own chip with a border + bg so the three options read as
-   visually separate. The active pill gets the primary fill. */
+/* View tabs row — Build / Plan / Log, page-tab style. Sits OUTSIDE
+   the slim-header title card so it reads as top-level navigation, not
+   chrome inside the title. justify-content: space-between pushes Build
+   to the left edge, Log to the right, and centers Plan between them.
+   A subtle bottom hairline ties the row to the page below; the active
+   tab gets a primary-colored underline (and stronger text color) so
+   the current page is unmistakable. */
 .studio-view-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 0.45rem;
+  /* Grid with two flex columns flanking a content-width center column
+     guarantees Plan is DEAD center regardless of how wide Build / Log
+     happen to render (their text lengths differ, so space-between
+     would only equal the gaps, not center the middle item). */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  width: 100%;
+  margin-bottom: 0.7rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.studio-view-tabs > .studio-view-tab:nth-child(1) { justify-self: start; }
+.studio-view-tabs > .studio-view-tab:nth-child(2) { justify-self: center; }
+.studio-view-tabs > .studio-view-tab:nth-child(3) { justify-self: end; }
+[data-bs-theme="dark"] .studio-view-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.10);
 }
 .studio-view-tab {
   appearance: none;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(0, 0, 0, 0.03);
+  border: 0;
+  background: transparent;
   color: var(--bs-secondary-color);
-  font-size: 0.72rem;
+  font-size: 0.92rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  padding: 3px 9px;
-  border-radius: 999px;
+  padding: 9px 14px;
+  margin-bottom: -1px; /* overlap the row's bottom border with our own */
+  border-bottom: 2px solid transparent;
   cursor: pointer;
   line-height: 1.2;
-  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
-}
-[data-bs-theme="dark"] .studio-view-tab {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  transition: color 0.12s, border-color 0.12s;
 }
 .studio-view-tab:hover {
   color: var(--bs-body-color);
-  border-color: rgba(0, 0, 0, 0.18);
-}
-[data-bs-theme="dark"] .studio-view-tab:hover {
-  border-color: rgba(255, 255, 255, 0.22);
 }
 .studio-view-tab.is-active {
-  background: var(--bs-primary);
-  color: #fff;
-  border-color: var(--bs-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
-}
-[data-bs-theme="dark"] .studio-view-tab.is-active {
-  color: #fff;
+  color: var(--bs-primary);
+  border-bottom-color: var(--bs-primary);
 }
 
 /* Session timer pill — Log mode only. Sits next to the mode toggle so
