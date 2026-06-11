@@ -961,9 +961,7 @@
         if (this.tray) {
           const items = this.tray.getItems();
           if (this.grid) this.grid.setCounts(this.tray.countsByExerciseId());
-          const n = items.length;
-          if (this.dom.continueCta) this.dom.continueCta.hidden = n === 0;
-          if (this.dom.continueCount) this.dom.continueCount.textContent = String(n);
+          this._refreshContinueCta();
         }
       } finally {
         this._suppressDraftSave = false;
@@ -1181,9 +1179,7 @@
           // handles, but DO NOT run _syncOrganizeOrderWithTray — that
           // would clobber the carefully-restored block/note structure.
           if (this.grid) this.grid.setCounts(this.tray.countsByExerciseId());
-          const n = this.tray.items.length;
-          if (this.dom.continueCta) this.dom.continueCta.hidden = n === 0;
-          if (this.dom.continueCount) this.dom.continueCount.textContent = String(n);
+          this._refreshContinueCta();
         }
 
         this._showDraftBanner(draft.savedAt);
@@ -1729,6 +1725,10 @@
       // on view + session state — see _refreshFabState below.
       if (this.dom.fabs) this.dom.fabs.hidden = (view === 'build');
       this._refreshFabState();
+      // The floating Continue → Plan button only belongs on Build —
+      // its container is a sibling of all three view containers, so
+      // toggling here keeps it from leaking onto Plan / Log.
+      this._refreshContinueCta();
 
       // The session timer pill is shared across tabs and only visible
       // when a session is actually running. _renderTimer handles the
@@ -3289,6 +3289,23 @@
      * (instead of _setStatus) any time the user just performed a nav
      * gesture and a per-view status sink would be hidden.
      */
+    /**
+     * Visibility of the floating "Continue → Plan" CTA is the
+     * intersection of two conditions: tray non-empty AND we're on the
+     * Build view. Without the view check the button leaks onto Plan
+     * and Log (its container is a sibling of the view containers, so
+     * `hidden` is the only thing keeping it off-screen). Centralized
+     * so every caller — tray changes, view switches, draft restore —
+     * gets the same logic.
+     */
+    _refreshContinueCta() {
+      if (!this.dom.continueCta) return;
+      const n = this.tray ? this.tray.size() : 0;
+      const onBuild = this.currentView === 'build';
+      this.dom.continueCta.hidden = (n === 0) || !onBuild;
+      if (this.dom.continueCount) this.dom.continueCount.textContent = String(n);
+    }
+
     _showFlash(message) {
       if (!this.dom.flash) return;
       this.dom.flash.textContent = message || '';
@@ -3629,14 +3646,9 @@
         this.grid.setCounts(this.tray.countsByExerciseId());
       }
 
-      // Continue CTA visibility + count
+      // Continue CTA visibility + count (Build view only — see helper)
+      this._refreshContinueCta();
       const n = items.length;
-      if (this.dom.continueCta) {
-        this.dom.continueCta.hidden = n === 0;
-      }
-      if (this.dom.continueCount) {
-        this.dom.continueCount.textContent = n;
-      }
 
       // Keep organizeOrder + blocks in sync with the tray:
       //   - new tray items appear as top-level cards at the end

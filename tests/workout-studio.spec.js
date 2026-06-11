@@ -3376,7 +3376,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
     // never prompt: the session keeps running across views, and the
     // user finalizes only via the Log Complete FAB.
 
-    test('3-pill view tabs render in the slim header in order Plan / Build / Log, Build active', async ({ page }) => {
+    test('3-pill view tabs render in the slim header in order Build / Plan / Log, Build active', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await page.waitForLoadState('domcontentloaded');
         await expect(page.locator('#studioViewBuildBtn')).toBeVisible();
@@ -3384,13 +3384,38 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#studioViewLogBtn')).toBeVisible();
         // Build is the default active pill on a fresh studio
         await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
-        // DOM order matches the visual order: Plan, Build, Log
+        // DOM order matches the visual order: Build, Plan, Log
         const order = await page.locator('.studio-view-tabs > .studio-view-tab').evaluateAll(
             els => els.map(el => el.id)
         );
         expect(order).toEqual([
-            'studioViewPlanBtn', 'studioViewBuildBtn', 'studioViewLogBtn',
+            'studioViewBuildBtn', 'studioViewPlanBtn', 'studioViewLogBtn',
         ]);
+    });
+
+    test('Continue CTA only shows on Build — hidden when switching to Plan or Log', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        // Add 2 exercises on Build → Continue CTA appears
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await rows.nth(1).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('CTA test');
+
+        const cta = page.locator('#studioContinueCta');
+        await expect(cta).toBeVisible();
+
+        // Tap Plan → CTA must disappear (it's a Build-only affordance)
+        await page.locator('#studioViewPlanBtn').click();
+        await expect(cta).toBeHidden();
+
+        // Tap Log → still hidden
+        await page.locator('#studioViewLogBtn').click();
+        await expect(cta).toBeHidden();
+
+        // Tap Build → it comes back since the tray still has items
+        await page.locator('#studioViewBuildBtn').click();
+        await expect(cta).toBeVisible();
     });
 
     test('Tabs span the full width with equal-flex segments', async ({ page }) => {

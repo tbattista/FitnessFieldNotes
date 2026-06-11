@@ -142,24 +142,21 @@
                        can tap any one from any view (no linear nav). The
                        timer pill sits to the right; it shows once a Log
                        session is running and stays visible across all tabs. -->
-                  <!-- View tabs — Plan / Build / Log. The pills span the
+                  <!-- View tabs — Build / Plan / Log. The pills span the
                        full width of the slim header in three equal
                        segments with a visible gap between them. Build is
-                       deliberately the centerpiece: the user lands on
-                       Build by default (pick exercises), then steps out
-                       LEFT to edit the workout structure (Plan) or RIGHT
-                       to run a session (Log). The timer pill sits below
-                       the tabs and is visible across views once a
-                       session is running. -->
+                       the leftmost default since picking exercises is
+                       the natural first step; Plan is the template
+                       editor; Log runs the session. -->
                   <div class="studio-view-tabs" role="tablist" aria-label="Studio view">
-                    <button class="studio-view-tab"
-                            id="studioViewPlanBtn" type="button"
-                            role="tab" aria-selected="false"
-                            data-view="plan">Plan</button>
                     <button class="studio-view-tab is-active"
                             id="studioViewBuildBtn" type="button"
                             role="tab" aria-selected="true"
                             data-view="build">Build</button>
+                    <button class="studio-view-tab"
+                            id="studioViewPlanBtn" type="button"
+                            role="tab" aria-selected="false"
+                            data-view="plan">Plan</button>
                     <button class="studio-view-tab"
                             id="studioViewLogBtn" type="button"
                             role="tab" aria-selected="false"
@@ -538,6 +535,6 @@
          the studio card emits in session mode (per-exercise notes). -->
     <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
 
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260611-02"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260611-03"></script>
   </body>
 </html>
