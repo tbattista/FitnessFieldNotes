@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260610-02" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-01" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -87,9 +87,12 @@
             <div class="container-xxl flex-grow-1 container-p-y studio-container">
 
               <!-- Studio shell: slim header + tray + view container -->
-              <section class="studio" id="studio" data-view="select">
+              <section class="studio" id="studio" data-view="build">
 
-                <!-- Slim header: workout name input (left) + Plan/Log toggle (right). No back button -->
+                <!-- Slim header: workout name input (top row) + 3-pill view
+                     tabs (Build | Plan | Log). Tabs are always visible so the
+                     user can navigate between picking exercises, editing the
+                     template, and running/logging a session from any view. -->
                 <header class="studio-slim-header" id="studioSlimHeader">
                   <div class="studio-slim-name-row">
                     <input
@@ -132,6 +135,30 @@
                         maxlength="500"
                         autocomplete="off" />
                     </label>
+                  </div>
+
+                  <!-- View tabs — Build / Plan / Log. The selected pill is
+                       kept in sync with the controller's currentView; users
+                       can tap any one from any view (no linear nav). The
+                       timer pill sits to the right; it shows once a Log
+                       session is running and stays visible across all tabs. -->
+                  <div class="studio-view-tabs" role="tablist" aria-label="Studio view">
+                    <button class="studio-view-tab is-active"
+                            id="studioViewBuildBtn" type="button"
+                            role="tab" aria-selected="true"
+                            data-view="build">Build</button>
+                    <button class="studio-view-tab"
+                            id="studioViewPlanBtn" type="button"
+                            role="tab" aria-selected="false"
+                            data-view="plan">Plan</button>
+                    <button class="studio-view-tab"
+                            id="studioViewLogBtn" type="button"
+                            role="tab" aria-selected="false"
+                            data-view="log">Log</button>
+                    <span class="studio-mode-timer" id="studioModeTimer" hidden aria-live="off">
+                      <i class="bx bx-time-five"></i>
+                      <span class="studio-mode-timer-text">00:00</span>
+                    </span>
                   </div>
                 </header>
 
@@ -273,25 +300,6 @@
                 <!-- View: Page 2 (Organize) -->
                 <div class="studio-view studio-view-organize" id="studioViewOrganize" hidden>
                   <div class="studio-organize-section-header">
-                    <!-- Plan / Log mode toggle — flips the card variants below
-                         between editable-template (Plan) and field-log (Log).
-                         Persists per workout in localStorage. -->
-                    <div class="studio-mode-toggle" role="group" aria-label="Mode">
-                      <button class="studio-mode-toggle-btn is-active"
-                              id="studioModePlanBtn" type="button"
-                              data-mode="plan" aria-pressed="true">Plan</button>
-                      <button class="studio-mode-toggle-btn"
-                              id="studioModeLogBtn" type="button"
-                              data-mode="log" aria-pressed="false">Log</button>
-                    </div>
-                    <!-- Session timer — visible only in Log mode. Counts
-                         wall-clock seconds since the user entered Log;
-                         persisted to localStorage so a reload doesn't
-                         reset it. Used as duration_minutes on Complete. -->
-                    <span class="studio-mode-timer" id="studioModeTimer" hidden aria-live="off">
-                      <i class="bx bx-time-five"></i>
-                      <span class="studio-mode-timer-text">00:00</span>
-                    </span>
                     <span class="studio-organize-count" id="studioOrganizeCount">0</span>
                     <!-- Top-right header: Import + Reorder. Matches the legacy
                          builder's two-button header. Add buttons (Activity,
@@ -349,6 +357,18 @@
                   <div class="studio-organize-status" id="studioOrganizeStatus" role="status" aria-live="polite"></div>
                 </div>
 
+                <!-- View: Log (live session). For commit 1 this hosts the
+                     session card list as-is; commit 2 adds the landing
+                     state with Start/Resume button. Cards re-render in
+                     sessionMode here so the user gets Done / weight
+                     badges / direction chips / skip menu items. -->
+                <div class="studio-view studio-view-log" id="studioViewLog" hidden>
+                  <div class="studio-log-list" id="studioLogList" role="list">
+                    <!-- Rows injected by controller when a session is active -->
+                  </div>
+                  <div class="studio-log-status" id="studioLogStatus" role="status" aria-live="polite"></div>
+                </div>
+
                 <!-- Floating CTA: Continue → Organize -->
                 <div class="studio-cta" id="studioContinueCta" hidden>
                   <button class="btn btn-primary studio-cta-btn" id="studioContinueBtn" type="button">
@@ -382,28 +402,6 @@
                   <button type="button" class="studio-fab studio-fab-go" id="studioFabGo" title="Start workout" aria-label="Start workout">
                     <i class="bx bx-play"></i>
                   </button>
-                </div>
-
-                <!-- Three-button choice dialog shown when the user
-                     toggles Plan with an active session. Hidden until
-                     _promptModeSwitch() fires; controller resolves with
-                     'complete' | 'discard' | 'cancel'. -->
-                <div class="studio-mode-switch-dialog" id="studioModeSwitchDialog" role="alertdialog"
-                     aria-modal="true" aria-labelledby="studioModeSwitchTitle" hidden>
-                  <div class="studio-mode-switch-card">
-                    <h6 class="studio-mode-switch-title" id="studioModeSwitchTitle">Active workout in progress</h6>
-                    <p class="studio-mode-switch-body">
-                      You have an active session. What would you like to do?
-                    </p>
-                    <div class="studio-mode-switch-actions">
-                      <button type="button" class="btn btn-sm btn-outline-secondary"
-                              data-mode-switch-action="cancel">Cancel</button>
-                      <button type="button" class="btn btn-sm btn-outline-danger"
-                              data-mode-switch-action="discard">Discard session</button>
-                      <button type="button" class="btn btn-sm btn-success"
-                              data-mode-switch-action="complete">Complete now</button>
-                    </div>
-                  </div>
                 </div>
 
               </section>

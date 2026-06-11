@@ -35,11 +35,13 @@
       this.customExercises = [];
       this.favoriteIds = new Set();
       this._searchDebounceTimer = null;
-      this.currentView = 'select'; // 'select' | 'organize'
-      // Page 2 mode: 'plan' edits the template; 'log' records what you did.
-      // Persisted per workout in localStorage so the user's last intent
-      // sticks for the next visit to the same workout.
-      this.mode = 'plan'; // 'plan' | 'log'
+      // Three top-level views, surfaced as a 3-pill segmented control in
+      // the slim header (Build | Plan | Log):
+      //   'build'    — exercise picker (formerly 'select')
+      //   'plan'     — template editor cards (formerly 'organize' in plan mode)
+      //   'log'      — live session: Start landing OR session cards
+      // Tabs are always reachable; switching never ends a running session.
+      this.currentView = 'build';
       // Per-tray-instance editor state for Page 2:
       //   key = instanceId, value = { sets, reps, rest, weight, weightUnit }
       this.organizeState = new Map();
@@ -219,9 +221,14 @@
       this.dom.addActivityBtn = document.getElementById('studioAddActivityBtn');
       this.dom.reorderBtn = document.getElementById('studioReorderBtn');
       this.dom.addNoteBtn = document.getElementById('studioAddNoteBtn');
-      // Plan / Log segmented toggle in the Page 2 header
-      this.dom.modePlanBtn = document.getElementById('studioModePlanBtn');
-      this.dom.modeLogBtn = document.getElementById('studioModeLogBtn');
+      // Build / Plan / Log view tabs (slim header)
+      this.dom.viewBuildBtn = document.getElementById('studioViewBuildBtn');
+      this.dom.viewPlanBtn = document.getElementById('studioViewPlanBtn');
+      this.dom.viewLogBtn = document.getElementById('studioViewLogBtn');
+      // Log view container + list
+      this.dom.viewLog = document.getElementById('studioViewLog');
+      this.dom.logList = document.getElementById('studioLogList');
+      this.dom.logStatus = document.getElementById('studioLogStatus');
       this.dom.modeTimer = document.getElementById('studioModeTimer');
       this.dom.modeTimerText = this.dom.modeTimer
         ? this.dom.modeTimer.querySelector('.studio-mode-timer-text')
@@ -541,7 +548,7 @@
 
       // 4. Navigate to Page 2 if anything was imported
       if (this.tray && this.tray.size() > 0) {
-        this._showView('organize');
+        this._showView('plan');
       }
     }
 
@@ -657,7 +664,7 @@
       if (!this.dom.continueBtn) return;
       this.dom.continueBtn.addEventListener('click', () => {
         if (!this.tray || this.tray.size() === 0) return;
-        this._showView('organize');
+        this._showView('plan');
       });
     }
 
@@ -705,13 +712,13 @@
         if (typeof this._setMetaExpanded === 'function') this._setMetaExpanded(false);
 
         // Re-render so Page 2 reflects the empty state
-        this._renderOrganize();
+        this._renderActiveView();
       } finally {
         this._suppressDraftSave = false;
       }
       this._hideDraftBanner();
       // Show on Page 1 (the user's now-clean workspace)
-      this._showView('select');
+      this._showView('build');
     }
 
     /**
@@ -938,7 +945,7 @@
         });
 
         // Render Page 2 reflecting the loaded structure
-        this._renderOrganize();
+        this._renderActiveView();
 
         // Now that the tray + organizeOrder are coherent, run the derived
         // Page 1 UI that _onTrayChange would have updated: count badges on
@@ -1240,7 +1247,7 @@
 
     _bindOrganize() {
       if (this.dom.organizeBackBtn) {
-        this.dom.organizeBackBtn.addEventListener('click', () => this._showView('select'));
+        this.dom.organizeBackBtn.addEventListener('click', () => this._showView('build'));
       }
 
       // Per-card field edits and removals are handled by StudioExerciseCard
@@ -1252,7 +1259,7 @@
 
       // Floating FAB row — Page 2's mobile-primary action surface.
       if (this.dom.fabBack) {
-        this.dom.fabBack.addEventListener('click', () => this._showView('select'));
+        this.dom.fabBack.addEventListener('click', () => this._showView('build'));
       }
       if (this.dom.fabSave) {
         this.dom.fabSave.addEventListener('click', () => this._handleSave());
@@ -1264,22 +1271,27 @@
         this.dom.fabDiscard.addEventListener('click', () => this._confirmDiscard());
       }
 
-      // Plan / Log segmented toggle — flips the card variants below and
-      // swaps the Go-FAB's behavior between 'start workout' and 'save log'.
-      if (this.dom.modePlanBtn) {
-        this.dom.modePlanBtn.addEventListener('click', () => this._setMode('plan'));
+      // View tabs — Build / Plan / Log. The slim-header segmented control
+      // is always visible; tapping a tab switches the view without ending
+      // any running session. The session timer pill sits inline with the
+      // tabs and stays visible across tabs while a session is active.
+      if (this.dom.viewBuildBtn) {
+        this.dom.viewBuildBtn.addEventListener('click', () => this._showView('build'));
       }
-      if (this.dom.modeLogBtn) {
-        this.dom.modeLogBtn.addEventListener('click', () => this._setMode('log'));
+      if (this.dom.viewPlanBtn) {
+        this.dom.viewPlanBtn.addEventListener('click', () => this._showView('plan'));
+      }
+      if (this.dom.viewLogBtn) {
+        this.dom.viewLogBtn.addEventListener('click', () => this._showView('log'));
       }
 
       if (this.dom.addBlockBtn) {
         this.dom.addBlockBtn.addEventListener('click', () => this._createBlock());
       }
       if (this.dom.addMoreBtn) {
-        // Bottom-of-list shortcut → drop the user back into Page 1's
+        // Bottom-of-list shortcut → drop the user back into the Build
         // picker so they can add more exercises to the same workout.
-        this.dom.addMoreBtn.addEventListener('click', () => this._showView('select'));
+        this.dom.addMoreBtn.addEventListener('click', () => this._showView('build'));
       }
 
       if (this.dom.reorderBtn) {
@@ -1303,7 +1315,7 @@
       const noteId = `template-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       this.notes.set(noteId, { content: '' });
       this.organizeOrder.push({ kind: 'note', noteId });
-      this._renderOrganize();
+      this._renderActiveView();
       // Focus the new note's textarea so the user can type immediately
       requestAnimationFrame(() => {
         const node = this.dom.organizeList && this.dom.organizeList.querySelector(
@@ -1350,7 +1362,7 @@
       state.cardioConfig = {};
       // Place at the end of the organize order (top-level card)
       this.organizeOrder.push({ kind: 'card', instanceId });
-      this._renderOrganize();
+      this._renderActiveView();
       // Open the cardio editor on the freshly-added card so the user
       // can pick the activity right away.
       this._onEditCardio(instanceId);
@@ -1399,7 +1411,7 @@
         if (i < 0 || j < 0 || j >= arr.length) return;
         arr.splice(i, 1);
         arr.splice(j, 0, noteId);
-        this._renderOrganize();
+        this._renderActiveView();
       } else {
         this._moveOrderEntry({ kind: 'note', noteId }, delta);
       }
@@ -1425,7 +1437,7 @@
       });
       if (!Array.isArray(target.noteIds)) target.noteIds = [];
       if (!target.noteIds.includes(noteId)) target.noteIds.push(noteId);
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     /**
@@ -1443,7 +1455,7 @@
       );
       const insertAt = blockIdx >= 0 ? blockIdx + 1 : this.organizeOrder.length;
       this.organizeOrder.splice(insertAt, 0, { kind: 'note', noteId });
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     _findBlockContainingNote(noteId) {
@@ -1466,7 +1478,7 @@
           b.noteIds = b.noteIds.filter((id) => id !== noteId);
         }
       });
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     _openReorderSheet() {
@@ -1502,7 +1514,7 @@
       if (Array.isArray(next.organizeOrder)) {
         this.organizeOrder = next.organizeOrder.slice();
       }
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     _createBlock() {
@@ -1517,7 +1529,7 @@
       // top of the list so the user can see it (and start filling it)
       // without scrolling past the existing cards.
       this.organizeOrder.unshift({ kind: 'block', blockId });
-      this._renderOrganize();
+      this._renderActiveView();
       // Focus the new block's name input + scroll it into view so the
       // user knows where it landed (the page may have been scrolled down
       // before they tapped Block).
@@ -1537,7 +1549,7 @@
       if (!b) return;
       b.name = name;
       // Re-render cards so any "Move to: <name>" menu items pick up the new label.
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     _onBlockMenuAction(blockId, action) {
@@ -1569,7 +1581,7 @@
       const promotedCards = block.instanceIds.map((iid) => ({ kind: 'card', instanceId: iid }));
       this.organizeOrder.splice(blockOrderIdx, 1, ...promotedNotes, ...promotedCards);
       this.blocks.delete(blockId);
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     _moveOrderEntry(matchEntry, delta) {
@@ -1585,7 +1597,7 @@
       if (target < 0 || target >= this.organizeOrder.length) return;
       const [moved] = this.organizeOrder.splice(idx, 1);
       this.organizeOrder.splice(target, 0, moved);
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     _moveCardToBlock(instanceId, blockId) {
@@ -1597,7 +1609,7 @@
       if (!block.instanceIds.includes(instanceId)) {
         block.instanceIds.push(instanceId);
       }
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     _moveCardOutOfBlock(instanceId) {
@@ -1616,7 +1628,7 @@
       );
       const insertAt = blockIdx === -1 ? this.organizeOrder.length : blockIdx + 1;
       this.organizeOrder.splice(insertAt, 0, { kind: 'card', instanceId });
-      this._renderOrganize();
+      this._renderActiveView();
     }
 
     /** Remove an instanceId from any location in organizeOrder/blocks. */
@@ -1657,53 +1669,104 @@
       return out;
     }
 
-    _showView(view) {
-      if (view !== 'select' && view !== 'organize') return;
-      // Guard: can't open organize with an empty tray
-      if (view === 'organize' && (!this.tray || this.tray.size() === 0)) {
+    /**
+     * Switch to one of the three top-level views: build (exercise
+     * picker), plan (template editor), or log (live session).
+     *
+     * Switching is always safe — no running session is ever ended by a
+     * tab switch. Build and Plan are gated by tray non-empty for plan
+     * since editing an empty template makes no sense. Log handles
+     * session prereqs itself when the user taps Start Workout on the
+     * landing (see _handleStartWorkout); this method only swaps the
+     * containers and refreshes the timer + status.
+     */
+    async _showView(view) {
+      if (view !== 'build' && view !== 'plan' && view !== 'log') return;
+      // Plan needs at least one exercise (it's a template editor).
+      // Log is browsable even with an empty tray — landing will explain
+      // what's needed before Start can fire.
+      if (view === 'plan' && (!this.tray || this.tray.size() === 0)) {
         return;
       }
       this.currentView = view;
       if (this.dom.studio) this.dom.studio.dataset.view = view;
 
-      // Toggle the `hidden` HTML attribute explicitly so the UA's
-      // display: none doesn't fight our CSS data-view rules.
-      if (this.dom.viewSelect)   this.dom.viewSelect.hidden   = view !== 'select';
-      if (this.dom.viewOrganize) this.dom.viewOrganize.hidden = view !== 'organize';
+      // Container visibility — toggle the `hidden` attribute so it wins
+      // over any default CSS display rules.
+      if (this.dom.viewSelect)   this.dom.viewSelect.hidden   = view !== 'build';
+      if (this.dom.viewOrganize) this.dom.viewOrganize.hidden = view !== 'plan';
+      if (this.dom.viewLog)      this.dom.viewLog.hidden      = view !== 'log';
 
-      // FAB row is Page-2 only — Page 1's CTA is the centered Continue button.
-      if (this.dom.fabs) this.dom.fabs.hidden = view !== 'organize';
+      // Pill state on the slim-header view tabs.
+      this._reflectViewTabs();
+
+      // Floating FAB row: present on Plan + Log (Save / Discard / Go).
+      // Build has its own Continue CTA. The FAB internals refresh based
+      // on view + session state — see _refreshFabState below.
+      if (this.dom.fabs) this.dom.fabs.hidden = (view === 'build');
       this._refreshFabState();
 
-      // Entering Page 2 — restore the user's previously-chosen mode for
-      // this workout. New workouts default to Plan; logged workouts may
-      // re-open in Log if that's where the user left off.
-      if (view === 'organize') {
-        const remembered = this._loadModePreference();
-        if (remembered !== this.mode) {
-          this.mode = remembered;
-        }
-        this._reflectModeToggle();
-        this._reflectFabForMode();
-        // If we restored into Log mode, also start the timer + fetch
-        // history. Both are idempotent — the timer resumes from any
-        // persisted start, the history fetch is gated by a fetched flag.
-        if (this.mode === 'log') {
-          this._startSessionTimer();
-          this._loadExerciseHistory();
-        }
-        this._renderTimer();
-      }
+      // The session timer pill is shared across tabs and only visible
+      // when a session is actually running. _renderTimer handles the
+      // hide/show; we call it on every view switch so the pill comes
+      // back into view if the user navigates back to a tab while a
+      // session ticks.
+      this._renderTimer();
 
-      if (view === 'organize') {
-        this._renderOrganize();
-        // If the workout has no name yet, nudge the user to fill the slim
-        // header input before saving.
+      if (view === 'plan') {
+        this._renderActiveView();
         if (!this.workoutName && this.dom.workoutNameInput) {
           setTimeout(() => this.dom.workoutNameInput.focus(), 150);
         }
+      } else if (view === 'log') {
+        // Bootstrap the session lifecycle when entering Log if a session
+        // is already active (e.g. resumed from localStorage). For the
+        // initial "tap Log → see Start button" experience, the landing
+        // state is handled inside _renderLog. The full Start Workout
+        // flow + landing markup arrives in a follow-up commit; for now
+        // we render the same session card list the legacy Log mode
+        // showed so existing tests + behavior keep working.
+        if (this._hasActiveSession()) {
+          this._startSessionTimer();
+          this._loadExerciseHistory();
+        }
+        this._renderLog();
       }
       this._setStatus('', null);
+    }
+
+    /**
+     * Dispatcher for mutation handlers — picks the right render for
+     * whichever view is currently visible. Build has no card list to
+     * refresh; Plan and Log each have their own. Saves callers from
+     * having to branch on view themselves after every state change.
+     */
+    _renderActiveView() {
+      if (this.currentView === 'plan') {
+        this._renderActiveView();
+      } else if (this.currentView === 'log') {
+        this._renderLog();
+      }
+      // Build view: nothing to re-render (the picker grid is data-driven
+      // off the tray + selection, refreshed elsewhere).
+    }
+
+    /**
+     * Sync the slim-header view tabs with this.currentView. Single
+     * source of truth is currentView; the tabs are a pure projection.
+     */
+    _reflectViewTabs() {
+      const map = [
+        { btn: this.dom.viewBuildBtn, view: 'build' },
+        { btn: this.dom.viewPlanBtn,  view: 'plan'  },
+        { btn: this.dom.viewLogBtn,   view: 'log'   },
+      ];
+      for (const { btn, view } of map) {
+        if (!btn) continue;
+        const active = view === this.currentView;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      }
     }
 
     _renderOrganize() {
@@ -1751,16 +1814,11 @@
         if (entry.kind === 'card') {
           const item = itemMap.get(entry.instanceId);
           if (!item) return; // referenced item was removed
-          // Log mode mounts a different card variant — same instanceId,
-          // different body. The plan card's setIndex/move-up/down menu
-          // doesn't apply to log cards (the user logs in order; reorder
-          // is a Plan-mode concern).
-          if (this.mode === 'log') {
-            this._mountLogCard(item, { container: this.dom.organizeList });
-          } else {
-            const card = this._mountCard(item, { idx, total, container: this.dom.organizeList, blockOptions, inBlock: null });
-            card.setIndex(idx, total);
-          }
+          // The Plan view always mounts the template-editor card variant.
+          // The Log view has its own renderer (_renderLog) that mounts
+          // log-mode cards into #studioLogList.
+          const card = this._mountCard(item, { idx, total, container: this.dom.organizeList, blockOptions, inBlock: null });
+          card.setIndex(idx, total);
         } else if (entry.kind === 'note') {
           const note = this.notes.get(entry.noteId);
           if (!note) return;
@@ -1832,21 +1890,17 @@
           block.instanceIds.forEach((iid, childIdx) => {
             const item = itemMap.get(iid);
             if (!item) return;
-            // Same mode branch as the top-level case — log cards render
-            // inside blocks too, so the user can fill in actuals for a
-            // grouped warmup or superset just like loose exercises.
-            if (this.mode === 'log') {
-              this._mountLogCard(item, { container: slot });
-            } else {
-              const card = this._mountCard(item, {
-                idx: noteIds.length + childIdx,
-                total: childCount,
-                container: slot,
-                blockOptions,
-                inBlock: inBlockMeta,
-              });
-              card.setIndex(noteIds.length + childIdx, childCount);
-            }
+            // Plan view always renders the template-editor card. Log view
+            // mounts log cards via _renderLog (separate container) so we
+            // don't branch on view here.
+            const card = this._mountCard(item, {
+              idx: noteIds.length + childIdx,
+              total: childCount,
+              container: slot,
+              blockOptions,
+              inBlock: inBlockMeta,
+            });
+            card.setIndex(noteIds.length + childIdx, childCount);
           });
           blockComp.setChildCount(childCount);
         }
@@ -2071,7 +2125,7 @@
         if (target < 0 || target >= list.length) return;
         list.splice(idx, 1);
         list.splice(target, 0, instanceId);
-        this._renderOrganize();
+        this._renderActiveView();
         return;
       }
       // Otherwise it's top-level: reorder organizeOrder entries
@@ -2259,15 +2313,13 @@
     _refreshFabState() {
       const trayHas = this.tray && this.tray.size() > 0;
       const nameSet = !!(this.workoutName && this.workoutName.trim());
-      // Save only requires at least one exercise — the name check lives
-      // inside _handleSave so users get a friendly "Give your workout a
-      // name first" error rather than a silent disabled button.
       const canSave = !!trayHas;
-      // Go has different rules per mode:
-      //   plan → start workout-mode session; needs saved template + name
-      //   log  → save log entry; only needs ≥1 exercise (name check lives
-      //          inside _handleSaveLog with a friendly error)
-      const inLog = this.mode === 'log';
+      const inLog = this.currentView === 'log';
+      // Go-FAB rules vary by view:
+      //   plan → save first then jump to a workout session (template needs
+      //          a name + persisted id before workout-mode can load it).
+      //   log  → Complete the running session; ≥1 exercise is the only
+      //          gate (auth/save concerns handled inside _handleComplete).
       const canGo = inLog ? !!trayHas : (canSave && nameSet && !!this.workoutId);
       if (this.dom.fabSave) {
         this.dom.fabSave.disabled = !canSave;
@@ -2280,21 +2332,24 @@
           : inLog
             ? 'Add an exercise to log'
             : (trayHas ? (nameSet ? 'Save first to start' : 'Add a name then save') : 'Add an exercise to start');
+        // Icon mirrors intent: Log view shows a check (Complete), Plan
+        // shows a play arrow (Start). Replaces the old _reflectFabForMode.
+        const icon = this.dom.fabGo.querySelector('i');
+        if (icon) icon.className = inLog ? 'bx bx-check' : 'bx bx-play';
+        this.dom.fabGo.setAttribute(
+          'aria-label', inLog ? 'Complete workout' : 'Start workout'
+        );
       }
     }
 
     /**
-     * Go-FAB: launch workout-mode for the saved workout. If unsaved edits
-     * exist (or this is a brand-new workout that's never been saved), do a
-     * save-then-navigate so the user lands in a coherent session. Falls
-     * back to a friendly status hint when prerequisites are missing.
+     * Go-FAB: in Plan view, save the template + jump into the legacy
+     * workout-mode session (kept while the new Log view lands its full
+     * Start landing — see plan §2). In Log view, finalize the active
+     * session via the End Workout offcanvas.
      */
     async _handleStartFromFab() {
-      // The Go FAB does different things depending on the active Page 2
-      // mode: Plan mode → save + launch the full workout-mode session;
-      // Log mode → complete the active session (writes a session record
-      // + updates exercise history) and return to Plan.
-      if (this.mode === 'log') {
+      if (this.currentView === 'log') {
         return this._handleComplete();
       }
       if (!this.tray || this.tray.size() === 0) {
@@ -2306,100 +2361,26 @@
         if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
         return;
       }
-      // Save (creates on first call, updates on subsequent ones). _handleSave
-      // sets this.workoutId on a successful create, so we re-read after.
       try {
         await this._handleSave();
       } catch (_) { /* status already surfaced by _handleSave */ }
-      if (!this.workoutId) return; // save failed → don't navigate
+      if (!this.workoutId) return;
       window.location.href = `/workout-mode.html?id=${encodeURIComponent(this.workoutId)}`;
     }
 
     // ============================================================
-    // LOG MODE — Plan/Log toggle, log-card mounting, save handler
+    // LOG VIEW — session card list mount + log-card callbacks.
+    // The mode toggle + per-workout mode preference are gone — the
+    // currentView state in _showView is the single source of truth.
+    // Session prerequisite checking lives in _ensureLogPrereqs.
     // ============================================================
 
-    _modeStorageKey() {
-      const wid = this.workoutId || 'new';
-      return `ffn:studio:mode:${wid}`;
-    }
-
-    _loadModePreference() {
-      try {
-        const v = localStorage.getItem(this._modeStorageKey());
-        return v === 'log' ? 'log' : 'plan';
-      } catch (_) { return 'plan'; }
-    }
-
-    _saveModePreference() {
-      try { localStorage.setItem(this._modeStorageKey(), this.mode); }
-      catch (_) {}
-    }
-
     /**
-     * Flip Page 2's mode. Re-renders the organize list with the matching
-     * card variant, swaps the Go FAB's affordance, and persists the choice.
-     */
-    /**
-     * Toggle between Plan and Log mode. The Plan→Log direction kicks off a
-     * real `WorkoutSession` (via WorkoutSessionService) so every edit the
-     * user makes inside Log auto-persists, exercise history loads, and
-     * Complete posts to the proper finalize endpoint. The Log→Plan
-     * direction, if a session is active, asks the user what to do
-     * (Complete now / Discard / Cancel) — gym-app convention so they
-     * don't lose a started session by accident. Async because session
-     * setup may need to save the template first and start the session.
-     */
-    async _setMode(mode) {
-      if (mode !== 'plan' && mode !== 'log') return;
-      if (this.mode === mode) return;
-
-      // Log → Plan with a session the user has actually touched needs
-      // explicit intent — otherwise the flip is harmless and the
-      // in-memory session stays alive (the timer + organize state stay
-      // intact so flipping back resumes where they left off).
-      if (mode === 'plan' && this.mode === 'log' && this._hasDirtySession()) {
-        const choice = await this._promptModeSwitch();
-        if (choice === 'cancel') return;
-        if (choice === 'complete') {
-          return this._handleComplete();
-        }
-        this._discardActiveSession();
-      }
-
-      // Plan → Log needs a saved workout id + a name + at least one
-      // exercise so the session has a template to reference. We save the
-      // template first if needed (mirrors how _handleStartFromFab gates
-      // the legacy Start FAB).
-      if (mode === 'log') {
-        const ok = await this._ensureLogPrereqs();
-        if (!ok) return; // status already surfaced
-      }
-
-      this.mode = mode;
-      this._reflectModeToggle();
-      this._reflectFabForMode();
-      this._refreshFabState();
-      if (mode === 'log') {
-        this._startSessionTimer();
-        await this._ensureActiveSession();
-        // fetchExerciseHistory populates Last weights for every card via
-        // the shared sessionService cache. Falls back gracefully when
-        // anonymous / offline.
-        await this._loadExerciseHistory();
-      } else {
-        this._stopSessionTimer({ keep: true });
-      }
-      this._renderTimer();
-      this._renderOrganize();
-      this._saveModePreference();
-    }
-
-    /**
-     * Prerequisites to enter Log mode: tray non-empty + workout has a
+     * Prerequisites to launch a session: tray non-empty + workout has a
      * name + template is saved (auto-save it if it isn't). Returns true
      * if we should proceed, false if we surfaced a friendly error and
-     * the caller should bail.
+     * the caller should bail. Used by the upcoming Start Workout button
+     * on the Log landing.
      */
     async _ensureLogPrereqs() {
       if (!this.tray || this.tray.size() === 0) {
@@ -2411,11 +2392,6 @@
         if (this.dom.workoutNameInput) this.dom.workoutNameInput.focus();
         return false;
       }
-      // Authenticated users without a saved workoutId yet: save the
-      // template first so the session can reference a real id (and
-      // exercise history can be aggregated across sessions). Anonymous
-      // users skip this — the session service creates a local-only
-      // session with whatever placeholder id we hand it.
       const isAuthed = !!(window.authService &&
                           typeof window.authService.isUserAuthenticated === 'function' &&
                           window.authService.isUserAuthenticated());
@@ -2428,41 +2404,105 @@
       return true;
     }
 
-    _reflectModeToggle() {
-      const plan = this.dom.modePlanBtn;
-      const log = this.dom.modeLogBtn;
-      const onPlan = this.mode === 'plan';
-      if (plan) {
-        plan.classList.toggle('is-active', onPlan);
-        plan.setAttribute('aria-pressed', onPlan ? 'true' : 'false');
-      }
-      if (log) {
-        log.classList.toggle('is-active', !onPlan);
-        log.setAttribute('aria-pressed', onPlan ? 'false' : 'true');
-      }
-      // Import is a planning action — irrelevant once the user is logging
-      // a live session. Hide the Page-2 Import button in Log mode.
-      if (this.dom.importPage2Btn) {
-        this.dom.importPage2Btn.hidden = !onPlan;
-      }
-    }
+    /**
+     * Render the Log view — for this commit it mirrors the Plan list but
+     * mounts log-mode cards (Done buttons, last-session subtitle, log
+     * field overrides) into #studioLogList. The dedicated landing state
+     * (Start Workout button + workout summary preview) arrives in the
+     * follow-up commit; until then this method is what fills the Log tab
+     * when the user navigates to it.
+     */
+    _renderLog() {
+      if (!this.dom.logList || !this.tray) return;
+      const items = this.tray.getItems();
+      const itemMap = new Map(items.map((it) => [it.instanceId, it]));
 
-    _reflectFabForMode() {
-      const fab = this.dom.fabGo;
-      if (!fab) return;
-      const icon = fab.querySelector('i');
-      if (this.mode === 'log') {
-        // Gym-app convention: 'Complete' is the user-facing word for
-        // 'end the session + write a record'. Reads cleaner than 'Save
-        // log' which implies preserving a draft.
-        fab.title = 'Complete';
-        fab.setAttribute('aria-label', 'Complete workout');
-        if (icon) icon.className = 'bx bx-check';
-      } else {
-        fab.title = 'Start workout';
-        fab.setAttribute('aria-label', 'Start workout');
-        if (icon) icon.className = 'bx bx-play';
-      }
+      // Clean up any cards from a previous view render. Studio cards
+      // live in a shared map (plan + log share the same StudioExerciseCard
+      // shell), so _destroyAllCards removes both safely.
+      this._destroyAllCards();
+      this._destroyAllBlocks();
+      this._destroyAllNotes();
+      this.dom.logList.innerHTML = '';
+
+      if (items.length === 0) return;
+
+      const blockOptions = this._blockOptionsList();
+      const total = this.organizeOrder.length;
+      this.organizeOrder.forEach((entry, idx) => {
+        if (entry.kind === 'card') {
+          const item = itemMap.get(entry.instanceId);
+          if (!item) return;
+          this._mountLogCard(item, { container: this.dom.logList });
+        } else if (entry.kind === 'note') {
+          // Notes live in the workout regardless of view; render them
+          // inline so the user sees their context (e.g. "warm up slow")
+          // while logging.
+          const note = this.notes.get(entry.noteId);
+          if (!note || !window.StudioNoteCard) return;
+          const noteComp = new window.StudioNoteCard({
+            noteId: entry.noteId,
+            content: note.content,
+            inBlock: null,
+            blockOptions,
+            callbacks: {
+              onChange: (noteId, partial) => this._onNoteChange(noteId, partial),
+              onMenuAction: (noteId, action, blockId) => this._onNoteMenuAction(noteId, action, blockId),
+            },
+          });
+          const noteNode = noteComp.render();
+          this.dom.logList.appendChild(noteNode);
+          noteComp.setIndex(idx, total);
+          this.studioNotes.set(entry.noteId, noteComp);
+        } else if (entry.kind === 'block') {
+          const block = this.blocks.get(entry.blockId);
+          if (!block) return;
+          const blockComp = new window.StudioBlock({
+            blockId: entry.blockId,
+            name: block.name,
+            callbacks: {
+              onRename: (blockId, name) => this._onBlockRename(blockId, name),
+              onMenuAction: (blockId, action) => this._onBlockMenuAction(blockId, action),
+            },
+          });
+          const blockNode = blockComp.render();
+          this.dom.logList.appendChild(blockNode);
+          blockComp.setIndex(idx, total);
+          this.studioBlocks.set(entry.blockId, blockComp);
+
+          const slot = blockComp.getChildrenSlot();
+          const noteIds = Array.isArray(block.noteIds) ? block.noteIds : [];
+          const cardCount = block.instanceIds.length;
+          const childCount = noteIds.length + cardCount;
+          const inBlockMeta = { blockId: entry.blockId, blockName: block.name || '' };
+
+          noteIds.forEach((nid, nIdx) => {
+            const note = this.notes.get(nid);
+            if (!note || !window.StudioNoteCard) return;
+            const noteComp = new window.StudioNoteCard({
+              noteId: nid,
+              content: note.content,
+              inBlock: inBlockMeta,
+              blockOptions,
+              callbacks: {
+                onChange: (noteId, partial) => this._onNoteChange(noteId, partial),
+                onMenuAction: (noteId, action, blockId) => this._onNoteMenuAction(noteId, action, blockId),
+              },
+            });
+            const noteNode = noteComp.render();
+            slot.appendChild(noteNode);
+            noteComp.setIndex(nIdx, childCount);
+            this.studioNotes.set(nid, noteComp);
+          });
+
+          block.instanceIds.forEach((iid) => {
+            const item = itemMap.get(iid);
+            if (!item) return;
+            this._mountLogCard(item, { container: slot });
+          });
+          blockComp.setChildCount(childCount);
+        }
+      });
     }
 
     // ---------------- session timer (Log mode only) ----------------
@@ -2515,7 +2555,11 @@
       const el = this.dom.modeTimer;
       const text = this.dom.modeTimerText;
       if (!el || !text) return;
-      if (this.mode !== 'log' || !this._timerStartedAt) {
+      // Timer pill is visible whenever a session is running, regardless
+      // of which tab the user is currently looking at — keeps the user
+      // reassured the session is still alive while they're in Build or
+      // Plan adding/editing things.
+      if (!this._timerStartedAt) {
         el.hidden = true;
         return;
       }
@@ -2569,28 +2613,6 @@
     _hasActiveSession() {
       return !!(this.sessionService && this.sessionService.isSessionActive &&
                 this.sessionService.isSessionActive());
-    }
-
-    /**
-     * Active session WITH user input — at least one exercise marked done,
-     * skipped, or weight-modified, OR a session note exists. Used to
-     * decide whether toggling back to Plan needs a confirmation dialog;
-     * an untouched active session can be silently discarded.
-     */
-    _hasDirtySession() {
-      if (!this._hasActiveSession()) return false;
-      const sess = this.sessionService.getCurrentSession?.();
-      if (!sess || !sess.exercises) return false;
-      const exercises = Object.values(sess.exercises);
-      const anyTouched = exercises.some((e) =>
-        e && (e.is_completed || e.is_skipped || e.is_modified ||
-              (e.notes && e.notes.length > 0)));
-      const sessionNotes = this.sessionService.getSessionNotes?.() || [];
-      // Also count tray-level Done marks (controller logState) since those
-      // happen before the service may have absorbed them.
-      const trayDone = this.logState && Array.from(this.logState.values())
-        .some((s) => s && s.isDone);
-      return anyTouched || sessionNotes.length > 0 || trayDone;
     }
 
     /**
@@ -2669,45 +2691,6 @@
       this._stopSessionTimer({ keep: false });
     }
 
-    /**
-     * Three-button modal: Complete / Discard / Cancel. The dialog DOM is
-     * the #studioModeSwitchDialog block in workout-studio.html. Resolves
-     * with one of those three strings.
-     */
-    _promptModeSwitch() {
-      return new Promise((resolve) => {
-        const dlg = document.getElementById('studioModeSwitchDialog');
-        if (!dlg) {
-          // No dialog markup → fall back to a confirm-cancel pair so we
-          // never silently strand a session.
-          if (window.confirm('Complete the workout now? (Cancel to discard the session instead)')) {
-            return resolve('complete');
-          }
-          if (window.confirm('Discard the active session? (Cancel to stay in Log)')) {
-            return resolve('discard');
-          }
-          return resolve('cancel');
-        }
-        const cleanup = () => {
-          dlg.removeEventListener('click', onClick);
-          dlg.hidden = true;
-        };
-        const onClick = (e) => {
-          const action = e.target && e.target.closest('[data-mode-switch-action]');
-          if (!action) return;
-          const choice = action.getAttribute('data-mode-switch-action');
-          cleanup();
-          resolve(choice);
-        };
-        dlg.addEventListener('click', onClick);
-        dlg.hidden = false;
-        // Focus the safe default (Cancel) so a stray Enter doesn't
-        // commit a destructive action.
-        const cancelBtn = dlg.querySelector('[data-mode-switch-action="cancel"]');
-        if (cancelBtn) cancelBtn.focus();
-      });
-    }
-
     // -------------- exercise history (last-session lookup) --------------
 
     async _loadExerciseHistory() {
@@ -2726,9 +2709,10 @@
       try {
         await svc.fetchExerciseHistory?.(this.workoutId);
         this._syncHistoryFromService();
-        // Re-render Page 2 if we're in log mode so the new history shows
-        if (this.mode === 'log' && this.currentView === 'organize') {
-          this._renderOrganize();
+        // Refresh the Log view if that's where the user currently is so
+        // the Last-session subtitles populate immediately.
+        if (this.currentView === 'log') {
+          this._renderLog();
         }
       } catch (err) {
         console.warn('[WorkoutStudio] Could not load exercise history:', err);
@@ -3033,7 +3017,10 @@
         // mode re-fetches and reflects what the user just completed.
         this._exerciseHistoryFetched = false;
         this.exerciseHistory = new Map();
-        this._setMode('plan');
+        // After Complete, drop the user back to the template editor —
+        // the session is finalized and the Log tab will now render its
+        // landing state for the next workout.
+        this._showView('plan');
       } catch (err) {
         console.error('[WorkoutStudio] Complete failed:', err);
         this._setStatus(`Could not complete: ${err.message || 'unknown error'}`, 'error');
@@ -3489,14 +3476,17 @@
         }
       }
 
-      // Re-render Page 2 if we're on it. If the tray empties while on Page 2,
-      // bounce back to Page 1 to avoid a dead-end state.
-      if (this.currentView === 'organize') {
+      // Re-render Plan/Log if that's where we are. If the tray empties
+      // while on Plan, bounce back to Build to avoid a dead-end state.
+      // Log can stay open even with an empty tray — the landing handles it.
+      if (this.currentView === 'plan') {
         if (n === 0) {
-          this._showView('select');
+          this._showView('build');
         } else {
-          this._renderOrganize();
+          this._renderActiveView();
         }
+      } else if (this.currentView === 'log') {
+        this._renderLog();
       }
 
       this._scheduleDraftSave();

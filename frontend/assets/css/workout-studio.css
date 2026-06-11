@@ -786,18 +786,24 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
    10px button-radius family so it reads as part of the same control
    set as Import + Reorder beside it.
    ------------------------------------------------------------------ */
-.studio-mode-toggle {
+/* Slim-header view tabs — Build / Plan / Log. Three equal-width pills
+   inside a single rounded segmented control; the active pill gets the
+   body background so it visually pops out of the surrounding chip
+   row. Timer pill sits to the right of the tabs in the same flex
+   container so it reads as part of the same control cluster. */
+.studio-view-tabs {
   display: inline-flex;
   align-items: stretch;
   background: rgba(0, 0, 0, 0.04);
   border-radius: 10px;
   padding: 2px;
   gap: 2px;
+  margin-top: 0.4rem;
 }
-[data-bs-theme="dark"] .studio-mode-toggle {
+[data-bs-theme="dark"] .studio-view-tabs {
   background: rgba(255, 255, 255, 0.06);
 }
-.studio-mode-toggle-btn {
+.studio-view-tab {
   appearance: none;
   border: 0;
   background: transparent;
@@ -809,15 +815,15 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
-.studio-mode-toggle-btn:hover {
+.studio-view-tab:hover {
   color: var(--bs-body-color);
 }
-.studio-mode-toggle-btn.is-active {
+.studio-view-tab.is-active {
   background: var(--bs-body-bg);
   color: var(--bs-primary);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
-[data-bs-theme="dark"] .studio-mode-toggle-btn.is-active {
+[data-bs-theme="dark"] .studio-view-tab.is-active {
   background: rgba(255, 255, 255, 0.12);
   color: var(--bs-primary);
 }
@@ -2267,50 +2273,3 @@ html[data-bs-theme="dark"] .studio-draft-banner {
 }
 html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba(255, 255, 255, 0.08); }
 
-/* ------------------------------------------------------------------
-   Plan/Log switch — choice dialog
-   Three-button alertdialog ('Complete now / Discard / Cancel') shown
-   when the user flips Plan with an in-progress session. Lives inside
-   the studio shell as a viewport-fixed overlay; backdrop dims the
-   page so the user can't tap through to anything else.
-   ------------------------------------------------------------------ */
-.studio-mode-switch-dialog {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  padding: 16px;
-}
-.studio-mode-switch-dialog[hidden] { display: none !important; }
-.studio-mode-switch-card {
-  background: var(--bs-body-bg);
-  border-radius: 14px;
-  max-width: 360px;
-  width: 100%;
-  padding: 1rem 1.1rem 0.9rem;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.25);
-}
-.studio-mode-switch-title {
-  margin: 0 0 0.4rem;
-  font-weight: 700;
-}
-.studio-mode-switch-body {
-  margin: 0 0 1rem;
-  color: var(--bs-secondary-color);
-  font-size: 0.92rem;
-  line-height: 1.4;
-}
-.studio-mode-switch-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.studio-mode-switch-actions .btn {
-  height: 32px;
-  padding: 0 12px;
-  line-height: 1;
-}

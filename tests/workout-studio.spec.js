@@ -3007,10 +3007,10 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
 
-        await expect(page.locator('#studioModePlanBtn')).toBeVisible();
-        await expect(page.locator('#studioModeLogBtn')).toBeVisible();
-        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
-        await expect(page.locator('#studioModeLogBtn')).not.toHaveClass(/is-active/);
+        await expect(page.locator('#studioViewPlanBtn')).toBeVisible();
+        await expect(page.locator('#studioViewLogBtn')).toBeVisible();
+        await expect(page.locator('#studioViewPlanBtn')).toHaveClass(/is-active/);
+        await expect(page.locator('#studioViewLogBtn')).not.toHaveClass(/is-active/);
     });
 
     test('Flipping to Log keeps the plan-card shell; flipping back stays in plan mode unchanged', async ({ page }) => {
@@ -3023,13 +3023,13 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
 
         // Flip to Log — cards remain studio-cards (same shell as Plan)
         // but each now sprouts a Done check button in the header actions.
-        await page.locator('#studioModeLogBtn').click();
-        await expect(page.locator('#studioModeLogBtn')).toHaveClass(/is-active/);
+        await page.locator('#studioViewLogBtn').click();
+        await expect(page.locator('#studioViewLogBtn')).toHaveClass(/is-active/);
         await expect(page.locator('.studio-card')).toHaveCount(2);
         await expect(page.locator('.studio-card-done-btn')).toHaveCount(2);
 
         // Flip back → Done buttons are gone, plan cards unchanged
-        await page.locator('#studioModePlanBtn').click();
+        await page.locator('#studioViewPlanBtn').click();
         await expect(page.locator('.studio-card-done-btn')).toHaveCount(0);
         await expect(page.locator('.studio-card')).toHaveCount(2);
     });
@@ -3039,7 +3039,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await continueToOrganize(page);
 
         // Flip to Log + mark the first card Done
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         const card = page.locator('.studio-card').first();
         await card.locator('[data-action="toggle-done"]').click();
         await expect(card).toHaveClass(/is-done/);
@@ -3052,7 +3052,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
     test('Completed button lives in the card footer (not the header) and Cancel/Save slide in to its LEFT during edit', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
 
         const card = page.locator('.studio-card').first();
 
@@ -3091,7 +3091,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await continueToOrganize(page);
 
         // Flip to Log
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         const card = page.locator('.studio-card').first();
         const doneBtn = card.locator('[data-action="toggle-done"]');
 
@@ -3142,7 +3142,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
             if (window.authService) window.authService.isUserAuthenticated = () => false;
         });
 
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
 
@@ -3155,7 +3155,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         // Local-only session means no /workout-sessions HTTP calls at all
         expect(networkCalls).toBe(0);
         // After complete, studio flips back to Plan (Plan/Log toggle reflects)
-        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
+        await expect(page.locator('#studioViewPlanBtn')).toHaveClass(/is-active/);
     });
 
     test('Authenticated Complete in Log mode POSTs start + complete to the session endpoints', async ({ page }) => {
@@ -3209,7 +3209,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
             if (window.workoutStudio) window.workoutStudio.workoutId = 'wk-test-1';
         });
 
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         // Give the start call time to land
         await page.waitForTimeout(200);
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
@@ -3265,7 +3265,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
             if (window.workoutStudio) window.workoutStudio.workoutId = 'wk-end-offcanvas';
         });
 
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         await page.waitForTimeout(200);
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
@@ -3309,7 +3309,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
             if (window.authService) window.authService.isUserAuthenticated = () => false;
         });
 
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
         await page.locator('#studioFabGo').click();
 
@@ -3323,7 +3323,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
 
         expect(completed).toBe(false);
         // Still in Log mode — Plan toggle isn't active
-        await expect(page.locator('#studioModeLogBtn')).toHaveClass(/is-active/);
+        await expect(page.locator('#studioViewLogBtn')).toHaveClass(/is-active/);
     });
 
     test('Save Log refuses when no exercise is marked Done (no actuals to record)', async ({ page }) => {
@@ -3331,7 +3331,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await continueToOrganize(page);
         await page.evaluate(() => { delete window.dataManager; });
 
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         await page.locator('#studioFabGo').click();
         await expect(page.locator('#studioOrganizeStatus')).toContainText(/Mark at least one exercise done/i, { timeout: 5000 });
     });
@@ -3345,64 +3345,60 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(fab.locator('i')).toHaveClass(/bx-play/);
         await expect(fab).toHaveAttribute('title', 'Start workout');
 
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         // Log mode → check icon, 'Complete' title
         await expect(fab.locator('i')).toHaveClass(/bx-check/);
         await expect(fab).toHaveAttribute('title', 'Complete');
     });
 
-    test('Plan toggle with dirty session opens choice dialog (Complete / Discard / Cancel)', async ({ page }) => {
+    // 3-tab nav (Build | Plan | Log) replaces the legacy Plan/Log
+    // toggle + the Complete/Discard/Cancel choice dialog. Tab switches
+    // never prompt: the session keeps running across views, and the
+    // user finalizes only via the Log Complete FAB.
+
+    test('3-pill view tabs render in the slim header (Build / Plan / Log)', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
-        await continueToOrganize(page);
-
-        // Enter Log + dirty the session by marking one card Done
-        await page.locator('#studioModeLogBtn').click();
-        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
-
-        // Dialog is hidden in steady state
-        const dialog = page.locator('#studioModeSwitchDialog');
-        await expect(dialog).toBeHidden();
-
-        // Flip Plan → dialog opens
-        await page.locator('#studioModePlanBtn').click();
-        await expect(dialog).toBeVisible();
-        // All three actions present
-        await expect(dialog.locator('[data-mode-switch-action="cancel"]')).toBeVisible();
-        await expect(dialog.locator('[data-mode-switch-action="discard"]')).toBeVisible();
-        await expect(dialog.locator('[data-mode-switch-action="complete"]')).toBeVisible();
-
-        // Cancel → dialog closes + we stay in Log mode
-        await dialog.locator('[data-mode-switch-action="cancel"]').click();
-        await expect(dialog).toBeHidden();
-        await expect(page.locator('#studioModeLogBtn')).toHaveClass(/is-active/);
+        await page.waitForLoadState('domcontentloaded');
+        await expect(page.locator('#studioViewBuildBtn')).toBeVisible();
+        await expect(page.locator('#studioViewPlanBtn')).toBeVisible();
+        await expect(page.locator('#studioViewLogBtn')).toBeVisible();
+        // Build is the default active pill on a fresh studio
+        await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
     });
 
-    test('Plan toggle with dirty session — Discard wipes the in-memory session and flips to Plan', async ({ page }) => {
+    test('Switching tabs from Log with a dirty session no longer prompts (dialog markup is gone)', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
-        await page.locator('#studioModeLogBtn').click();
+
+        await page.locator('#studioViewLogBtn').click();
         await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
 
-        await page.locator('#studioModePlanBtn').click();
-        const dialog = page.locator('#studioModeSwitchDialog');
-        await expect(dialog).toBeVisible();
-        await dialog.locator('[data-mode-switch-action="discard"]').click();
-        await expect(dialog).toBeHidden();
-        // We end up in Plan mode
-        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
-        // logState was cleared — Done badge is gone, card back to outline
-        await expect(page.locator('.studio-card').first()).not.toHaveClass(/is-done/);
+        // The old choice dialog (Complete / Discard / Cancel) is removed.
+        await expect(page.locator('#studioModeSwitchDialog')).toHaveCount(0);
+
+        // Tapping Plan switches immediately; the Log tab is no longer
+        // active. No confirmation is shown.
+        await page.locator('#studioViewPlanBtn').click();
+        await expect(page.locator('#studioViewPlanBtn')).toHaveClass(/is-active/);
+        await expect(page.locator('#studioViewLogBtn')).not.toHaveClass(/is-active/);
     });
 
-    test('Plan toggle with NO dirty edits flips silently — no dialog', async ({ page }) => {
+    test('Switching tabs preserves the tray + workout name across views', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
-        await page.locator('#studioModeLogBtn').click();
-        // No Done taps, no weight edits — session is untouched
-        await page.locator('#studioModePlanBtn').click();
+        // continueToOrganize put us on Plan view after picking 2 exercises +
+        // setting the name to 'Log mode test'.
+        const trayChipCount = await page.locator('#studioTrayChips > *').count();
+        const nameVal = await page.locator('#studioWorkoutNameInput').inputValue();
+        expect(trayChipCount).toBeGreaterThanOrEqual(2);
+        expect(nameVal).toBe('Log mode test');
 
-        await expect(page.locator('#studioModeSwitchDialog')).toBeHidden();
-        await expect(page.locator('#studioModePlanBtn')).toHaveClass(/is-active/);
+        // Cycle Build → Plan → Log → Build and assert tray + name persist.
+        for (const id of ['#studioViewBuildBtn', '#studioViewPlanBtn', '#studioViewLogBtn', '#studioViewBuildBtn']) {
+            await page.locator(id).click();
+            await expect(page.locator('#studioTrayChips > *')).toHaveCount(trayChipCount);
+            await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Log mode test');
+        }
     });
 });
 
@@ -3423,7 +3419,7 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         await expect(page.locator('#studioModeTimer')).toBeHidden();
 
         // Log → timer visible, starts at 00:00
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         const timer = page.locator('#studioModeTimer');
         await expect(timer).toBeVisible();
         await expect(timer.locator('.studio-mode-timer-text')).toHaveText(/^00:00$/);
@@ -3435,9 +3431,9 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         expect(/^\d{2}:\d{2}$/.test(text)).toBe(true);
 
         // Flip back to Plan → timer hides; flip to Log → resumes from same start
-        await page.locator('#studioModePlanBtn').click();
+        await page.locator('#studioViewPlanBtn').click();
         await expect(timer).toBeHidden();
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         await expect(timer).toBeVisible();
         // The elapsed time should be > 0 (not reset to 00:00)
         const resumedText = await timer.locator('.studio-mode-timer-text').textContent();
@@ -3467,7 +3463,7 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         }, firstExerciseName);
 
         // Flip to Log → the planted history should appear as a subtitle
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         const card = page.locator('.studio-card').first();
         const lastLine = card.locator('.studio-card-last-line');
         await expect(lastLine).toBeVisible();
@@ -3475,7 +3471,7 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         await expect(lastLine).toContainText(/3d ago/);
 
         // Plan mode strips it (plan cards stay clean)
-        await page.locator('#studioModePlanBtn').click();
+        await page.locator('#studioViewPlanBtn').click();
         await expect(card.locator('.studio-card-last-line')).toHaveCount(0);
     });
 
@@ -3489,11 +3485,11 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         await expect(importBtn).toBeVisible();
 
         // Log → Import hides (planning action irrelevant during a live session)
-        await page.locator('#studioModeLogBtn').click();
+        await page.locator('#studioViewLogBtn').click();
         await expect(importBtn).toBeHidden();
 
         // Back to Plan → Import returns
-        await page.locator('#studioModePlanBtn').click();
+        await page.locator('#studioViewPlanBtn').click();
         await expect(importBtn).toBeVisible();
     });
 });
