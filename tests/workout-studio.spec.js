@@ -3376,7 +3376,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
     // never prompt: the session keeps running across views, and the
     // user finalizes only via the Log Complete FAB.
 
-    test('3-pill view tabs render in the slim header (Build / Plan / Log)', async ({ page }) => {
+    test('3-pill view tabs render in the slim header in order Plan / Build / Log, Build active', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await page.waitForLoadState('domcontentloaded');
         await expect(page.locator('#studioViewBuildBtn')).toBeVisible();
@@ -3384,6 +3384,45 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#studioViewLogBtn')).toBeVisible();
         // Build is the default active pill on a fresh studio
         await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
+        // DOM order matches the visual order: Plan, Build, Log
+        const order = await page.locator('.studio-view-tabs > .studio-view-tab').evaluateAll(
+            els => els.map(el => el.id)
+        );
+        expect(order).toEqual([
+            'studioViewPlanBtn', 'studioViewBuildBtn', 'studioViewLogBtn',
+        ]);
+    });
+
+    test('Tabs span the full width with equal-flex segments', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForLoadState('domcontentloaded');
+        const widths = await page.locator('.studio-view-tabs > .studio-view-tab').evaluateAll(
+            els => els.map(el => el.getBoundingClientRect().width)
+        );
+        expect(widths).toHaveLength(3);
+        // All three tabs share the same width (within 1px tolerance for
+        // sub-pixel rounding). Equal-width means the flex distribution
+        // is working as designed.
+        const [w1, w2, w3] = widths;
+        expect(Math.abs(w1 - w2)).toBeLessThanOrEqual(1);
+        expect(Math.abs(w2 - w3)).toBeLessThanOrEqual(1);
+        // Each tab is meaningfully wide (>= 60px) so the full row spans
+        // a reasonable share of the header.
+        expect(w1).toBeGreaterThan(60);
+    });
+
+    test('Tapping Plan with an empty tray surfaces a flash and stays on Build', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForLoadState('domcontentloaded');
+        // No exercises added yet → tap Plan.
+        await page.locator('#studioViewPlanBtn').click();
+        // Cross-view flash appears with the prompt to add something first.
+        const flash = page.locator('#studioFlash');
+        await expect(flash).toBeVisible();
+        await expect(flash).toContainText(/Select an exercise on Build first/i);
+        // The user is bounced (or kept) on Build — Plan never activates.
+        await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
+        await expect(page.locator('#studioViewPlanBtn')).not.toHaveClass(/is-active/);
     });
 
     test('Switching tabs from Log with a dirty session no longer prompts (dialog markup is gone)', async ({ page }) => {

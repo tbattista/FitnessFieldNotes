@@ -241,6 +241,7 @@
         ? this.dom.modeTimer.querySelector('.studio-mode-timer-text')
         : null;
 
+      this.dom.flash = document.getElementById('studioFlash');
       this.dom.draftBanner = document.getElementById('studioDraftBanner');
       this.dom.draftBannerTime = document.getElementById('studioDraftBannerTime');
       this.dom.draftBannerStartFresh = document.getElementById('studioDraftBannerStartFresh');
@@ -1695,10 +1696,20 @@
      */
     async _showView(view) {
       if (view !== 'build' && view !== 'plan' && view !== 'log') return;
-      // Plan needs at least one exercise (it's a template editor).
-      // Log is browsable even with an empty tray — landing will explain
-      // what's needed before Start can fire.
+      // Plan needs at least one exercise (it's a template editor with
+      // nothing to edit otherwise). Tell the user what to do instead of
+      // silently swallowing the tap — match the friendly affordance the
+      // Log landing already shows for the empty-tray case.
       if (view === 'plan' && (!this.tray || this.tray.size() === 0)) {
+        // Surface the hint through the cross-view flash because the
+        // per-view #studioOrganizeStatus lives inside the (hidden) Plan
+        // container and wouldn't reach the user.
+        this._showFlash('Select an exercise on Build first to start your Plan.');
+        // Make sure the user is somewhere they can act on that — bounce
+        // to Build if they're not already on it.
+        if (this.currentView !== 'build') {
+          this._showView('build');
+        }
         return;
       }
       this.currentView = view;
@@ -3269,6 +3280,25 @@
       this.dom.organizeStatus.textContent = text || '';
       this.dom.organizeStatus.classList.toggle('is-error', kind === 'error');
       this.dom.organizeStatus.classList.toggle('is-success', kind === 'success');
+    }
+
+    /**
+     * Cross-view flash — surfaces a short message just below the view
+     * tabs, regardless of which container is currently visible. Auto-
+     * dismisses after a short window so it doesn't linger. Use this
+     * (instead of _setStatus) any time the user just performed a nav
+     * gesture and a per-view status sink would be hidden.
+     */
+    _showFlash(message) {
+      if (!this.dom.flash) return;
+      this.dom.flash.textContent = message || '';
+      this.dom.flash.hidden = !message;
+      if (this._flashTimer) clearTimeout(this._flashTimer);
+      if (message) {
+        this._flashTimer = setTimeout(() => {
+          if (this.dom.flash) this.dom.flash.hidden = true;
+        }, 3500);
+      }
     }
 
     async _loadExercises() {

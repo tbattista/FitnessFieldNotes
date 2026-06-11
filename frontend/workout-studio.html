@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-02" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-03" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -142,24 +142,41 @@
                        can tap any one from any view (no linear nav). The
                        timer pill sits to the right; it shows once a Log
                        session is running and stays visible across all tabs. -->
+                  <!-- View tabs — Plan / Build / Log. The pills span the
+                       full width of the slim header in three equal
+                       segments with a visible gap between them. Build is
+                       deliberately the centerpiece: the user lands on
+                       Build by default (pick exercises), then steps out
+                       LEFT to edit the workout structure (Plan) or RIGHT
+                       to run a session (Log). The timer pill sits below
+                       the tabs and is visible across views once a
+                       session is running. -->
                   <div class="studio-view-tabs" role="tablist" aria-label="Studio view">
+                    <button class="studio-view-tab"
+                            id="studioViewPlanBtn" type="button"
+                            role="tab" aria-selected="false"
+                            data-view="plan">Plan</button>
                     <button class="studio-view-tab is-active"
                             id="studioViewBuildBtn" type="button"
                             role="tab" aria-selected="true"
                             data-view="build">Build</button>
                     <button class="studio-view-tab"
-                            id="studioViewPlanBtn" type="button"
-                            role="tab" aria-selected="false"
-                            data-view="plan">Plan</button>
-                    <button class="studio-view-tab"
                             id="studioViewLogBtn" type="button"
                             role="tab" aria-selected="false"
                             data-view="log">Log</button>
-                    <span class="studio-mode-timer" id="studioModeTimer" hidden aria-live="off">
-                      <i class="bx bx-time-five"></i>
-                      <span class="studio-mode-timer-text">00:00</span>
-                    </span>
                   </div>
+                  <span class="studio-mode-timer" id="studioModeTimer" hidden aria-live="off">
+                    <i class="bx bx-time-five"></i>
+                    <span class="studio-mode-timer-text">00:00</span>
+                  </span>
+
+                  <!-- Global flash — short-lived status message visible
+                       from any view (the per-view status sinks live
+                       inside their hidden containers and can't surface
+                       feedback for navigation gestures). Used today for
+                       the "tap Plan with an empty tray" hint; can be
+                       reused for any cross-view nudge. -->
+                  <div class="studio-flash" id="studioFlash" hidden role="status" aria-live="polite"></div>
                 </header>
 
                 <!-- Sticky tray chip row (shared across pages) -->
@@ -521,6 +538,6 @@
          the studio card emits in session mode (per-exercise notes). -->
     <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
 
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260611-01"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260611-02"></script>
   </body>
 </html>
