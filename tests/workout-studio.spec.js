@@ -3464,10 +3464,27 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         // Cross-view flash appears with the prompt to add something first.
         const flash = page.locator('#studioFlash');
         await expect(flash).toBeVisible();
-        await expect(flash).toContainText(/Select an exercise on Build first/i);
+        await expect(flash).toContainText(/Select an exercise on Build first to start your Plan/i);
         // The user is bounced (or kept) on Build — Plan never activates.
         await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
         await expect(page.locator('#studioViewPlanBtn')).not.toHaveClass(/is-active/);
+    });
+
+    test('Tapping Log with an empty tray surfaces the same flash and stays on Build', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.waitForLoadState('domcontentloaded');
+        // No exercises added yet → tap Log.
+        await page.locator('#studioViewLogBtn').click();
+        // Same warning mechanism as Plan — cross-view flash.
+        const flash = page.locator('#studioFlash');
+        await expect(flash).toBeVisible();
+        await expect(flash).toContainText(/Select an exercise on Build first to start a workout/i);
+        // Bounced back to Build; Log never activates.
+        await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
+        await expect(page.locator('#studioViewLogBtn')).not.toHaveClass(/is-active/);
+        // The Log landing is NOT rendered — the user was redirected
+        // before _renderLog ran, so the landing block stays hidden.
+        await expect(page.locator('#studioLogLanding')).toBeHidden();
     });
 
     test('Switching tabs from Log with a dirty session no longer prompts (dialog markup is gone)', async ({ page }) => {
@@ -3559,13 +3576,17 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#studioLogList')).toBeVisible();
     });
 
-    test('Start button is disabled with an empty tray', async ({ page }) => {
+    test('Log landing is unreachable with an empty tray (bounced via the flash gate)', async ({ page }) => {
+        // The old behavior — opening Log on an empty tray to a landing
+        // with a disabled Start button — was replaced by a hard gate
+        // that mirrors Plan's empty-tray flash. With nothing in the
+        // tray the user is redirected back to Build and the landing
+        // never gets a chance to paint.
         await page.goto(`${BASE}/workout-studio.html`);
-        // No exercises picked — jump straight to Log via the tab.
         await page.locator('#studioWorkoutNameInput').fill('Empty');
         await page.locator('#studioViewLogBtn').click();
-        await expect(page.locator('#studioLogLanding')).toBeVisible();
-        await expect(page.locator('#studioLogStartBtn')).toBeDisabled();
+        await expect(page.locator('#studioLogLanding')).toBeHidden();
+        await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
     });
 });
 

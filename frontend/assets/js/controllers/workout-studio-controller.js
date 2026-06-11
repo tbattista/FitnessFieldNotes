@@ -1696,11 +1696,19 @@
       // nothing to edit otherwise). Tell the user what to do instead of
       // silently swallowing the tap — match the friendly affordance the
       // Log landing already shows for the empty-tray case.
-      if (view === 'plan' && (!this.tray || this.tray.size() === 0)) {
+      // Plan and Log both need at least one exercise — Plan to have
+      // something to edit, Log to have something to run. Show the same
+      // cross-view flash + bounce to Build so the empty-tray case is
+      // handled identically regardless of which non-Build tab was tapped.
+      const trayEmpty = !this.tray || this.tray.size() === 0;
+      if ((view === 'plan' || view === 'log') && trayEmpty) {
+        const msg = view === 'plan'
+          ? 'Select an exercise on Build first to start your Plan.'
+          : 'Select an exercise on Build first to start a workout.';
         // Surface the hint through the cross-view flash because the
-        // per-view #studioOrganizeStatus lives inside the (hidden) Plan
-        // container and wouldn't reach the user.
-        this._showFlash('Select an exercise on Build first to start your Plan.');
+        // per-view status sinks live inside their (hidden) containers
+        // and wouldn't reach the user.
+        this._showFlash(msg);
         // Make sure the user is somewhere they can act on that — bounce
         // to Build if they're not already on it.
         if (this.currentView !== 'build') {
