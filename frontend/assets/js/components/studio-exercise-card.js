@@ -54,7 +54,7 @@
   }
 
   class StudioExerciseCard {
-    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId, showDoneButton, isDone, lastSession } = {}) {
+    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId, showDoneButton, isDone, isSkipped, lastSession } = {}) {
       this.instanceId = instanceId;
       this.name = name || 'Exercise';
       this.state = Object.assign({
@@ -95,6 +95,10 @@
       // these, so the default-usage card surface is unchanged.
       this.showDoneButton = !!showDoneButton;
       this.isDone = !!isDone;
+      // Session-mode skipped flag — the card greys out (line-through,
+      // amber accent) and the Done button hides. Unskip lives in the
+      // 3-dot menu. Plan mode never sets this.
+      this.isSkipped = !!isSkipped;
       // Last-session snapshot for this exercise — { weight, unit, daysAgo }.
       // Rendered as a small 'Last: 135 lbs · 3d ago' subtitle under the
       // name when present. Only the controller passes this; null in the
@@ -235,6 +239,7 @@
       const blockClass = this.inBlock ? ' studio-card-in-block' : '';
       const blockAttr = this.inBlock ? ` data-block-id="${escapeHtml(this.inBlock.blockId)}"` : '';
       const moveMenuItems = this._buildMoveMenuItems();
+      const menuItemsHtml = this._buildMenuItems(moveMenuItems);
       // Type accent: standard cards omit the attr so the default surface
       // shows through; cardio + note get a colored left border via CSS.
       const typeAttr = this.groupType && this.groupType !== 'standard'
@@ -273,6 +278,7 @@
                       aria-label="${doneLabel}"
                       title="${doneLabel}">${doneInner}</button>` : '';
       const doneClass = (this.showDoneButton && this.isDone) ? ' is-done' : '';
+      const skippedClass = (this.showDoneButton && this.isSkipped) ? ' is-skipped' : '';
       // Last-session snippet — only rendered when the controller passed
       // a non-empty snapshot (log mode + the exercise has prior history).
       // Inserted right under the card header so it sits between the
@@ -284,7 +290,7 @@
           </div>` : '';
 
       return `
-        <div class="studio-card${blockClass}${doneClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
+        <div class="studio-card${blockClass}${doneClass}${skippedClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
           <div class="studio-card-header">
             <div class="studio-card-name-wrap">
               <div class="studio-card-name click-to-edit" tabindex="0">${iconHtml}${safeName}</div>
@@ -304,19 +310,7 @@
                   <i class="bx bx-dots-vertical-rounded"></i>
                 </button>
                 <div class="studio-card-menu" role="menu" hidden>
-                  <button class="studio-card-menu-item" role="menuitem" data-action="move-up" type="button">
-                    <i class="bx bx-up-arrow-alt"></i> Move up
-                  </button>
-                  <button class="studio-card-menu-item" role="menuitem" data-action="move-down" type="button">
-                    <i class="bx bx-down-arrow-alt"></i> Move down
-                  </button>
-                  ${moveMenuItems}
-                  <button class="studio-card-menu-item" role="menuitem" data-action="duplicate" type="button">
-                    <i class="bx bx-copy"></i> Duplicate
-                  </button>
-                  <button class="studio-card-menu-item studio-card-menu-item-danger" role="menuitem" data-action="delete" type="button">
-                    <i class="bx bx-trash"></i> Remove
-                  </button>
+                  ${menuItemsHtml}
                 </div>
               </div>
             </div>
@@ -671,8 +665,9 @@ ${lastHtml}
                       aria-label="${doneLabel}"
                       title="${doneLabel}">${doneInner}</button>` : '';
       const doneClass = (this.showDoneButton && this.isDone) ? ' is-done' : '';
+      const skippedClass = (this.showDoneButton && this.isSkipped) ? ' is-skipped' : '';
       return `
-        <div class="studio-card studio-card-cardio${blockClass}${doneClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
+        <div class="studio-card studio-card-cardio${blockClass}${doneClass}${skippedClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
           <div class="studio-card-header">
             <div class="studio-card-name-wrap">
               <div class="studio-card-name">${iconHtml}${safeName}</div>
@@ -686,19 +681,7 @@ ${lastHtml}
                   <i class="bx bx-dots-vertical-rounded"></i>
                 </button>
                 <div class="studio-card-menu" role="menu" hidden>
-                  <button class="studio-card-menu-item" role="menuitem" data-action="move-up" type="button">
-                    <i class="bx bx-up-arrow-alt"></i> Move up
-                  </button>
-                  <button class="studio-card-menu-item" role="menuitem" data-action="move-down" type="button">
-                    <i class="bx bx-down-arrow-alt"></i> Move down
-                  </button>
-                  ${moveMenuItems}
-                  <button class="studio-card-menu-item" role="menuitem" data-action="duplicate" type="button">
-                    <i class="bx bx-copy"></i> Duplicate
-                  </button>
-                  <button class="studio-card-menu-item studio-card-menu-item-danger" role="menuitem" data-action="delete" type="button">
-                    <i class="bx bx-trash"></i> Remove
-                  </button>
+                  ${this._buildMenuItems(moveMenuItems)}
                 </div>
               </div>
             </div>
@@ -834,6 +817,42 @@ ${lastHtml}
         parts.push(`<div class="studio-card-menu-sep" role="separator"></div>`);
       }
       return parts.join('');
+    }
+
+    /**
+     * Build the 3-dot menu body. Two variants:
+     *   - Plan (default): structure ops — Move up/down, move-to-block,
+     *     Duplicate, Remove.
+     *   - Session (showDoneButton): the workout's shape is locked while
+     *     a session runs, so structure ops disappear and Skip / Unskip
+     *     takes their place. Skipping is the session-mode replacement
+     *     for delete — the exercise stays in the record with
+     *     is_skipped: true.
+     */
+    _buildMenuItems(moveMenuItems) {
+      if (this.showDoneButton) {
+        return this.isSkipped ? `
+                  <button class="studio-card-menu-item" role="menuitem" data-action="unskip" type="button">
+                    <i class="bx bx-undo"></i> Unskip exercise
+                  </button>` : `
+                  <button class="studio-card-menu-item" role="menuitem" data-action="skip" type="button">
+                    <i class="bx bx-skip-next"></i> Skip exercise
+                  </button>`;
+      }
+      return `
+                  <button class="studio-card-menu-item" role="menuitem" data-action="move-up" type="button">
+                    <i class="bx bx-up-arrow-alt"></i> Move up
+                  </button>
+                  <button class="studio-card-menu-item" role="menuitem" data-action="move-down" type="button">
+                    <i class="bx bx-down-arrow-alt"></i> Move down
+                  </button>
+                  ${moveMenuItems}
+                  <button class="studio-card-menu-item" role="menuitem" data-action="duplicate" type="button">
+                    <i class="bx bx-copy"></i> Duplicate
+                  </button>
+                  <button class="studio-card-menu-item studio-card-menu-item-danger" role="menuitem" data-action="delete" type="button">
+                    <i class="bx bx-trash"></i> Remove
+                  </button>`;
     }
 
     _toggleMenu(forceClose) {

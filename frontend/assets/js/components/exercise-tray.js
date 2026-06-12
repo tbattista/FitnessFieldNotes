@@ -20,10 +20,14 @@
   'use strict';
 
   class ExerciseTray {
-    constructor({ root, chipsContainer, onChange } = {}) {
+    constructor({ root, chipsContainer, onChange, canRemove } = {}) {
       this.root = root;
       this.chipsContainer = chipsContainer;
       this.onChange = onChange || (() => {});
+      // Optional gate consulted before any removal (chip X, remove(),
+      // removeLastFor()). Lets the host block structure edits during a
+      // live workout session without the tray knowing session details.
+      this.canRemove = typeof canRemove === 'function' ? canRemove : (() => true);
       this.items = []; // { instanceId, exerciseId, name, exercise }
       this._instanceSeq = 1;
 
@@ -57,6 +61,7 @@
     }
 
     remove(instanceId) {
+      if (!this.canRemove(instanceId)) return;
       const idx = this.items.findIndex((it) => it.instanceId === instanceId);
       if (idx === -1) return;
       this.items.splice(idx, 1);
@@ -65,6 +70,7 @@
     }
 
     removeLastFor(exerciseId) {
+      if (!this.canRemove(null)) return false;
       for (let i = this.items.length - 1; i >= 0; i--) {
         if (this.items[i].exerciseId === String(exerciseId)) {
           this.items.splice(i, 1);

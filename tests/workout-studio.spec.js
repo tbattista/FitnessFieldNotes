@@ -659,7 +659,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await page.locator('#studioContinueBtn').click();
 
         // View flips to organize
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan');
         await expect(page.locator('#studioViewOrganize')).toBeVisible();
         await expect(page.locator('#studioViewSelect')).toBeHidden();
 
@@ -682,11 +682,11 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await addNFromGrid(page, 2);
         await expect(page.locator('#studioTray')).toBeVisible();
         await page.locator('#studioContinueBtn').click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan');
         await expect(page.locator('#studioTray')).toBeHidden();
 
-        // Back on Page 1 the tray returns
-        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
+        // Back on Build the tray returns
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('build'));
         await expect(page.locator('#studioTray')).toBeVisible();
     });
 
@@ -719,10 +719,10 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
     test('Back to selection returns to Page 1 with the tray intact', async ({ page }) => {
         await addNFromGrid(page, 2);
         await page.locator('#studioContinueBtn').click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan');
 
-        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('build'));
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'build');
         await expect(page.locator('.studio-tray-chip')).toHaveCount(2);
     });
 
@@ -748,7 +748,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await firstCard.locator('[data-action="menu"]').click();
         await firstCard.locator('[data-action="delete"]').click();
 
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'build');
         await expect(page.locator('#studioTray')).toHaveAttribute('data-empty', 'true');
     });
 
@@ -944,7 +944,7 @@ test.describe('Workout Studio — Page 2 (Organize)', () => {
         await firstCard.locator('.studio-rest-input').fill('90s');
         await firstCard.locator('.studio-card-edit-save').click();
 
-        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('build'));
         await page.locator('#studioContinueBtn').click();
 
         const reopened = page.locator('.studio-card').first();
@@ -1177,7 +1177,7 @@ test.describe('Workout Studio — Page 2 Blocks', () => {
         await expect(page.locator('#studioReorderBtn')).toBeHidden();
 
         // Go back, add another exercise → 2 items
-        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('build'));
         const rows = page.locator('.studio-row');
         await rows.nth(1).locator('.studio-row-add').click();
         await page.locator('#studioContinueBtn').click();
@@ -1536,7 +1536,7 @@ test.describe('Workout Studio — AI Import', () => {
         await wizard.locator('#importParseBtn').click();
 
         // Auto-navigates to Page 2 with 3 cards populated
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize', { timeout: 5000 });
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan', { timeout: 5000 });
         await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(3);
 
         // Name + tags + description carried over
@@ -1562,7 +1562,7 @@ test.describe('Workout Studio — AI Import', () => {
         await page.locator('#importTextArea').fill('bench 3x8 / row 3x8 superset, plank 3x60s');
         await page.locator('#importParseBtn').click();
 
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize', { timeout: 5000 });
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan', { timeout: 5000 });
 
         // One block holds two cards; one loose card sits outside
         await expect(page.locator('.studio-block')).toHaveCount(1);
@@ -2060,8 +2060,9 @@ test.describe('Workout Studio — type cards + floating FABs (builder parity)', 
         await page.locator('#studioWorkoutNameInput').fill('FAB test workout');
         await expect(page.locator('#studioFabSave')).toBeEnabled();
 
-        // Go stays disabled until the workout is saved (no workoutId yet)
-        await expect(page.locator('#studioFabGo')).toBeDisabled();
+        // Go enables once tray + name are set — it saves automatically
+        // before switching to the Log tab, so no pre-saved id is needed.
+        await expect(page.locator('#studioFabGo')).toBeEnabled();
     });
 
     test('cardio cards get a data-card-type=cardio accent + a type icon', async ({ page }) => {
@@ -2289,7 +2290,7 @@ test.describe('Workout Studio — unified card edit (workout-mode parity)', () =
         await expect(card.locator('.repssets-value-text')).toHaveText('5x5');
 
         // Round-trip back to selection and forward — typed value should be intact
-        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('build'));
         await page.locator('#studioContinueBtn').click();
         await expect(page.locator('.studio-card .repssets-value-text').first()).toHaveText('5x5');
     });
@@ -2431,8 +2432,8 @@ test.describe('Cardio editor — picked activity from "More" appears in the favo
     });
 });
 
-test.describe('Workout Studio — Back FAB (4th button)', () => {
-    test('Back FAB navigates from organize back to selection', async ({ page }) => {
+test.describe('Workout Studio — FAB row (Discard / Save / Go)', () => {
+    test('Back FAB is gone — view tabs are the navigation', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         const firstRow = page.locator('.studio-row').first();
         await firstRow.waitFor({ state: 'visible', timeout: 10000 });
@@ -2440,39 +2441,34 @@ test.describe('Workout Studio — Back FAB (4th button)', () => {
         await page.locator('#studioWorkoutNameInput').fill('Back FAB test');
         await page.locator('#studioContinueBtn').click();
 
-        // FAB row visible on Page 2, with the Back FAB present
+        // FAB row visible on Plan, but the legacy Back FAB no longer exists
         await expect(page.locator('#studioFloatingFabs')).toBeVisible();
-        await expect(page.locator('#studioFabBack')).toBeVisible();
+        await expect(page.locator('#studioFabBack')).toHaveCount(0);
 
-        // Click Back → return to select view
-        await page.locator('#studioFabBack').click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
-
-        // FAB row is hidden again on Page 1
+        // Navigation back to Build happens via the view tab
+        await page.locator('#studioViewBuildBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'build');
         await expect(page.locator('#studioFloatingFabs')).toBeHidden();
     });
 
-    test('FAB row: Back is left-justified, Discard/Save/Go are right-justified — no More overflow menu', async ({ page }) => {
+    test('FAB row: Discard/Save/Go cluster right — no More overflow, no Back', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         const firstRow = page.locator('.studio-row').first();
         await firstRow.waitFor({ state: 'visible', timeout: 10000 });
         await firstRow.locator('.studio-row-add').click();
         await page.locator('#studioWorkoutNameInput').fill('FAB layout test');
         await page.locator('#studioContinueBtn').click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan');
 
-        // Old More FAB is gone; Discard FAB replaces it.
+        // Old More + Back FABs are gone.
         await expect(page.locator('#studioFabMore')).toHaveCount(0);
+        await expect(page.locator('#studioFabBack')).toHaveCount(0);
         await expect(page.locator('#studioFabDiscard')).toBeVisible();
 
-        // Geometry: Back's left edge sits well to the LEFT of Discard,
-        // and the three right-side FABs are clustered together.
-        const back = await page.locator('#studioFabBack').boundingBox();
         const discard = await page.locator('#studioFabDiscard').boundingBox();
         const save = await page.locator('#studioFabSave').boundingBox();
         const go = await page.locator('#studioFabGo').boundingBox();
 
-        expect(back.x).toBeLessThan(discard.x - 50);     // Back is far left
         expect(discard.x).toBeLessThan(save.x);          // Right cluster order
         expect(save.x).toBeLessThan(go.x);
         // Right cluster is tight (consecutive FABs within ~20px of each other)
@@ -2487,7 +2483,7 @@ test.describe('Workout Studio — Back FAB (4th button)', () => {
         await firstRow.locator('.studio-row-add').click();
         await page.locator('#studioWorkoutNameInput').fill('Discard FAB test');
         await page.locator('#studioContinueBtn').click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan');
 
         // Auto-accept the confirm prompt
         page.on('dialog', dialog => dialog.accept());
@@ -2498,7 +2494,7 @@ test.describe('Workout Studio — Back FAB (4th button)', () => {
         await page.locator('#studioFabDiscard').click();
 
         // Discard navigates back to Page 1 with a cleared tray (new-workout path)
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'build');
         await expect(page.locator('.studio-tray-chip')).toHaveCount(0);
     });
 });
@@ -2546,7 +2542,7 @@ test.describe('Workout Studio — "Add another exercise" + new-block prepend', (
         await expect(addMore).toBeVisible();
 
         await addMore.click();
-        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'select');
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'build');
     });
 
     test('New block is prepended (appears at top of the organize list)', async ({ page }) => {
@@ -2947,7 +2943,7 @@ test.describe('Workout Studio — all studio buttons share the same 10px radius'
         await setupCard(page);
 
         // Add a second exercise so Reorder is visible too (it needs ≥2 items)
-        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('select'));
+        await page.evaluate(() => window.workoutStudio && window.workoutStudio._showView('build'));
         await page.locator('.studio-row').nth(1).locator('.studio-row-add').click();
         await page.locator('#studioContinueBtn').click();
 
@@ -3295,9 +3291,13 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#sessionCaloriesInput')).toBeAttached();
         // Discard link is hidden (studio has its own Discard FAB; this
         // discard would call into workout-mode's controller which
-        // doesn't exist on this page).
-        const discardDisplay = await page.locator('#cancelDiscardBtn').evaluate(el => getComputedStyle(el).display);
-        expect(discardDisplay).toBe('none');
+        // doesn't exist on this page). The hide runs on a short
+        // setTimeout after the offcanvas mounts, so poll instead of
+        // sampling once.
+        await expect.poll(async () =>
+            page.locator('#cancelDiscardBtn').evaluate(el => getComputedStyle(el).display),
+            { timeout: 3000 }
+        ).toBe('none');
 
         // Type a duration + calories and Save → the values pass through
         // into the completeSession payload.
@@ -3587,6 +3587,188 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await page.locator('#studioViewLogBtn').click();
         await expect(page.locator('#studioLogLanding')).toBeHidden();
         await expect(page.locator('#studioViewBuildBtn')).toHaveClass(/is-active/);
+    });
+});
+
+test.describe('Workout Studio — session locks + session-scoped adds + skip', () => {
+    async function startSession(page, n = 2) {
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        for (let i = 0; i < n; i++) {
+            await rows.nth(i).locator('.studio-row-add').click();
+        }
+        await page.locator('#studioWorkoutNameInput').fill('Session lock test');
+        await page.locator('#studioViewLogBtn').click();
+        await page.locator('#studioLogStartBtn').click();
+        await expect(page.locator('#studioLogList .studio-card').first()).toBeVisible();
+    }
+
+    test('mid-session: Plan card menu has its structure ops blocked with a flash', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page);
+
+        // Tab to Plan — cards render with the template menu (Delete etc.)
+        await page.locator('#studioViewPlanBtn').click();
+        const card = page.locator('#studioOrganizeList .studio-card').first();
+        await expect(card).toBeVisible();
+        await card.locator('[data-action="menu"]').click();
+        await card.locator('[data-action="delete"]').click();
+
+        // Flash explains the lock; the card is still there.
+        await expect(page.locator('#studioFlash')).toBeVisible();
+        await expect(page.locator('#studioFlash')).toContainText(/Workout in progress/i);
+        await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(2);
+    });
+
+    test('mid-session: tray chip X is blocked (Build view)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page);
+
+        await page.locator('#studioViewBuildBtn').click();
+        const chips = page.locator('.studio-tray-chip');
+        await expect(chips).toHaveCount(2);
+        await chips.first().locator('.studio-tray-chip-remove').click();
+        // Chip survives; flash explains.
+        await expect(chips).toHaveCount(2);
+        await expect(page.locator('#studioFlash')).toContainText(/Workout in progress/i);
+    });
+
+    test('mid-session: Build shows the session-add banner and adds are session-scoped', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page);
+
+        await page.locator('#studioViewBuildBtn').click();
+        // Banner is visible mid-session...
+        await expect(page.locator('#studioSessionAddBanner')).toBeVisible();
+
+        // Add a third exercise — success flash names the session.
+        await page.locator('.studio-row').nth(2).locator('.studio-row-add').click();
+        await expect(page.locator('#studioFlash')).toContainText(/Added .* to this session/i);
+
+        // It renders in the Log session list…
+        await page.locator('#studioViewLogBtn').click();
+        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(3);
+
+        // …and after Complete it's stripped from the template.
+        await page.locator('#studioLogList .studio-card').first()
+            .locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        await page.locator('#confirmCompleteBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
+        // Back on Plan, only the original 2 template exercises remain.
+        await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(2);
+        // Banner is gone now that the session ended.
+        await page.locator('#studioViewBuildBtn').click();
+        await expect(page.locator('#studioSessionAddBanner')).toBeHidden();
+    });
+
+    test('Log card menu offers Skip (not Delete); skipping greys the card + lands in the payload', async ({ page }) => {
+        let completePayload = null;
+        await page.route('**/api/v3/workout-sessions/*/complete', async (route) => {
+            try { completePayload = JSON.parse(route.request().postData() || '{}'); }
+            catch (_) { completePayload = null; }
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 's-skip', status: 'completed' }) });
+        });
+        await page.route('**/api/v3/workout-sessions', async (route) => {
+            if (route.request().method() !== 'POST') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 's-skip', status: 'in_progress' }) });
+        });
+        await page.route('**/api/v3/workout-sessions/history/**', async (route) => {
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ workout_id: 'x', workout_name: 'x', exercises: {} }) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.evaluate(() => {
+            window.authService = {
+                isUserAuthenticated: () => true,
+                getIdToken: async () => 'test-token',
+            };
+            if (window.workoutStudio) window.workoutStudio.workoutId = 'wk-skip-test';
+        });
+        await startSession(page);
+
+        const cards = page.locator('#studioLogList .studio-card');
+        const second = cards.nth(1);
+        // Session-mode menu: Skip present, structure ops absent.
+        await second.locator('[data-action="menu"]').click();
+        await expect(second.locator('[data-action="skip"]')).toBeVisible();
+        await expect(second.locator('[data-action="delete"]')).toHaveCount(0);
+        await second.locator('[data-action="skip"]').click();
+
+        // The skip-reason offcanvas opens (factory is loaded on this
+        // page) — confirm with no reason text.
+        const skipConfirm = page.locator('#confirmSkipBtn');
+        await expect(skipConfirm).toBeVisible({ timeout: 3000 });
+        await skipConfirm.click();
+
+        // Card now renders skipped.
+        await expect(page.locator('#studioLogList .studio-card.is-skipped')).toHaveCount(1);
+
+        // Complete the session → payload carries is_skipped for it.
+        await cards.first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        await page.locator('#confirmCompleteBtn').click();
+        await expect.poll(() => completePayload, { timeout: 5000 }).toBeTruthy();
+        const skipped = (completePayload.exercises_performed || []).filter(e => e.is_skipped);
+        expect(skipped.length).toBe(1);
+    });
+
+    test('Discard FAB mid-session discards the SESSION only — template intact, lands on Log landing', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page);
+
+        page.on('dialog', dialog => {
+            expect(dialog.message()).toMatch(/session/i);
+            dialog.accept();
+        });
+        await page.locator('#studioFabDiscard').click();
+
+        // Back on the Log landing; session gone but template intact.
+        await expect(page.locator('#studioLogLanding')).toBeVisible();
+        await expect(page.locator('#studioLogStartBtnText')).toHaveText('Start Workout');
+        await page.locator('#studioViewPlanBtn').click();
+        await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(2);
+    });
+
+    test('FAB row is hidden on the Log landing; Save FAB hidden during a session', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('FAB visibility');
+
+        // Log landing → FAB row hidden (Start button is the CTA there).
+        await page.locator('#studioViewLogBtn').click();
+        await expect(page.locator('#studioLogLanding')).toBeVisible();
+        await expect(page.locator('#studioFloatingFabs')).toBeHidden();
+
+        // Start → row shows, but Save is hidden (sessions auto-save).
+        await page.locator('#studioLogStartBtn').click();
+        await expect(page.locator('#studioFloatingFabs')).toBeVisible();
+        await expect(page.locator('#studioFabSave')).toBeHidden();
+        await expect(page.locator('#studioFabGo')).toBeVisible();
+        await expect(page.locator('#studioFabDiscard')).toBeVisible();
+    });
+
+    test('Plan Go FAB saves and switches to the Log tab (no navigation to workout-mode.html)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        await rows.nth(0).locator('.studio-row-add').click();
+        await page.locator('#studioWorkoutNameInput').fill('Go to Log test');
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'plan');
+
+        await page.locator('#studioFabGo').click();
+        // Still on the studio page, now on the Log tab landing.
+        await expect(page).toHaveURL(/workout-studio\.html/);
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'log');
+        await expect(page.locator('#studioLogLanding')).toBeVisible();
     });
 });
 

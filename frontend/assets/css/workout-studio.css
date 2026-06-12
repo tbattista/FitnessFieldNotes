@@ -754,10 +754,12 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   transition: transform 0.28s ease, opacity 0.2s ease;
   will-change: transform, opacity;
 }
-.studio[data-view="select"]   .studio-view-select   { transform: translateX(0); }
-.studio[data-view="select"]   .studio-view-organize { display: none; }
-.studio[data-view="organize"] .studio-view-select   { display: none; }
-.studio[data-view="organize"] .studio-view-organize { transform: translateX(0); }
+/* View visibility is driven by the `hidden` attribute toggled in
+   _showView (build / plan / log). These rules only add the slide-in
+   polish; they intentionally do NOT control display. */
+.studio[data-view="build"] .studio-view-select   { transform: translateX(0); }
+.studio[data-view="plan"]  .studio-view-organize { transform: translateX(0); }
+.studio[data-view="log"]   .studio-view-log      { transform: translateX(0); }
 
 /* Initial slide-in direction when switching views (cosmetic, JS may toggle classes) */
 .studio-view-organize.is-incoming { transform: translateX(20px); opacity: 0; }
@@ -1299,7 +1301,8 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
    More / Save / Go, ~52px tall, anchored 16px from the viewport bottom)
    doesn't sit on top of the Activity / Note / Block trio. The
    safe-area inset keeps it correct on iOS notched devices. */
-.studio[data-view="organize"] .studio-view-organize {
+.studio[data-view="plan"] .studio-view-organize,
+.studio[data-view="log"]  .studio-view-log {
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 .studio-bottom-add-row[hidden] { display: none; }
@@ -1632,8 +1635,10 @@ html[data-bs-theme="dark"] .studio-org-field-input {
   z-index: 40;
   width: min(560px, calc(100% - 2rem));
 }
-/* Floating CTA is only meaningful on Page 1 */
-.studio[data-view="organize"] .studio-cta { display: none !important; }
+/* Floating CTA is only meaningful on Build (JS also gates this via
+   _refreshContinueCta; the CSS is belt-and-braces). */
+.studio[data-view="plan"] .studio-cta,
+.studio[data-view="log"]  .studio-cta { display: none !important; }
 
 /* Floating FABs — ported from .builder-floating-fabs so the studio's
    bottom-right action surface matches the builder's. Only shown on
@@ -1657,12 +1662,9 @@ html[data-bs-theme="dark"] .studio-org-field-input {
     left: calc(var(--bs-menu-width, 16.25rem) + 16px);
   }
 }
-/* Back FAB sits on the LEFT, the rest cluster on the RIGHT. margin-right
-   auto pushes the right group away from Back without needing a wrapper. */
-.studio-fab-back { margin-right: auto; }
 .studio-floating-fabs[hidden] { display: none; }
-/* Page 1 owns the centered Continue CTA — hide FABs while selecting */
-.studio[data-view="select"] .studio-floating-fabs { display: none; }
+/* Build owns the centered Continue CTA — hide FABs while selecting */
+.studio[data-view="build"] .studio-floating-fabs { display: none; }
 
 .studio-fab {
   width: 52px;
@@ -1714,8 +1716,12 @@ html[data-bs-theme="dark"] .studio-org-field-input {
 [data-bs-theme="dark"] .studio-fab {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
 }
-/* Tray chips are redundant on Page 2 (each exercise renders as a card below) */
-.studio[data-view="organize"] .studio-tray { display: none !important; }
+/* Tray chips are redundant on Plan + Log (each exercise renders as a
+   card below) — and critically, the chip X buttons must NOT be
+   reachable mid-session (exercises are skipped in Log, not removed).
+   The tray is Build's selection surface only. */
+.studio[data-view="plan"] .studio-tray,
+.studio[data-view="log"]  .studio-tray { display: none !important; }
 
 /* -------------------- Floating list-count pill -------------------- */
 .studio-floating-count {
@@ -1744,8 +1750,9 @@ html[data-bs-theme="dark"] .studio-org-field-input {
   transform: translateY(0);
 }
 .studio-floating-count .bx { font-size: 0.95rem; }
-/* Hide on Page 2 — the floating count is about browsing the catalog */
-.studio[data-view="organize"] .studio-floating-count { display: none !important; }
+/* Hide off-Build — the floating count is about browsing the catalog */
+.studio[data-view="plan"] .studio-floating-count,
+.studio[data-view="log"]  .studio-floating-count { display: none !important; }
 .studio-cta-btn {
   width: 100%;
   height: 52px;
@@ -2368,4 +2375,62 @@ html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba
 [data-bs-theme="dark"] .studio-flash {
   background: rgba(220, 53, 69, 0.15);
   border-color: rgba(220, 53, 69, 0.40);
+}
+
+/* ------------------------------------------------------------------
+   Session-add banner (Build view, mid-session)
+   Pulses gently so the "you're adding to the live session" state is
+   unmissable without being noisy. Mirrors the draft-banner geometry.
+   ------------------------------------------------------------------ */
+.studio-session-add-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 0.7rem;
+  border-radius: 10px;
+  background: rgba(25, 135, 84, 0.08);
+  border: 1px solid rgba(25, 135, 84, 0.30);
+  color: var(--bs-success, #198754);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+.studio-session-add-banner[hidden] { display: none !important; }
+.studio-session-add-banner-icon { font-size: 1.05rem; flex: 0 0 auto; }
+[data-bs-theme="dark"] .studio-session-add-banner {
+  background: rgba(25, 135, 84, 0.15);
+  border-color: rgba(25, 135, 84, 0.45);
+}
+
+/* ------------------------------------------------------------------
+   Skipped session card (Log view)
+   Line-through name + amber left accent; the Done button hides since
+   a skipped exercise can't also be completed. Unskip lives in the
+   3-dot menu.
+   ------------------------------------------------------------------ */
+.studio-card.is-skipped {
+  border-left: 3px solid var(--bs-warning, #ffc107);
+  opacity: 0.75;
+}
+.studio-card.is-skipped .studio-card-name {
+  text-decoration: line-through;
+  color: var(--bs-secondary-color);
+}
+.studio-card.is-skipped [data-action="toggle-done"] {
+  display: none !important;
+}
+.studio-card.is-skipped .studio-card-body .click-to-edit {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Success-flavored flash (e.g. "Added to this session"). */
+.studio-flash.is-success {
+  background: rgba(25, 135, 84, 0.08);
+  border-color: rgba(25, 135, 84, 0.30);
+  color: var(--bs-success, #198754);
+}
+[data-bs-theme="dark"] .studio-flash.is-success {
+  background: rgba(25, 135, 84, 0.15);
+  border-color: rgba(25, 135, 84, 0.45);
 }

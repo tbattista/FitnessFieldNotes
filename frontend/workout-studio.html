@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260611-05" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260612-01" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -193,6 +193,17 @@
                     <button class="studio-draft-banner-dismiss" id="studioDraftBannerDismiss" type="button" aria-label="Dismiss">
                       <i class="bx bx-x"></i>
                     </button>
+                  </div>
+
+                  <!-- Session-add banner — visible only while a Log session
+                       is running. Makes it unmistakable that exercises
+                       picked now join the LIVE SESSION, not the saved
+                       workout template. -->
+                  <div class="studio-session-add-banner" id="studioSessionAddBanner" hidden role="status">
+                    <i class="bx bx-pulse studio-session-add-banner-icon" aria-hidden="true"></i>
+                    <span class="studio-session-add-banner-text">
+                      Workout in progress — exercises you add will join this session.
+                    </span>
                   </div>
 
                   <!-- Search bar (add-custom moved to the top of the results list) -->
@@ -413,16 +424,14 @@
                   <span id="studioFloatingCountText"></span>
                 </div>
 
-                <!-- Floating FAB row — visible on Page 2 (Organize) only.
-                     Back FAB sits left-justified; Discard / Save / Go are
-                     right-justified. Metadata edits live in the slim header
-                     (the chevron next to the workout name), so there's no
-                     "More" overflow menu — Discard is the only destructive
-                     action that needed surfacing. -->
+                <!-- Floating FAB row. The view tabs handle navigation
+                     (the old Back FAB is gone). Composition per view:
+                       Build       → row hidden (Continue CTA instead)
+                       Plan        → Discard / Save / Go
+                       Log landing → row hidden (Start button is the CTA)
+                       Log session → Discard-session / Complete
+                     Save hides on Log (sessions auto-save). -->
                 <div class="studio-floating-fabs" id="studioFloatingFabs" hidden>
-                  <button type="button" class="studio-fab studio-fab-back" id="studioFabBack" title="Back to selection" aria-label="Back to selection">
-                    <i class="bx bx-arrow-back"></i>
-                  </button>
                   <button type="button" class="studio-fab studio-fab-discard" id="studioFabDiscard" title="Discard workout" aria-label="Discard workout">
                     <i class="bx bx-trash"></i>
                   </button>
@@ -503,9 +512,9 @@
     <!-- Studio draft persistence -->
     <script src="/static/assets/js/services/studio-draft-service.js?v=20260601-01"></script>
 
-    <script src="/static/assets/js/components/exercise-tray.js?v=20260601-01"></script>
+    <script src="/static/assets/js/components/exercise-tray.js?v=20260612-01"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=20260601-01"></script>
-    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260610-01"></script>
+    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260612-01"></script>
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
@@ -528,6 +537,6 @@
          the studio card emits in session mode (per-exercise notes). -->
     <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
 
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260611-04"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260612-01"></script>
   </body>
 </html>

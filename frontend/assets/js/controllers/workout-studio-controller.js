@@ -67,6 +67,12 @@
       // don't pay the cost. Once built, this is the shared facade for
       // session create / auto-save / complete / history fetch.
       this.sessionService = null;
+      // Tray instanceIds added WHILE a session was active. These are
+      // session-scoped: they render in the Log list + get recorded in
+      // the session payload, but they're stripped from the template
+      // (tray/organizeOrder/organizeState) when the session ends so
+      // the saved workout stays exactly what the user planned.
+      this.sessionAdds = new Set();
       // Live card components mounted on Page 2, keyed by instanceId
       this.studioCards = new Map();
       // Live block components mounted on Page 2, keyed by blockId
@@ -211,7 +217,7 @@
       this.dom.organizeStatus = document.getElementById('studioOrganizeStatus');
       // Floating FAB row (Page 2 only)
       this.dom.fabs = document.getElementById('studioFloatingFabs');
-      this.dom.fabBack = document.getElementById('studioFabBack');
+      this.dom.sessionAddBanner = document.getElementById('studioSessionAddBanner');
       this.dom.fabDiscard = document.getElementById('studioFabDiscard');
       this.dom.fabSave = document.getElementById('studioFabSave');
       this.dom.fabGo = document.getElementById('studioFabGo');
@@ -257,6 +263,11 @@
         root: this.dom.tray,
         chipsContainer: this.dom.trayChips,
         onChange: (items) => this._onTrayChange(items),
+        // Block removals while a session runs — the workout's shape is
+        // locked during execution. The tray is hidden on Plan/Log, but
+        // it stays visible on Build (where mid-session ADDS are
+        // allowed), so the gate must live here, not in CSS.
+        canRemove: () => !this._guardSessionLock(),
       });
     }
 
@@ -436,6 +447,7 @@
     }
 
     _openImportWizard() {
+      if (this._guardSessionLock()) return;
       const factory = window.UnifiedOffcanvasFactory;
       if (!factory || typeof factory.createImportWizard !== 'function') {
         console.warn('[WorkoutStudio] UnifiedOffcanvasFactory.createImportWizard unavailable');
@@ -1261,10 +1273,8 @@
         this.dom.saveBtn.addEventListener('click', () => this._handleSave());
       }
 
-      // Floating FAB row — Page 2's mobile-primary action surface.
-      if (this.dom.fabBack) {
-        this.dom.fabBack.addEventListener('click', () => this._showView('build'));
-      }
+      // Floating FAB row — Plan/Log's mobile-primary action surface.
+      // (No Back FAB — the view tabs are the navigation.)
       if (this.dom.fabSave) {
         this.dom.fabSave.addEventListener('click', () => this._handleSave());
       }
@@ -1492,6 +1502,7 @@
     }
 
     _openReorderSheet() {
+      if (this._guardSessionLock()) return;
       if (!window.StudioReorderSheet) return;
       const items = this.tray ? this.tray.getItems() : [];
       if (items.length === 0) return;
@@ -1528,6 +1539,7 @@
     }
 
     _createBlock() {
+      if (this._guardSessionLock()) return;
       const blockId = `block-${Date.now()}-${this._blockSeq++}`;
       // noteIds: notes that live inside this block. They render at the
       // top of the block's children area (above the exercise cards) and
@@ -1563,6 +1575,7 @@
     }
 
     _onBlockMenuAction(blockId, action) {
+      if (this._guardSessionLock()) return;
       switch (action) {
         case 'move-up':
           this._moveOrderEntry({ kind: 'block', blockId }, -1);
@@ -1744,6 +1757,13 @@
       // back into view if the user navigates back to a tab while a
       // session ticks.
       this._renderTimer();
+
+      // Build's session-add banner — visible only when the user is on
+      // Build with a session running, so it's unmistakable that any
+      // exercises picked now join the live session, not the template.
+      if (this.dom.sessionAddBanner) {
+        this.dom.sessionAddBanner.hidden = !(view === 'build' && this._hasActiveSession());
+      }
 
       if (view === 'plan') {
         this._renderActiveView();
@@ -2119,6 +2139,14 @@
 
     _onCardMenuAction(instanceId, action, blockId) {
       if (!this.tray) return;
+      // Skip/unskip are session ops — they're allowed (handled below).
+      // Everything else in this menu restructures the template, which
+      // is locked while a session runs.
+      if (action === 'skip' || action === 'unskip') {
+        this._onToggleSkip(instanceId, action === 'skip');
+        return;
+      }
+      if (this._guardSessionLock()) return;
 
       switch (action) {
         case 'move-up':
@@ -2349,25 +2377,43 @@
       const nameSet = !!(this.workoutName && this.workoutName.trim());
       const canSave = !!trayHas;
       const inLog = this.currentView === 'log';
-      // Go-FAB rules vary by view:
-      //   plan → save first then jump to a workout session (template needs
-      //          a name + persisted id before workout-mode can load it).
-      //   log  → Complete the running session; ≥1 exercise is the only
-      //          gate (auth/save concerns handled inside _handleComplete).
-      const canGo = inLog ? !!trayHas : (canSave && nameSet && !!this.workoutId);
+      const sessionRunning = this._hasActiveSession();
+      // FAB row visibility per view is handled in _showView (hidden on
+      // Build). Within the row:
+      //   - Save shows on Plan only — Log sessions auto-save, a manual
+      //     save button there is dead weight.
+      //   - On the Log LANDING (no session yet) the whole row hides:
+      //     Start Workout is the landing's own CTA. On a running
+      //     session the row shows Discard-session + Complete.
+      if (this.dom.fabs && inLog) {
+        this.dom.fabs.hidden = !sessionRunning;
+      }
       if (this.dom.fabSave) {
+        this.dom.fabSave.hidden = inLog;
         this.dom.fabSave.disabled = !canSave;
         this.dom.fabSave.title = canSave ? 'Save workout' : 'Add an exercise first';
       }
+      if (this.dom.fabDiscard) {
+        this.dom.fabDiscard.title = (inLog && sessionRunning)
+          ? 'Discard session' : 'Discard workout';
+        this.dom.fabDiscard.setAttribute(
+          'aria-label', (inLog && sessionRunning) ? 'Discard session' : 'Discard workout'
+        );
+      }
+      // Go-FAB rules vary by view:
+      //   plan → save then switch to the Log tab; needs name + tray.
+      //   log  → Complete the running session; ≥1 exercise is the only
+      //          gate (auth/save concerns handled inside _handleComplete).
+      const canGo = inLog ? !!trayHas : (canSave && nameSet);
       if (this.dom.fabGo) {
         this.dom.fabGo.disabled = !canGo;
         this.dom.fabGo.title = canGo
           ? (inLog ? 'Complete' : 'Start workout')
           : inLog
             ? 'Add an exercise to log'
-            : (trayHas ? (nameSet ? 'Save first to start' : 'Add a name then save') : 'Add an exercise to start');
+            : (trayHas ? 'Add a name to start' : 'Add an exercise to start');
         // Icon mirrors intent: Log view shows a check (Complete), Plan
-        // shows a play arrow (Start). Replaces the old _reflectFabForMode.
+        // shows a play arrow (Start).
         const icon = this.dom.fabGo.querySelector('i');
         if (icon) icon.className = inLog ? 'bx bx-check' : 'bx bx-play';
         this.dom.fabGo.setAttribute(
@@ -2377,10 +2423,11 @@
     }
 
     /**
-     * Go-FAB: in Plan view, save the template + jump into the legacy
-     * workout-mode session (kept while the new Log view lands its full
-     * Start landing — see plan §2). In Log view, finalize the active
-     * session via the End Workout offcanvas.
+     * Go-FAB: in Plan view, save the template + switch to the Log tab
+     * (landing with Start Workout). The studio is the whole journey
+     * now — legacy workout-mode.html is no longer a destination. In
+     * Log view, finalize the active session via the End Workout
+     * offcanvas.
      */
     async _handleStartFromFab() {
       if (this.currentView === 'log') {
@@ -2399,7 +2446,7 @@
         await this._handleSave();
       } catch (_) { /* status already surfaced by _handleSave */ }
       if (!this.workoutId) return;
-      window.location.href = `/workout-mode.html?id=${encodeURIComponent(this.workoutId)}`;
+      this._showView('log');
     }
 
     // ============================================================
@@ -2780,6 +2827,20 @@
     }
 
     /**
+     * Structural template edits (delete / reorder / import / blocks /
+     * tray removal) are locked while a session runs — the workout's
+     * shape is what's being executed, and changing it mid-flight would
+     * desync the session record. Returns true when the caller should
+     * BAIL (a flash has been surfaced explaining the lock).
+     * Per the product rule: exercises are skipped in Log, not removed.
+     */
+    _guardSessionLock() {
+      if (!this._hasActiveSession()) return false;
+      this._showFlash('Workout in progress — exercises can be skipped in Log, not removed.');
+      return true;
+    }
+
+    /**
      * Make sure a session exists for the current workout. If the service
      * already has one for THIS workoutId, reuse it; otherwise start fresh.
      * Anonymous users get a local-only session (the service handles that
@@ -2985,6 +3046,7 @@
         activityId,
         showDoneButton: true,
         isDone: !!logState.isDone,
+        isSkipped: !!logState.isSkipped,
         callbacks: {
           // Inline edits → write to logState (NOT organizeState) so the
           // template stays untouched while you're logging.
@@ -2992,6 +3054,7 @@
           onInfo: (instanceId) => this._onCardInfo(instanceId),
           onEditCardio: (instanceId) => this._onEditCardio(instanceId),
           onMarkDone: (instanceId, done) => this._onMarkDone(instanceId, done),
+          onMenuAction: (instanceId, action, blockId) => this._onCardMenuAction(instanceId, action, blockId),
         },
       });
       const node = card.render();
@@ -3053,6 +3116,45 @@
     }
 
     /**
+     * Skip / unskip an exercise during a session. Skipping is the
+     * session-mode replacement for delete — the exercise stays in the
+     * workout record with is_skipped: true so history shows the user
+     * chose to pass on it. Uses the skip-reason offcanvas when the
+     * factory provides one; falls back to a plain skip otherwise.
+     */
+    _onToggleSkip(instanceId, skip) {
+      const item = this._findTrayItem(instanceId);
+      if (!item) return;
+      const applySkip = (reason) => {
+        const s = this._ensureLogState(instanceId);
+        s.isSkipped = !!skip;
+        s.skipReason = skip ? (reason || '') : null;
+        // A skipped exercise can't simultaneously be done.
+        if (skip && s.isDone) { s.isDone = false; s.doneAt = null; }
+        this._scheduleDraftSave();
+        const svc = this.sessionService;
+        if (svc && this._hasActiveSession()) {
+          try {
+            if (skip) svc.skipExercise?.(item.name, reason || '');
+            else svc.unskipExercise?.(item.name);
+          } catch (_) {}
+        }
+        // Re-render the Log list so the .is-skipped styling lands.
+        if (this.currentView === 'log') this._renderLog();
+      };
+
+      if (skip && window.UnifiedOffcanvasFactory &&
+          typeof window.UnifiedOffcanvasFactory.createSkipExercise === 'function') {
+        window.UnifiedOffcanvasFactory.createSkipExercise(
+          { exerciseName: item.name },
+          (reason) => applySkip(reason)
+        );
+        return;
+      }
+      applySkip('');
+    }
+
+    /**
      * Complete the active workout session. Delegates to
      * WorkoutSessionService.completeSession which handles the POST
      * /workout-sessions/{id}/complete call, atomic-recovery fallback
@@ -3091,6 +3193,7 @@
           notes: null,
           is_modified: !!(actualWeight && actualWeight !== planWeight),
           is_skipped: !!log.isSkipped,
+          skip_reason: log.isSkipped ? (log.skipReason || null) : null,
           original_weight: planWeight || null,
           original_sets: String(plan.sets || ''),
           original_reps: String(plan.reps || ''),
@@ -3170,11 +3273,15 @@
           throw new Error('Could not start a session to complete');
         }
         const saved = await svc.completeSession(performed, durationMinutes, sessionCalories);
-        this._setStatus('Completed!', 'success');
         console.log('[WorkoutStudio] Session completed:', saved && saved.id);
         // Clear the in-memory log state so re-opening the workout starts a
         // fresh entry. The draft is updated on next render.
         this.logState = new Map();
+        // Mid-session exercise additions were session-scoped — they're
+        // in the completed record above; strip them from the template
+        // so the saved workout reverts to what the user planned.
+        // (Session is no longer active here, so the tray gate passes.)
+        this._removeSessionAdds();
         this._scheduleDraftSave();
         this._stopSessionTimer({ keep: false });
         // Invalidate the history cache so the very next entry into Log
@@ -3183,8 +3290,11 @@
         this.exerciseHistory = new Map();
         // After Complete, drop the user back to the template editor —
         // the session is finalized and the Log tab will now render its
-        // landing state for the next workout.
+        // landing state for the next workout. Status is set AFTER the
+        // view switch because _showView clears the status sink as its
+        // final step.
         this._showView('plan');
+        this._setStatus('Completed!', 'success');
       } catch (err) {
         console.error('[WorkoutStudio] Complete failed:', err);
         this._setStatus(`Could not complete: ${err.message || 'unknown error'}`, 'error');
@@ -3201,10 +3311,50 @@
      * "throw this away".
      */
     _confirmDiscard() {
+      // On Log with a running session, the Discard FAB targets the
+      // SESSION, not the workout — the template is sacred during
+      // execution. Anywhere else it keeps its close/discard-workout
+      // meaning.
+      if (this.currentView === 'log' && this._hasActiveSession()) {
+        const ok = window.confirm('Discard this session? Your workout template stays intact.');
+        if (!ok) return;
+        this._handleDiscardSession();
+        return;
+      }
       const msg = this.workoutId
         ? 'Close this workout? Your saved version stays intact.'
         : 'Discard this workout and start fresh?';
       if (window.confirm(msg)) this._handleDiscardFromFab();
+    }
+
+    /**
+     * Tear down the running session (service state + logState + timer),
+     * strip session-scoped exercise additions from the template, and
+     * land the user back on the Log landing.
+     */
+    _handleDiscardSession() {
+      this._discardActiveSession();
+      this._removeSessionAdds();
+      this._renderLog();
+      this._refreshFabState();
+      this._renderTimer();
+      this._showFlash('Session discarded — your workout template is unchanged.');
+    }
+
+    /**
+     * Strip every tray item that was added DURING the session from the
+     * template structures. Called after complete/discard, when the
+     * session is no longer active (so the tray's canRemove gate passes).
+     */
+    _removeSessionAdds() {
+      if (!this.sessionAdds || this.sessionAdds.size === 0) return;
+      for (const instanceId of this.sessionAdds) {
+        if (this.tray) this.tray.remove(instanceId);
+        this.organizeState.delete(instanceId);
+        // _onTrayChange's _syncOrganizeOrderWithTray drops the order
+        // entries for removed instanceIds, so no manual splice needed.
+      }
+      this.sessionAdds = new Set();
     }
 
     _handleDiscardFromFab() {
@@ -3314,10 +3464,11 @@
       if (this.dom.continueCount) this.dom.continueCount.textContent = String(n);
     }
 
-    _showFlash(message) {
+    _showFlash(message, kind = 'error') {
       if (!this.dom.flash) return;
       this.dom.flash.textContent = message || '';
       this.dom.flash.hidden = !message;
+      this.dom.flash.classList.toggle('is-success', kind === 'success');
       if (this._flashTimer) clearTimeout(this._flashTimer);
       if (message) {
         this._flashTimer = setTimeout(() => {
@@ -3636,7 +3787,27 @@
 
     _onAddExercise(exercise) {
       if (!this.tray) return;
-      this.tray.add(exercise);
+      const instanceId = this.tray.add(exercise);
+      // Mid-session adds are SESSION-scoped: they join the running
+      // session (seeded below so auto-save picks them up) and they're
+      // flagged in sessionAdds so the template sheds them when the
+      // session ends. The Build banner explains this to the user; the
+      // flash confirms each individual add.
+      if (instanceId && this._hasActiveSession()) {
+        this.sessionAdds.add(instanceId);
+        const name = exercise && exercise.name;
+        if (name && this.sessionService) {
+          const s = this._ensureOrganizeState(instanceId);
+          try {
+            this.sessionService.updateExerciseDetails?.(name, {
+              target_sets: s.sets || '3',
+              target_reps: s.reps || '8-12',
+              rest: s.rest || '60s',
+            });
+          } catch (_) {}
+        }
+        this._showFlash(`Added "${name || 'exercise'}" to this session.`, 'success');
+      }
     }
 
     _onTrayChange(items) {
