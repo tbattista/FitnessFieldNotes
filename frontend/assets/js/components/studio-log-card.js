@@ -192,10 +192,23 @@
                 ${safeName}
               </div>
               <div class="workout-header-actions">
+                <!-- Pencil = Edit. WeightFieldController + RepsSetsFieldController
+                     discover .workout-edit-btn inside the card; clicking it
+                     dispatches enterUnifiedEditMode (with data-unified-edit
+                     opting in to the unified-controller flow), which the
+                     UnifiedEditController catches to morph both fields into
+                     edit mode at once. Locked when the card is .logged. -->
                 <button class="workout-edit-btn${this.isDone ? ' edit-locked' : ''}"
+                        data-unified-edit="true" type="button"
+                        title="${this.isDone ? 'Uncomplete to edit' : 'Edit weight + protocol'}"
+                        aria-label="${this.isDone ? 'Editing locked - uncomplete to edit' : 'Edit'}">
+                  <i class="bx ${this.isDone ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
+                </button>
+                <!-- Info circle = open the exercise detail offcanvas. -->
+                <button class="workout-info-btn"
                         data-action="info" type="button"
                         title="Details"
-                        aria-label="Details">
+                        aria-label="Exercise details">
                   <i class="bx bx-info-circle"></i>
                 </button>
                 ${this._buildMenuButton()}
@@ -414,16 +427,40 @@
       if (!this.el) return;
 
       // Header tap → expand/collapse, unless the user hit an action.
+      // The pencil edit button is left out of the skip list so it can
+      // expand AND enter edit mode in one tap (WeightFieldController
+      // handles the expand-then-fire-event part).
       const header = this.el.querySelector('.workout-card-header');
       if (header) {
         header.addEventListener('click', (e) => {
-          if (e.target.closest('[data-action="info"], [data-action="menu"], .workout-menu')) return;
+          if (e.target.closest('[data-action="info"], [data-action="menu"], .workout-menu, .workout-edit-btn')) return;
           this._fire('onToggleExpand', !this._expanded);
         });
       }
       // Body taps should NOT toggle expand.
       const body = this.el.querySelector('.workout-card-body');
       if (body) body.addEventListener('click', (e) => e.stopPropagation());
+
+      // Click-to-edit on the weight / protocol field DISPLAYS — same
+      // gesture workout-mode wires inline. Dispatch enterUnifiedEditMode
+      // on the card root; UnifiedEditController (mounted by the studio
+      // controller) catches it and morphs both fields into edit mode.
+      const editableDisplays = this.el.querySelectorAll(
+        '.weight-display.click-to-edit, .repssets-display.click-to-edit'
+      );
+      editableDisplays.forEach((d) => {
+        d.addEventListener('click', (e) => {
+          // Don't fire when the user is tapping inside an open editor
+          // (the displays themselves are removed from view at that point
+          // but defensively guard the propagation).
+          e.stopPropagation();
+          if (this.isDone) return; // .logged cards have edit-locked semantics
+          this.el.dispatchEvent(new CustomEvent('enterUnifiedEditMode', {
+            bubbles: false,
+            detail: { source: 'text' },
+          }));
+        });
+      });
 
       // Info icon
       const infoBtn = this.el.querySelector('[data-action="info"]');

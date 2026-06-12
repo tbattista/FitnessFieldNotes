@@ -32,11 +32,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.65rem 0.5rem 0.7rem;
+  padding: 0.85rem 0.9rem 0.95rem;
   background: var(--bs-body-bg);
   border: 1px solid var(--bs-border-color);
   border-radius: 12px;
-  margin: 0.5rem 0.25rem 0;
+  /* Breathing room above (between the view tabs and this title card)
+     and below (between this card and the tray / first exercise card)
+     so the workout title doesn't read as crammed against either edge. */
+  margin: 0.6rem 0.25rem 1rem;
   transition: gap 0.15s ease;
 }
 /* Collapsed state: no trailing gap between name row and the hidden meta row */
@@ -2539,12 +2542,14 @@ html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba
 }
 
 /* Log list — same shell as the organize list, slightly tighter gap so
-   compact-completed cards stack densely. */
+   compact-completed cards stack densely. The top padding gives
+   breathing room between the slim header / timer pill and the first
+   exercise card; the header's bottom margin handles part of this too. */
 .studio-log-list {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  padding: 0 0.25rem;
+  padding: 0.5rem 0.25rem 0;
 }
 /* Replaced-with subline — tighten its top spacing so it sits flush
    under the name without inheriting the body padding. */

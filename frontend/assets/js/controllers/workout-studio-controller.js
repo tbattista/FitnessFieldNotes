@@ -3147,18 +3147,25 @@
       if (!card || !card.el) return;
       const root = card.el;
       const onCommit = (partial) => this._onLogCardChange(item.instanceId, partial);
+      let weightController = null;
+      let repsSetsController = null;
       // WeightFieldController: discovers .workout-weight-field inside
       // the card; raises a "weightChanged" custom event the studio
-      // listens to.
+      // listens to. Also picks up the pencil .workout-edit-btn in the
+      // header to trigger the enterUnifiedEditMode event.
       try {
         if (window.WeightFieldController) {
           const weightHost = root.querySelector('.workout-weight-field');
           if (weightHost) {
-            const wc = new window.WeightFieldController(weightHost, {
+            weightController = new window.WeightFieldController(weightHost, {
               sessionService: this.sessionService || null,
               onCommit: (val, unit) => onCommit({ weight: val, weightUnit: unit }),
             });
-            if (typeof wc.init === 'function') wc.init();
+            if (typeof weightController.init === 'function') weightController.init();
+            // The render-manager pattern: stash the controller on the
+            // host so the UnifiedEditController can find it. Same hook
+            // workout-mode's workout-render-manager uses.
+            weightHost.weightController = weightController;
           }
         }
       } catch (err) { console.warn('[WorkoutStudio] WeightFieldController mount failed:', err); }
@@ -3166,20 +3173,33 @@
         if (window.RepsSetsFieldController) {
           const rsHost = root.querySelector('.workout-repssets-field');
           if (rsHost) {
-            const rc = new window.RepsSetsFieldController(rsHost, {
+            repsSetsController = new window.RepsSetsFieldController(rsHost, {
               sessionService: this.sessionService || null,
               onCommit: (protocol) => {
-                // Best-effort split for "3×10" → sets/reps; the protocol
-                // string is the source of truth on display.
                 const m = String(protocol || '').match(/^\s*(\d+)\s*[x×]\s*(.+?)\s*$/i);
                 if (m) onCommit({ protocol, sets: m[1], reps: m[2] });
                 else onCommit({ protocol, reps: protocol });
               },
             });
-            if (typeof rc.init === 'function') rc.init();
+            if (typeof repsSetsController.init === 'function') repsSetsController.init();
+            rsHost.repsSetsController = repsSetsController;
           }
         }
       } catch (err) { console.warn('[WorkoutStudio] RepsSetsFieldController mount failed:', err); }
+
+      // UnifiedEditController glues the two field controllers together:
+      // it listens for enterUnifiedEditMode / cancelUnifiedEditMode on
+      // the card root and morphs BOTH fields into / out of edit mode
+      // simultaneously. The pencil button + click-to-edit text both
+      // dispatch this event, so this is what makes those gestures
+      // actually open edit mode.
+      try {
+        if (window.UnifiedEditController && weightController && repsSetsController) {
+          const uc = new window.UnifiedEditController(root, weightController, repsSetsController);
+          if (typeof uc.init === 'function') uc.init();
+          root.unifiedEditController = uc;
+        }
+      } catch (err) { console.warn('[WorkoutStudio] UnifiedEditController mount failed:', err); }
     }
 
     /**
