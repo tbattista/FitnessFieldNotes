@@ -166,9 +166,12 @@ html[data-bs-theme="dark"] .studio-meta-field:focus-within { background: var(--b
 
 /* -------------------- Tray (sticky chip row) -------------------- */
 .studio-tray {
-  position: sticky;
-  top: 0;
-  z-index: 29;
+  /* No longer sticky — only the view-tabs row pins to the top. The
+     tray was previously sticky so users could see their chips while
+     scrolling the catalog, but stacking it with the sticky tabs hid
+     the tabs behind the page navbar on mobile. The tabs are the
+     navigation; the tray is a momentary selection surface and is fine
+     to scroll away. */
   background: var(--bs-body-bg);
   border-bottom: 1px solid var(--bs-border-color-translucent);
   min-height: 44px;
