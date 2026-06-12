@@ -2677,6 +2677,19 @@
 
       if (items.length === 0) return;
 
+      // Pre-select which card should mount EXPANDED — the first
+      // not-yet-done card walking the order top-to-bottom. Matches
+      // workout-mode's "one open at a time, you walk down" UX.
+      if (!this._expandedLogInstanceId) {
+        for (const entry of this.organizeOrder) {
+          if (entry.kind !== 'card') continue;
+          const log = this.logState.get(entry.instanceId) || {};
+          if (log.isDone || log.isSkipped) continue;
+          this._expandedLogInstanceId = entry.instanceId;
+          break;
+        }
+      }
+
       const blockOptions = this._blockOptionsList();
       const total = this.organizeOrder.length;
       this.organizeOrder.forEach((entry, idx) => {
@@ -2994,6 +3007,11 @@
       if (!svc) return;
       const dict = svc.exerciseHistory || {};
       const now = Date.now();
+      // Two parallel maps — the slim one the existing collapsed-header
+      // "Last:" subtitle uses, and the full detail (recent_sessions[],
+      // last_weight_direction) the new StudioLogCard needs for its
+      // expanded Weight History tree + the "from last session" hint.
+      if (!this._exerciseHistoryDetail) this._exerciseHistoryDetail = new Map();
       Object.entries(dict).forEach(([name, h]) => {
         if (!h || !h.last_weight) return;
         const dateStr = h.last_session_date;
@@ -3010,6 +3028,7 @@
           daysAgo,
           sessionDate: dateStr || null,
         });
+        this._exerciseHistoryDetail.set(name, h);
       });
     }
 
@@ -3056,70 +3075,140 @@
     _mountLogCard(item, { container }) {
       const planState = this._ensureOrganizeState(item.instanceId);
       const logState = this._ensureLogState(item.instanceId);
+      // Display values prefer log overrides over plan defaults so the
+      // weight/protocol the user typed today shows on top.
       const displayState = Object.assign({}, planState, logState);
 
       const src = item.exercise || {};
       const groupType = String(src.group_type || 'standard').toLowerCase();
-      const activityId = src._activityId || src.activity_id
-        || (planState.cardioConfig && planState.cardioConfig.activity_type) || '';
-      const activityIcon = groupType === 'cardio'
-        ? (this._resolveActivityIcon(activityId) || 'bx-pulse')
-        : '';
 
-      // Look up the per-exercise last-session snapshot (populated by
-      // _loadExerciseHistory when entering Log mode with a saved
-      // workoutId). Cardio exercises don't track weight history this
-      // way, so they only carry it when an explicit entry exists.
+      // Last-session snapshot + the recent-sessions tree for the
+      // history block. Both come from the same controller-level cache
+      // that _loadExerciseHistory populates.
       const lastSession = this.exerciseHistory.get(item.name) || null;
+      const historyEntry = this._exerciseHistoryDetail?.get?.(item.name) || null;
+      const recentSessions = (historyEntry && Array.isArray(historyEntry.recent_sessions))
+        ? historyEntry.recent_sessions : [];
+      const lastDirection = historyEntry ? (historyEntry.last_weight_direction || null) : null;
 
-      const card = new window.StudioExerciseCard({
+      // Default to expanded for the first not-yet-done card on first
+      // mount; everything else stays collapsed (workout-mode UX —
+      // "you're walking down the list, one at a time").
+      const shouldExpand = this._expandedLogInstanceId === item.instanceId;
+
+      const card = new window.StudioLogCard({
         instanceId: item.instanceId,
         name: item.name,
         state: displayState,
-        inBlock: null,
-        blockOptions: [],
         groupType,
-        lastSession,
-        activityIcon,
-        cardioConfig: planState.cardioConfig || {},
-        activityId,
-        showDoneButton: true,
+        activityIcon: groupType === 'cardio'
+          ? (this._resolveActivityIcon(src._activityId || src.activity_id) || 'bx-pulse')
+          : '',
         isDone: !!logState.isDone,
         isSkipped: !!logState.isSkipped,
+        skipReason: logState.skipReason || '',
         replacedByName: logState.replacedByName || '',
+        lastSession,
+        recentSessions,
         weightDirection: logState.weightDirection || null,
+        lastDirection,
         exerciseNotes: logState.notes || '',
+        expanded: shouldExpand,
         callbacks: {
-          // Inline edits → write to logState (NOT organizeState) so the
-          // template stays untouched while you're logging.
+          onToggleExpand: (instanceId, willExpand) => this._onLogCardToggleExpand(instanceId, willExpand),
           onChange: (instanceId, partial) => this._onLogCardChange(instanceId, partial),
           onInfo: (instanceId) => this._onCardInfo(instanceId),
-          onEditCardio: (instanceId) => this._onEditCardio(instanceId),
           onMarkDone: (instanceId, done) => this._onMarkDone(instanceId, done),
-          onMenuAction: (instanceId, action, blockId) => this._onCardMenuAction(instanceId, action, blockId),
+          onMenuAction: (instanceId, action) => this._onCardMenuAction(instanceId, action, null),
           onDirectionChange: (instanceId, dir) => this._onDirectionChange(instanceId, dir),
           onNotesChange: (instanceId, notes) => this._onExerciseNotesChange(instanceId, notes),
         },
       });
       const node = card.render();
-      // Tag every Log card so the .studio-log-card.is-done CSS path can
-      // collapse completed cards down to a compact summary line.
-      node.classList.add('studio-log-card');
-      // Compact-done summary line ("Today: 135 lbs · 3×8") that the CSS
-      // surfaces ONLY when the card is in the .is-done state. Updated
-      // in _onMarkDone whenever the user marks the card complete.
-      const summary = document.createElement('span');
-      summary.className = 'studio-log-card-done-summary';
-      summary.textContent = this._buildDoneSummary(item.instanceId);
-      const nameWrap = node.querySelector('.studio-card-name-wrap');
-      if (nameWrap && nameWrap.parentElement) {
-        nameWrap.parentElement.insertBefore(summary, nameWrap.nextSibling);
-      }
       container.appendChild(node);
-      // Share the same map as plan cards — the destroy path treats them
-      // uniformly and we don't need a second studioLogCards index.
+
+      // Mount the same field controllers workout-mode uses so the inline
+      // weight/protocol editors behave identically (click to edit,
+      // unit pills, ✓/✗ save row). They auto-find their target nodes
+      // inside the card and the session service hooks up auto-save.
+      this._mountLogCardFieldControllers(card, item);
+
       this.studioCards.set(item.instanceId, card);
       return card;
+    }
+
+    /**
+     * Mount the shared WeightFieldController + RepsSetsFieldController
+     * onto a freshly-rendered Log card so the big WEIGHT/PROTOCOL field
+     * edits work the same way they do in workout-mode. Both controllers
+     * write through the studio's _onLogCardChange handler.
+     */
+    _mountLogCardFieldControllers(card, item) {
+      if (!card || !card.el) return;
+      const root = card.el;
+      const onCommit = (partial) => this._onLogCardChange(item.instanceId, partial);
+      // WeightFieldController: discovers .workout-weight-field inside
+      // the card; raises a "weightChanged" custom event the studio
+      // listens to.
+      try {
+        if (window.WeightFieldController) {
+          const weightHost = root.querySelector('.workout-weight-field');
+          if (weightHost) {
+            const wc = new window.WeightFieldController(weightHost, {
+              sessionService: this.sessionService || null,
+              onCommit: (val, unit) => onCommit({ weight: val, weightUnit: unit }),
+            });
+            if (typeof wc.init === 'function') wc.init();
+          }
+        }
+      } catch (err) { console.warn('[WorkoutStudio] WeightFieldController mount failed:', err); }
+      try {
+        if (window.RepsSetsFieldController) {
+          const rsHost = root.querySelector('.workout-repssets-field');
+          if (rsHost) {
+            const rc = new window.RepsSetsFieldController(rsHost, {
+              sessionService: this.sessionService || null,
+              onCommit: (protocol) => {
+                // Best-effort split for "3×10" → sets/reps; the protocol
+                // string is the source of truth on display.
+                const m = String(protocol || '').match(/^\s*(\d+)\s*[x×]\s*(.+?)\s*$/i);
+                if (m) onCommit({ protocol, sets: m[1], reps: m[2] });
+                else onCommit({ protocol, reps: protocol });
+              },
+            });
+            if (typeof rc.init === 'function') rc.init();
+          }
+        }
+      } catch (err) { console.warn('[WorkoutStudio] RepsSetsFieldController mount failed:', err); }
+    }
+
+    /**
+     * Accordion: expand one card at a time. Collapses any previously
+     * expanded card before opening the new one; tapping the open card's
+     * header again collapses it. Tracked via _expandedLogInstanceId so
+     * a re-render preserves the open state.
+     */
+    _onLogCardToggleExpand(instanceId, willExpand) {
+      const prevId = this._expandedLogInstanceId;
+      if (willExpand) {
+        if (prevId && prevId !== instanceId) {
+          const prev = this.studioCards.get(prevId);
+          if (prev && typeof prev.setExpanded === 'function') prev.setExpanded(false);
+        }
+        this._expandedLogInstanceId = instanceId;
+        const cur = this.studioCards.get(instanceId);
+        if (cur && typeof cur.setExpanded === 'function') cur.setExpanded(true);
+        // Smooth scroll into view so the user sees the now-open card.
+        if (cur && cur.el) {
+          setTimeout(() => cur.el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+        }
+      } else {
+        if (this._expandedLogInstanceId === instanceId) {
+          this._expandedLogInstanceId = null;
+        }
+        const cur = this.studioCards.get(instanceId);
+        if (cur && typeof cur.setExpanded === 'function') cur.setExpanded(false);
+      }
     }
 
     _onLogCardChange(instanceId, partial) {
@@ -3160,46 +3249,61 @@
       s.isDone = !!done;
       s.doneAt = done ? Date.now() : null;
       this._scheduleDraftSave();
-      // Refresh the compact-done summary that's rendered next to the
-      // name — it shows once the card collapses on Done.
-      const card = this.studioCards && this.studioCards.get(instanceId);
-      const el = card && card.el;
-      if (el) {
-        const summary = el.querySelector('.studio-log-card-done-summary');
-        if (summary) summary.textContent = this._buildDoneSummary(instanceId);
-      }
       // Push completion state into the live session — workout-mode's
       // history endpoint reads is_completed from the session, so marking
       // Done here is what makes "Last: X lbs" appear on the next visit.
       const svc = this.sessionService;
       const item = this._findTrayItem(instanceId);
-      if (!svc || !item || !this._hasActiveSession()) return;
-      try {
-        if (done) svc.completeExercise?.(item.name);
-        else svc.uncompleteExercise?.(item.name);
-      } catch (_) {}
+      if (svc && item && this._hasActiveSession()) {
+        try {
+          if (done) svc.completeExercise?.(item.name);
+          else svc.uncompleteExercise?.(item.name);
+        } catch (_) {}
+      }
+      // Auto-advance UX — when the user marks a card done, hold the
+      // "Completed" confirmation visible for a beat, then collapse it
+      // and open the next not-yet-done card (workout-mode flourish).
+      // Uncompleting just reopens THIS card.
+      if (done && this.currentView === 'log') {
+        setTimeout(() => this._advanceToNextLogCard(instanceId), 600);
+      } else if (!done && this.currentView === 'log') {
+        this._onLogCardToggleExpand(instanceId, true);
+      }
     }
 
     /**
-     * Compact "Today: 135 lbs · 3×8" recap used on the collapsed
-     * completed-card row. Pulls from the merged display state (plan
-     * defaults + log overrides) so it reads exactly what the user
-     * confirmed. Returns '' when there's nothing meaningful to show.
+     * Collapse `instanceId` and expand the next not-yet-done card in
+     * the order. If there isn't one (everything done/skipped) just
+     * collapse this card so the user can scroll past the finished work.
      */
-    _buildDoneSummary(instanceId) {
-      const log = (this.logState && this.logState.get(instanceId)) || {};
-      const plan = (this.organizeState && this.organizeState.get(instanceId)) || {};
-      const merged = Object.assign({}, plan, log);
-      const weight = (log.weight != null ? log.weight : (plan.weight || '')).toString().trim();
-      const unit = merged.weightUnit || 'lbs';
-      const sets = (merged.sets || '').toString().trim();
-      const reps = (merged.reps || '').toString().trim();
-      const parts = [];
-      if (weight) parts.push(`${weight}${unit && unit !== 'diy' ? ' ' + unit : ''}`);
-      if (sets && reps) parts.push(`${sets}×${reps}`);
-      else if (reps) parts.push(reps);
-      return parts.length ? `· ${parts.join(' · ')}` : '';
+    _advanceToNextLogCard(fromInstanceId) {
+      // Collapse the source card.
+      const cur = this.studioCards.get(fromInstanceId);
+      if (cur && typeof cur.setExpanded === 'function') cur.setExpanded(false);
+      if (this._expandedLogInstanceId === fromInstanceId) {
+        this._expandedLogInstanceId = null;
+      }
+      // Find the next not-yet-done card AFTER the source in
+      // organizeOrder. Wrap once if nothing's left at the bottom.
+      const order = this.organizeOrder || [];
+      const startIdx = order.findIndex(
+        (e) => e.kind === 'card' && e.instanceId === fromInstanceId);
+      const ring = startIdx >= 0
+        ? order.slice(startIdx + 1).concat(order.slice(0, startIdx))
+        : order.slice();
+      for (const entry of ring) {
+        if (entry.kind !== 'card') continue;
+        const log = this.logState.get(entry.instanceId) || {};
+        if (log.isDone || log.isSkipped) continue;
+        this._onLogCardToggleExpand(entry.instanceId, true);
+        return;
+      }
     }
+
+    // _buildDoneSummary lived here for the previous compact-done CSS
+    // hack. StudioLogCard now uses the workout-mode .workout-card.logged
+    // visual instead (the body collapses cleanly via the workout-mode
+    // CSS), so the bespoke summary line is no longer needed.
 
     /**
      * Skip / unskip an exercise during a session. Skipping is the

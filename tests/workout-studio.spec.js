@@ -3026,113 +3026,65 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#studioViewLogBtn')).not.toHaveClass(/is-active/);
     });
 
-    test('Flipping to Log keeps the plan-card shell; flipping back stays in plan mode unchanged', async ({ page }) => {
+    test('Plan view keeps the .studio-card editor shell; Log view renders the workout-mode .workout-card', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
 
-        // Plan mode → no Done buttons on the cards
-        await expect(page.locator('.studio-card').first()).toBeVisible();
-        await expect(page.locator('.studio-card-done-btn')).toHaveCount(0);
+        // Plan view — template-editor cards. No Mark Done button anywhere.
+        await expect(page.locator('#studioOrganizeList .studio-card').first()).toBeVisible();
+        await expect(page.locator('#studioOrganizeList .workout-primary-action')).toHaveCount(0);
 
-        // Flip to Log — cards remain studio-cards (same shell as Plan)
-        // but each now sprouts a Done check button in the header actions.
+        // Log view — the new StudioLogCard uses workout-mode markup.
         await enterLogSession(page);
         await expect(page.locator('#studioViewLogBtn')).toHaveClass(/is-active/);
-        await expect(page.locator('.studio-card')).toHaveCount(2);
-        await expect(page.locator('.studio-card-done-btn')).toHaveCount(2);
+        await expect(page.locator('#studioLogList .workout-card')).toHaveCount(2);
+        // Mark Done button only appears once a card is expanded — the
+        // first not-yet-done card auto-expands at session start.
+        await expect(page.locator('#studioLogList .workout-card.expanded')).toHaveCount(1);
+        await expect(page.locator('#studioLogList .workout-card.expanded .workout-primary-action')).toBeVisible();
 
-        // Flip back → Done buttons are gone, plan cards unchanged
+        // Flip back to Plan → workout-mode markup gone, plan cards intact.
         await page.locator('#studioViewPlanBtn').click();
-        await expect(page.locator('.studio-card-done-btn')).toHaveCount(0);
-        await expect(page.locator('.studio-card')).toHaveCount(2);
+        await expect(page.locator('#studioLogList .workout-card')).toHaveCount(0);
+        await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(2);
     });
 
-    test('Done button toggles is-done class + persists across mode flips', async ({ page }) => {
-        await page.goto(`${BASE}/workout-studio.html`);
-        await continueToOrganize(page);
-
-        // Flip to Log + mark the first card Done
-        await enterLogSession(page);
-        const card = page.locator('.studio-card').first();
-        await card.locator('[data-action="toggle-done"]').click();
-        await expect(card).toHaveClass(/is-done/);
-
-        // Tap Done again → card un-dones
-        await card.locator('[data-action="toggle-done"]').click();
-        await expect(card).not.toHaveClass(/is-done/);
-    });
-
-    test('Completed button lives in the card footer (not the header) and Cancel/Save slide in to its LEFT during edit', async ({ page }) => {
+    test('Mark Done flips the card to .logged + the button label to "Completed"', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
         await enterLogSession(page);
 
-        const card = page.locator('.studio-card').first();
+        // First card is auto-expanded; tap its Mark Done.
+        const card = page.locator('#studioLogList .workout-card').first();
+        await expect(card).toHaveClass(/expanded/);
+        const btn = card.locator('.workout-primary-action');
+        await expect(btn).toContainText(/Mark Done/i);
 
-        // The Done button must sit in the persistent footer, NOT in the
-        // header actions row anymore.
-        await expect(card.locator('.studio-card-footer [data-action="toggle-done"]')).toHaveCount(1);
-        await expect(card.locator('.studio-card-header [data-action="toggle-done"]')).toHaveCount(0);
-
-        // Cancel/Save row is hidden in steady state, even though it's
-        // rendered inside the footer.
-        const editActions = card.locator('.studio-card-edit-actions');
-        await expect(editActions).toBeHidden();
-
-        // Open a field edit (Protocol) → Cancel/Save appear in the footer
-        // and DOM-order before the Done button (i.e. visually to the LEFT).
-        await card.locator('.repssets-display').click();
-        await expect(editActions).toBeVisible();
-
-        const childrenOrder = await card.locator('.studio-card-footer').evaluate((el) => {
-            return Array.from(el.children).map(c =>
-                c.classList.contains('studio-card-edit-actions') ? 'edit'
-                : c.classList.contains('studio-card-done-btn') ? 'done'
-                : 'other'
-            ).filter(s => s !== 'other');
-        });
-        expect(childrenOrder).toEqual(['edit', 'done']);
-
-        // Tap Cancel → edit actions hide again; Done stays visible (always-on).
-        await card.locator('.studio-card-edit-cancel').click();
-        await expect(editActions).toBeHidden();
-        await expect(card.locator('.studio-card-done-btn')).toBeVisible();
+        await btn.click();
+        // Card carries the .logged class. The button text + class flip
+        // before the auto-advance collapse runs (~600ms later) — the
+        // advance behavior is exercised in the next spec.
+        await expect(card).toHaveClass(/logged/);
+        await expect(btn).toContainText(/Completed/i);
+        await expect(btn).toHaveClass(/completed/);
     });
 
-    test('Complete bubble flips to filled "Completed" + locks click-to-edit on fields', async ({ page }) => {
+    test('Completing a card auto-collapses it and advances to the next not-yet-done card', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
-
-        // Flip to Log
         await enterLogSession(page);
-        const card = page.locator('.studio-card').first();
-        const doneBtn = card.locator('[data-action="toggle-done"]');
 
-        // Pre-toggle: outline bubble with icon + "Complete" text, like the
-        // Cancel/Save pair. click-to-edit interactive.
-        await expect(card.locator('.studio-card-done-text')).toHaveText('Complete');
-        await expect(doneBtn).toHaveClass(/btn-outline-success/);
+        const cards = page.locator('#studioLogList .workout-card');
+        // First auto-expanded, second collapsed.
+        await expect(cards.nth(0)).toHaveClass(/expanded/);
+        await expect(cards.nth(1)).not.toHaveClass(/expanded/);
 
-        // Toggle done → filled green "Completed", aria swaps to "Mark incomplete"
-        await doneBtn.click();
-        await expect(card.locator('.studio-card-done-text')).toHaveText('Completed');
-        await expect(doneBtn).toHaveClass(/btn-success/);
-        await expect(doneBtn).not.toHaveClass(/btn-outline-success/);
-        await expect(doneBtn).toHaveAttribute('aria-label', 'Mark incomplete');
-        await expect(doneBtn).toHaveAttribute('aria-pressed', 'true');
-
-        // click-to-edit on the protocol field must be inert (pointer-events: none)
-        const editable = card.locator('.studio-card-field .click-to-edit').first();
-        const pe = await editable.evaluate(el => getComputedStyle(el).pointerEvents);
-        expect(pe).toBe('none');
-
-        // Toggle off → back to outline "Complete", pointer-events restored
-        await doneBtn.click();
-        await expect(card.locator('.studio-card-done-text')).toHaveText('Complete');
-        await expect(doneBtn).toHaveClass(/btn-outline-success/);
-        await expect(doneBtn).toHaveAttribute('aria-label', 'Mark complete');
-        const pe2 = await editable.evaluate(el => getComputedStyle(el).pointerEvents);
-        expect(pe2).not.toBe('none');
+        await cards.nth(0).locator('.workout-primary-action').click();
+        // After the 600ms advance delay: first collapses + carries
+        // .logged; second expands to take the user to the next exercise.
+        await expect(cards.nth(0)).not.toHaveClass(/expanded/, { timeout: 2000 });
+        await expect(cards.nth(0)).toHaveClass(/logged/);
+        await expect(cards.nth(1)).toHaveClass(/expanded/, { timeout: 2000 });
     });
 
     test('Anonymous Complete in Log mode finishes a local-only session (no API call)', async ({ page }) => {
@@ -3156,7 +3108,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         });
 
         await enterLogSession(page);
-        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first().locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
 
         // End Workout offcanvas now intercepts the Go FAB — confirm the
@@ -3225,7 +3177,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await enterLogSession(page);
         // Give the start call time to land
         await page.waitForTimeout(200);
-        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first().locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
 
         // End Workout offcanvas appears first — confirm to actually
@@ -3280,7 +3232,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
 
         await enterLogSession(page);
         await page.waitForTimeout(200);
-        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first().locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
 
         // Offcanvas attaches and is visible. Title is "Session Complete".
@@ -3327,7 +3279,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         });
 
         await enterLogSession(page);
-        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first().locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
 
         const offcanvas = page.locator('#completeWorkoutOffcanvas');
@@ -3492,7 +3444,7 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await continueToOrganize(page);
 
         await enterLogSession(page);
-        await page.locator('.studio-card').first().locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first().locator('[data-action="mark-done"]').click();
 
         // The old choice dialog (Complete / Discard / Cancel) is removed.
         await expect(page.locator('#studioModeSwitchDialog')).toHaveCount(0);
@@ -3555,8 +3507,8 @@ test.describe('Workout Studio — Log mode (Plan/Log toggle on Page 2)', () => {
         await expect(page.locator('#studioLogLanding')).toBeHidden();
         await expect(page.locator('#studioLogList')).toBeVisible();
         // Session cards mount as studio-cards with Done buttons.
-        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(2);
-        await expect(page.locator('#studioLogList .studio-card-done-btn')).toHaveCount(2);
+        await expect(page.locator('#studioLogList .workout-card')).toHaveCount(2);
+        await expect(page.locator('#studioLogList .workout-primary-action')).toHaveCount(2);
     });
 
     test('Switching to Plan during a session and returning to Log keeps the session list visible (no landing)', async ({ page }) => {
@@ -3600,7 +3552,7 @@ test.describe('Workout Studio — session locks + session-scoped adds + skip', (
         await page.locator('#studioWorkoutNameInput').fill('Session lock test');
         await page.locator('#studioViewLogBtn').click();
         await page.locator('#studioLogStartBtn').click();
-        await expect(page.locator('#studioLogList .studio-card').first()).toBeVisible();
+        await expect(page.locator('#studioLogList .workout-card').first()).toBeVisible();
     }
 
     test('mid-session: Plan card menu has its structure ops blocked with a flash', async ({ page }) => {
@@ -3647,11 +3599,11 @@ test.describe('Workout Studio — session locks + session-scoped adds + skip', (
 
         // It renders in the Log session list…
         await page.locator('#studioViewLogBtn').click();
-        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(3);
+        await expect(page.locator('#studioLogList .workout-card')).toHaveCount(3);
 
         // …and after Complete it's stripped from the template.
-        await page.locator('#studioLogList .studio-card').first()
-            .locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first()
+            .locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
         await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
         await page.locator('#confirmCompleteBtn').click();
@@ -3691,7 +3643,7 @@ test.describe('Workout Studio — session locks + session-scoped adds + skip', (
         });
         await startSession(page);
 
-        const cards = page.locator('#studioLogList .studio-card');
+        const cards = page.locator('#studioLogList .workout-card');
         const second = cards.nth(1);
         // Session-mode menu: Skip present, structure ops absent.
         await second.locator('[data-action="menu"]').click();
@@ -3706,10 +3658,10 @@ test.describe('Workout Studio — session locks + session-scoped adds + skip', (
         await skipConfirm.click();
 
         // Card now renders skipped.
-        await expect(page.locator('#studioLogList .studio-card.is-skipped')).toHaveCount(1);
+        await expect(page.locator('#studioLogList .workout-card.skipped')).toHaveCount(1);
 
         // Complete the session → payload carries is_skipped for it.
-        await cards.first().locator('[data-action="toggle-done"]').click();
+        await cards.first().locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
         await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
         await page.locator('#confirmCompleteBtn').click();
@@ -3782,14 +3734,14 @@ test.describe('Workout Studio — template promotion, Skip & Replace, session-ca
         await page.locator('#studioWorkoutNameInput').fill(name);
         await page.locator('#studioViewLogBtn').click();
         await page.locator('#studioLogStartBtn').click();
-        await expect(page.locator('#studioLogList .studio-card').first()).toBeVisible();
+        await expect(page.locator('#studioLogList .workout-card').first()).toBeVisible();
     }
 
     test('End Workout offcanvas shows the "Save changes to workout template" checkbox, off by default', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await startSession(page);
-        await page.locator('#studioLogList .studio-card').first()
-            .locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first()
+            .locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
         await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
         const toggle = page.locator('#saveSessionToTemplateToggle');
@@ -3843,11 +3795,11 @@ test.describe('Workout Studio — template promotion, Skip & Replace, session-ca
         await page.locator('#studioViewBuildBtn').click();
         await page.locator('.studio-row').nth(2).locator('.studio-row-add').click();
         await page.locator('#studioViewLogBtn').click();
-        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(3);
+        await expect(page.locator('#studioLogList .workout-card')).toHaveCount(3);
 
         // Complete WITH the save-to-template checkbox CHECKED.
-        await page.locator('#studioLogList .studio-card').first()
-            .locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioLogList .workout-card').first()
+            .locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
         await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
         await page.locator('#saveSessionToTemplateToggle').check();
@@ -3862,10 +3814,10 @@ test.describe('Workout Studio — template promotion, Skip & Replace, session-ca
         await page.goto(`${BASE}/workout-studio.html`);
         await startSession(page, 3, 'Replace test');
 
-        const cards = page.locator('#studioLogList .studio-card');
+        const cards = page.locator('#studioLogList .workout-card');
         // Capture names: replace the SECOND card so we can assert splice
         // position (replacement must land between #2 and #3).
-        const secondName = (await cards.nth(1).locator('.studio-card-name').textContent() || '').trim();
+        const secondName = (await cards.nth(1).locator('.workout-exercise-name').textContent() || '').trim();
 
         await cards.nth(1).locator('[data-action="menu"]').click();
         await cards.nth(1).locator('[data-action="skip-replace"]').click();
@@ -3881,11 +3833,11 @@ test.describe('Workout Studio — template promotion, Skip & Replace, session-ca
         // Auto-bounced back to Log; 4 cards; the replacement sits at
         // index 2 (right after the skipped source at index 1).
         await expect(page.locator('#studio')).toHaveAttribute('data-view', 'log');
-        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(4);
-        await expect(page.locator('#studioLogList .studio-card').nth(1)).toHaveClass(/is-skipped/);
+        await expect(page.locator('#studioLogList .workout-card')).toHaveCount(4);
+        await expect(page.locator('#studioLogList .workout-card').nth(1)).toHaveClass(/skipped/);
         // Skipped card shows the Replaced-with subline.
-        await expect(page.locator('#studioLogList .studio-card').nth(1)
-            .locator('.studio-card-replaced-line')).toContainText(/Replaced with/i);
+        await expect(page.locator('#studioLogList .workout-card').nth(1)
+            .locator('.workout-note-preview')).toContainText(/Replaced with/i);
         // Banner cleared.
         await page.locator('#studioViewBuildBtn').click();
         await expect(page.locator('#studioReplaceBanner')).toBeHidden();
@@ -3895,15 +3847,15 @@ test.describe('Workout Studio — template promotion, Skip & Replace, session-ca
         await page.goto(`${BASE}/workout-studio.html`);
         await startSession(page, 2, 'Replace cancel test');
 
-        const cards = page.locator('#studioLogList .studio-card');
+        const cards = page.locator('#studioLogList .workout-card');
         await cards.nth(0).locator('[data-action="menu"]').click();
         await cards.nth(0).locator('[data-action="skip-replace"]').click();
         await expect(page.locator('#studioReplaceBanner')).toBeVisible();
 
         await page.locator('#studioReplaceBannerCancel').click();
         await expect(page.locator('#studio')).toHaveAttribute('data-view', 'log');
-        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(2);
-        await expect(page.locator('#studioLogList .studio-card').nth(0)).toHaveClass(/is-skipped/);
+        await expect(page.locator('#studioLogList .workout-card')).toHaveCount(2);
+        await expect(page.locator('#studioLogList .workout-card').nth(0)).toHaveClass(/skipped/);
     });
 
     test('direction chips set next_weight_direction; note lands in notes — both in the completion payload', async ({ page }) => {
@@ -3934,22 +3886,22 @@ test.describe('Workout Studio — template promotion, Skip & Replace, session-ca
         });
         await startSession(page, 2, 'Extras test');
 
-        const first = page.locator('#studioLogList .studio-card').first();
+        const first = page.locator('#studioLogList .workout-card').first();
         // Direction chips render in the session card.
-        await expect(first.locator('.studio-card-dir-chip')).toHaveCount(3);
+        await expect(first.locator('.workout-chip')).toHaveCount(3);
         // Tap "Raise" → chip activates.
-        await first.locator('.studio-card-dir-chip[data-direction="up"]').click();
-        await expect(first.locator('.studio-card-dir-chip[data-direction="up"]')).toHaveClass(/is-active/);
+        await first.locator('.workout-chip[data-direction="up"]').click();
+        await expect(first.locator('.workout-chip[data-direction="up"]')).toHaveClass(/active/);
 
         // Add a note.
         await first.locator('[data-action="toggle-notes"]').click();
-        const noteInput = first.locator('.studio-card-notes-input');
+        const noteInput = first.locator('.workout-notes-input');
         await expect(noteInput).toBeVisible();
         await noteInput.fill('Shoulder felt tight on rep 6');
         await noteInput.blur();
 
         // Complete and verify the payload carries both fields.
-        await first.locator('[data-action="toggle-done"]').click();
+        await first.locator('[data-action="mark-done"]').click();
         await page.locator('#studioFabGo').click();
         await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
         await page.locator('#confirmCompleteBtn').click();
@@ -3963,12 +3915,12 @@ test.describe('Workout Studio — template promotion, Skip & Replace, session-ca
         await page.goto(`${BASE}/workout-studio.html`);
         await startSession(page, 1, 'Chip toggle test');
 
-        const first = page.locator('#studioLogList .studio-card').first();
-        const up = first.locator('.studio-card-dir-chip[data-direction="up"]');
+        const first = page.locator('#studioLogList .workout-card').first();
+        const up = first.locator('.workout-chip[data-direction="up"]');
         await up.click();
-        await expect(up).toHaveClass(/is-active/);
+        await expect(up).toHaveClass(/active/);
         await up.click();
-        await expect(up).not.toHaveClass(/is-active/);
+        await expect(up).not.toHaveClass(/active/);
     });
 });
 
@@ -4018,15 +3970,14 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         expect(resumedText).not.toBe('00:00');
     });
 
-    test('Last-session line renders on a log card when the controller has history for that exercise', async ({ page }) => {
+    test('Last-session weight chip renders on a log card when the controller has history for that exercise', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await continueToOrganize(page);
 
-        // Plant a fake history entry directly in the controller's Map for
-        // the exercise name shown in the first card. Easier than mocking
-        // the auth'd Firebase endpoint and equivalent for what we're
-        // testing (the rendering path, not the fetch).
-        const firstExerciseName = await page.locator('.studio-card .studio-card-name').first().textContent();
+        // Plant a fake history entry directly in the controller's Map
+        // for the exercise name shown in the first plan card (template
+        // editor). The Log view will pick this up.
+        const firstExerciseName = await page.locator('#studioOrganizeList .studio-card-name').first().textContent();
         await page.evaluate((name) => {
             const ws = window.workoutStudio;
             ws.exerciseHistory.set((name || '').trim(), {
@@ -4035,22 +3986,19 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
                 daysAgo: 3,
                 sessionDate: new Date(Date.now() - 3 * 86400000).toISOString(),
             });
-            // Also short-circuit the fetched flag so the fetch attempt
-            // doesn't overwrite our planted history.
             ws._exerciseHistoryFetched = true;
         }, firstExerciseName);
 
-        // Flip to Log → the planted history should appear as a subtitle
+        // Flip to Log → the planted history shows in the collapsed
+        // header's state row ("Last: 185 lbs" chip).
         await enterLogSession(page);
-        const card = page.locator('.studio-card').first();
-        const lastLine = card.locator('.studio-card-last-line');
-        await expect(lastLine).toBeVisible();
-        await expect(lastLine).toContainText('Last: 185 lbs');
-        await expect(lastLine).toContainText(/3d ago/);
+        const card = page.locator('#studioLogList .workout-card').first();
+        await expect(card.locator('.workout-state-row')).toContainText('Last: 185 lbs');
 
-        // Plan mode strips it (plan cards stay clean)
+        // Plan view's editor cards don't render the Last subtitle —
+        // that's a Log-only concern.
         await page.locator('#studioViewPlanBtn').click();
-        await expect(card.locator('.studio-card-last-line')).toHaveCount(0);
+        await expect(page.locator('#studioOrganizeList .workout-state-row')).toHaveCount(0);
     });
 
     test('Page-2 Import button is hidden in Log mode and visible in Plan mode', async ({ page }) => {
@@ -4082,51 +4030,45 @@ test.describe('Workout Studio — compact completed card + library start link', 
         await page.locator('#studioWorkoutNameInput').fill(name);
         await page.locator('#studioViewLogBtn').click();
         await page.locator('#studioLogStartBtn').click();
-        await expect(page.locator('#studioLogList .studio-card').first()).toBeVisible();
+        await expect(page.locator('#studioLogList .workout-card').first()).toBeVisible();
     }
 
-    test('completed card collapses: body hidden, compact summary visible, name single-line', async ({ page }) => {
+    test('completed card auto-collapses (body hidden) and carries the .logged visual', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await startSession(page);
 
-        const first = page.locator('#studioLogList .studio-card').first();
-        // Pre-Done: full body shows, summary line is hidden.
-        await expect(first.locator('.studio-card-body')).toBeVisible();
-        const preSummaryDisplay = await first.locator('.studio-log-card-done-summary')
-            .evaluate(el => getComputedStyle(el).display);
-        expect(preSummaryDisplay).toBe('none');
+        const first = page.locator('#studioLogList .workout-card').first();
+        // Pre-Done: card is the auto-expanded one; body visible.
+        await expect(first).toHaveClass(/expanded/);
+        await expect(first.locator('.workout-card-body')).toBeVisible();
 
-        // Mark Done → card shrinks
-        await first.locator('[data-action="toggle-done"]').click();
-        await expect(first).toHaveClass(/is-done/);
+        await first.locator('[data-action="mark-done"]').click();
+        await expect(first).toHaveClass(/logged/);
+        // After the 600ms auto-advance the body collapses (display: none
+        // via the .studio-view-log .workout-card .workout-card-body rule).
+        await expect(first).not.toHaveClass(/expanded/, { timeout: 2000 });
+        await expect(first.locator('.workout-card-body')).toBeHidden();
 
-        // Body, last-line, session extras and replaced subline all hide
-        // via the .studio-log-card.is-done CSS path.
-        await expect(first.locator('.studio-card-body')).toBeHidden();
-        await expect(first.locator('.studio-card-session-extras')).toBeHidden();
-
-        // The compact summary becomes visible.
-        const postSummaryDisplay = await first.locator('.studio-log-card-done-summary')
-            .evaluate(el => getComputedStyle(el).display);
-        expect(postSummaryDisplay).not.toBe('none');
-
-        // Card height has actually shrunk vs. the still-open sibling.
-        const secondHeight = await page.locator('#studioLogList .studio-card').nth(1)
-            .evaluate(el => el.getBoundingClientRect().height);
-        const firstHeight = await first.evaluate(el => el.getBoundingClientRect().height);
-        expect(firstHeight).toBeLessThan(secondHeight);
+        // Collapsed completed card is shorter than the now-expanded
+        // next-in-line card.
+        const second = page.locator('#studioLogList .workout-card').nth(1);
+        const firstH = await first.evaluate(el => el.getBoundingClientRect().height);
+        const secondH = await second.evaluate(el => el.getBoundingClientRect().height);
+        expect(firstH).toBeLessThan(secondH);
     });
 
-    test('un-completing reopens the card (body + extras visible again)', async ({ page }) => {
+    test('tapping a collapsed-completed card re-expands it so the user can edit / un-complete', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
         await startSession(page);
-        const first = page.locator('#studioLogList .studio-card').first();
-        await first.locator('[data-action="toggle-done"]').click();
-        await expect(first).toHaveClass(/is-done/);
-        // Tap Done again → un-done.
-        await first.locator('[data-action="toggle-done"]').click();
-        await expect(first).not.toHaveClass(/is-done/);
-        await expect(first.locator('.studio-card-body')).toBeVisible();
+        const first = page.locator('#studioLogList .workout-card').first();
+        await first.locator('[data-action="mark-done"]').click();
+        await expect(first).toHaveClass(/logged/);
+        await expect(first).not.toHaveClass(/expanded/, { timeout: 2000 });
+
+        // Tap the (collapsed) header → expand it again.
+        await first.locator('.workout-card-header').click();
+        await expect(first).toHaveClass(/expanded/);
+        await expect(first.locator('.workout-card-body')).toBeVisible();
     });
 
     test('getWorkoutStartUrl now routes regular workouts to the studio with start=1', async ({ page }) => {

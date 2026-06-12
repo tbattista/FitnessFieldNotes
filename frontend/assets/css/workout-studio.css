@@ -1378,96 +1378,10 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   font-size: 0.9rem;
   opacity: 0.85;
 }
-/* Completed card — strong visual treatment matching workout-mode's
-   .workout-card.logged: green left border, tinted bg, dimmed editable
-   fields, struck-through name. Reads at a glance as "this one is done".
-   On Log view (.studio-card.is-done.studio-log-card), the card also
-   collapses into a single-line compact summary so completed work
-   scrolls past quickly — see the .studio-log-card.is-done rules below. */
-.studio-card.is-done {
-  background: rgba(40, 167, 69, 0.08);
-  border-left: 3px solid var(--bs-success, #28a745);
-}
-.studio-card.is-done .studio-card-name {
-  text-decoration: line-through;
-  text-decoration-color: rgba(40, 167, 69, 0.6);
-  text-decoration-thickness: 2px;
-  opacity: 0.75;
-}
-.studio-card.is-done .studio-card-body,
-.studio-card.is-done .studio-card-last-line {
-  opacity: 0.65;
-}
-/* Lock the click-to-edit affordance on completed cards so users don't
-   accidentally tweak a value they've already committed to. Match the
-   pattern workout-mode uses on .logged cards. */
-.studio-card.is-done .studio-card-field .click-to-edit {
-  pointer-events: none;
-  cursor: default;
-}
-
-[data-bs-theme="dark"] .studio-card.is-done {
-  background: rgba(40, 167, 69, 0.14);
-}
-
-/* ---------- Collapsed completed card (Log view) ----------
-   The compact done state: name + final weight + a small ✓ chip.
-   Body/extras hide; the card itself shrinks vertically + uses a
-   single-row flex layout. The 3-dot menu stays reachable so the
-   user can Unskip / change their mind. */
-.studio-log-card.is-done {
-  padding: 0.35rem 0.7rem;
-  gap: 0.3rem;
-  flex-direction: row;
-  align-items: center;
-  background: rgba(40, 167, 69, 0.06);
-}
-.studio-log-card.is-done .studio-card-header {
-  flex: 1 1 auto;
-  padding: 0;
-  min-width: 0;
-}
-.studio-log-card.is-done .studio-card-name {
-  font-size: 0.92rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.studio-log-card.is-done .studio-card-name-input,
-.studio-log-card.is-done .studio-card-body,
-.studio-log-card.is-done .studio-card-last-line,
-.studio-log-card.is-done .studio-card-session-extras,
-.studio-log-card.is-done .studio-card-replaced-line {
-  display: none !important;
-}
-/* The footer keeps only the Done button (now showing as the green ✓
-   "Completed" chip). Cancel/Save bubble can't appear here since edits
-   are locked. */
-.studio-log-card.is-done .studio-card-footer {
-  padding: 0;
-  border-top: 0;
-}
-.studio-log-card.is-done .studio-card-done-btn {
-  flex: 0 0 auto;
-}
-/* Compact summary line — the "Today: 135 lbs · 3×8" recap that lives
-   in the collapsed header. Controller fills it in from logState. */
-.studio-log-card-done-summary {
-  display: none;
-  font-size: 0.78rem;
-  color: var(--bs-secondary-color);
-  margin-right: 0.5rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.studio-log-card.is-done .studio-log-card-done-summary {
-  display: inline;
-}
-[data-bs-theme="dark"] .studio-log-card.is-done {
-  background: rgba(40, 167, 69, 0.16);
-}
+/* StudioLogCard now renders with workout-mode's .workout-card class
+   so all the completed / skipped / collapsed-vs-expanded visuals come
+   from frontend/assets/css/workout-mode.css. Nothing extra is needed
+   here for the Log card's done state. */
 
 .studio-block {
   background: rgba(0, 0, 0, 0.025);
@@ -2637,3 +2551,58 @@ html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba
 .studio-card-replaced-line {
   padding: 0 0 0.25rem;
 }
+
+/* ------------------------------------------------------------------
+   Log view — workout-mode card overrides
+   StudioLogCard renders with .workout-card markup so we get the
+   workout-mode visual for free. Two scoped tweaks so the cards sit
+   well inside the studio's narrower container:
+     1. Slightly tighter list gap (workout-mode's bottom-bar carved
+        a lot of vertical breathing room which we don't need here).
+     2. The card root has a subtle border + bg so it reads as a
+        contained chip even outside of workout-mode's dark page.
+   ------------------------------------------------------------------ */
+.studio-view-log .studio-log-list {
+  gap: 0.6rem;
+}
+.studio-view-log .workout-card {
+  background: var(--bs-body-bg);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 0.65rem 0.85rem;
+}
+[data-bs-theme="dark"] .studio-view-log .workout-card {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+.studio-view-log .workout-card.logged {
+  background: rgba(40, 167, 69, 0.06);
+  border-color: rgba(40, 167, 69, 0.30);
+}
+.studio-view-log .workout-card.skipped {
+  background: rgba(255, 193, 7, 0.06);
+  border-color: rgba(255, 193, 7, 0.30);
+}
+/* Workout-mode's expanded state animates max-height. Inside the
+   studio we keep the same hook but let the body just toggle display
+   so the card grows without a hard-coded clamp. */
+.studio-view-log .workout-card .workout-card-body {
+  display: none;
+  margin-top: 0.6rem;
+}
+.studio-view-log .workout-card.expanded .workout-card-body {
+  display: block;
+}
+.studio-view-log .workout-card .workout-chevron {
+  transition: transform 0.18s ease;
+}
+.studio-view-log .workout-card.expanded .workout-chevron {
+  transform: rotate(180deg);
+}
+
+/* Workout-mode's _bottom-bar.css forces html/body height: 100% +
+   overflow: auto so its fixed bottom action bar can dock cleanly.
+   On the studio page that collapses document.body.scrollHeight to
+   the viewport height (breaking infinite-scroll IntersectionObservers
+   for the catalog) and adds an unnecessary scroll layer. Restore the
+   normal flow here — the studio doesn't need that bottom-bar anyway. */
+html, body { height: auto; overflow: visible; }
