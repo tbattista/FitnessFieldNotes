@@ -132,6 +132,7 @@
       this._bindDraftBanner();
       this._ensureSentinel();
       this._ensureFloatingCountObserver();
+      this._ensureStickyTabsObserver();
 
       // If we were opened with ?id=<workout_id>, load that workout into the
       // studio as an editing session. The loader skips both the default-name
@@ -4046,6 +4047,30 @@
       if (this.renderedCount >= this.totalAvailable) return;
       this.renderedCount += LIST_PAGE_SIZE;
       this._refreshList();
+    }
+
+    /**
+     * Sticky-tab pop: when the .studio-view-tabs row detaches from its
+     * natural position (i.e. the page has scrolled past it), add a
+     * .is-stuck class so the row drops a subtle shadow line. Uses a
+     * zero-height sentinel placed JUST above the tabs — IntersectionObserver
+     * tells us when it leaves the viewport, which means the tabs are now
+     * pinned to the top.
+     */
+    _ensureStickyTabsObserver() {
+      if (this._stickyTabsObserver) return;
+      const tabs = document.querySelector('.studio-view-tabs');
+      if (!tabs || !tabs.parentElement) return;
+      if (typeof IntersectionObserver !== 'function') return;
+      const sentinel = document.createElement('div');
+      sentinel.className = 'studio-view-tabs-sentinel';
+      sentinel.setAttribute('aria-hidden', 'true');
+      // Zero-height marker right above the tabs.
+      tabs.parentElement.insertBefore(sentinel, tabs);
+      this._stickyTabsObserver = new IntersectionObserver(([entry]) => {
+        tabs.classList.toggle('is-stuck', !entry.isIntersecting);
+      }, { threshold: 0, rootMargin: '0px 0px 0px 0px' });
+      this._stickyTabsObserver.observe(sentinel);
     }
 
     _ensureSentinel() {

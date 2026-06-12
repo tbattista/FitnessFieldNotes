@@ -809,6 +809,24 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   width: 100%;
   margin-bottom: 0.7rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  /* Sticky at the top of the studio container so the nav stays
+     reachable while the user scrolls through Build's catalog or a
+     long Log session. Higher z than the tray (z-index: 29) and a
+     solid body bg so cards scroll cleanly underneath. */
+  position: sticky;
+  top: 0;
+  z-index: 32;
+  background: var(--bs-body-bg);
+  padding: 0.3rem 0 0;
+  /* Tiny shadow line that intensifies once the row has detached from
+     its natural position — JS toggles a .is-stuck class via an
+     IntersectionObserver-style sentinel. Falls back gracefully when
+     the JS hook isn't installed (no shadow, just the hairline). */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0);
+  transition: box-shadow 0.18s ease;
+}
+.studio-view-tabs.is-stuck {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 .studio-view-tabs > .studio-view-tab:nth-child(1) { justify-self: start; }
 .studio-view-tabs > .studio-view-tab:nth-child(2) { justify-self: center; }
@@ -816,27 +834,53 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
 [data-bs-theme="dark"] .studio-view-tabs {
   border-bottom-color: rgba(255, 255, 255, 0.10);
 }
+[data-bs-theme="dark"] .studio-view-tabs.is-stuck {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.40);
+}
 .studio-view-tab {
   appearance: none;
   border: 0;
   background: transparent;
   color: var(--bs-secondary-color);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  padding: 9px 14px;
+  padding: 11px 16px;
   margin-bottom: -1px; /* overlap the row's bottom border with our own */
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   cursor: pointer;
   line-height: 1.2;
-  transition: color 0.12s, border-color 0.12s;
+  transition: color 0.14s ease, border-color 0.14s ease,
+              background-color 0.14s ease, transform 0.14s ease;
 }
 .studio-view-tab:hover {
   color: var(--bs-body-color);
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px 8px 0 0;
+}
+[data-bs-theme="dark"] .studio-view-tab:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 .studio-view-tab.is-active {
   color: var(--bs-primary);
   border-bottom-color: var(--bs-primary);
+  /* "Pop" — beefier underline + subtle primary-tinted background pill
+     behind the active tab + a small text-shadow so the current page
+     reads decisively distinct from its inactive siblings. */
+  background: linear-gradient(
+    to top,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0.10) 0%,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0.00) 80%
+  );
+  border-radius: 8px 8px 0 0;
+  text-shadow: 0 0 0.5px currentColor;
+}
+[data-bs-theme="dark"] .studio-view-tab.is-active {
+  background: linear-gradient(
+    to top,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0.18) 0%,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0.00) 80%
+  );
 }
 
 /* Session timer pill — Log mode only. Sits next to the mode toggle so
