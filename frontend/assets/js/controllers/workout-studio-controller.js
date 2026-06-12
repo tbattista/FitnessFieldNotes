@@ -73,6 +73,11 @@
       // (tray/organizeOrder/organizeState) when the session ends so
       // the saved workout stays exactly what the user planned.
       this.sessionAdds = new Set();
+      // Skip & Replace context — set when the user picks "Skip &
+      // replace" on a Log card. The next Build add splices in right
+      // after the skipped card and we bounce back to Log.
+      // { afterInstanceId, skippedName } | null
+      this._replaceContext = null;
       // Live card components mounted on Page 2, keyed by instanceId
       this.studioCards = new Map();
       // Live block components mounted on Page 2, keyed by blockId
@@ -218,6 +223,9 @@
       // Floating FAB row (Page 2 only)
       this.dom.fabs = document.getElementById('studioFloatingFabs');
       this.dom.sessionAddBanner = document.getElementById('studioSessionAddBanner');
+      this.dom.replaceBanner = document.getElementById('studioReplaceBanner');
+      this.dom.replaceBannerName = document.getElementById('studioReplaceBannerName');
+      this.dom.replaceBannerCancel = document.getElementById('studioReplaceBannerCancel');
       this.dom.fabDiscard = document.getElementById('studioFabDiscard');
       this.dom.fabSave = document.getElementById('studioFabSave');
       this.dom.fabGo = document.getElementById('studioFabGo');
@@ -694,6 +702,9 @@
       }
       if (this.dom.draftBannerDismiss) {
         this.dom.draftBannerDismiss.addEventListener('click', () => this._hideDraftBanner());
+      }
+      if (this.dom.replaceBannerCancel) {
+        this.dom.replaceBannerCancel.addEventListener('click', () => this._cancelReplace());
       }
     }
 
@@ -2139,11 +2150,15 @@
 
     _onCardMenuAction(instanceId, action, blockId) {
       if (!this.tray) return;
-      // Skip/unskip are session ops — they're allowed (handled below).
-      // Everything else in this menu restructures the template, which
-      // is locked while a session runs.
+      // Skip / unskip / skip-replace are session ops — allowed. Everything
+      // else in this menu restructures the template, which is locked
+      // while a session runs.
       if (action === 'skip' || action === 'unskip') {
         this._onToggleSkip(instanceId, action === 'skip');
+        return;
+      }
+      if (action === 'skip-replace') {
+        this._handleSkipReplace(instanceId);
         return;
       }
       if (this._guardSessionLock()) return;
@@ -3047,6 +3062,9 @@
         showDoneButton: true,
         isDone: !!logState.isDone,
         isSkipped: !!logState.isSkipped,
+        replacedByName: logState.replacedByName || '',
+        weightDirection: logState.weightDirection || null,
+        exerciseNotes: logState.notes || '',
         callbacks: {
           // Inline edits → write to logState (NOT organizeState) so the
           // template stays untouched while you're logging.
@@ -3055,6 +3073,8 @@
           onEditCardio: (instanceId) => this._onEditCardio(instanceId),
           onMarkDone: (instanceId, done) => this._onMarkDone(instanceId, done),
           onMenuAction: (instanceId, action, blockId) => this._onCardMenuAction(instanceId, action, blockId),
+          onDirectionChange: (instanceId, dir) => this._onDirectionChange(instanceId, dir),
+          onNotesChange: (instanceId, notes) => this._onExerciseNotesChange(instanceId, notes),
         },
       });
       const node = card.render();
@@ -3155,6 +3175,77 @@
     }
 
     /**
+     * Direction chips (↓ Same ↑) — record the user's "next session"
+     * weight intent. Persists into the session as next_weight_direction
+     * so the NEXT session's history shows the reminder.
+     */
+    _onDirectionChange(instanceId, dir) {
+      const s = this._ensureLogState(instanceId);
+      s.weightDirection = dir || null;
+      this._scheduleDraftSave();
+      const item = this._findTrayItem(instanceId);
+      if (item && this.sessionService && this._hasActiveSession()) {
+        try { this.sessionService.setWeightDirection?.(item.name, dir || null); } catch (_) {}
+      }
+    }
+
+    /**
+     * Per-exercise note — context for THIS session ("shoulder pinched
+     * on rep 6"). Saved into logState + the live session so it lands in
+     * the completed record's notes field.
+     */
+    _onExerciseNotesChange(instanceId, notes) {
+      const s = this._ensureLogState(instanceId);
+      s.notes = notes || '';
+      this._scheduleDraftSave();
+      const item = this._findTrayItem(instanceId);
+      if (item && this.sessionService && this._hasActiveSession()) {
+        try { this.sessionService.updateExerciseNotes?.(item.name, notes || ''); } catch (_) {}
+      }
+    }
+
+    /**
+     * Skip & Replace — mark the exercise skipped (no reason prompt;
+     * the reason is self-evident: it's being replaced), set the
+     * replace context, and swing to Build so the user can pick the
+     * stand-in. The next add splices in right after this card and
+     * bounces back to Log (see _onAddExercise).
+     */
+    _handleSkipReplace(instanceId) {
+      const item = this._findTrayItem(instanceId);
+      if (!item) return;
+      const s = this._ensureLogState(instanceId);
+      s.isSkipped = true;
+      s.skipReason = 'Replaced with alternative exercise';
+      if (s.isDone) { s.isDone = false; s.doneAt = null; }
+      this._scheduleDraftSave();
+      const svc = this.sessionService;
+      if (svc && this._hasActiveSession()) {
+        try { svc.skipExercise?.(item.name, s.skipReason); } catch (_) {}
+      }
+      this._replaceContext = { afterInstanceId: instanceId, skippedName: item.name };
+      this._reflectReplaceBanner();
+      this._showView('build');
+    }
+
+    /** Sync the Build replace-banner with the current context. */
+    _reflectReplaceBanner() {
+      if (!this.dom.replaceBanner) return;
+      const ctx = this._replaceContext;
+      this.dom.replaceBanner.hidden = !ctx;
+      if (ctx && this.dom.replaceBannerName) {
+        this.dom.replaceBannerName.textContent = ctx.skippedName;
+      }
+    }
+
+    /** Cancel the replace flow — the exercise stays skipped, back to Log. */
+    _cancelReplace() {
+      this._replaceContext = null;
+      this._reflectReplaceBanner();
+      this._showView('log');
+    }
+
+    /**
      * Complete the active workout session. Delegates to
      * WorkoutSessionService.completeSession which handles the POST
      * /workout-sessions/{id}/complete call, atomic-recovery fallback
@@ -3190,7 +3281,8 @@
           target_reps: String(plan.reps || '8-12'),
           weight: actualWeight || null,
           weight_unit: merged.weightUnit || 'lbs',
-          notes: null,
+          notes: (log.notes && log.notes.trim()) ? log.notes.trim() : null,
+          next_weight_direction: log.weightDirection || null,
           is_modified: !!(actualWeight && actualWeight !== planWeight),
           is_skipped: !!log.isSkipped,
           skip_reason: log.isSkipped ? (log.skipReason || null) : null,
@@ -3229,13 +3321,20 @@
         minutes: durationMinutes || 0,
         totalExercises,
         isBuildMode: false,
-      }, async (chosenDuration, _templateOpts, sessionCalories) => {
+        // Renders the "Save changes to workout template" checkbox —
+        // default off, so session divergence stays session-only unless
+        // the user opts in.
+        isStudioLogMode: true,
+      }, async (chosenDuration, templateOpts, sessionCalories) => {
         // chosenDuration is the user-edited duration from the input;
-        // sessionCalories is the user's calories entry (or null).
+        // sessionCalories is the user's calories entry (or null);
+        // templateOpts.saveToTemplate carries the promote-to-template
+        // checkbox state.
         await this._completeSessionWithMetadata(
           performed,
           chosenDuration || durationMinutes || null,
-          sessionCalories
+          sessionCalories,
+          !!(templateOpts && templateOpts.saveToTemplate)
         );
       });
 
@@ -3254,9 +3353,13 @@
      * Actually finalize the session via the WorkoutSessionService.
      * Pulled out of _handleComplete so the End Workout offcanvas's
      * Save callback can call it after the user confirms the duration +
-     * calories.
+     * calories. `saveToTemplate` carries the offcanvas's "Save changes
+     * to workout template" checkbox: when true, the session's actual
+     * values (weights, sets/reps, mid-session adds) are promoted into
+     * the template and persisted; when false (default), the template
+     * reverts to its pre-session shape.
      */
-    async _completeSessionWithMetadata(performed, durationMinutes, sessionCalories) {
+    async _completeSessionWithMetadata(performed, durationMinutes, sessionCalories, saveToTemplate = false) {
       if (this._saveInFlight) return;
       this._saveInFlight = true;
       this._setStatus('Completing…', null);
@@ -3274,14 +3377,29 @@
         }
         const saved = await svc.completeSession(performed, durationMinutes, sessionCalories);
         console.log('[WorkoutStudio] Session completed:', saved && saved.id);
+
+        if (saveToTemplate) {
+          // Promote session divergence into the template BEFORE logState
+          // clears (it's the source of the actual values). sessionAdds
+          // become template members; replaced originals drop out.
+          await this._promoteSessionToTemplate();
+        }
+
         // Clear the in-memory log state so re-opening the workout starts a
         // fresh entry. The draft is updated on next render.
         this.logState = new Map();
-        // Mid-session exercise additions were session-scoped — they're
-        // in the completed record above; strip them from the template
-        // so the saved workout reverts to what the user planned.
-        // (Session is no longer active here, so the tray gate passes.)
-        this._removeSessionAdds();
+        if (!saveToTemplate) {
+          // Mid-session exercise additions were session-scoped — they're
+          // in the completed record above; strip them from the template
+          // so the saved workout reverts to what the user planned.
+          // (Session is no longer active here, so the tray gate passes.)
+          this._removeSessionAdds();
+        } else {
+          // Promotion kept the adds; just drop the tracking set.
+          this.sessionAdds = new Set();
+        }
+        this._replaceContext = null;
+        this._reflectReplaceBanner();
         this._scheduleDraftSave();
         this._stopSessionTimer({ keep: false });
         // Invalidate the history cache so the very next entry into Log
@@ -3294,7 +3412,7 @@
         // view switch because _showView clears the status sink as its
         // final step.
         this._showView('plan');
-        this._setStatus('Completed!', 'success');
+        this._setStatus(saveToTemplate ? 'Completed! Template updated.' : 'Completed!', 'success');
       } catch (err) {
         console.error('[WorkoutStudio] Complete failed:', err);
         this._setStatus(`Could not complete: ${err.message || 'unknown error'}`, 'error');
@@ -3302,6 +3420,47 @@
         this._saveInFlight = false;
         if (this.dom.fabGo) this.dom.fabGo.disabled = false;
       }
+    }
+
+    /**
+     * Write the session's actual values back into the template and
+     * persist it. Three moves:
+     *   1. Per-exercise value overrides (weight / sets / reps / rest
+     *      from logState) merge into organizeState.
+     *   2. sessionAdds stay in the tray/organizeOrder — they're now
+     *      template members (the caller clears the tracking set).
+     *   3. Skipped exercises that were REPLACED (logState.replacedBy)
+     *      drop out of the template — the replacement supersedes them.
+     *      Plain skips stay: one missed day shouldn't shrink the plan.
+     * Finishes with _handleSave() so the backend copy matches.
+     */
+    async _promoteSessionToTemplate() {
+      if (!this.tray) return;
+      for (const [instanceId, log] of this.logState) {
+        if (log.replacedBy && this.tray.getItems().some(
+              (it) => it.instanceId === log.replacedBy)) {
+          // Replaced original — remove from the template entirely.
+          this.tray.remove(instanceId);
+          this.organizeState.delete(instanceId);
+          continue;
+        }
+        const state = this._ensureOrganizeState(instanceId);
+        if (log.weight !== undefined) state.weight = log.weight;
+        if (log.weightUnit !== undefined) state.weightUnit = log.weightUnit;
+        if (log.sets !== undefined) state.sets = log.sets;
+        if (log.reps !== undefined) state.reps = log.reps;
+        if (log.rest !== undefined) state.rest = log.rest;
+        if (log.protocol !== undefined) state.protocol = log.protocol;
+      }
+      // _handleSave no-ops while _saveInFlight is held — and the caller
+      // (completion) holds it. Release around the template save, then
+      // restore so the completion's finally block stays correct.
+      const wasInFlight = this._saveInFlight;
+      this._saveInFlight = false;
+      try {
+        await this._handleSave();
+      } catch (_) { /* status surfaced by _handleSave */ }
+      finally { this._saveInFlight = wasInFlight; }
     }
 
     /**
@@ -3335,6 +3494,8 @@
     _handleDiscardSession() {
       this._discardActiveSession();
       this._removeSessionAdds();
+      this._replaceContext = null;
+      this._reflectReplaceBanner();
       this._renderLog();
       this._refreshFabState();
       this._renderTimer();
@@ -3806,6 +3967,34 @@
             });
           } catch (_) {}
         }
+
+        // Skip & Replace: splice the new card right after the skipped
+        // one (tray sync appended it at the end of organizeOrder),
+        // stamp the source with the replacement's identity for the
+        // "Replaced with X" subline, and bounce back to Log.
+        const ctx = this._replaceContext;
+        if (ctx) {
+          const fromIdx = this.organizeOrder.findIndex(
+            (e) => e.kind === 'card' && e.instanceId === instanceId);
+          const afterIdx = this.organizeOrder.findIndex(
+            (e) => e.kind === 'card' && e.instanceId === ctx.afterInstanceId);
+          if (fromIdx !== -1 && afterIdx !== -1 && fromIdx !== afterIdx + 1) {
+            const [entry] = this.organizeOrder.splice(fromIdx, 1);
+            const insertAt = this.organizeOrder.findIndex(
+              (e) => e.kind === 'card' && e.instanceId === ctx.afterInstanceId) + 1;
+            this.organizeOrder.splice(insertAt, 0, entry);
+          }
+          const src = this._ensureLogState(ctx.afterInstanceId);
+          src.replacedBy = instanceId;
+          src.replacedByName = name || 'exercise';
+          this._replaceContext = null;
+          this._reflectReplaceBanner();
+          this._scheduleDraftSave();
+          this._showView('log');
+          this._showFlash(`Replaced "${ctx.skippedName}" with "${name || 'exercise'}".`, 'success');
+          return;
+        }
+
         this._showFlash(`Added "${name || 'exercise'}" to this session.`, 'success');
       }
     }

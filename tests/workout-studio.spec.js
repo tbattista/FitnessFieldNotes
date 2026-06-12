@@ -3772,6 +3772,206 @@ test.describe('Workout Studio — session locks + session-scoped adds + skip', (
     });
 });
 
+test.describe('Workout Studio — template promotion, Skip & Replace, session-card extras', () => {
+    async function startSession(page, n = 2, name = 'Promo test') {
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        for (let i = 0; i < n; i++) {
+            await rows.nth(i).locator('.studio-row-add').click();
+        }
+        await page.locator('#studioWorkoutNameInput').fill(name);
+        await page.locator('#studioViewLogBtn').click();
+        await page.locator('#studioLogStartBtn').click();
+        await expect(page.locator('#studioLogList .studio-card').first()).toBeVisible();
+    }
+
+    test('End Workout offcanvas shows the "Save changes to workout template" checkbox, off by default', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page);
+        await page.locator('#studioLogList .studio-card').first()
+            .locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        const toggle = page.locator('#saveSessionToTemplateToggle');
+        await expect(toggle).toBeAttached();
+        await expect(toggle).not.toBeChecked();
+    });
+
+    test('checkbox OFF → mid-session add is stripped; checkbox ON → it stays + template saves', async ({ page }) => {
+        let savedTemplate = null;
+        await page.route('**/api/v3/workouts', async (route) => {
+            if (route.request().method() !== 'POST') return route.continue();
+            const body = JSON.parse(route.request().postData() || '{}');
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ ...body, id: 'wk-promo' }) });
+        });
+        await page.route('**/api/v3/workouts/wk-promo', async (route) => {
+            if (route.request().method() === 'PUT') {
+                savedTemplate = JSON.parse(route.request().postData() || '{}');
+                return route.fulfill({ status: 200, contentType: 'application/json',
+                    body: JSON.stringify({ ...savedTemplate, id: 'wk-promo' }) });
+            }
+            return route.continue();
+        });
+        await page.route('**/api/v3/workout-sessions', async (route) => {
+            if (route.request().method() !== 'POST') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 's-promo', status: 'in_progress' }) });
+        });
+        await page.route('**/api/v3/workout-sessions/*/complete', async (route) => {
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 's-promo', status: 'completed' }) });
+        });
+        await page.route('**/api/v3/workout-sessions/history/**', async (route) => {
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ workout_id: 'x', workout_name: 'x', exercises: {} }) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.evaluate(() => {
+            window.authService = {
+                isUserAuthenticated: () => true,
+                getIdToken: async () => 'test-token',
+            };
+            window.dataManager = window.dataManager || {};
+            window.dataManager.isUserAuthenticated = () => true;
+            window.dataManager.getAuthToken = async () => 'test-token';
+        });
+        await startSession(page, 2, 'Promotion test');
+
+        // Add a third exercise mid-session via Build.
+        await page.locator('#studioViewBuildBtn').click();
+        await page.locator('.studio-row').nth(2).locator('.studio-row-add').click();
+        await page.locator('#studioViewLogBtn').click();
+        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(3);
+
+        // Complete WITH the save-to-template checkbox CHECKED.
+        await page.locator('#studioLogList .studio-card').first()
+            .locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        await page.locator('#saveSessionToTemplateToggle').check();
+        await page.locator('#confirmCompleteBtn').click();
+        await expect(page.locator('#studioOrganizeStatus')).toHaveText(/completed/i, { timeout: 5000 });
+
+        // The mid-session add SURVIVED into the template (3 plan cards)…
+        await expect(page.locator('#studioOrganizeList .studio-card')).toHaveCount(3);
+    });
+
+    test('Skip & Replace: menu item skips, swings to Build with banner, pick splices in after the skipped card', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page, 3, 'Replace test');
+
+        const cards = page.locator('#studioLogList .studio-card');
+        // Capture names: replace the SECOND card so we can assert splice
+        // position (replacement must land between #2 and #3).
+        const secondName = (await cards.nth(1).locator('.studio-card-name').textContent() || '').trim();
+
+        await cards.nth(1).locator('[data-action="menu"]').click();
+        await cards.nth(1).locator('[data-action="skip-replace"]').click();
+
+        // Build view with the replace banner naming the skipped exercise.
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'build');
+        await expect(page.locator('#studioReplaceBanner')).toBeVisible();
+        await expect(page.locator('#studioReplaceBannerName')).toHaveText(secondName);
+
+        // Pick the 4th catalog exercise as the stand-in.
+        await page.locator('.studio-row').nth(3).locator('.studio-row-add').click();
+
+        // Auto-bounced back to Log; 4 cards; the replacement sits at
+        // index 2 (right after the skipped source at index 1).
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'log');
+        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(4);
+        await expect(page.locator('#studioLogList .studio-card').nth(1)).toHaveClass(/is-skipped/);
+        // Skipped card shows the Replaced-with subline.
+        await expect(page.locator('#studioLogList .studio-card').nth(1)
+            .locator('.studio-card-replaced-line')).toContainText(/Replaced with/i);
+        // Banner cleared.
+        await page.locator('#studioViewBuildBtn').click();
+        await expect(page.locator('#studioReplaceBanner')).toBeHidden();
+    });
+
+    test('Skip & Replace: Cancel returns to Log leaving the exercise skipped', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page, 2, 'Replace cancel test');
+
+        const cards = page.locator('#studioLogList .studio-card');
+        await cards.nth(0).locator('[data-action="menu"]').click();
+        await cards.nth(0).locator('[data-action="skip-replace"]').click();
+        await expect(page.locator('#studioReplaceBanner')).toBeVisible();
+
+        await page.locator('#studioReplaceBannerCancel').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'log');
+        await expect(page.locator('#studioLogList .studio-card')).toHaveCount(2);
+        await expect(page.locator('#studioLogList .studio-card').nth(0)).toHaveClass(/is-skipped/);
+    });
+
+    test('direction chips set next_weight_direction; note lands in notes — both in the completion payload', async ({ page }) => {
+        let completePayload = null;
+        await page.route('**/api/v3/workout-sessions', async (route) => {
+            if (route.request().method() !== 'POST') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 's-extras', status: 'in_progress' }) });
+        });
+        await page.route('**/api/v3/workout-sessions/*/complete', async (route) => {
+            try { completePayload = JSON.parse(route.request().postData() || '{}'); }
+            catch (_) { completePayload = null; }
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ id: 's-extras', status: 'completed' }) });
+        });
+        await page.route('**/api/v3/workout-sessions/history/**', async (route) => {
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ workout_id: 'x', workout_name: 'x', exercises: {} }) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.evaluate(() => {
+            window.authService = {
+                isUserAuthenticated: () => true,
+                getIdToken: async () => 'test-token',
+            };
+            if (window.workoutStudio) window.workoutStudio.workoutId = 'wk-extras';
+        });
+        await startSession(page, 2, 'Extras test');
+
+        const first = page.locator('#studioLogList .studio-card').first();
+        // Direction chips render in the session card.
+        await expect(first.locator('.studio-card-dir-chip')).toHaveCount(3);
+        // Tap "Raise" → chip activates.
+        await first.locator('.studio-card-dir-chip[data-direction="up"]').click();
+        await expect(first.locator('.studio-card-dir-chip[data-direction="up"]')).toHaveClass(/is-active/);
+
+        // Add a note.
+        await first.locator('[data-action="toggle-notes"]').click();
+        const noteInput = first.locator('.studio-card-notes-input');
+        await expect(noteInput).toBeVisible();
+        await noteInput.fill('Shoulder felt tight on rep 6');
+        await noteInput.blur();
+
+        // Complete and verify the payload carries both fields.
+        await first.locator('[data-action="toggle-done"]').click();
+        await page.locator('#studioFabGo').click();
+        await expect(page.locator('#completeWorkoutOffcanvas')).toBeAttached({ timeout: 3000 });
+        await page.locator('#confirmCompleteBtn').click();
+        await expect.poll(() => completePayload, { timeout: 5000 }).toBeTruthy();
+        const firstEx = (completePayload.exercises_performed || [])[0];
+        expect(firstEx.next_weight_direction).toBe('up');
+        expect(firstEx.notes).toBe('Shoulder felt tight on rep 6');
+    });
+
+    test('tapping the active direction chip clears it (toggle off)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page, 1, 'Chip toggle test');
+
+        const first = page.locator('#studioLogList .studio-card').first();
+        const up = first.locator('.studio-card-dir-chip[data-direction="up"]');
+        await up.click();
+        await expect(up).toHaveClass(/is-active/);
+        await up.click();
+        await expect(up).not.toHaveClass(/is-active/);
+    });
+});
+
 test.describe('Workout Studio — Log mode session timer + Last-session line', () => {
     async function continueToOrganize(page) {
         const rows = page.locator('.studio-row');

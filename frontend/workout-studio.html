@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260612-01" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260612-02" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -204,6 +204,21 @@
                     <span class="studio-session-add-banner-text">
                       Workout in progress — exercises you add will join this session.
                     </span>
+                  </div>
+
+                  <!-- Replace banner — Skip & Replace context. Names the
+                       skipped exercise and waits for the user to pick its
+                       replacement; the next add splices in right after the
+                       skipped card in the Log list. Cancel returns to Log
+                       leaving the exercise simply skipped. -->
+                  <div class="studio-replace-banner" id="studioReplaceBanner" hidden role="status">
+                    <i class="bx bx-transfer-alt studio-replace-banner-icon" aria-hidden="true"></i>
+                    <span class="studio-replace-banner-text">
+                      Replacing <strong id="studioReplaceBannerName">exercise</strong> — pick its replacement.
+                    </span>
+                    <button class="studio-replace-banner-cancel" id="studioReplaceBannerCancel" type="button">
+                      Cancel
+                    </button>
                   </div>
 
                   <!-- Search bar (add-custom moved to the top of the results list) -->
@@ -514,7 +529,7 @@
 
     <script src="/static/assets/js/components/exercise-tray.js?v=20260612-01"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=20260601-01"></script>
-    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260612-01"></script>
+    <script src="/static/assets/js/components/studio-exercise-card.js?v=20260612-02"></script>
     <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
@@ -537,6 +552,6 @@
          the studio card emits in session mode (per-exercise notes). -->
     <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
 
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260612-01"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260612-02"></script>
   </body>
 </html>

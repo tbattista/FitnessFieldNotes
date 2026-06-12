@@ -145,7 +145,7 @@ export function setupWeightEditListeners(offcanvasElement, offcanvas, exerciseNa
  * @returns {Object} Offcanvas instance
  */
 export function createCompleteWorkout(data, onConfirm) {
-    const { workoutName, minutes, totalExercises, isBuildMode = false } = data;
+    const { workoutName, minutes, totalExercises, isBuildMode = false, isStudioLogMode = false } = data;
 
     // Format current date/time for display
     const now = new Date();
@@ -237,6 +237,24 @@ export function createCompleteWorkout(data, onConfirm) {
                 </div>
                 ` : ''}
 
+                ${isStudioLogMode ? `
+                <!-- Studio Log mode: optionally promote session changes
+                     (weights, added exercises, sets/reps) into the saved
+                     workout template. Off by default — a one-off floor
+                     press shouldn't quietly become the norm. -->
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="saveSessionToTemplateToggle">
+                        <label class="form-check-label" for="saveSessionToTemplateToggle">
+                            Save changes to workout template
+                        </label>
+                    </div>
+                    <small class="text-muted d-block mt-1">
+                        Applies today's weights and any added exercises to the saved workout.
+                    </small>
+                </div>
+                ` : ''}
+
                 <!-- Primary action - Save Session (first and prominent) -->
                 <button type="button" class="btn btn-primary w-100 mb-3" id="confirmCompleteBtn">
                     <i class="bx bx-save me-1"></i>Save Session
@@ -306,6 +324,13 @@ export function createCompleteWorkout(data, onConfirm) {
                     const nameInput = document.getElementById('templateNameInput');
                     templateOpts.saveAsTemplate = true;
                     templateOpts.templateName = nameInput?.value?.trim() || workoutName;
+                }
+
+                // Studio Log mode: "promote session changes into the
+                // template" preference rides along in the same opts bag.
+                if (isStudioLogMode) {
+                    const promoteToggle = document.getElementById('saveSessionToTemplateToggle');
+                    templateOpts.saveToTemplate = !!(promoteToggle && promoteToggle.checked);
                 }
 
                 await onConfirm(durationMinutes, templateOpts, sessionCalories);

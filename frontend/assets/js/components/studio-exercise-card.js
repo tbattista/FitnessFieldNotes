@@ -54,7 +54,7 @@
   }
 
   class StudioExerciseCard {
-    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId, showDoneButton, isDone, isSkipped, lastSession } = {}) {
+    constructor({ instanceId, name, state, callbacks, inBlock, blockOptions, groupType, activityIcon, cardioConfig, activityId, showDoneButton, isDone, isSkipped, replacedByName, lastSession, weightDirection, exerciseNotes } = {}) {
       this.instanceId = instanceId;
       this.name = name || 'Exercise';
       this.state = Object.assign({
@@ -99,6 +99,15 @@
       // amber accent) and the Done button hides. Unskip lives in the
       // 3-dot menu. Plan mode never sets this.
       this.isSkipped = !!isSkipped;
+      // When skipped via Skip & Replace, the name of the exercise that
+      // took its place — rendered as a "Replaced with X" subline.
+      this.replacedByName = replacedByName ? String(replacedByName) : '';
+      // Session-mode extras: the next-session weight direction reminder
+      // ('up' | 'down' | 'same' | null) + the per-exercise note text.
+      this.weightDirection = ['up', 'down', 'same'].includes(weightDirection)
+        ? weightDirection : null;
+      this.exerciseNotes = exerciseNotes ? String(exerciseNotes) : '';
+      this._notesDebounce = null;
       // Last-session snapshot for this exercise — { weight, unit, daysAgo }.
       // Rendered as a small 'Last: 135 lbs · 3d ago' subtitle under the
       // name when present. Only the controller passes this; null in the
@@ -288,6 +297,14 @@
             <i class="bx bx-history"></i>
             <span>Last: ${escapeHtml(this.lastSession.weight)}${this.lastSession.unit ? ' ' + escapeHtml(this.lastSession.unit) : ''}${this.lastSession.daysAgo != null ? ' · ' + escapeHtml(this._formatDaysAgo(this.lastSession.daysAgo)) : ''}</span>
           </div>` : '';
+      // Replaced-with subline — when this exercise was skipped via
+      // Skip & Replace, name the replacement so the user can see the
+      // swap at a glance (the replacement card sits right below).
+      const replacedHtml = (this.isSkipped && this.replacedByName) ? `
+          <div class="studio-card-replaced-line" aria-label="Replaced with">
+            <i class="bx bx-transfer-alt"></i>
+            <span>Replaced with ${escapeHtml(this.replacedByName)}</span>
+          </div>` : '';
 
       return `
         <div class="studio-card${blockClass}${doneClass}${skippedClass}" role="listitem" data-instance-id="${safeId}"${blockAttr}${typeAttr}>
@@ -315,7 +332,7 @@
               </div>
             </div>
           </div>
-${lastHtml}
+${lastHtml}${replacedHtml}
           <div class="studio-card-body">
             <!-- Protocol — free-text. Whatever the user types is what they
                  see; backend sets/reps are derived best-effort on save. -->
@@ -379,6 +396,7 @@ ${lastHtml}
                        placeholder="60s" maxlength="20" />
               </div>
             </div>
+${this._sessionExtrasHtml()}
           </div>
 
           <!-- Card footer: the Completed button (log mode) lives here as a
@@ -458,6 +476,48 @@ ${lastHtml}
           if (!menu.hidden && !this.el.contains(e.target)) this._toggleMenu(true);
         };
         document.addEventListener('click', this._handleDocClickForMenu);
+      }
+
+      // Session extras (log mode): direction chips + per-exercise note.
+      const dirChips = this.el.querySelectorAll('.studio-card-dir-chip');
+      dirChips.forEach((chip) => {
+        chip.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const dir = chip.dataset.direction;
+          // Tapping the active chip clears the direction (toggle off).
+          const next = this.weightDirection === dir ? null : dir;
+          this.weightDirection = next;
+          dirChips.forEach((c) => {
+            const active = c.dataset.direction === next;
+            c.classList.toggle('is-active', active);
+            c.setAttribute('aria-pressed', active ? 'true' : 'false');
+          });
+          this._fire('onDirectionChange', next);
+        });
+      });
+      const notesToggle = this.el.querySelector('[data-action="toggle-notes"]');
+      const notesInput = this.el.querySelector('.studio-card-notes-input');
+      if (notesToggle && notesInput) {
+        notesToggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          notesInput.hidden = !notesInput.hidden;
+          if (!notesInput.hidden) notesInput.focus();
+        });
+        // Debounced save while typing + immediate save on blur — same
+        // cadence the workout-mode unified-notes controller uses.
+        const commit = () => {
+          this.exerciseNotes = notesInput.value;
+          this._fire('onNotesChange', notesInput.value);
+        };
+        notesInput.addEventListener('input', () => {
+          if (this._notesDebounce) clearTimeout(this._notesDebounce);
+          this._notesDebounce = setTimeout(commit, 800);
+        });
+        notesInput.addEventListener('blur', () => {
+          if (this._notesDebounce) clearTimeout(this._notesDebounce);
+          commit();
+        });
+        notesInput.addEventListener('click', (e) => e.stopPropagation());
       }
 
       // Unified edit mode — tapping ANY of the three field displays
@@ -820,6 +880,45 @@ ${lastHtml}
     }
 
     /**
+     * Session-mode extras rendered under the Rest row: the next-session
+     * direction chips (↓ Same ↑) and the per-exercise note. Both are
+     * gym-app affordances lifted from workout-mode — the chips persist
+     * a reminder for the NEXT session ("go heavier next time"), the
+     * note captures context ("left shoulder pinched on rep 6"). Plan
+     * cards never render these.
+     */
+    _sessionExtrasHtml() {
+      if (!this.showDoneButton) return '';
+      const dirBtn = (dir, icon, label) => `
+                <button class="studio-card-dir-chip${this.weightDirection === dir ? ' is-active' : ''}"
+                        data-direction="${dir}" type="button"
+                        aria-pressed="${this.weightDirection === dir ? 'true' : 'false'}"
+                        title="${label} next session">
+                  <i class="bx ${icon}"></i> ${label}
+                </button>`;
+      const hasNote = !!(this.exerciseNotes && this.exerciseNotes.trim());
+      return `
+            <div class="studio-card-session-extras">
+              <div class="studio-card-direction-row" aria-label="Next session weight direction">
+                <span class="studio-card-field-label">Next session</span>
+                <div class="studio-card-dir-chips">
+                  ${dirBtn('down', 'bx-down-arrow-alt', 'Lower')}
+                  ${dirBtn('same', 'bx-minus', 'Same')}
+                  ${dirBtn('up', 'bx-up-arrow-alt', 'Raise')}
+                </div>
+              </div>
+              <div class="studio-card-notes-row">
+                <button class="studio-card-notes-toggle" data-action="toggle-notes" type="button">
+                  <i class="bx bx-note"></i> ${hasNote ? 'Edit note' : 'Add note'}
+                </button>
+                <textarea class="studio-card-notes-input" rows="2" maxlength="500"
+                          placeholder="Note for this exercise…"
+                          ${hasNote ? '' : 'hidden'}>${escapeHtml(this.exerciseNotes)}</textarea>
+              </div>
+            </div>`;
+    }
+
+    /**
      * Build the 3-dot menu body. Two variants:
      *   - Plan (default): structure ops — Move up/down, move-to-block,
      *     Duplicate, Remove.
@@ -837,6 +936,9 @@ ${lastHtml}
                   </button>` : `
                   <button class="studio-card-menu-item" role="menuitem" data-action="skip" type="button">
                     <i class="bx bx-skip-next"></i> Skip exercise
+                  </button>
+                  <button class="studio-card-menu-item" role="menuitem" data-action="skip-replace" type="button">
+                    <i class="bx bx-transfer-alt"></i> Skip &amp; replace
                   </button>`;
       }
       return `
