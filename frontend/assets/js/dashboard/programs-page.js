@@ -578,7 +578,7 @@
             return;
         }
 
-        window.location.href = `/workout-mode.html?id=${firstWorkout.workout_id}&programId=${program.id}`;
+        window.location.href = `/workout-studio.html?id=${firstWorkout.workout_id}&start=1&programId=${program.id}`;
     }
 
     // ============================================

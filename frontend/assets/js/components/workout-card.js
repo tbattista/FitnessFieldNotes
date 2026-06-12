@@ -884,7 +884,7 @@ window.WorkoutCard = WorkoutCard;
  * can still route correctly without being rewritten.
  */
 window.getWorkoutStartUrl = function (workoutOrId, extraQuery = '') {
-    if (!workoutOrId) return 'workout-mode.html';
+    if (!workoutOrId) return 'workout-studio.html';
 
     let workout = workoutOrId;
     let id;
@@ -899,9 +899,13 @@ window.getWorkoutStartUrl = function (workoutOrId, extraQuery = '') {
     const data = workout ? (workout.workout_data || workout) : null;
     const isTabata = data && (data.workout_type || workout.workout_type) === 'tabata';
     const sep = extraQuery ? `&${extraQuery}` : '';
+    // Tabata still owns its own runner. Everything else lands in the
+    // studio's Log view (start=1 → controller auto-switches once the
+    // workout hydrates) — workout-mode.html is no longer the start
+    // destination for the library / dashboard / public flows.
     return isTabata
         ? `tabata-kettlebell.html?workout_id=${id}${sep}`
-        : `workout-mode.html?id=${id}${sep}`;
+        : `workout-studio.html?id=${id}&start=1${sep}`;
 };
 
 // Export for module use

@@ -153,7 +153,7 @@ class DashboardWorkoutCard {
       // Default: navigate to workout mode (tabata workouts route to the timer page)
       window.location.href = window.getWorkoutStartUrl
         ? window.getWorkoutStartUrl(this.workout)
-        : `workout-mode.html?id=${this.workout.id}`;
+        : `workout-studio.html?id=${this.workout.id}&start=1`;
     }
   }
   

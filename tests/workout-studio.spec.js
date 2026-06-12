@@ -4071,3 +4071,120 @@ test.describe('Workout Studio — Log mode session timer + Last-session line', (
         await expect(importBtn).toBeVisible();
     });
 });
+
+test.describe('Workout Studio — compact completed card + library start link', () => {
+    async function startSession(page, n = 2, name = 'Compact done test') {
+        const rows = page.locator('.studio-row');
+        await rows.nth(0).waitFor({ state: 'visible', timeout: 10000 });
+        for (let i = 0; i < n; i++) {
+            await rows.nth(i).locator('.studio-row-add').click();
+        }
+        await page.locator('#studioWorkoutNameInput').fill(name);
+        await page.locator('#studioViewLogBtn').click();
+        await page.locator('#studioLogStartBtn').click();
+        await expect(page.locator('#studioLogList .studio-card').first()).toBeVisible();
+    }
+
+    test('completed card collapses: body hidden, compact summary visible, name single-line', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page);
+
+        const first = page.locator('#studioLogList .studio-card').first();
+        // Pre-Done: full body shows, summary line is hidden.
+        await expect(first.locator('.studio-card-body')).toBeVisible();
+        const preSummaryDisplay = await first.locator('.studio-log-card-done-summary')
+            .evaluate(el => getComputedStyle(el).display);
+        expect(preSummaryDisplay).toBe('none');
+
+        // Mark Done → card shrinks
+        await first.locator('[data-action="toggle-done"]').click();
+        await expect(first).toHaveClass(/is-done/);
+
+        // Body, last-line, session extras and replaced subline all hide
+        // via the .studio-log-card.is-done CSS path.
+        await expect(first.locator('.studio-card-body')).toBeHidden();
+        await expect(first.locator('.studio-card-session-extras')).toBeHidden();
+
+        // The compact summary becomes visible.
+        const postSummaryDisplay = await first.locator('.studio-log-card-done-summary')
+            .evaluate(el => getComputedStyle(el).display);
+        expect(postSummaryDisplay).not.toBe('none');
+
+        // Card height has actually shrunk vs. the still-open sibling.
+        const secondHeight = await page.locator('#studioLogList .studio-card').nth(1)
+            .evaluate(el => el.getBoundingClientRect().height);
+        const firstHeight = await first.evaluate(el => el.getBoundingClientRect().height);
+        expect(firstHeight).toBeLessThan(secondHeight);
+    });
+
+    test('un-completing reopens the card (body + extras visible again)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        await startSession(page);
+        const first = page.locator('#studioLogList .studio-card').first();
+        await first.locator('[data-action="toggle-done"]').click();
+        await expect(first).toHaveClass(/is-done/);
+        // Tap Done again → un-done.
+        await first.locator('[data-action="toggle-done"]').click();
+        await expect(first).not.toHaveClass(/is-done/);
+        await expect(first.locator('.studio-card-body')).toBeVisible();
+    });
+
+    test('getWorkoutStartUrl now routes regular workouts to the studio with start=1', async ({ page }) => {
+        // The helper lives in workout-card.js, which is loaded on the
+        // database / public / dashboard pages — not on the studio
+        // itself. Test from a page that actually loads it.
+        await page.goto(`${BASE}/workout-database.html`);
+        await page.waitForFunction(() => typeof window.getWorkoutStartUrl === 'function', null, { timeout: 10000 });
+        const result = await page.evaluate(() => {
+            return {
+                regular: window.getWorkoutStartUrl({ id: 'wk-123', workout_type: 'standard' }),
+                tabata: window.getWorkoutStartUrl({ id: 'wk-tab', workout_type: 'tabata' }),
+                noArg: window.getWorkoutStartUrl(),
+            };
+        });
+        expect(result).toBeTruthy();
+        // Regular workouts route to the studio's Log entry, not the
+        // legacy workout-mode page.
+        expect(result.regular).toContain('workout-studio.html');
+        expect(result.regular).toContain('id=wk-123');
+        expect(result.regular).toContain('start=1');
+        expect(result.regular).not.toContain('workout-mode.html');
+        // Tabata still owns its own runner.
+        expect(result.tabata).toContain('tabata-kettlebell.html');
+        // No-arg fallback no longer dumps the user on workout-mode.html.
+        expect(result.noArg).toContain('workout-studio.html');
+    });
+
+    test('studio honors ?start=1 — auto-jumps to the Log landing after the workout hydrates', async ({ page }) => {
+        // Fake a saved workout in localStorage so the studio's load path
+        // resolves it without auth / Firebase. data-manager's
+        // getLocalStorageWorkouts reads from the "gym_workouts" key.
+        await page.goto(`${BASE}/workout-studio.html`);
+        await page.evaluate(() => {
+            const workout = {
+                id: 'auto-start-1',
+                name: 'Auto Start',
+                description: '',
+                tags: [],
+                exercise_groups: [
+                    { group_id: 'g1', exercises: { a: 'Barbell Bench Press' },
+                      sets: '3', reps: '8', rest: '60s' },
+                ],
+            };
+            const existing = JSON.parse(localStorage.getItem('gym_workouts') || '[]');
+            localStorage.setItem('gym_workouts', JSON.stringify(
+                [...existing.filter(w => w.id !== workout.id), workout]
+            ));
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=auto-start-1&start=1`);
+        // After hydration, the controller should land us on the Log
+        // landing — the tabs reflect it and the Start button is visible.
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'log', { timeout: 10000 });
+        await expect(page.locator('#studioLogLanding')).toBeVisible();
+        await expect(page.locator('#studioLogStartBtn')).toBeVisible();
+        // Workout name + exercise count made it through.
+        await expect(page.locator('#studioLogLandingTitle')).toHaveText('Auto Start');
+        await expect(page.locator('#studioLogLandingMeta')).toHaveText(/1 exercise/);
+    });
+});

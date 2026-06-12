@@ -859,6 +859,21 @@
     }
 
     /**
+     * True when the dashboard / library / public flow asked us to land
+     * directly on Log (?start=1). Honored after the workout finishes
+     * hydrating in _loadWorkoutById — one less tap from "tap workout"
+     * to "tap Start Workout".
+     */
+    _urlHasStartFlag() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('start') === '1';
+      } catch (_err) {
+        return false;
+      }
+    }
+
+    /**
      * Fetch a saved workout by id and hydrate the studio into editing mode.
      * Defaults the data-source to window.dataManager.getWorkouts() so it picks
      * up Firebase-or-localStorage routing automatically.
@@ -989,6 +1004,15 @@
       } finally {
         this._suppressDraftSave = false;
         this._suppressTrayChange = false;
+      }
+
+      // Library / dashboard / public flow used ?start=1 to mean "open
+      // straight on Log". Now that the template is hydrated, swing the
+      // user to the Log tab landing (where Start Workout is one tap
+      // away). Defer to a microtask so the view-switch sees the fully
+      // populated tray.
+      if (this._urlHasStartFlag() && this.tray && this.tray.size() > 0) {
+        Promise.resolve().then(() => this._showView('log'));
       }
     }
 
@@ -3078,6 +3102,19 @@
         },
       });
       const node = card.render();
+      // Tag every Log card so the .studio-log-card.is-done CSS path can
+      // collapse completed cards down to a compact summary line.
+      node.classList.add('studio-log-card');
+      // Compact-done summary line ("Today: 135 lbs · 3×8") that the CSS
+      // surfaces ONLY when the card is in the .is-done state. Updated
+      // in _onMarkDone whenever the user marks the card complete.
+      const summary = document.createElement('span');
+      summary.className = 'studio-log-card-done-summary';
+      summary.textContent = this._buildDoneSummary(item.instanceId);
+      const nameWrap = node.querySelector('.studio-card-name-wrap');
+      if (nameWrap && nameWrap.parentElement) {
+        nameWrap.parentElement.insertBefore(summary, nameWrap.nextSibling);
+      }
       container.appendChild(node);
       // Share the same map as plan cards — the destroy path treats them
       // uniformly and we don't need a second studioLogCards index.
@@ -3123,6 +3160,14 @@
       s.isDone = !!done;
       s.doneAt = done ? Date.now() : null;
       this._scheduleDraftSave();
+      // Refresh the compact-done summary that's rendered next to the
+      // name — it shows once the card collapses on Done.
+      const card = this.studioCards && this.studioCards.get(instanceId);
+      const el = card && card.el;
+      if (el) {
+        const summary = el.querySelector('.studio-log-card-done-summary');
+        if (summary) summary.textContent = this._buildDoneSummary(instanceId);
+      }
       // Push completion state into the live session — workout-mode's
       // history endpoint reads is_completed from the session, so marking
       // Done here is what makes "Last: X lbs" appear on the next visit.
@@ -3133,6 +3178,27 @@
         if (done) svc.completeExercise?.(item.name);
         else svc.uncompleteExercise?.(item.name);
       } catch (_) {}
+    }
+
+    /**
+     * Compact "Today: 135 lbs · 3×8" recap used on the collapsed
+     * completed-card row. Pulls from the merged display state (plan
+     * defaults + log overrides) so it reads exactly what the user
+     * confirmed. Returns '' when there's nothing meaningful to show.
+     */
+    _buildDoneSummary(instanceId) {
+      const log = (this.logState && this.logState.get(instanceId)) || {};
+      const plan = (this.organizeState && this.organizeState.get(instanceId)) || {};
+      const merged = Object.assign({}, plan, log);
+      const weight = (log.weight != null ? log.weight : (plan.weight || '')).toString().trim();
+      const unit = merged.weightUnit || 'lbs';
+      const sets = (merged.sets || '').toString().trim();
+      const reps = (merged.reps || '').toString().trim();
+      const parts = [];
+      if (weight) parts.push(`${weight}${unit && unit !== 'diy' ? ' ' + unit : ''}`);
+      if (sets && reps) parts.push(`${sets}×${reps}`);
+      else if (reps) parts.push(reps);
+      return parts.length ? `· ${parts.join(' · ')}` : '';
     }
 
     /**

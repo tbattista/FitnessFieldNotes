@@ -323,7 +323,7 @@
                 await window.dataManager.updateWorkout(savedWorkout.id, { is_archived: true });
                 console.log('📦 Workout archived:', savedWorkout.id);
 
-                window.location.href = `workout-mode.html?id=${savedWorkout.id}`;
+                window.location.href = `workout-studio.html?id=${savedWorkout.id}&start=1`;
             } else {
                 // Anonymous flow: save to localStorage, navigate with source=public
                 console.log('👤 Anonymous Do Once - saving to localStorage');
@@ -339,7 +339,7 @@
                 const localWorkout = window.dataManager.createLocalStorageWorkout(workoutData);
                 console.log('✅ Workout saved to localStorage for Do Once:', localWorkout.id);
 
-                window.location.href = `workout-mode.html?id=${localWorkout.id}&source=public`;
+                window.location.href = `workout-studio.html?id=${localWorkout.id}&start=1&source=public`;
             }
 
         } catch (error) {
