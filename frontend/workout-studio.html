@@ -41,6 +41,13 @@
     <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
     <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
 
+    <!-- Design system — defines the --gs-* palette and remaps Bootstrap's
+         --bs-* tokens to it. workout-mode.css's --workout-* variables are
+         built on --gs-*, so this MUST load before it. Linked explicitly
+         (workout-mode.html does the same) rather than relying on a
+         transitive @import chain to supply the whole color system. -->
+    <link rel="stylesheet" href="/static/assets/css/design-system.css" />
+
     <!-- Workout-mode CSS — the new Log card (StudioLogCard) renders with
          the SAME .workout-card markup workout-mode.html uses so the two
          pages share one source of truth for the card visual. The studio's
@@ -49,7 +56,7 @@
     <link rel="stylesheet" href="/static/assets/css/workout-mode.css?v=20260127-02" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260613-08" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260613-09" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -432,10 +439,10 @@
                   <div class="studio-log-status" id="studioLogStatus" role="status" aria-live="polite"></div>
                 </div>
 
-                <!-- Floating CTA: Continue → Organize -->
+                <!-- Floating CTA: Continue → Plan -->
                 <div class="studio-cta" id="studioContinueCta" hidden>
                   <button class="btn btn-primary studio-cta-btn" id="studioContinueBtn" type="button">
-                    Continue → Organize
+                    Continue → Plan
                     <span class="studio-cta-count" id="studioContinueCount">0</span>
                   </button>
                 </div>
@@ -541,8 +548,8 @@
     <script src="/static/assets/js/components/exercise-tray.js?v=20260612-01"></script>
     <script src="/static/assets/js/components/exercise-selection-grid.js?v=20260601-01"></script>
     <script src="/static/assets/js/components/studio-exercise-card.js?v=20260612-02"></script>
-    <script src="/static/assets/js/components/studio-log-card.js?v=20260613-04"></script>
-    <script src="/static/assets/js/components/studio-block.js?v=20260601-01"></script>
+    <script src="/static/assets/js/components/studio-log-card.js?v=20260613-05"></script>
+    <script src="/static/assets/js/components/studio-block.js?v=20260613-01"></script>
     <script src="/static/assets/js/components/studio-note-card.js?v=20260602-11"></script>
     <script src="/static/assets/js/components/studio-reorder-sheet.js?v=20260601-01"></script>
 
@@ -564,6 +571,6 @@
          the studio card emits in session mode (per-exercise notes). -->
     <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
 
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260613-06"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260613-07"></script>
   </body>
 </html>

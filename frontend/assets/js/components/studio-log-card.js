@@ -214,11 +214,19 @@
       if (this.isDone) stateClasses.push('logged');
       if (this.isSkipped) stateClasses.push('skipped');
 
+      const isCardio = this.groupType === 'cardio';
       const currentDirection = this.weightDirection;
       const lastWeight = this.lastSession ? this.lastSession.weight : '';
       const lastWeightUnit = this.lastSession ? (this.lastSession.unit || 'lbs') : 'lbs';
       const lastSessionDate = this.lastSession ? this.lastSession.sessionDate : null;
       const notes = this.exerciseNotes || '';
+      // Collapsed meta line: strength shows "sets × reps • rest"; cardio
+      // shows its activity summary ("20 min · 2.5 mi") so we never print
+      // a meaningless "3 × 8-12 • 60s" on a run/ride.
+      const cardioSummary = isCardio ? this._formatCardioSummary() : '';
+      const metaLine = isCardio
+        ? (cardioSummary || 'Tap to set duration, distance…')
+        : `${escapeHtml(sets)} × ${escapeHtml(reps)} • ${escapeHtml(rest)}`;
 
       return `
         <div class="workout-card studio-log-card ${stateClasses.join(' ')}"
@@ -235,18 +243,29 @@
                 ${safeName}
               </div>
               <div class="workout-header-actions">
-                <!-- Pencil = Edit. WeightFieldController + RepsSetsFieldController
-                     discover .workout-edit-btn inside the card; clicking it
-                     dispatches enterUnifiedEditMode (with data-unified-edit
-                     opting in to the unified-controller flow), which the
-                     UnifiedEditController catches to morph both fields into
-                     edit mode at once. Locked when the card is .logged. -->
+                <!-- Pencil = Edit. For strength cards the WeightFieldController
+                     + RepsSetsFieldController discover .workout-edit-btn and,
+                     on click, dispatch enterUnifiedEditMode (data-unified-edit
+                     opts into the unified flow) so the UnifiedEditController
+                     morphs both fields into edit mode at once. Cardio cards
+                     have no weight/protocol fields, so their pencil instead
+                     opens the activity offcanvas (data-action="edit-cardio")
+                     rather than being a dead button. Locked when .logged. -->
+                ${isCardio ? `
+                <button class="workout-edit-btn${this.isDone ? ' edit-locked' : ''}"
+                        data-action="edit-cardio" type="button"
+                        title="${this.isDone ? 'Uncomplete to edit' : 'Edit activity'}"
+                        aria-label="${this.isDone ? 'Editing locked - uncomplete to edit' : 'Edit activity'}">
+                  <i class="bx ${this.isDone ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
+                </button>
+                ` : `
                 <button class="workout-edit-btn${this.isDone ? ' edit-locked' : ''}"
                         data-unified-edit="true" type="button"
                         title="${this.isDone ? 'Uncomplete to edit' : 'Edit weight + protocol'}"
                         aria-label="${this.isDone ? 'Editing locked - uncomplete to edit' : 'Edit'}">
                   <i class="bx ${this.isDone ? 'bx-lock-alt' : 'bx-edit-alt'}"></i>
                 </button>
+                `}
                 <!-- Info circle = open the exercise detail offcanvas. -->
                 <button class="workout-info-btn"
                         data-action="info" type="button"
@@ -259,7 +278,7 @@
               </div>
             </div>
             <div class="workout-exercise-info">
-              <div class="workout-exercise-meta">${escapeHtml(sets)} × ${escapeHtml(reps)} • ${escapeHtml(rest)}</div>
+              <div class="workout-exercise-meta">${escapeHtml(metaLine)}</div>
               <div class="workout-state-row">
                 ${weight ? `<div class="workout-state-item highlight">Today: ${escapeHtml(weight)} ${escapeHtml(unit)}</div>` : ''}
                 ${lastWeight ? `<div class="workout-state-item"><span class="tree-branch">└─</span> Last: ${escapeHtml(lastWeight)} ${escapeHtml(lastWeightUnit)}</div>` : ''}
@@ -547,13 +566,15 @@
         this._fire('onInfo');
       });
 
-      // Cardio summary tap → open the activity offcanvas (controller
-      // wires the same _onEditCardio handler the Plan card uses).
-      const cardioBtn = this.el.querySelector('[data-action="edit-cardio"]');
-      if (cardioBtn) cardioBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this.isDone) return;
-        this._fire('onEditCardio');
+      // Cardio summary tap (and the cardio card's header pencil) → open
+      // the activity offcanvas (controller wires the same _onEditCardio
+      // handler the Plan card uses). Both carry data-action="edit-cardio".
+      this.el.querySelectorAll('[data-action="edit-cardio"]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (this.isDone) return;
+          this._fire('onEditCardio');
+        });
       });
 
       // 3-dot menu open/close + items. Use the .show class so the

@@ -917,6 +917,11 @@
       const workout = await resp.json();
       if (!workout || !workout.id) throw new Error('Workout not found');
       this._hydrateFromWorkoutData(workout);
+      // The raw fallback owns dismissing the loader too — the primary
+      // _loadWorkoutById path only hides the banner on its own success
+      // branch, so without this a fallback load (anonymous users, cache
+      // miss, API-only records) would leave the banner stuck.
+      this._hideLoadingBanner();
       this._setStatus('', null);
     }
 
@@ -2723,9 +2728,13 @@
         } else if (entry.kind === 'block') {
           const block = this.blocks.get(entry.blockId);
           if (!block) return;
+          // Log session: blocks are read-only structural labels (rename /
+          // reorder / remove are locked mid-session), so render them
+          // without the edit input or 3-dot menu.
           const blockComp = new window.StudioBlock({
             blockId: entry.blockId,
             name: block.name,
+            readOnly: true,
             callbacks: {
               onRename: (blockId, name) => this._onBlockRename(blockId, name),
               onMenuAction: (blockId, action) => this._onBlockMenuAction(blockId, action),

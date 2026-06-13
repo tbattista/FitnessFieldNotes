@@ -28,10 +28,15 @@
   }
 
   class StudioBlock {
-    constructor({ blockId, name, callbacks } = {}) {
+    constructor({ blockId, name, callbacks, readOnly = false } = {}) {
       this.blockId = blockId;
       this.name = name || '';
       this.callbacks = callbacks || {};
+      // readOnly = the live Log session. Blocks are structural and can't be
+      // renamed/reordered/removed mid-session (those ops are gated anyway),
+      // so we render the name as a static label with no edit input and no
+      // 3-dot menu — matching workout-mode's non-editable execution chrome.
+      this.readOnly = !!readOnly;
       this.el = null;
       this.childrenSlot = null;
       this._handleDocClickForMenu = null;
@@ -85,16 +90,17 @@
     _templateHtml() {
       const safeId = escapeHtml(this.blockId);
       const safeName = escapeHtml(this.name);
-      return `
-        <div class="studio-block is-empty" role="group" data-block-id="${safeId}">
-          <div class="studio-block-header">
-            <span class="studio-block-icon" aria-hidden="true"><i class="bx bx-collection"></i></span>
-            <input class="studio-block-name-input"
+      const roClass = this.readOnly ? ' studio-block--readonly' : '';
+      // Read-only (Log): static name label, no input, no 3-dot menu.
+      const nameHtml = this.readOnly
+        ? `<span class="studio-block-name-static">${safeName || 'Block'}</span>`
+        : `<input class="studio-block-name-input"
                    type="text"
                    value="${safeName}"
                    placeholder="Block name (e.g. Warmup)"
                    maxlength="40"
-                   aria-label="Block name" />
+                   aria-label="Block name" />`;
+      const menuHtml = this.readOnly ? '' : `
             <div class="studio-block-menu-wrap">
               <button class="studio-block-icon-btn" data-action="menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Block actions" title="More">
                 <i class="bx bx-dots-vertical-rounded"></i>
@@ -113,7 +119,13 @@
                   <i class="bx bx-trash"></i> Remove block
                 </button>
               </div>
-            </div>
+            </div>`;
+      return `
+        <div class="studio-block is-empty${roClass}" role="group" data-block-id="${safeId}">
+          <div class="studio-block-header">
+            <span class="studio-block-icon" aria-hidden="true"><i class="bx bx-collection"></i></span>
+            ${nameHtml}
+            ${menuHtml}
           </div>
           <div class="studio-block-children" role="list">
             <!-- Child StudioExerciseCard nodes appended here by controller -->

@@ -1360,13 +1360,14 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   gap: 0.4rem;
   margin: 0.5rem 0 0;
 }
-/* Page 2 reserves space at the bottom so the floating FAB row (Back /
-   More / Save / Go, ~52px tall, anchored 16px from the viewport bottom)
-   doesn't sit on top of the Activity / Note / Block trio. The
-   safe-area inset keeps it correct on iOS notched devices. */
+/* Plan + Log reserve space at the bottom so the floating FAB row
+   (Discard / Save / Go, 52px tall + shadow, anchored 16px from the
+   viewport bottom = ~84px of occupied band) clears the last card and
+   the Plan view's Activity / Note / Block trio with breathing room.
+   The safe-area inset keeps it correct on iOS notched devices. */
 .studio[data-view="plan"] .studio-view-organize,
 .studio[data-view="log"]  .studio-view-log {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
 }
 .studio-bottom-add-row[hidden] { display: none; }
 .studio-bottom-add-row .btn {
@@ -1491,6 +1492,19 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
 .studio-block-name-input:focus {
   background: rgba(0, 0, 0, 0.04);
   border-radius: 6px;
+}
+/* Read-only block label (Log session) — same weight/size as the input
+   but plainly static text, no edit affordance. */
+.studio-block-name-static {
+  flex: 1 1 auto;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--bs-body-color);
+  padding: 0.1rem 0.25rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .studio-block-icon-btn {
@@ -2384,6 +2398,28 @@ html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba
 .studio-log-landing-start[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
+}
+/* Match workout-mode's Start button: a forest-green "go" signal rather
+   than the generic clay primary, so "Start Workout" reads the same on
+   both pages. Targeted by ID (like workout-mode's #startWorkoutBtn) so it
+   cleanly out-specifies Bootstrap's .btn-primary theming. */
+#studioLogStartBtn.studio-log-landing-start {
+  background-color: var(--gs-action-start, #228B22) !important;
+  border-color: var(--gs-action-start-hover, #1B6B1B) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 10px rgba(var(--gs-action-start-rgb, 34, 139, 34), 0.25);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+#studioLogStartBtn.studio-log-landing-start:hover,
+#studioLogStartBtn.studio-log-landing-start:focus-visible {
+  background-color: var(--gs-action-start-hover, #1B6B1B) !important;
+  border-color: var(--gs-action-start-hover, #1B6B1B) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 12px rgba(var(--gs-action-start-rgb, 34, 139, 34), 0.35);
+}
+#studioLogStartBtn.studio-log-landing-start:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(var(--gs-action-start-rgb, 34, 139, 34), 0.35);
 }
 .studio-log-landing-start i {
   font-size: 1.1rem;

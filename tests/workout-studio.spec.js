@@ -2324,6 +2324,167 @@ test.describe('Workout Studio — cardio summary card + offcanvas editing', () =
         // Strength-style hero fields are NOT rendered for cardio in Log
         await expect(logCard.locator('.workout-weight-field')).toHaveCount(0);
         await expect(logCard.locator('.workout-repssets-field')).toHaveCount(0);
+
+        // Collapsed meta line must NOT show strength "sets × reps • rest"
+        // formatting — it should carry the cardio summary instead.
+        const meta = logCard.locator('.workout-exercise-meta');
+        await expect(meta).not.toContainText('×');
+        await expect(meta).toContainText(/30\s*min/i);
+    });
+
+    test('cardio Log card header pencil opens the activity editor (not a dead unified-edit button)', async ({ page }) => {
+        const workout = {
+            id: 'wkt-cardio-pencil',
+            name: 'Bike Day',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-c-bike', name: 'Cycling', group_type: 'cardio',
+                      cardio_config: { activity_type: 'cycling', duration_minutes: 25 } },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await page.addInitScript(() => {
+            window.__cardioEditorCalls = [];
+            const wait = setInterval(() => {
+                if (window.UnifiedOffcanvasFactory) {
+                    window.UnifiedOffcanvasFactory.createCardioEditor = (cfg) => {
+                        window.__cardioEditorCalls.push({ groupId: cfg.groupId });
+                        return { id: 'stub', hide: () => {} };
+                    };
+                    clearInterval(wait);
+                }
+            }, 30);
+        });
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Bike Day', { timeout: 10000 });
+        await page.locator('#studioContinueBtn').click();
+        await enterLogSession(page);
+
+        const logCard = page.locator('.studio-log-card');
+        // The cardio card's header pencil carries data-action="edit-cardio"
+        // (NOT data-unified-edit) so it opens the activity offcanvas.
+        const pencil = logCard.locator('.workout-edit-btn[data-action="edit-cardio"]');
+        await expect(pencil).toHaveCount(1);
+        await expect(logCard.locator('.workout-edit-btn[data-unified-edit="true"]')).toHaveCount(0);
+        await pencil.click();
+
+        const calls = await page.evaluate(() => window.__cardioEditorCalls);
+        expect(calls.length).toBe(1);
+        expect(calls[0].groupId).toMatch(/^studio:/);
+    });
+
+    test('Log landing Start Workout button uses the forest-green "go" color (matches workout-mode)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioViewLogBtn').click();
+
+        const startBtn = page.locator('#studioLogStartBtn');
+        await expect(startBtn).toBeVisible();
+        // Forest green #228B22 = rgb(34, 139, 34), NOT the clay primary.
+        await expect(startBtn).toHaveCSS('background-color', 'rgb(34, 139, 34)');
+    });
+
+    test('blocks render read-only in the Log session (static label, no edit input or menu)', async ({ page }) => {
+        const workout = {
+            id: 'wkt-block-log',
+            name: 'Block Day',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: 'Shoulder Block', exercises: [
+                    { exercise_id: 'ex-ohp', name: 'Overhead Press', sets: '3', reps: '8', rest: '90s' },
+                    { exercise_id: 'ex-lat', name: 'Lateral Raise', sets: '3', reps: '12', rest: '45s' },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Block Day', { timeout: 10000 });
+
+        // Plan view: block IS editable (input + its own header menu present).
+        // Scope the menu check to the block header so child-card menus don't count.
+        await page.locator('#studioViewPlanBtn').click();
+        const planBlock = page.locator('.studio-block').first();
+        await expect(planBlock.locator('.studio-block-name-input')).toHaveCount(1);
+        await expect(planBlock.locator('.studio-block-header [data-action="menu"]')).toHaveCount(1);
+
+        // Log session: block is read-only (static label, no input, no header menu)
+        await enterLogSession(page);
+        const logBlock = page.locator('.studio-view-log .studio-block').first();
+        await expect(logBlock).toHaveClass(/studio-block--readonly/);
+        await expect(logBlock.locator('.studio-block-name-static')).toHaveText('Shoulder Block');
+        await expect(logBlock.locator('.studio-block-name-input')).toHaveCount(0);
+        await expect(logBlock.locator('.studio-block-header [data-action="menu"]')).toHaveCount(0);
+        // Its child cards still mount inside the block
+        await expect(logBlock.locator('.studio-log-card')).toHaveCount(2);
+    });
+
+    test('the "Loading workout…" banner clears after a raw-fallback load (no dataManager)', async ({ page }) => {
+        const workout = {
+            id: 'wkt-raw-load',
+            name: 'Raw Load Day',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-r1', name: 'Squat', sets: '5', reps: '5', rest: '120s' },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        // Deleting dataManager forces the _loadWorkoutByIdRaw fallback path —
+        // the one that previously hydrated but never hid the loading banner.
+        await page.addInitScript(() => { delete window.dataManager; });
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Raw Load Day', { timeout: 10000 });
+        // The transient loading banner must be gone once hydration completes.
+        await expect(page.locator('.studio-load-banner')).toHaveCount(0);
+    });
+
+    test('Build Continue CTA reads "Continue → Plan" (no stale "Organize" label)', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+
+        const cta = page.locator('#studioContinueBtn');
+        await expect(cta).toBeVisible();
+        await expect(cta).toContainText('Continue → Plan');
+        await expect(cta).not.toContainText('Organize');
     });
 
     test('Log card info button is styled like the edit/menu icons and sits between them', async ({ page }) => {
