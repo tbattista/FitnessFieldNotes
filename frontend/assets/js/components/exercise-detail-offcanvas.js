@@ -60,10 +60,23 @@ class ExerciseDetailOffcanvas {
         this.offcanvasElement = document.getElementById(this.offcanvasId);
     }
 
-    show(exerciseId, presentation = {}) {
-        const exercise = [...(window.ffn?.exercises?.all || []), ...(window.ffn?.exercises?.custom || [])]
-            .find(e => e.id === exerciseId);
-
+    show(idOrExercise, presentation = {}) {
+        // Accept either an id string (library/grid path) or a full exercise
+        // object (studio cards — the loaded workout's exercise may not live
+        // in the library cache, so a strict id lookup would silently bail).
+        // When given an object, still try the cache for a richer record
+        // (pairings, description, video) and fall back to the object itself.
+        const pool = [
+            ...(window.ffn?.exercises?.all || []),
+            ...(window.ffn?.exercises?.custom || []),
+        ];
+        let exercise;
+        if (idOrExercise && typeof idOrExercise === 'object') {
+            const lookupId = idOrExercise.id;
+            exercise = (lookupId && pool.find(e => e.id === lookupId)) || idOrExercise;
+        } else {
+            exercise = pool.find(e => e.id === idOrExercise);
+        }
         if (!exercise) return;
 
         // Per-open presentation lets the same offcanvas instance render

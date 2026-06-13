@@ -323,9 +323,11 @@
           return;
         }
       }
-      const id = exercise.id || exercise.name;
+      // Pass the full exercise object so the offcanvas can fall back to it
+      // when the id isn't found in the library cache (loaded-workout
+      // exercises often have synthetic ids that don't match the library).
       try {
-        this._exerciseDetailOffcanvas.show(id, presentation || {});
+        this._exerciseDetailOffcanvas.show(exercise, presentation || {});
       } catch (err) {
         console.error('[WorkoutStudio] ExerciseDetailOffcanvas.show threw:', err);
       }

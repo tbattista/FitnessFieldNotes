@@ -2326,6 +2326,76 @@ test.describe('Workout Studio — cardio summary card + offcanvas editing', () =
         await expect(logCard.locator('.workout-repssets-field')).toHaveCount(0);
     });
 
+    test('Log card info button is styled like the edit/menu icons and sits between them', async ({ page }) => {
+        // Add one exercise, continue to Plan, enter Log session so a
+        // .workout-card mounts. Then verify the info button has proper
+        // sizing (not the unstyled default-button height) and slots into
+        // the action row at order: 2 (between Edit at 1 and Menu at 3).
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+        await enterLogSession(page);
+
+        const card = page.locator('.studio-log-card').first();
+        const infoBtn = card.locator('.workout-info-btn');
+        await expect(infoBtn).toBeVisible();
+
+        // Styled: padding zeroed via 0.25rem, font-size 1.25rem (icon-button shape),
+        // not a default-browser button (which would be ~16px font).
+        const fontSizePx = await infoBtn.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+        expect(fontSizePx).toBeGreaterThanOrEqual(19); // 1.25rem ≈ 20px
+        const display = await infoBtn.evaluate((el) => getComputedStyle(el).display);
+        expect(display).toBe('flex');
+
+        // Order: Edit(1) → Info(2) → Menu(3) → Chevron(4)
+        const editOrder = await card.locator('.workout-edit-btn').evaluate((el) => parseInt(getComputedStyle(el).order, 10));
+        const infoOrder = await infoBtn.evaluate((el) => parseInt(getComputedStyle(el).order, 10));
+        const menuOrder = await card.locator('.workout-menu-wrap').evaluate((el) => parseInt(getComputedStyle(el).order, 10));
+        expect(infoOrder).toBeGreaterThan(editOrder);
+        expect(infoOrder).toBeLessThan(menuOrder);
+    });
+
+    test('Log card info button opens the exercise detail offcanvas', async ({ page }) => {
+        // Use a loaded workout whose exercise_id is NOT in the library
+        // cache — exercises a path where the offcanvas previously bailed
+        // silently because of a strict id lookup.
+        const workout = {
+            id: 'wkt-info-log',
+            name: 'Info Test',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-not-in-library', name: 'Mystery Lift', sets: '3', reps: '10', rest: '60s' },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Info Test', { timeout: 10000 });
+        await page.locator('#studioContinueBtn').click();
+        await enterLogSession(page);
+
+        const card = page.locator('.studio-log-card').first();
+        await card.locator('.workout-info-btn').click();
+
+        const offcanvas = page.locator('#exerciseDetailOffcanvas');
+        await expect(offcanvas).toBeVisible({ timeout: 5000 });
+        await expect(offcanvas.locator('#exerciseOffcanvasName')).toHaveText('Mystery Lift');
+    });
+
     test('tapping the Log cardio summary opens the same offcanvas editor', async ({ page }) => {
         const workout = {
             id: 'wkt-cardio-log-tap',

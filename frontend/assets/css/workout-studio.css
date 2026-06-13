@@ -2749,3 +2749,51 @@ html, body { height: auto; overflow: visible; }
   cursor: default;
   opacity: 0.7;
 }
+
+/* ------------------------------------------------------------------
+   Log-card info button
+   workout-mode.css styles .workout-edit-btn + .workout-more-btn as
+   matching icon buttons but knows nothing about .workout-info-btn —
+   the studio adds an Info circle so the user can open the detail
+   offcanvas without leaving the card. Mirror the same look + flex
+   order (Edit → Info → More → Chevron).
+   ------------------------------------------------------------------ */
+.studio-view-log .workout-card .workout-info-btn {
+  padding: 0.25rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--workout-muted);
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  order: 2;
+}
+.studio-view-log .workout-card .workout-info-btn i {
+  display: block;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+.studio-view-log .workout-card .workout-info-btn:hover {
+  opacity: 1;
+  color: var(--workout-text);
+  background: var(--workout-status-active);
+}
+.studio-view-log .workout-card .workout-info-btn:active {
+  transform: scale(0.95);
+}
+/* Push the existing actions back so Info slots in cleanly:
+   Edit (1) → Info (2) → More (3) → Chevron (4). */
+.studio-view-log .workout-card .workout-menu-wrap,
+.studio-view-log .workout-card .workout-more-btn {
+  order: 3;
+}
+.studio-view-log .workout-card .workout-chevron {
+  order: 4;
+}
