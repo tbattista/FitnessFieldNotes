@@ -22,8 +22,12 @@
 }
 
 .studio {
-  display: flex;
-  flex-direction: column;
+  /* Block layout, not flex column. Flex containers have historically
+     broken position: sticky on the first child in iOS Safari (the
+     sticky element renders fine but stops sticking on scroll). Block
+     stacking gives us the same vertical layout without the trap, and
+     the sticky .studio-view-tabs row pins reliably to top: 0. */
+  display: block;
   min-height: calc(100vh - 4rem);
 }
 
@@ -814,22 +818,31 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   /* Sticky at the top of the studio container so the nav stays
      reachable while the user scrolls through Build's catalog or a
-     long Log session. Higher z than the tray (z-index: 29) and a
-     solid body bg so cards scroll cleanly underneath. */
+     long Log session. -webkit-sticky for older iOS Safari; both top
+     and z-index are required for the row to anchor and stack above
+     scrolling cards. will-change keeps Safari from accidentally
+     reordering the sticky-vs-flex-parent paint order. */
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   z-index: 32;
   background: var(--bs-body-bg);
   padding: 0.3rem 0 0;
+  will-change: transform;
   /* Tiny shadow line that intensifies once the row has detached from
      its natural position — JS toggles a .is-stuck class via an
      IntersectionObserver-style sentinel. Falls back gracefully when
      the JS hook isn't installed (no shadow, just the hairline). */
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0);
-  transition: box-shadow 0.18s ease;
+  transition: box-shadow 0.18s ease, background-color 0.18s ease,
+              border-bottom-color 0.18s ease;
 }
 .studio-view-tabs.is-stuck {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  /* Beefier stuck-state visual: a heavier drop-shadow + a hairline
+     under the row darkens to make the now-floating tabs unmistakable
+     against the page content scrolling underneath. */
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  border-bottom-color: rgba(0, 0, 0, 0.18);
 }
 .studio-view-tabs > .studio-view-tab:nth-child(1) { justify-self: start; }
 .studio-view-tabs > .studio-view-tab:nth-child(2) { justify-self: center; }
