@@ -184,6 +184,8 @@
 
       this.dom.tray = document.getElementById('studioTray');
       this.dom.trayChips = document.getElementById('studioTrayChips');
+      this.dom.trayToggle = document.getElementById('studioTrayToggle');
+      this.dom.trayToggleCount = document.getElementById('studioTrayToggleCount');
 
       this.dom.searchInput = document.getElementById('studioSearchInput');
       this.dom.searchClear = document.getElementById('studioSearchClear');
@@ -278,6 +280,42 @@
         // allowed), so the gate must live here, not in CSS.
         canRemove: () => !this._guardSessionLock(),
       });
+
+      // Wire the tray's expand/collapse toggle. The tray ships collapsed
+      // to a single chip row so a heavy selection doesn't push the
+      // catalog off-screen — tapping the toggle (or the count badge)
+      // expands it, tapping again collapses back. State is in-memory
+      // only; each session starts collapsed.
+      if (this.dom.trayToggle) {
+        this.dom.trayToggle.addEventListener('click', (e) => {
+          e.preventDefault();
+          this._toggleTrayExpanded();
+        });
+      }
+    }
+
+    /** Show/hide the tray toggle + sync its count badge. Called from
+     *  _onTrayChange. Toggle hides when the tray has <2 chips (one chip
+     *  always fits — no collapse value). Re-collapses on shrink. */
+    _refreshTrayToggle(count) {
+      const btn = this.dom.trayToggle;
+      const badge = this.dom.trayToggleCount;
+      if (!btn || !this.dom.tray) return;
+      const show = count >= 2;
+      btn.hidden = !show;
+      if (badge) badge.textContent = String(count);
+      // Drop back to collapsed when the toggle would disappear so a
+      // subsequent grow re-collapses by default (the requested behavior).
+      if (!show) this.dom.tray.classList.remove('is-expanded');
+    }
+
+    _toggleTrayExpanded() {
+      const tray = this.dom.tray;
+      const btn = this.dom.trayToggle;
+      if (!tray) return;
+      const next = !tray.classList.contains('is-expanded');
+      tray.classList.toggle('is-expanded', next);
+      if (btn) btn.setAttribute('aria-expanded', next ? 'true' : 'false');
     }
 
     _initGrid() {
@@ -1003,11 +1041,13 @@
 
         // Now that the tray + organizeOrder are coherent, run the derived
         // Page 1 UI that _onTrayChange would have updated: count badges on
-        // the selection grid, Continue CTA visibility, count text.
+        // the selection grid, Continue CTA visibility, count text,
+        // tray-collapse toggle visibility.
         if (this.tray) {
           const items = this.tray.getItems();
           if (this.grid) this.grid.setCounts(this.tray.countsByExerciseId());
           this._refreshContinueCta();
+          this._refreshTrayToggle(items.length);
         }
       } finally {
         this._suppressDraftSave = false;
@@ -4247,6 +4287,10 @@
 
       // Continue CTA visibility + count (Build view only — see helper)
       this._refreshContinueCta();
+      // Show/hide the tray's collapse toggle + update its count badge so
+      // a tray with more than one chip exposes the expand/collapse control
+      // (default state is collapsed — clamped to a single row).
+      this._refreshTrayToggle(items.length);
       const n = items.length;
 
       // Keep organizeOrder + blocks in sync with the tray:

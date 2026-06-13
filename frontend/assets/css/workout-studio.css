@@ -16,9 +16,18 @@
 .studio .btn { border-radius: 10px; }
 
 .studio-container {
-  padding-top: 0 !important;
   padding-bottom: 96px;
   max-width: 760px;
+}
+/* Bootstrap's `.container-p-y:not(...)` rule sets
+   `padding-block-start: 1.5rem !important` at specificity (0,3,0), so a
+   `.studio-container` override at (0,1,0) loses even with !important.
+   Chain the three classes the studio container always carries to match
+   specificity and reset the logical property — the view tabs then hug
+   the navbar with no dead 24px gap above them. */
+.studio-container.container-xxl.container-p-y {
+  padding-top: 0 !important;
+  padding-block-start: 0 !important;
 }
 
 .studio {
@@ -36,14 +45,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.85rem 0.9rem 0.95rem;
+  padding: 0.7rem 0.9rem 0.8rem;
   background: var(--bs-body-bg);
   border: 1px solid var(--bs-border-color);
   border-radius: 12px;
-  /* Breathing room above (between the view tabs and this title card)
-     and below (between this card and the tray / first exercise card)
-     so the workout title doesn't read as crammed against either edge. */
-  margin: 0.6rem 0.25rem 1rem;
+  /* A small gap from the sticky tabs above, generous breathing room below
+     (between this card and the tray / first exercise card) so the title
+     doesn't read as crammed against either edge. */
+  margin: 0.3rem 0.25rem 0.8rem;
   transition: gap 0.15s ease;
 }
 /* Collapsed state: no trailing gap between name row and the hidden meta row */
@@ -180,12 +189,9 @@ html[data-bs-theme="dark"] .studio-meta-field:focus-within { background: var(--b
   border-bottom: 1px solid var(--bs-border-color-translucent);
   min-height: 44px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  gap: 0.5rem;
   padding: 0.4rem 0.25rem;
-  /* Cap how tall the wrapped chip area can grow so it doesn't push
-     the rest of the page off-screen when many exercises are selected. */
-  max-height: 30vh;
-  overflow-y: auto;
 }
 
 .studio-tray-empty {
@@ -211,8 +217,78 @@ html[data-bs-theme="dark"] .studio-meta-field:focus-within { background: var(--b
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0 0.25rem;
+  /* Cap on expanded height so a huge tray doesn't push the page off-screen. */
+  max-height: 30vh;
+  overflow-y: auto;
+}
+/* Collapsed (default once a few chips are in the tray): clamp to a
+   single line, hide overflow horizontally, and reveal them when the
+   user taps the toggle. The toggle button itself sits in the right
+   column of the .studio-tray flex row so it stays visible regardless
+   of state. */
+.studio-tray:not(.is-expanded) .studio-tray-chips {
+  flex-wrap: nowrap;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  max-height: 30px;
+  /* Fade the trailing chips so the user reads "there's more here" — the
+     toggle next to it makes the affordance explicit. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+          mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+}
+.studio-tray:not(.is-expanded) .studio-tray-chip {
+  flex: 0 0 auto;
+}
+
+/* Toggle button — total-count badge + chevron. Hidden via [hidden] when
+   the tray is empty or too small to bother collapsing. */
+.studio-tray-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  align-self: center;
+}
+.studio-tray-toggle[hidden] { display: none; }
+.studio-tray-toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.18);
+}
+.studio-tray-toggle .bx {
+  font-size: 1rem;
+  transition: transform 0.18s ease;
+}
+.studio-tray.is-expanded .studio-tray-toggle .bx {
+  transform: rotate(180deg);
+}
+.studio-tray-toggle-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bs-primary);
+  color: #fff;
+  font-size: 0.72rem;
+}
+[data-bs-theme="dark"] .studio-tray-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.20);
 }
 
 .studio-tray-chip {

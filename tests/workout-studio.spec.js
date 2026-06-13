@@ -99,6 +99,50 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         await expect(page.locator('#studioContinueCount')).toHaveText('1');
     });
 
+    test('tray defaults to collapsed; toggle reveals all chips and shows total count', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const rows = page.locator('.studio-row');
+        await rows.first().waitFor({ state: 'visible', timeout: 15000 });
+
+        // Single chip: toggle hidden (nothing to collapse).
+        await rows.nth(0).locator('.studio-row-add').click();
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
+        await expect(page.locator('#studioTrayToggle')).toBeHidden();
+
+        // Add a second chip: toggle appears with count = 2, collapsed.
+        await rows.nth(1).locator('.studio-row-add').click();
+        const toggle = page.locator('#studioTrayToggle');
+        await expect(toggle).toBeVisible();
+        await expect(page.locator('#studioTrayToggleCount')).toHaveText('2');
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(page.locator('#studioTray')).not.toHaveClass(/is-expanded/);
+
+        // Tap toggle → expanded, aria flips, chevron rotates via .is-expanded.
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await expect(page.locator('#studioTray')).toHaveClass(/is-expanded/);
+
+        // Tap again → collapses back.
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(page.locator('#studioTray')).not.toHaveClass(/is-expanded/);
+
+        // Removing a chip back down to 1 hides the toggle again.
+        await page.locator('.studio-tray-chip-remove').first().click();
+        await expect(page.locator('.studio-tray-chip')).toHaveCount(1);
+        await expect(toggle).toBeHidden();
+    });
+
+    test('Build view tabs hug the navbar — no dead space from container-p-y padding-block-start', async ({ page }) => {
+        await page.goto(`${BASE}/workout-studio.html`);
+        // The .studio-container should have its logical padding-block-start
+        // overridden to 0; without it, Bootstrap's container-p-y leaves a
+        // 24px gap above the tabs.
+        const c = page.locator('.container-xxl.studio-container');
+        const pbStart = await c.evaluate((el) => getComputedStyle(el).getPropertyValue('padding-block-start'));
+        expect(pbStart.trim()).toBe('0px');
+    });
+
     test('tapping "+" twice adds two instances (multi-add)', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
 
@@ -321,15 +365,22 @@ test.describe('Workout Studio — Foundation + Live Exercise List', () => {
         expect(whiteSpace).not.toBe('nowrap');
     });
 
-    test('tray chips wrap to a new line instead of scrolling horizontally', async ({ page }) => {
+    test('tray chips wrap to multiple lines once the tray is expanded (collapsed = single line)', async ({ page }) => {
         await page.goto(`${BASE}/workout-studio.html`);
-        await expect(page.locator('.studio-row').first()).toBeVisible({ timeout: 15000 });
+        const rows = page.locator('.studio-row');
+        await rows.first().waitFor({ state: 'visible', timeout: 15000 });
 
-        // Container should declare flex-wrap: wrap so chips reflow vertically.
-        const flexWrap = await page.locator('#studioTrayChips').evaluate((el) =>
-            window.getComputedStyle(el).flexWrap
-        );
-        expect(flexWrap).toBe('wrap');
+        // Need at least 2 chips for the collapse toggle to surface.
+        await rows.nth(0).locator('.studio-row-add').click();
+        await rows.nth(1).locator('.studio-row-add').click();
+
+        // Collapsed (default): nowrap so chips stay on one line + the
+        // toggle handles overflow.
+        await expect(page.locator('#studioTrayChips')).toHaveCSS('flex-wrap', 'nowrap');
+
+        // Expanded: wrap so a heavy selection reflows vertically.
+        await page.locator('#studioTrayToggle').click();
+        await expect(page.locator('#studioTrayChips')).toHaveCSS('flex-wrap', 'wrap');
     });
 
     test('add-custom button is hidden until search has text, then reveals at the top of the results list', async ({ page }) => {

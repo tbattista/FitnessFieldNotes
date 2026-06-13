@@ -56,7 +56,7 @@
     <link rel="stylesheet" href="/static/assets/css/workout-mode.css?v=20260127-02" />
 
     <!-- Workout Studio CSS -->
-    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260613-09" />
+    <link rel="stylesheet" href="/static/assets/css/workout-studio.css?v=20260613-11" />
 
     <!-- Unified Offcanvas CSS (used by pencil-edit on Page 2 cards) -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
@@ -183,13 +183,26 @@
                   <div class="studio-flash" id="studioFlash" hidden role="status" aria-live="polite"></div>
                 </header>
 
-                <!-- Sticky tray chip row (shared across pages) -->
+                <!-- Sticky tray chip row (shared across pages). Collapses
+                     to a single line by default once you've added a few
+                     exercises so it doesn't push the catalog off-screen.
+                     The toggle on the right shows the total + an
+                     expand/collapse chevron. -->
                 <div class="studio-tray" id="studioTray" data-empty="true" aria-label="Selected exercises">
                   <div class="studio-tray-empty" id="studioTrayEmpty">
                     <i class="bx bx-list-plus"></i>
                     <span>Tap <strong>+</strong> on exercises to add them here</span>
                   </div>
                   <div class="studio-tray-chips" id="studioTrayChips" role="list"></div>
+                  <button class="studio-tray-toggle"
+                          id="studioTrayToggle"
+                          type="button"
+                          hidden
+                          aria-expanded="false"
+                          aria-controls="studioTrayChips">
+                    <span class="studio-tray-toggle-count" id="studioTrayToggleCount">0</span>
+                    <i class="bx bx-chevron-down" aria-hidden="true"></i>
+                  </button>
                 </div>
 
                 <!-- View: Page 1 (Select) -->
@@ -571,6 +584,6 @@
          the studio card emits in session mode (per-exercise notes). -->
     <script src="/static/assets/js/controllers/unified-notes-controller.js?v=2.1.0"></script>
 
-    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260613-07"></script>
+    <script src="/static/assets/js/controllers/workout-studio-controller.js?v=20260613-08"></script>
   </body>
 </html>
