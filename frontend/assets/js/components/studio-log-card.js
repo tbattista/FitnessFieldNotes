@@ -69,6 +69,12 @@
       callbacks,
       groupType,
       activityIcon,
+      // Cardio-only: the cardio_config object the activity offcanvas
+      // edits (activity_type, duration_minutes, distance, pace, hr,
+      // calories, rpe, ...). Cardio cards render a summary line +
+      // tap-to-edit instead of the weight/protocol fields.
+      cardioConfig,
+      activityId,
       // Log-mode props
       isDone = false,
       isSkipped = false,
@@ -94,6 +100,8 @@
       this.callbacks = callbacks || {};
       this.groupType = String(groupType || 'standard').toLowerCase();
       this.activityIcon = activityIcon ? String(activityIcon) : '';
+      this.cardioConfig = cardioConfig ? Object.assign({}, cardioConfig) : {};
+      this.activityId = activityId ? String(activityId) : '';
       this.isDone = !!isDone;
       this.isSkipped = !!isSkipped;
       this.skipReason = skipReason || '';
@@ -142,6 +150,38 @@
       this.el.classList.toggle('skipped', this.isSkipped);
     }
 
+    /**
+     * Cardio config edited via the activity offcanvas — refresh the
+     * summary line + the activity icon/name in the header. Mirrors the
+     * StudioExerciseCard method of the same name so the controller's
+     * _applyCardioConfig works for log cards too.
+     */
+    setCardioConfig(cfg, { activityIcon, name, activityId } = {}) {
+      this.cardioConfig = cfg ? Object.assign({}, cfg) : {};
+      if (activityIcon) this.activityIcon = String(activityIcon);
+      if (name) this.name = String(name);
+      if (activityId) this.activityId = String(activityId);
+      if (!this.el) return;
+      // Summary text
+      const summary = this.el.querySelector('.studio-log-card-cardio-summary span');
+      if (summary) {
+        const text = this._formatCardioSummary();
+        summary.className = text ? 'studio-card-cardio-meta' : 'studio-card-cardio-empty';
+        summary.textContent = text || 'Tap to set duration, distance, pace…';
+      }
+      // Header name + icon (preserve the notes indicator if present)
+      const nameEl = this.el.querySelector('.workout-exercise-name');
+      if (nameEl && this.groupType === 'cardio') {
+        const icon = this.activityIcon ? this.activityIcon : 'bx-pulse';
+        const hasNotes = !!(this.exerciseNotes && String(this.exerciseNotes).trim());
+        nameEl.innerHTML = `<i class="bx ${escapeHtml(icon)} studio-card-type-icon" aria-hidden="true"></i> `
+          + (hasNotes ? '<i class="bx bx-note exercise-note-indicator" title="Has notes"></i>' : '')
+          + escapeHtml(this.name);
+      }
+      // Card data attribute (used by some queries)
+      this.el.setAttribute('data-exercise-name', this.name);
+    }
+
     render() {
       const tpl = document.createElement('div');
       tpl.innerHTML = this._templateHtml();
@@ -188,6 +228,9 @@
           <div class="workout-card-header" data-action="toggle-expand">
             <div class="workout-exercise-name-row">
               <div class="workout-exercise-name">
+                ${(this.groupType === 'cardio' && this.activityIcon)
+                  ? `<i class="bx ${escapeHtml(this.activityIcon)} studio-card-type-icon" aria-hidden="true"></i> `
+                  : ''}
                 ${notes ? '<i class="bx bx-note exercise-note-indicator" title="Has notes"></i>' : ''}
                 ${safeName}
               </div>
@@ -249,15 +292,27 @@
             ` : ''}
 
             ${!this.isSkipped ? `
-              <!-- Weight + Protocol -->
-              <div class="workout-fields-row">
+              ${this.groupType === 'cardio' ? `
+                <!-- Cardio summary — duration / distance / pace / HR
+                     etc, derived from cardio_config. Tap to open the
+                     activity offcanvas (same editor Plan view uses). -->
                 <div class="workout-section">
-                  ${this._templateWeightField(weight, unit)}
+                  <button type="button" class="studio-log-card-cardio-summary"
+                          data-action="edit-cardio">
+                    <span class="${this._formatCardioSummary() ? 'studio-card-cardio-meta' : 'studio-card-cardio-empty'}">${escapeHtml(this._formatCardioSummary() || 'Tap to set duration, distance, pace…')}</span>
+                  </button>
                 </div>
-                <div class="workout-section">
-                  ${this._templateRepsSetsField(sets, reps)}
+              ` : `
+                <!-- Weight + Protocol -->
+                <div class="workout-fields-row">
+                  <div class="workout-section">
+                    ${this._templateWeightField(weight, unit)}
+                  </div>
+                  <div class="workout-section">
+                    ${this._templateRepsSetsField(sets, reps)}
+                  </div>
                 </div>
-              </div>
+              `}
 
               <!-- Notes -->
               <div class="workout-section workout-notes-timer-section workout-unified-notes">
@@ -334,6 +389,29 @@
           </button>
           <div class="workout-menu" role="menu">${items}</div>
         </div>`;
+    }
+
+    /**
+     * Cardio summary line — "20 min · 2.5 mi · 8:00/mi" — built from
+     * cardio_config + the user's ActivityDisplayConfig column choices.
+     * Same helper StudioExerciseCard uses for Plan-view cardio cards
+     * so the two reads stay in sync. Returns '' when no displayable
+     * fields are populated (caller shows the empty-state copy then).
+     */
+    _formatCardioSummary() {
+      const cfg = this.cardioConfig || {};
+      const ADC = window.ActivityDisplayConfig;
+      const columns = ADC && typeof ADC.getColumns === 'function'
+        ? ADC.getColumns()
+        : ['duration', 'distance', 'pace'];
+      const parts = [];
+      columns.forEach((fieldId) => {
+        const def = ADC && typeof ADC.getFieldDef === 'function' ? ADC.getFieldDef(fieldId) : null;
+        if (!def || typeof def.format !== 'function') return;
+        const val = def.format(cfg);
+        if (val) parts.push(val);
+      });
+      return parts.join(' · ');
     }
 
     _templateWeightField(weight, unit) {
@@ -467,6 +545,15 @@
       if (infoBtn) infoBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this._fire('onInfo');
+      });
+
+      // Cardio summary tap → open the activity offcanvas (controller
+      // wires the same _onEditCardio handler the Plan card uses).
+      const cardioBtn = this.el.querySelector('[data-action="edit-cardio"]');
+      if (cardioBtn) cardioBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.isDone) return;
+        this._fire('onEditCardio');
       });
 
       // 3-dot menu open/close + items. Use the .show class so the

@@ -2244,6 +2244,142 @@ test.describe('Workout Studio — cardio summary card + offcanvas editing', () =
         // FABs are the new home for those actions
         await expect(page.locator('#studioFabSave')).toHaveCount(1);
     });
+
+    test('Plan card weight/protocol fields are left-justified on a single row (workout-mode CSS bleed override)', async ({ page }) => {
+        // workout-mode.css's .weight-display / .repssets-display are
+        // flex-column (label above big numeral) — perfect for Log cards,
+        // wrong for Plan editor rows. The studio CSS scopes a flex-row
+        // override for .studio-card to keep label + value on one line.
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await firstRow.waitFor({ state: 'visible', timeout: 10000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+
+        const weightDisplay = page.locator('.studio-card .weight-display').first();
+        const protocolDisplay = page.locator('.studio-card .repssets-display').first();
+        await expect(weightDisplay).toBeVisible();
+        await expect(protocolDisplay).toBeVisible();
+
+        // Both displays should be row-direction, not column
+        await expect(weightDisplay).toHaveCSS('flex-direction', 'row');
+        await expect(protocolDisplay).toHaveCSS('flex-direction', 'row');
+
+        // The big-numeral font-size from workout-mode (1.5rem-ish ≈ 24px)
+        // should NOT be present on Plan card weight values.
+        const fontSizePx = await weightDisplay.locator('.weight-value').first().evaluate(
+            (el) => parseFloat(getComputedStyle(el).fontSize)
+        );
+        expect(fontSizePx).toBeLessThan(20);
+    });
+
+    test('cardio cards in the Log view render the summary surface, not weight/protocol fields', async ({ page }) => {
+        const workout = {
+            id: 'wkt-cardio-log',
+            name: 'Run Day',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    {
+                        exercise_id: 'ex-c-run',
+                        name: 'Running',
+                        group_type: 'cardio',
+                        cardio_config: {
+                            activity_type: 'running',
+                            duration_minutes: 30,
+                        },
+                    },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await setupActivityStubs(page);
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Run Day', { timeout: 10000 });
+        await page.locator('#studioContinueBtn').click();
+        await enterLogSession(page);
+
+        // Exactly one Log card and it's the cardio one — first not-yet-done
+        // card auto-expands on mount, so the body should already be open.
+        const logCard = page.locator('.studio-log-card');
+        await expect(logCard).toHaveCount(1);
+        await expect(logCard).toHaveClass(/expanded/);
+
+        // Summary surface present + has the duration text
+        const summary = logCard.locator('.studio-log-card-cardio-summary');
+        await expect(summary).toBeVisible();
+        await expect(summary).toContainText(/30\s*min/i);
+
+        // Strength-style hero fields are NOT rendered for cardio in Log
+        await expect(logCard.locator('.workout-weight-field')).toHaveCount(0);
+        await expect(logCard.locator('.workout-repssets-field')).toHaveCount(0);
+    });
+
+    test('tapping the Log cardio summary opens the same offcanvas editor', async ({ page }) => {
+        const workout = {
+            id: 'wkt-cardio-log-tap',
+            name: 'Row Day',
+            description: '', tags: [], workout_type: 'standard',
+            sections: [
+                { type: 'standard', name: null, exercises: [
+                    { exercise_id: 'ex-c-row', name: 'Rowing', group_type: 'cardio',
+                      cardio_config: { activity_type: 'rowing', duration_minutes: 15 } },
+                ]},
+            ],
+            exercise_groups: [],
+            template_notes: [],
+        };
+        await page.addInitScript(() => { delete window.dataManager; });
+        await page.addInitScript(() => {
+            window.__cardioEditorCalls = [];
+            const wait = setInterval(() => {
+                if (window.UnifiedOffcanvasFactory) {
+                    window.UnifiedOffcanvasFactory.createCardioEditor = (cfg) => {
+                        window.__cardioEditorCalls.push({
+                            groupId: cfg.groupId,
+                            cardioConfig: cfg.cardioConfig,
+                        });
+                        return { id: 'stub', hide: () => {} };
+                    };
+                    clearInterval(wait);
+                }
+            }, 30);
+        });
+        await page.route(/\/api\/v3\/workouts(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ workouts: [workout] }) });
+        });
+        await page.route(/\/api\/v3\/workouts\/[^/?]+(\?|$)/, async (route) => {
+            if (route.request().method() !== 'GET') return route.continue();
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workout) });
+        });
+
+        await page.goto(`${BASE}/workout-studio.html?id=${workout.id}`);
+        await expect(page.locator('#studioWorkoutNameInput')).toHaveValue('Row Day', { timeout: 10000 });
+        await page.locator('#studioContinueBtn').click();
+        await enterLogSession(page);
+
+        const logCard = page.locator('.studio-log-card');
+        // First not-yet-done card auto-expands on mount; just tap the summary.
+        await expect(logCard).toHaveClass(/expanded/);
+        await logCard.locator('.studio-log-card-cardio-summary').click();
+
+        const calls = await page.evaluate(() => window.__cardioEditorCalls);
+        expect(calls.length).toBe(1);
+        expect(calls[0].groupId).toMatch(/^studio:/);
+        expect(calls[0].cardioConfig.activity_type).toBe('rowing');
+    });
 });
 
 test.describe('Workout Studio — unified card edit (workout-mode parity)', () => {

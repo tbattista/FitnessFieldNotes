@@ -2671,3 +2671,81 @@ html[data-bs-theme="dark"] .studio-draft-banner-dismiss:hover { background: rgba
    for the catalog) and adds an unnecessary scroll layer. Restore the
    normal flow here — the studio doesn't need that bottom-bar anyway. */
 html, body { height: auto; overflow: visible; }
+
+/* ------------------------------------------------------------------
+   Plan-view card field overrides (workout-mode CSS bleed-through)
+   The Log card uses workout-mode's .weight-display / .repssets-display
+   which are display: flex; flex-direction: column (label on top, big
+   value below). The Plan card's StudioExerciseCard uses the SAME
+   class names but inside a .studio-card row layout — so the workout-
+   mode rules were forcing label-above-value on Plan too. Scope it
+   back to a left-justified single-row layout here.
+   ------------------------------------------------------------------ */
+.studio-card .weight-display,
+.studio-card .repssets-display,
+.studio-card .studio-rest-display {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+}
+/* Workout-mode pumps the .weight-value / .repssets-value-text up to
+   1.5rem bold — appropriate for the Log card's hero numerals, way too
+   loud for the Plan editor row. Pull them back to the Plan card's
+   normal weight + size. */
+.studio-card .weight-display .weight-value,
+.studio-card .weight-display .weight-unit,
+.studio-card .repssets-display .repssets-value-text,
+.studio-card .studio-rest-display .studio-rest-value-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  line-height: normal;
+}
+.studio-card .weight-display .weight-unit {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+}
+
+/* ------------------------------------------------------------------
+   Log-view cardio summary button
+   Cardio cards in Log mode replace the weight/protocol pair with a
+   single tap-target showing the duration / distance / pace summary
+   (mirrors the Plan card's cardio surface). Tapping opens the
+   activity offcanvas via the controller's _onEditCardio.
+   ------------------------------------------------------------------ */
+.studio-view-log .studio-log-card-cardio-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  color: var(--bs-body-color);
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+[data-bs-theme="dark"] .studio-view-log .studio-log-card-cardio-summary {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+}
+.studio-view-log .studio-log-card-cardio-summary:hover {
+  border-color: var(--bs-primary);
+  background: rgba(var(--bs-primary-rgb), 0.06);
+}
+.studio-view-log .studio-log-card-cardio-summary .studio-card-cardio-meta {
+  font-weight: 600;
+}
+.studio-view-log .studio-log-card-cardio-summary .studio-card-cardio-empty {
+  color: var(--bs-secondary-color);
+  font-style: italic;
+}
+.studio-view-log .workout-card.logged .studio-log-card-cardio-summary {
+  cursor: default;
+  opacity: 0.7;
+}

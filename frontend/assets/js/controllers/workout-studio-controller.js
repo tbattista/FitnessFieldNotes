@@ -3082,6 +3082,8 @@
 
       const src = item.exercise || {};
       const groupType = String(src.group_type || 'standard').toLowerCase();
+      const activityId = src._activityId || src.activity_id
+        || (planState.cardioConfig && planState.cardioConfig.activity_type) || '';
 
       // Last-session snapshot + the recent-sessions tree for the
       // history block. Both come from the same controller-level cache
@@ -3103,8 +3105,10 @@
         state: displayState,
         groupType,
         activityIcon: groupType === 'cardio'
-          ? (this._resolveActivityIcon(src._activityId || src.activity_id) || 'bx-pulse')
+          ? (this._resolveActivityIcon(activityId) || 'bx-pulse')
           : '',
+        cardioConfig: planState.cardioConfig || {},
+        activityId,
         isDone: !!logState.isDone,
         isSkipped: !!logState.isSkipped,
         skipReason: logState.skipReason || '',
@@ -3123,6 +3127,7 @@
           onMenuAction: (instanceId, action) => this._onCardMenuAction(instanceId, action, null),
           onDirectionChange: (instanceId, dir) => this._onDirectionChange(instanceId, dir),
           onNotesChange: (instanceId, notes) => this._onExerciseNotesChange(instanceId, notes),
+          onEditCardio: (instanceId) => this._onEditCardio(instanceId),
         },
       });
       const node = card.render();
