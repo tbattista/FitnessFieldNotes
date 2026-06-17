@@ -5,19 +5,35 @@ User-agent: *
 Allow: /
 Allow: /launch
 Allow: /public-workouts
-Allow: /share/
+Allow: /privacy.html
+Allow: /terms.html
 
 # Block authenticated app pages from indexing
 Disallow: /workout-builder
+Disallow: /workout-studio
 Disallow: /workout-mode
 Disallow: /workout-database
 Disallow: /workout-history
 Disallow: /exercise-database
+Disallow: /exercise-edit
 Disallow: /programs
+Disallow: /program-schedule-builder
 Disallow: /profile
+Disallow: /settings
+Disallow: /activity-log
+Disallow: /spin-ride
+Disallow: /spin-ride-history
+Disallow: /spin-ride-feedback-admin
+Disallow: /tabata-kettlebell
 Disallow: /dashboard
 Disallow: /feedback-voting
 Disallow: /feedback-admin
+Disallow: /auth-login-basic
+Disallow: /auth-register-basic
+Disallow: /auth-forgot-password-basic
+# /share/{token} pages are private invite links — never indexable
+Disallow: /share/
+Disallow: /share.html
 Disallow: /api/
 
 # Sitemap location
