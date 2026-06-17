@@ -89,8 +89,20 @@ SITEMAP_CACHE_TTL = 3600  # 1 hour
 
 @app.get("/sitemap.xml")
 async def serve_sitemap():
-    """Serve dynamic sitemap.xml with static pages + public workouts"""
+    """Serve sitemap.xml listing canonical, indexable public pages.
+
+    Each URL is paired with a <lastmod> so Google can prioritize recrawl.
+    Static lastmod is acceptable for low-change pages; bump it whenever a
+    page's content materially changes.
+
+    We deliberately do NOT list individual public-workout deep links: the
+    only paths that resolve to a workout (workout-builder.html?share_id=,
+    /share/{token}) are either blocked by robots.txt or are private-invite
+    tokens, neither of which Google should crawl. Add a real public-canon
+    route (e.g. /p/{id}) before re-introducing per-workout entries.
+    """
     import time
+    from datetime import date
 
     now = time.time()
     if _sitemap_cache["xml"] and (now - _sitemap_cache["generated_at"]) < SITEMAP_CACHE_TTL:
@@ -99,32 +111,32 @@ async def serve_sitemap():
     base_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "fitnessfieldnotes.com")
     base_url = f"https://{base_url}" if not base_url.startswith("http") else base_url
 
-    # Static pages
+    lastmod = date.today().isoformat()
+
     urls = [
-        f'  <url><loc>{base_url}/</loc><priority>1.0</priority><changefreq>weekly</changefreq></url>',
-        f'  <url><loc>{base_url}/public-workouts</loc><priority>0.8</priority><changefreq>daily</changefreq></url>',
-        f'  <url><loc>{base_url}/privacy.html</loc><priority>0.3</priority><changefreq>yearly</changefreq></url>',
-        f'  <url><loc>{base_url}/terms.html</loc><priority>0.3</priority><changefreq>yearly</changefreq></url>',
+        ("/",                 "1.0", "weekly"),
+        ("/public-workouts",  "0.8", "daily"),
+        ("/privacy.html",     "0.3", "yearly"),
+        ("/terms.html",       "0.3", "yearly"),
     ]
 
-    # Add public workouts dynamically
-    try:
-        result = await sharing_service.get_public_workouts(page=1, page_size=500)
-        for workout in result.get("workouts", []):
-            workout_id = workout.id if hasattr(workout, 'id') else workout.get('id', '')
-            if workout_id:
-                urls.append(f'  <url><loc>{base_url}/workout-builder.html?share_id={workout_id}</loc><priority>0.6</priority><changefreq>weekly</changefreq></url>')
-        logger.info(f"Sitemap generated with {len(urls)} URLs ({len(result.get('workouts', []))} public workouts)")
-    except Exception as e:
-        logger.warning(f"Could not fetch public workouts for sitemap: {e}")
-
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    xml += '\n'.join(urls)
-    xml += '\n</urlset>'
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+                 '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for path, priority, changefreq in urls:
+        xml_parts.append(
+            f'  <url>'
+            f'<loc>{base_url}{path}</loc>'
+            f'<lastmod>{lastmod}</lastmod>'
+            f'<changefreq>{changefreq}</changefreq>'
+            f'<priority>{priority}</priority>'
+            f'</url>'
+        )
+    xml_parts.append('</urlset>')
+    xml = '\n'.join(xml_parts)
 
     _sitemap_cache["xml"] = xml
     _sitemap_cache["generated_at"] = now
+    logger.info(f"Sitemap generated with {len(urls)} URLs")
 
     return Response(content=xml, media_type="application/xml")
 
