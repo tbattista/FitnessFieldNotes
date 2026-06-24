@@ -1,0 +1,88 @@
+/**
+ * Beta Banner — slim, dismissible, sticky to the very top of the page.
+ *
+ * Sits above the navbar so it reads as a site-wide notice, not a per-page
+ * one. Once the user taps the X, a localStorage flag (versioned) hides it
+ * permanently for that browser until the message is intentionally bumped.
+ */
+
+.ffn-beta-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  background: linear-gradient(
+    to right,
+    rgba(var(--bs-primary-rgb, 201, 124, 93), 0.92),
+    rgba(var(--bs-primary-rgb, 201, 124, 93), 1.0)
+  );
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.3;
+  position: relative;
+  z-index: 1100; /* above navbar (1090) so it always reads first */
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  /* Respect notch / safe area on mobile */
+  padding-top: calc(0.45rem + env(safe-area-inset-top, 0px));
+}
+
+.ffn-beta-banner-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 0 0 auto;
+}
+
+.ffn-beta-banner-text {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.ffn-beta-banner-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 0.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  flex: 0 0 auto;
+  transition: background 0.15s ease;
+}
+.ffn-beta-banner-dismiss:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+.ffn-beta-banner-dismiss .bx {
+  font-size: 1.05rem;
+}
+
+/* Small screens — drop the icon-only "BETA" pill in favor of inline text
+   so the banner stays single-line. */
+@media (max-width: 480px) {
+  .ffn-beta-banner {
+    font-size: 0.76rem;
+    padding: 0.4rem 0.5rem;
+    padding-top: calc(0.4rem + env(safe-area-inset-top, 0px));
+  }
+  .ffn-beta-banner-label {
+    font-size: 0.62rem;
+    padding: 1px 6px;
+  }
+}
