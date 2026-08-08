@@ -33,6 +33,12 @@ app = FastAPI(
     redirect_slashes=False  # Prevent 307 redirects that strip Authorization headers
 )
 
+@app.on_event("startup")
+def _sync_firestore_rules_on_startup():
+    # Keep deployed Firestore security rules in sync with firestore.rules
+    from .services.rules_sync_service import sync_firestore_rules
+    sync_firestore_rules()
+
 # Add CORS middleware for development
 app.add_middleware(
     CORSMiddleware,
