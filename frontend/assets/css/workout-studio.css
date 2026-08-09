@@ -791,9 +791,13 @@ html[data-bs-theme="dark"] .studio-row-info:hover { background: rgba(255, 255, 2
 .studio-card {
   background: rgba(0, 0, 0, 0.035);
   border-radius: 12px;
-  padding: 0.55rem 0.8rem 0.6rem;
+  padding: 0.45rem 0.8rem 0.5rem;
   display: flex;
   flex-direction: column;
+  gap: 0.15rem;
+}
+/* Restore breathing room while the stacked editors are open */
+.studio-card.studio-card-editing {
   gap: 0.35rem;
 }
 
@@ -983,6 +987,41 @@ html[data-bs-theme="dark"] .studio-card-name-input { background: var(--bs-tertia
   display: flex;
   align-items: center;
   min-height: 28px;
+}
+
+/* Compact display mode — outside of edit mode the three field rows sit
+   side-by-side in a single row (tiny label above the value), keeping each
+   card short in the list. Entering unified edit mode (.studio-card-editing)
+   falls back to the stacked full-width rows above so the editors have room. */
+.studio-card:not(.studio-card-editing) .studio-card-body {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+.studio-card:not(.studio-card-editing) .studio-card-field {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+.studio-card:not(.studio-card-editing) .studio-card-field .click-to-edit {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 1px 6px 2px;
+}
+.studio-card:not(.studio-card-editing) .studio-card-field-label {
+  width: auto;
+  font-size: 0.6rem;
+  line-height: 1.3;
+}
+.studio-card:not(.studio-card-editing) .studio-card-field .repssets-value-text,
+.studio-card:not(.studio-card-editing) .studio-card-field .studio-rest-value-text,
+.studio-card:not(.studio-card-editing) .studio-card-field .weight-value,
+.studio-card:not(.studio-card-editing) .studio-card-field .studio-card-field-value-wrap {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Single card-level commit row — one ✓ Save + ✗ Cancel for the whole

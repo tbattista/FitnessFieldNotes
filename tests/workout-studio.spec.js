@@ -2942,3 +2942,65 @@ test.describe('Workout Studio — Page 2 Import and Reorder are visually identic
         expect(styles.i.fontWeight).toBe(styles.r.fontWeight);
     });
 });
+
+test.describe('Workout Studio — Page 2 compact cards', () => {
+
+    async function openOrganizeWithOne(page) {
+        await page.goto(`${BASE}/workout-studio.html`);
+        const firstRow = page.locator('.studio-row').first();
+        await expect(firstRow).toBeVisible({ timeout: 15000 });
+        await firstRow.locator('.studio-row-add').click();
+        await page.locator('#studioContinueBtn').click();
+        await expect(page.locator('#studio')).toHaveAttribute('data-view', 'organize');
+        return page.locator('.studio-card').first();
+    }
+
+    test('display mode lays the three fields side-by-side; edit mode expands to stacked rows', async ({ page }) => {
+        const card = await openOrganizeWithOne(page);
+
+        // Compact display: the card body is a single horizontal row
+        const dirBefore = await card.locator('.studio-card-body').evaluate(
+            (el) => getComputedStyle(el).flexDirection
+        );
+        expect(dirBefore).toBe('row');
+        const heightCompact = await card.evaluate((el) => el.offsetHeight);
+
+        // All three values still visible in compact mode
+        await expect(card.locator('.repssets-value-text')).toBeVisible();
+        await expect(card.locator('.weight-value')).toBeVisible();
+        await expect(card.locator('.studio-rest-value-text')).toBeVisible();
+
+        // Tap a field → unified edit mode expands the body back to stacked rows
+        await card.locator('.repssets-display').click();
+        await expect(card).toHaveClass(/studio-card-editing/);
+        const dirEditing = await card.locator('.studio-card-body').evaluate(
+            (el) => getComputedStyle(el).flexDirection
+        );
+        expect(dirEditing).toBe('column');
+        const heightEditing = await card.evaluate((el) => el.offsetHeight);
+        expect(heightEditing).toBeGreaterThan(heightCompact);
+
+        // Cancel collapses back to the compact single-row layout
+        await card.locator('.studio-card-edit-cancel').click();
+        await expect(card).not.toHaveClass(/studio-card-editing/);
+        const dirAfter = await card.locator('.studio-card-body').evaluate(
+            (el) => getComputedStyle(el).flexDirection
+        );
+        expect(dirAfter).toBe('row');
+    });
+
+    test('editing still works end-to-end from the compact layout', async ({ page }) => {
+        const card = await openOrganizeWithOne(page);
+
+        await card.locator('.weight-display').click();
+        await card.locator('.weight-input').fill('145');
+        await card.locator('.studio-card-edit-save').click();
+
+        await expect(card.locator('.weight-value')).toHaveText('145');
+        // Back in compact mode after save
+        const dir = await card.locator('.studio-card-body').evaluate(
+            (el) => getComputedStyle(el).flexDirection
+        );
+        expect(dir).toBe('row');
+    });
+});
