@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Home-screen app icon: flat illustrated dumbbell on a dark tile -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2C2C2E"/>
+      <stop offset="1" stop-color="#161618"/>
+    </linearGradient>
+    <!-- Hard-stop gradients give the two-tone flat shading -->
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F0782A"/>
+      <stop offset="0.6" stop-color="#E8630A"/>
+      <stop offset="0.6" stop-color="#C2510A"/>
+      <stop offset="1" stop-color="#B04808"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ECEEF1"/>
+      <stop offset="0.5" stop-color="#C9CDD3"/>
+      <stop offset="0.5" stop-color="#9AA0A8"/>
+      <stop offset="1" stop-color="#7D838C"/>
+    </linearGradient>
+    <linearGradient id="collar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5A5F66"/>
+      <stop offset="0.6" stop-color="#4A4E54"/>
+      <stop offset="0.6" stop-color="#3A3D42"/>
+      <stop offset="1" stop-color="#33363A"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <g transform="translate(512 512) scale(0.88) translate(-512 -512)">
+    <!-- Floor shadow -->
+    <ellipse cx="512" cy="742" rx="360" ry="26" fill="#000" opacity="0.4"/>
+
+    <!-- Handle -->
+    <rect x="300" y="486" width="424" height="52" rx="14" fill="url(#metal)"/>
+    <g stroke="#8A9099" stroke-width="5" opacity="0.6">
+      <line x1="430" y1="492" x2="430" y2="532"/>
+      <line x1="458" y1="492" x2="458" y2="532"/>
+      <line x1="486" y1="492" x2="486" y2="532"/>
+      <line x1="514" y1="492" x2="514" y2="532"/>
+      <line x1="542" y1="492" x2="542" y2="532"/>
+      <line x1="570" y1="492" x2="570" y2="532"/>
+      <line x1="598" y1="492" x2="598" y2="532"/>
+    </g>
+
+    <!-- Collars -->
+    <rect x="278" y="448" width="36" height="128" rx="10" fill="url(#collar)"/>
+    <rect x="710" y="448" width="36" height="128" rx="10" fill="url(#collar)"/>
+
+    <!-- End caps -->
+    <rect x="104" y="480" width="34" height="64" rx="12" fill="url(#metal)"/>
+    <rect x="886" y="480" width="34" height="64" rx="12" fill="url(#metal)"/>
+
+    <!-- Outer plates -->
+    <rect x="132" y="380" width="74" height="264" rx="24" fill="url(#plate)"/>
+    <rect x="818" y="380" width="74" height="264" rx="24" fill="url(#plate)"/>
+
+    <!-- Inner plates -->
+    <rect x="196" y="320" width="92" height="384" rx="30" fill="url(#plate)"/>
+    <rect x="736" y="320" width="92" height="384" rx="30" fill="url(#plate)"/>
+
+    <!-- Highlights -->
+    <g fill="#FFFFFF" opacity="0.28">
+      <rect x="214" y="346" width="16" height="170" rx="8"/>
+      <rect x="754" y="346" width="16" height="170" rx="8"/>
+      <rect x="146" y="402" width="12" height="118" rx="6"/>
+      <rect x="832" y="402" width="12" height="118" rx="6"/>
+    </g>
+  </g>
+</svg>
