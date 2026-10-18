@@ -5,7 +5,7 @@ Slim FastAPI application with modular router architecture
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import os
@@ -163,6 +163,12 @@ async def serve_manifest():
             return Response(content=f.read(), media_type="application/manifest+json")
     except FileNotFoundError:
         return Response(content="{}", media_type="application/manifest+json")
+
+@app.get("/apple-touch-icon.png")
+@app.get("/apple-touch-icon-precomposed.png")
+async def serve_apple_touch_icon():
+    """Serve the iOS home-screen icon from the root path Safari probes by default."""
+    return FileResponse("frontend/assets/img/favicon/apple-touch-icon.png", media_type="image/png")
 
 @app.get("/service-worker.js")
 async def serve_service_worker():

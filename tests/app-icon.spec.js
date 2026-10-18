@@ -9,3 +9,9 @@ test('home page links a loadable apple-touch-icon', async ({ page, request }) =>
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toContain('image/png');
 });
+
+test('root apple-touch-icon fallback is served', async ({ request }) => {
+  const res = await request.get('http://localhost:8001/apple-touch-icon.png');
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('image/png');
+});
