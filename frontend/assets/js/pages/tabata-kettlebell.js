@@ -151,6 +151,11 @@
       segmentName: $('segmentName'),
       segmentTime: $('segmentTime'),
       currentExerciseName: $('currentExerciseName'),
+      segmentDetails: $('segmentDetails'),
+      liveBadgesSlot: $('liveBadgesSlot'),
+      viewAllBtn: $('viewAllBtn'),
+      planSheet: $('planSheet'),
+      planSheetList: $('planSheetList'),
       segmentSet: $('segmentSet'),
       segmentRound: $('segmentRound'),
       segmentCue: $('segmentCue'),
@@ -480,11 +485,56 @@
     });
 
     updateSegmentSummaries();
+    syncPlanSheet();
 
     if (activeRow && currentSegmentIndex !== lastScrolledIndex) {
       lastScrolledIndex = currentSegmentIndex;
       scrollActiveRowToTop(activeRow, 'smooth');
     }
+  }
+
+  // ── Phone layout: live badges up top + "View all" sheet ────────────────
+  //
+  // On phones the Set / Round badges move into the header (the static
+  // "N sets × N rounds" meta bit is hidden there, so they're the only — live —
+  // copy) and the full plan opens in a bottom sheet instead of the inline list.
+
+  const phoneQuery = window.matchMedia('(max-width: 767.98px)');
+
+  function placeLiveBadges() {
+    const details = els.segmentDetails;
+    if (!details || !els.liveBadgesSlot) return;
+    if (phoneQuery.matches) {
+      if (details.parentNode !== els.liveBadgesSlot) els.liveBadgesSlot.appendChild(details);
+    } else if (details.parentNode === els.liveBadgesSlot) {
+      els.segmentCue.parentNode.insertBefore(details, els.segmentCue);
+    }
+    scheduleFitToViewport();
+  }
+
+  function planSheetInstance() {
+    if (!els.planSheet || !window.bootstrap || !window.bootstrap.Offcanvas) return null;
+    return window.bootstrap.Offcanvas.getOrCreateInstance(els.planSheet);
+  }
+
+  function openPlanSheet() {
+    const sheet = planSheetInstance();
+    if (!sheet || !els.planSheetList) return;
+    els.planSheetList.innerHTML = segments.map((seg, i) => segmentRowHtml(seg, i)).join('');
+    syncPlanSheet(true);
+    sheet.show();
+    const active = els.planSheetList.querySelector('.spin-segment-row.active');
+    if (active) setTimeout(() => active.scrollIntoView({ block: 'center' }), 300);
+  }
+
+  function syncPlanSheet(force) {
+    if (!els.planSheetList || !els.planSheet) return;
+    if (!force && !els.planSheet.classList.contains('show')) return;
+    els.planSheetList.querySelectorAll('.spin-segment-row').forEach((row, i) => {
+      row.classList.toggle('active', i === currentSegmentIndex);
+      row.classList.toggle('next', i === currentSegmentIndex + 1);
+      row.classList.toggle('completed', i < currentSegmentIndex);
+    });
   }
 
   // Scroll the list (never the page) so the active row moves to the top,
@@ -496,7 +546,9 @@
     const prev = row.previousElementSibling;
     const anchor = prev && prev.classList.contains('spin-segment-row') && prev.offsetParent !== null
       ? prev : row;
-    const offset = anchor.getBoundingClientRect().top - col.getBoundingClientRect().top - 4;
+    const head = col.querySelector('.tk-plan-head');
+    const headHeight = head && head.offsetParent !== null ? head.offsetHeight : 0;
+    const offset = anchor.getBoundingClientRect().top - col.getBoundingClientRect().top - headHeight - 4;
     col.scrollBy({ top: offset, behavior });
   }
 
@@ -573,7 +625,14 @@
       const focusText = (workoutPlan.focus_areas || []).map((f) => f.replace(/_/g, ' ')).join(' · ');
       const varietyText = VARIETY_LABELS[workoutPlan.exercise_variety];
       const varietyBit = varietyText && workoutPlan.exercise_variety !== 'mixed' ? ` · ${varietyText}` : '';
-      els.workoutMeta.textContent = `${workoutPlan.protocol} · ${workoutPlan.sets} sets × ${workoutPlan.rounds_per_set} rounds · ${totalMin} min · ${focusText}${varietyBit}`;
+      // The sets × rounds bit gets its own span so phones can hide it — the
+      // live Set / Round badges sit right below the title there.
+      const setsBit = document.createElement('span');
+      setsBit.className = 'tk-meta-sets';
+      setsBit.textContent = ` · ${workoutPlan.sets} sets × ${workoutPlan.rounds_per_set} rounds`;
+      els.workoutMeta.textContent = workoutPlan.protocol;
+      els.workoutMeta.appendChild(setsBit);
+      els.workoutMeta.appendChild(document.createTextNode(` · ${totalMin} min · ${focusText}${varietyBit}`));
     }
     renderSegmentList();
     scheduleFitToViewport();
@@ -1245,6 +1304,9 @@
     els.finishedNewWorkoutBtn.addEventListener('click', resetToSelection);
     els.errorRetryBtn.addEventListener('click', resetToSelection);
 
+    if (els.viewAllBtn) els.viewAllBtn.addEventListener('click', openPlanSheet);
+    if (phoneQuery.addEventListener) phoneQuery.addEventListener('change', placeLiveBadges);
+
     // Toggle between focused (windowed) and full segment list views
     if (els.windowToggleBtn) {
       els.windowToggleBtn.addEventListener('click', () => {
@@ -1414,6 +1476,7 @@
     cacheDom();
     bindEvents();
     restorePreferences();
+    placeLiveBadges();
 
     const isAuth = await waitForAuth();
     if (!isAuth) {

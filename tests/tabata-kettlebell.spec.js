@@ -454,6 +454,8 @@ test.describe('Tabata Kettlebell Page', () => {
   });
 
   test('windowed list keeps the current interval at the top with summary pills', async ({ page }) => {
+    // Tablet+ layout — phones use the compact list + View all sheet instead.
+    await page.setViewportSize({ width: 820, height: 1180 });
     // 95s in: 3 rounds (90s) done + 5s into round 4's work → index 6 is active.
     await openSeeded(page, seededSession(95));
 
@@ -516,6 +518,35 @@ test.describe('Tabata Kettlebell Page', () => {
       expect(activeTop).toBeLessThan(80);
     });
   }
+
+  test('phone layout: live set/round badges up top and View all opens the full plan sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openSeeded(page, seededSession(95));
+
+    // Badges moved under the title; static "sets × rounds" meta is hidden.
+    await expect(page.locator('#liveBadgesSlot #segmentDetails')).toBeVisible();
+    await expect(page.locator('#segmentRound')).toHaveText('4/8');
+    await expect(page.locator('#workoutMeta .tk-meta-sets')).toBeHidden();
+    await expect(page.locator('#workoutMeta')).toBeVisible();
+
+    // Compact list: no completed rows, header with View all stays visible.
+    await expect(page.locator('#viewAllBtn')).toBeVisible();
+    await expect(page.locator('#segmentList .spin-segment-row.completed').first()).toBeHidden();
+
+    await page.locator('#viewAllBtn').click();
+    await expect(page.locator('#planSheet')).toHaveClass(/show/);
+    await expect(page.locator('#planSheetList .spin-segment-row')).toHaveCount(50);
+    await expect(page.locator('#planSheetList .spin-segment-row.active')).toContainText('KB Thruster');
+    await expect(page.locator('#planSheetList .spin-segment-row.active')).toBeInViewport();
+  });
+
+  test('tablet keeps set/round badges below the timer', async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await openSeeded(page, seededSession(95));
+    await expect(page.locator('.spin-ride-timer-col #segmentDetails')).toBeVisible();
+    await expect(page.locator('#workoutMeta .tk-meta-sets')).toBeVisible();
+    await expect(page.locator('#viewAllBtn')).toBeHidden();
+  });
 
   test('finished workout opens the session-complete confirm with estimated calories', async ({ page }) => {
     await stubAuth(page);

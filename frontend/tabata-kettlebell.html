@@ -60,7 +60,7 @@
     <!-- Spin Ride CSS (reused base layout) -->
     <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20261020a" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261020a" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261020b" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -294,6 +294,8 @@
                 <div class="tk-workout-header">
                   <h5 class="text-center mb-1" id="workoutTitle"></h5>
                   <p class="text-center text-muted small mb-2" id="workoutMeta"></p>
+                  <!-- Phones: the live Set / Round badges move up here -->
+                  <div class="tk-live-badges" id="liveBadgesSlot"></div>
                 </div>
 
                 <div class="spin-ride-layout">
@@ -357,6 +359,13 @@
                   <div class="spin-ride-segments-col">
                     <div class="card spin-plan-card">
                       <div class="card-body p-2">
+                        <!-- Phones: compact "Up next" list with a View all sheet -->
+                        <div class="tk-plan-head">
+                          <span class="tk-plan-head-title">Up next</span>
+                          <button type="button" class="btn btn-link btn-sm tk-view-all-btn" id="viewAllBtn">
+                            View all<i class="bx bx-chevron-up ms-1"></i>
+                          </button>
+                        </div>
                         <div id="segmentList" class="spin-segment-list tk-windowed"></div>
                         <div class="spin-window-toggle-wrap d-none" id="windowToggleWrap">
                           <button type="button" class="btn btn-link btn-sm spin-window-toggle" id="windowToggleBtn">
@@ -375,6 +384,17 @@
                   </div>
                 </div>
 
+              </div>
+
+              <!-- Full plan bottom sheet (phones) -->
+              <div class="offcanvas offcanvas-bottom tk-plan-sheet" tabindex="-1" id="planSheet" aria-labelledby="planSheetLabel">
+                <div class="offcanvas-header">
+                  <h5 class="offcanvas-title" id="planSheetLabel">Full plan</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                </div>
+                <div class="offcanvas-body pt-0">
+                  <div id="planSheetList" class="spin-segment-list"></div>
+                </div>
               </div>
 
               <!-- STATE: Finished -->
@@ -471,6 +491,6 @@
     <script src="/static/assets/js/services/tabata-segment-expander.js?v=1.0.0"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261020a"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261020b"></script>
   </body>
 </html>
