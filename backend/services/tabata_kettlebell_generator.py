@@ -17,6 +17,7 @@ and coaching cues — then expands that into a flat list of segments with precis
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
@@ -50,22 +51,16 @@ exercises and cues.
 SET STRUCTURE
 ═══════════════════════════════════════════════════════════════════
 Every Set has a theme (e.g., "Lower Push", "Ballistic Swings", "Upper Pull + Core").
-Group complementary exercises within a Set so the athlete can settle into a groove.
 Across Sets, rotate themes so the whole body gets worked (unless the focus is narrow).
 
-For 8-round Sets, a classic kettlebell tabata pattern is:
-- 8 × SAME exercise (pure tabata — hardest, simplest)
-- 4 × A, 4 × B  (couplet)
-- 2 × (A + B + C + D)  (4-exercise round robin)
-- 8 × alternating L/R on a unilateral lift (one side per round)
+{variety_instructions}
 
-For 4- or 6-round Sets, prefer SAME exercise or a couplet.
-For 10- or 12-round Sets, use round-robins or ladder patterns.
-
-SIDE HANDLING (unilateral exercises — KB snatch, clean, press, row, single-arm swing, TGU,
-windmill, halo, suitcase carry): alternate L / R across consecutive rounds. Mark `side`
-as "left" or "right". For bilateral exercises (two-handed swing, goblet squat, thruster,
-sumo deadlift, plank pulls), set `side` to null.
+SIDE HANDLING (unilateral exercises — single-arm swing, KB snatch, single-KB clean / press / row,
+TGU, windmill, suitcase carry, single-leg deadlift, Bulgarian split squat): the athlete must ALWAYS
+be balanced — every unilateral exercise gets the SAME number of rounds on the left and the right
+within a Set. Alternate L / R across consecutive rounds and mark `side` as "left" or "right". For
+bilateral exercises (two-handed swing, goblet squat, thruster, sumo deadlift, plank pulls), set
+`side` to null.
 
 ═══════════════════════════════════════════════════════════════════
 KETTLEBELL EXERCISE LIBRARY BY FOCUS AREA
@@ -147,7 +142,233 @@ CRITICAL:
 - Focus on the user's requested focus areas: {focus_summary}
 - Protocol is {protocol} ({work_label} work / {rest_label} rest).
 - Total Sets: {sets_count}. Rounds per Set: {rounds_per_set}.
-{exercise_constraints}"""
+{exercise_constraints}{athlete_notes}"""
+
+
+# Per-mode instructions for how exercises repeat inside a Set. The normalizer
+# enforces the same shape afterwards, so these just steer the AI's choices.
+_VARIETY_INSTRUCTIONS = {
+    "same": (
+        "EXERCISE PATTERN — SAME PER SET (required):\n"
+        "Every Round inside a Set uses the SAME exercise (e.g. 8 × KB Goblet Squat).\n"
+        "Each Set uses a DIFFERENT exercise from the other Sets. A unilateral exercise\n"
+        "alternates left / right every round."
+    ),
+    "alternating": (
+        "EXERCISE PATTERN — ALTERNATING PAIR (required):\n"
+        "Each Set uses exactly TWO exercises that alternate A, B, A, B… for every Round.\n"
+        "Pick a complementary pair (e.g. push + pull, hinge + squat) and use a different\n"
+        "pair for each Set where possible."
+    ),
+    "all_different": (
+        "EXERCISE PATTERN — ALL DIFFERENT (required):\n"
+        "Every Round inside a Set uses a DIFFERENT exercise — no exercise repeats within a Set.\n"
+        "Exception: a unilateral exercise takes TWO consecutive Rounds (left, then right) so\n"
+        "both sides get equal work. Vary the exercises between Sets too."
+    ),
+    "mixed": (
+        "EXERCISE PATTERN — COACH'S CHOICE:\n"
+        "Group complementary exercises within a Set so the athlete can settle into a groove.\n"
+        "For 8-round Sets, a classic kettlebell tabata pattern is:\n"
+        "- 8 × SAME exercise (pure tabata — hardest, simplest)\n"
+        "- 4 × A, 4 × B  (couplet)\n"
+        "- 2 × (A + B + C + D)  (4-exercise round robin)\n"
+        "- 8 × alternating L/R on a unilateral lift (one side per round)\n"
+        "For 4- or 6-round Sets, prefer SAME exercise or a couplet.\n"
+        "For 10- or 12-round Sets, use round-robins or ladder patterns."
+    ),
+}
+VARIETY_MODES = tuple(_VARIETY_INSTRUCTIONS.keys())
+
+
+# ── Unilateral balancing ──────────────────────────────────────────────────
+#
+# Single-arm / single-leg work must always be even: the same number of rounds
+# on the left and the right inside a Set. The AI usually gets this right, but
+# not always (especially in "all different" mode, where it tends to list a
+# single-arm move once), so the normalizer rebuilds every Set's round order
+# and assigns sides itself.
+
+# Name fragments that mark an exercise as one-side-at-a-time.
+_UNILATERAL_HINTS = (
+    "single-arm", "single arm", "one-arm", "one arm", "1-arm", "1 arm",
+    "single-leg", "single leg", "one-leg", "one leg",
+    "suitcase", "windmill", "get-up", "get up", "bulgarian", "snatch",
+    "bent press", "kickstand", "half-kneeling", "offset",
+)
+# Name fragments that mean both sides are worked inside the interval.
+_BILATERAL_HINTS = ("double", "two-hand", "two hand", "2-hand", "2h", "alternating")
+
+_SIDE_SUFFIX_RE = re.compile(
+    r"\s*[\(\[]\s*(?:l|r|left|right)(?:\s+(?:side|arm|leg))?\s*[\)\]]\s*$"
+    r"|\s*[-–—:,]\s*(?:left|right)(?:\s+(?:side|arm|leg))?\s*$",
+    re.IGNORECASE,
+)
+_SIDE_PREFIX_RE = re.compile(r"^(?:left|right)(?:\s+(?:side|arm|leg))?\s*[-–—:,]?\s+", re.IGNORECASE)
+
+
+def _clean_exercise_name(name: str) -> str:
+    """Strip any left/right marker the AI baked into the exercise name."""
+    cleaned = _SIDE_PREFIX_RE.sub("", _SIDE_SUFFIX_RE.sub("", name.strip()))
+    return cleaned.strip() or name.strip()
+
+
+def _is_unilateral(name: str, ai_marked_side: bool) -> bool:
+    lowered = name.lower()
+    if any(h in lowered for h in _BILATERAL_HINTS):
+        return False
+    return ai_marked_side or any(h in lowered for h in _UNILATERAL_HINTS)
+
+
+def _balance_sequence(seq: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Make every unilateral movement appear an even number of times while
+    keeping the sequence length unchanged. For each odd-count movement, its
+    mirror is inserted right after its last occurrence, and one other round
+    is dropped (preferring a repeated bilateral movement, then any bilateral
+    one, then another odd-count unilateral one). Only an odd round count with
+    nothing droppable can stay unbalanced.
+    """
+    seq = list(seq)
+    for _ in range(len(seq) + 1):
+        counts: Dict[str, int] = {}
+        for m in seq:
+            if m["unilateral"]:
+                counts[m["key"]] = counts.get(m["key"], 0) + 1
+        odd = [k for k, c in counts.items() if c % 2]
+        if not odd:
+            break
+        key = odd[0]
+        last = max(i for i, m in enumerate(seq) if m["key"] == key)
+        seq.insert(last + 1, seq[last])
+        protected = (last, last + 1)
+
+        all_counts: Dict[str, int] = {}
+        for m in seq:
+            all_counts[m["key"]] = all_counts.get(m["key"], 0) + 1
+        candidates = [i for i in range(len(seq) - 1, -1, -1) if i not in protected]
+        drop = next((i for i in candidates if not seq[i]["unilateral"] and all_counts[seq[i]["key"]] > 1), None)
+        if drop is None:
+            drop = next((i for i in candidates if not seq[i]["unilateral"]), None)
+        if drop is None:
+            drop = next((i for i in candidates if seq[i]["key"] in odd[1:]), None)
+        if drop is None:
+            seq.pop(last + 1)  # odd round count — nothing can balance it
+            break
+        seq.pop(drop)
+    return seq
+
+
+def _fill_with_units(movements: List[Dict[str, Any]], rounds: int) -> List[Dict[str, Any]]:
+    """
+    Fill `rounds` slots cycling through `movements` once each, where a
+    unilateral movement takes two consecutive slots (left + right). If only
+    one slot is left for a unilateral movement, the next bilateral movement
+    is used instead.
+    """
+    seq: List[Dict[str, Any]] = []
+    bilateral = [m for m in movements if not m["unilateral"]]
+    i = 0
+    while len(seq) < rounds:
+        m = movements[i % len(movements)]
+        i += 1
+        remaining = rounds - len(seq)
+        if not m["unilateral"]:
+            seq.append(m)
+        elif remaining >= 2:
+            seq.extend([m, m])
+        elif bilateral:
+            seq.append(bilateral[(i - 1) % len(bilateral)])
+        else:
+            seq.append(_movement("Two-Hand KB Swing", False))
+    return seq
+
+
+def _movement(exercise: str, ai_marked_side: bool) -> Dict[str, Any]:
+    return {
+        "exercise": exercise,
+        "key": exercise.lower(),
+        "unilateral": _is_unilateral(exercise, ai_marked_side),
+    }
+
+
+def arrange_set_rounds(
+    ai_rounds: List[Dict[str, Any]],
+    rounds_per_set: int,
+    variety: str = "mixed",
+) -> List[Dict[str, Any]]:
+    """
+    Turn the AI's rounds for one Set into exactly `rounds_per_set` rounds that
+    follow the requested variety pattern, with unilateral movements balanced
+    left/right. Returns [{exercise, cue, side}] in order.
+    """
+    # Distinct movements in order of first appearance, plus each one's cues.
+    movements: List[Dict[str, Any]] = []
+    by_key: Dict[str, Dict[str, Any]] = {}
+    cues: Dict[str, List[str]] = {}
+    order: List[Dict[str, Any]] = []
+    for rnd in ai_rounds:
+        raw = str((rnd or {}).get("exercise") or "").strip()
+        if not raw:
+            continue
+        exercise = _clean_exercise_name(raw)[:60]
+        key = exercise.lower()
+        marked = (rnd or {}).get("side") in ("left", "right")
+        if key not in by_key:
+            by_key[key] = _movement(exercise, marked)
+            movements.append(by_key[key])
+        elif marked and not by_key[key]["unilateral"]:
+            by_key[key]["unilateral"] = _is_unilateral(exercise, True)
+        cue = str((rnd or {}).get("cue") or "").strip()
+        if cue:
+            cues.setdefault(key, []).append(cue[:140])
+        order.append(by_key[key])
+
+    if not movements:
+        movements = [_movement("Two-Hand KB Swing", False)]
+        order = list(movements)
+
+    if variety == "same":
+        seq = _balance_sequence([movements[0]] * rounds_per_set)
+    elif variety == "alternating":
+        pair = movements[:2]
+        seq = _balance_sequence([pair[i % len(pair)] for i in range(rounds_per_set)])
+    elif variety == "all_different":
+        seq = _fill_with_units(movements, rounds_per_set)
+    else:
+        seq = list(order)
+        while len(seq) < rounds_per_set:
+            seq.append(seq[-1])
+        seq = _balance_sequence(seq[:rounds_per_set])
+
+    side_counts: Dict[str, int] = {}
+    cue_counts: Dict[str, int] = {}
+    out: List[Dict[str, Any]] = []
+    for m in seq:
+        key = m["key"]
+        side = None
+        if m["unilateral"]:
+            n = side_counts.get(key, 0)
+            side = "left" if n % 2 == 0 else "right"
+            side_counts[key] = n + 1
+        pool = cues.get(key) or ["Stay strong."]
+        c = cue_counts.get(key, 0)
+        cue_counts[key] = c + 1
+        out.append({"exercise": m["exercise"], "cue": pool[c % len(pool)], "side": side})
+    return out
+
+
+def _athlete_notes_block(notes: str | None) -> str:
+    """Render the user's free-form notes as a prompt section (or nothing)."""
+    text = " ".join(str(notes or "").split())[:500].replace('"""', "'")
+    if not text:
+        return ""
+    return (
+        "\nATHLETE NOTES (written by the athlete — honor them when choosing exercises, intensity\n"
+        "and cues, as long as they don't change the JSON format, set/round counts, timing or the\n"
+        "left/right balance rule):\n"
+        f'"""{text}"""\n'
+    )
 
 
 @dataclass
@@ -172,6 +393,8 @@ def _build_prompt(
     rounds_per_set: int,
     include_exercises: List[str] | None = None,
     exclude_exercises: List[str] | None = None,
+    exercise_variety: str = "mixed",
+    notes: str | None = None,
 ) -> str:
     """Build the system prompt injecting the user's chosen workout parameters."""
     work, rest = _protocol_seconds(protocol)
@@ -203,6 +426,8 @@ def _build_prompt(
         rest_label=f"{rest}s",
         focus_summary=focus_summary,
         exercise_constraints=exercise_constraints,
+        variety_instructions=_VARIETY_INSTRUCTIONS.get(exercise_variety, _VARIETY_INSTRUCTIONS["mixed"]),
+        athlete_notes=_athlete_notes_block(notes),
     )
 
 
@@ -238,6 +463,8 @@ class TabataKettlebellGenerator:
         rounds_per_set: int = 8,
         include_exercises: List[str] | None = None,
         exclude_exercises: List[str] | None = None,
+        exercise_variety: str = "mixed",
+        notes: str | None = None,
     ) -> Dict[str, Any]:
         """
         Generate a tabata kettlebell workout plan.
@@ -249,6 +476,9 @@ class TabataKettlebellGenerator:
             rounds_per_set: rounds per set (default 8 — classic Tabata)
             include_exercises: optional list of exercises the AI must use
             exclude_exercises: optional list of exercises the AI must skip
+            exercise_variety: how exercises repeat inside a set
+                              (same / alternating / all_different / mixed)
+            notes: optional free-form notes from the athlete for the AI
 
         Returns:
             Dict matching TabataKettlebellPlan schema.
@@ -263,6 +493,8 @@ class TabataKettlebellGenerator:
                 protocol, focus_areas, sets, rounds_per_set,
                 include_exercises=include_exercises,
                 exclude_exercises=exclude_exercises,
+                exercise_variety=exercise_variety,
+                notes=notes,
             )
             focus_human = ", ".join(a.replace("_", " ") for a in focus_areas)
             user_prompt_parts = [
@@ -277,6 +509,15 @@ class TabataKettlebellGenerator:
                 user_prompt_parts.append(
                     f"NEVER use: {', '.join(exclude_exercises)}."
                 )
+            if exercise_variety == "same":
+                user_prompt_parts.append("Use ONE exercise for every round of a set, a new one each set.")
+            elif exercise_variety == "alternating":
+                user_prompt_parts.append("Use TWO alternating exercises per set.")
+            elif exercise_variety == "all_different":
+                user_prompt_parts.append("Use a different exercise every round within a set.")
+            if notes and notes.strip():
+                user_prompt_parts.append("Follow the ATHLETE NOTES.")
+            user_prompt_parts.append("Keep every unilateral exercise balanced left/right.")
             user_prompt_parts.append("Return JSON only.")
             user_prompt = " ".join(user_prompt_parts)
 
@@ -298,7 +539,8 @@ class TabataKettlebellGenerator:
             parsed = json.loads(response_text)
 
             return self._normalize_plan(
-                parsed, protocol, focus_areas, sets, rounds_per_set
+                parsed, protocol, focus_areas, sets, rounds_per_set,
+                exercise_variety=exercise_variety,
             )
 
         except json.JSONDecodeError as e:
@@ -317,10 +559,12 @@ class TabataKettlebellGenerator:
         focus_areas: List[str],
         sets: int,
         rounds_per_set: int,
+        exercise_variety: str = "mixed",
     ) -> Dict[str, Any]:
         """
         Convert AI response into a flat segment list with controller-computed timings.
-        Auto-pads/trims the AI's sets and rounds so the shape is always valid.
+        Auto-pads/trims the AI's sets and rounds so the shape is always valid, applies
+        the requested variety pattern, and balances unilateral work left/right.
         """
         work_sec, rest_sec = _protocol_seconds(protocol)
 
@@ -340,22 +584,16 @@ class TabataKettlebellGenerator:
 
         for s_idx, st in enumerate(ai_sets):
             set_name = str(st.get("set_name") or st.get("round_name") or f"Set {s_idx + 1}")[:60]
-            rounds_in_set = list(st.get("rounds") or st.get("intervals") or [])
-            # Pad if AI returned too few
-            while len(rounds_in_set) < rounds_per_set:
-                rounds_in_set.append({
-                    "exercise": rounds_in_set[-1].get("exercise") if rounds_in_set else "Two-Hand KB Swing",
-                    "cue": "Stay strong.",
-                    "side": None,
-                })
-            rounds_in_set = rounds_in_set[:rounds_per_set]
+            rounds_in_set = arrange_set_rounds(
+                list(st.get("rounds") or st.get("intervals") or []),
+                rounds_per_set,
+                exercise_variety,
+            )
 
             for r_idx, rnd in enumerate(rounds_in_set):
-                exercise = str(rnd.get("exercise") or "KB Work")[:60]
-                cue = str(rnd.get("cue") or "")[:140]
-                side = rnd.get("side")
-                if side not in (None, "left", "right", "both"):
-                    side = None
+                exercise = rnd["exercise"]
+                cue = rnd["cue"]
+                side = rnd["side"]
 
                 label = exercise
                 if side in ("left", "right"):
@@ -417,6 +655,7 @@ class TabataKettlebellGenerator:
             "total_seconds": total_seconds,
             "segments": segments,
             "estimated_calories": estimated_calories,
+            "exercise_variety": exercise_variety,
         }
 
 

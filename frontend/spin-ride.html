@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="/static/assets/css/design-system.css" />
 
     <!-- Spin Ride CSS -->
-    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260503b" />
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20261020a" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -231,6 +231,21 @@
                     </button>
                   </div>
                   <p class="text-muted small mt-2 mb-0" id="difficultyDescription">Solid workout with clear peaks and valleys. Work-to-recovery ratio ~3:1.</p>
+                </div>
+
+                <!-- Notes for the coach (optional free text sent with the request) -->
+                <div class="sr-notes">
+                  <label class="sr-notes-label" for="notesInput">
+                    <i class="bx bx-note"></i>
+                    Notes for the coach
+                    <span class="sr-notes-optional">optional</span>
+                  </label>
+                  <textarea class="form-control sr-notes-input" id="notesInput" rows="2" maxlength="500"
+                            placeholder="e.g. More standing climbs, keep sprints short, I'm on a recovery week"></textarea>
+                  <div class="sr-notes-footer">
+                    <span>Saved for next time.</span>
+                    <span id="notesCount">0/500</span>
+                  </div>
                 </div>
 
                 <!-- Summary card — the star of the setup screen -->
@@ -460,6 +475,6 @@
     <script src="/static/assets/js/services/spin-ride-feedback-service.js?v=20260525"></script>
 
     <!-- Spin Ride Controller -->
-    <script src="/static/assets/js/pages/spin-ride.js?v=20260527b"></script>
+    <script src="/static/assets/js/pages/spin-ride.js?v=20261020a"></script>
   </body>
 </html>

@@ -23,6 +23,12 @@ FocusArea = Literal[
     "full_body",
     "conditioning",
 ]
+# How exercises repeat within a Set:
+#   same          — one movement for every round of the set (8 × A), new movement next set
+#   alternating   — two movements alternating (A, B, A, B…)
+#   all_different — a new movement every round
+#   mixed         — coach's choice of pattern per set (couplets, round-robins, etc.)
+ExerciseVariety = Literal["same", "alternating", "all_different", "mixed"]
 
 
 class GenerateTabataKettlebellRequest(BaseModel):
@@ -58,6 +64,15 @@ class GenerateTabataKettlebellRequest(BaseModel):
         default_factory=list,
         max_length=20,
         description="Exercise names the workout must NOT use.",
+    )
+    exercise_variety: ExerciseVariety = Field(
+        default="mixed",
+        description="How exercises repeat within each set (same / alternating / all_different / mixed).",
+    )
+    notes: str = Field(
+        default="",
+        max_length=500,
+        description="Free-form notes from the athlete for the AI coach (injuries, preferences, etc.).",
     )
 
 

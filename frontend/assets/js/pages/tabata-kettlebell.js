@@ -14,6 +14,7 @@
   let segments = [];
   let segmentOffsets = [];
   let currentSegmentIndex = 0;
+  let lastScrolledIndex = -1; // Last segment index the side list auto-scrolled to
   let segmentRemaining = 0;
   let totalRemaining = 0;
   let timerInterval = null;
@@ -31,6 +32,28 @@
   const LENGTH_KEY = 'tabataKBLength';
   const INCLUDE_EX_KEY = 'tabataKBIncludeExercises';
   const EXCLUDE_EX_KEY = 'tabataKBExcludeExercises';
+  const VARIETY_KEY = 'tabataKBExerciseVariety';
+  const NOTES_KEY = 'tabataKBNotes';
+  const WINDOW_MODE_KEY = 'tabataKBWindowMode';
+  const NOTES_MAX = 500;
+
+  // Rows visible after the active one in windowed mode. Rest intervals sit
+  // between every work interval, so 5 rows = the next three exercises.
+  const WINDOW_AHEAD = 5;
+
+  let windowMode = (() => {
+    try { return localStorage.getItem(WINDOW_MODE_KEY) === 'full' ? 'full' : 'windowed'; }
+    catch (e) { return 'windowed'; }
+  })();
+
+  // How exercises repeat inside a set — must match ExerciseVariety in
+  // backend/models/tabata_kettlebell.py.
+  const VARIETY_LABELS = {
+    mixed: "Coach's mix",
+    same: 'Same per set',
+    alternating: 'Alternate 2',
+    all_different: 'All different',
+  };
 
   // Greatest-hits list of kettlebell movements offered for include/exclude
   // in the "Fine tune" section. Kept short so the chip grid stays scannable
@@ -80,6 +103,7 @@
   let selectedSets = 5;
   let selectedRoundsPerSet = 8;
   let selectedLength = 20; // preset minutes
+  let selectedVariety = 'mixed';
   // Chip id → 'include' | 'exclude'. Absent = neutral.
   let exercisePrefs = {};
 
@@ -105,6 +129,9 @@
       setsDownBtn: $('setsDownBtn'),
       setsUpBtn: $('setsUpBtn'),
       roundsPerSetButtons: $('roundsPerSetButtons'),
+      varietyButtons: $('varietyButtons'),
+      notesInput: $('notesInput'),
+      notesCount: $('notesCount'),
       totalTimeHelper: $('totalTimeHelper'),
       generateBtn: $('generateBtn'),
 
@@ -128,6 +155,8 @@
       segmentRound: $('segmentRound'),
       segmentCue: $('segmentCue'),
       segmentList: $('segmentList'),
+      windowToggleWrap: $('windowToggleWrap'),
+      windowToggleBtn: $('windowToggleBtn'),
 
       startBtn: $('startBtn'),
       pauseBtn: $('pauseBtn'),
@@ -156,6 +185,67 @@
       const el = els[id];
       if (el) el.classList.toggle('d-none', id !== stateId);
     });
+    scheduleFitToViewport();
+  }
+
+  // ── Fit-to-screen workout layout ──────────────────────────────────────
+  //
+  // While a workout is on screen the page itself should never scroll: the
+  // workout state is sized to exactly the viewport height left below its top
+  // edge, and only the segment list scrolls inside it (see .tk-fit in
+  // tabata-kettlebell.css).
+
+  let fitFrame = null;
+  let lastFitHeight = null;
+
+  function scheduleFitToViewport() {
+    if (fitFrame) cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(() => {
+      fitFrame = null;
+      fitWorkoutToViewport();
+    });
+  }
+
+  // Below this the workout can't fit legibly (e.g. phone landscape with the
+  // banner showing) — fall back to the normal scrolling page.
+  const MIN_FIT_HEIGHT = 260;
+
+  function unfitWorkout() {
+    const el = els.workoutState;
+    el.classList.remove('tk-fit');
+    el.style.removeProperty('--tk-fit-height');
+  }
+
+  function fitWorkoutToViewport() {
+    const el = els.workoutState;
+    if (!el) return;
+    const active = !el.classList.contains('d-none');
+    document.body.classList.toggle('tk-workout-active', active);
+    if (!active) {
+      unfitWorkout();
+      lastFitHeight = null;
+      return;
+    }
+    el.classList.add('tk-fit');
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    const container = el.closest('.container-p-y');
+    const padBottom = container ? parseFloat(getComputedStyle(container).paddingBottom) || 0 : 0;
+    let height = Math.floor(window.innerHeight - top - padBottom);
+    el.style.setProperty('--tk-fit-height', `${height}px`);
+    // Anything below the content (backdrops, footers) still adds page height —
+    // trim by whatever overflow remains so the page lands exactly on 100%.
+    const overflow = document.documentElement.scrollHeight - window.innerHeight;
+    if (overflow > 0) {
+      height -= overflow;
+      el.style.setProperty('--tk-fit-height', `${height}px`);
+    }
+    if (height < MIN_FIT_HEIGHT) unfitWorkout();
+    // The list only becomes scrollable once it's constrained, so re-anchor
+    // the active row whenever the available height changes.
+    if (height !== lastFitHeight) {
+      lastFitHeight = height;
+      scrollActiveRowToTop(null, 'auto');
+    }
   }
 
   function protocolSeconds(protocol) {
@@ -372,16 +462,98 @@
     const fraction = segmentRemaining / seg.duration_seconds;
     updateProgressArc(fraction);
 
+    // Highlight active + next. In windowed mode only the last completed row,
+    // the active row and the next WINDOW_AHEAD rows stay visible, so the
+    // current interval always sits at the top of the list.
+    const windowed = windowMode === 'windowed';
     const rows = els.segmentList.querySelectorAll('.spin-segment-row');
+    let activeRow = null;
     rows.forEach((row, i) => {
-      row.classList.toggle('active', i === currentSegmentIndex);
+      const isActive = i === currentSegmentIndex;
+      row.classList.toggle('active', isActive);
       row.classList.toggle('next', i === currentSegmentIndex + 1);
       row.classList.toggle('completed', i < currentSegmentIndex);
+      row.classList.toggle('last-completed', i === currentSegmentIndex - 1);
+      row.classList.toggle('win-hidden',
+        windowed && (i < currentSegmentIndex - 1 || i > currentSegmentIndex + WINDOW_AHEAD));
+      if (isActive) activeRow = row;
     });
+
+    updateSegmentSummaries();
+
+    if (activeRow && currentSegmentIndex !== lastScrolledIndex) {
+      lastScrolledIndex = currentSegmentIndex;
+      scrollActiveRowToTop(activeRow, 'smooth');
+    }
+  }
+
+  // Scroll the list (never the page) so the active row moves to the top,
+  // with the just-finished row left visible above it.
+  function scrollActiveRowToTop(activeRow, behavior) {
+    const row = activeRow || els.segmentList.querySelector('.spin-segment-row.active');
+    const col = row && row.closest('.spin-ride-segments-col');
+    if (!col || col.scrollHeight <= col.clientHeight + 1) return;
+    const prev = row.previousElementSibling;
+    const anchor = prev && prev.classList.contains('spin-segment-row') && prev.offsetParent !== null
+      ? prev : row;
+    const offset = anchor.getBoundingClientRect().top - col.getBoundingClientRect().top - 4;
+    col.scrollBy({ top: offset, behavior });
   }
 
   function renderSegmentList() {
-    els.segmentList.innerHTML = segments.map((seg, i) => segmentRowHtml(seg, i)).join('');
+    const completedSummary = `<div class="spin-segment-summary spin-segment-summary-completed d-none" id="completedSummary">
+        <i class="bx bx-check"></i><span class="spin-segment-summary-text">0 completed</span>
+      </div>`;
+    const upcomingSummary = `<div class="spin-segment-summary spin-segment-summary-upcoming d-none" id="upcomingSummary">
+        <i class="bx bx-time-five"></i><span class="spin-segment-summary-text">+0 more upcoming</span>
+      </div>`;
+    const rows = segments.map((seg, i) => segmentRowHtml(seg, i)).join('');
+    els.segmentList.innerHTML = completedSummary + rows + upcomingSummary;
+    els.segmentList.classList.toggle('tk-windowed', windowMode === 'windowed');
+    if (els.windowToggleWrap) {
+      els.windowToggleWrap.classList.toggle('d-none', segments.length <= WINDOW_AHEAD + 2);
+    }
+    updateWindowToggleLabel();
+    lastScrolledIndex = -1;
+    updateSegmentSummaries();
+  }
+
+  function updateSegmentSummaries() {
+    const completedSummaryEl = document.getElementById('completedSummary');
+    const upcomingSummaryEl = document.getElementById('upcomingSummary');
+    if (!completedSummaryEl || !upcomingSummaryEl) return;
+
+    // Counts reflect what windowed mode collapses: every completed row but
+    // the last one, and everything past the WINDOW_AHEAD upcoming rows.
+    const completedHidden = Math.max(0, currentSegmentIndex - 1);
+    const upcomingHidden = Math.max(0, segments.length - currentSegmentIndex - 1 - WINDOW_AHEAD);
+
+    completedSummaryEl.classList.toggle('d-none', completedHidden === 0);
+    completedSummaryEl.querySelector('.spin-segment-summary-text').textContent =
+      `${completedHidden} completed`;
+
+    upcomingSummaryEl.classList.toggle('d-none', upcomingHidden === 0);
+    upcomingSummaryEl.querySelector('.spin-segment-summary-text').textContent =
+      `+${upcomingHidden} more upcoming`;
+  }
+
+  function updateWindowToggleLabel() {
+    if (!els.windowToggleBtn) return;
+    const isWindowed = windowMode === 'windowed';
+    const icon = els.windowToggleBtn.querySelector('i');
+    const text = els.windowToggleBtn.querySelector('.spin-window-toggle-text');
+    if (icon) icon.className = `bx ${isWindowed ? 'bx-chevron-down' : 'bx-chevron-up'} me-1`;
+    if (text) text.textContent = isWindowed ? 'Show full plan' : 'Show focused view';
+  }
+
+  function setWindowMode(mode) {
+    windowMode = mode === 'full' ? 'full' : 'windowed';
+    try { localStorage.setItem(WINDOW_MODE_KEY, windowMode); } catch (e) { /* ignore */ }
+    els.segmentList.classList.toggle('tk-windowed', windowMode === 'windowed');
+    updateWindowToggleLabel();
+    // Re-trigger auto-scroll on the newly-laid-out list.
+    lastScrolledIndex = -1;
+    updateSegmentDisplay();
   }
 
   function populateWorkoutUI() {
@@ -399,9 +571,12 @@
       els.workoutMeta.textContent = bits.join(' · ');
     } else {
       const focusText = (workoutPlan.focus_areas || []).map((f) => f.replace(/_/g, ' ')).join(' · ');
-      els.workoutMeta.textContent = `${workoutPlan.protocol} · ${workoutPlan.sets} sets × ${workoutPlan.rounds_per_set} rounds · ${totalMin} min · ${focusText}`;
+      const varietyText = VARIETY_LABELS[workoutPlan.exercise_variety];
+      const varietyBit = varietyText && workoutPlan.exercise_variety !== 'mixed' ? ` · ${varietyText}` : '';
+      els.workoutMeta.textContent = `${workoutPlan.protocol} · ${workoutPlan.sets} sets × ${workoutPlan.rounds_per_set} rounds · ${totalMin} min · ${focusText}${varietyBit}`;
     }
     renderSegmentList();
+    scheduleFitToViewport();
   }
 
   // ── Session Persistence ─────────────────────────────────────────────────
@@ -605,40 +780,89 @@
 
     showState('finishedState');
 
-    try {
-      if (window.universalLogService && window.universalLogService.saveCardio) {
-        const isUserBuilt = !!workoutPlan.is_user_built;
-        const notesLines = isUserBuilt
-          ? [
-              `Tabata: ${workoutPlan.title}`,
-              `Sections: ${workoutPlan.sets}`,
-              `Rounds completed: ${completedRounds}/${totalRounds}`,
-            ]
-          : [
-              `Tabata Kettlebell: ${workoutPlan.title}`,
-              `Protocol: ${workoutPlan.protocol}`,
-              `Focus: ${(workoutPlan.focus_areas || []).join(', ')}`,
-              `Sets: ${workoutPlan.sets} × ${workoutPlan.rounds_per_set} rounds`,
-              `Rounds completed: ${completedRounds}/${totalRounds}`,
-            ];
+    const isUserBuilt = !!workoutPlan.is_user_built;
+    const notesLines = isUserBuilt
+      ? [
+          `Tabata: ${workoutPlan.title}`,
+          `Sections: ${workoutPlan.sets}`,
+          `Rounds completed: ${completedRounds}/${totalRounds}`,
+        ]
+      : [
+          `Tabata Kettlebell: ${workoutPlan.title}`,
+          `Protocol: ${workoutPlan.protocol}`,
+          `Focus: ${(workoutPlan.focus_areas || []).join(', ')}`,
+          `Sets: ${workoutPlan.sets} × ${workoutPlan.rounds_per_set} rounds`,
+          `Rounds completed: ${completedRounds}/${totalRounds}`,
+        ];
+    const notes = notesLines.join('\n').substring(0, 500);
+    const sessionDate = workoutStartedAt ? workoutStartedAt.toISOString() : new Date().toISOString();
+    const plan = workoutPlan;
 
-        await window.universalLogService.saveCardio({
-          activity_type: isUserBuilt ? 'workout' : 'kettlebell',
-          activity_name: workoutPlan.title,
-          duration_minutes: actualMinutes || 1,
-          calories: workoutPlan.estimated_calories || null,
-          notes: notesLines.join('\n').substring(0, 500),
-          sessionDate: workoutStartedAt ? workoutStartedAt.toISOString() : new Date().toISOString(),
-        });
-
-        els.finishedSaveStatus.textContent = 'Workout saved to your log.';
-      } else {
-        els.finishedSaveStatus.textContent = 'Could not save — log service not available.';
+    const saveCardio = async (durationMinutes, calories) => {
+      if (!window.universalLogService || !window.universalLogService.saveCardio) {
+        throw new Error('log service not available');
       }
-    } catch (err) {
-      console.error('Failed to save tabata kettlebell workout:', err);
-      els.finishedSaveStatus.textContent = `Save failed: ${err.message}`;
+      await window.universalLogService.saveCardio({
+        activity_type: isUserBuilt ? 'workout' : 'kettlebell',
+        activity_name: plan.title,
+        duration_minutes: durationMinutes || 1,
+        calories: calories || null,
+        notes,
+        sessionDate,
+      });
+    };
+
+    // Without the unified offcanvas factory, fall back to saving straight
+    // away so the workout is never silently lost.
+    const factory = window.UnifiedOffcanvasFactory;
+    if (!factory || !factory.createCompleteWorkout) {
+      try {
+        await saveCardio(actualMinutes, plan.estimated_calories);
+        els.finishedSaveStatus.textContent = 'Workout saved to your log.';
+      } catch (err) {
+        console.error('Failed to save tabata kettlebell workout:', err);
+        els.finishedSaveStatus.textContent = `Save failed: ${err.message}`;
+      }
+      return;
     }
+
+    // Same "Session Complete" offcanvas as spin rides and workouts, so the
+    // user can confirm duration and calories before the activity is logged.
+    els.finishedSaveStatus.textContent = 'Confirm below to save this workout to your log.';
+
+    const offcanvas = factory.createCompleteWorkout({
+      workoutName: plan.title,
+      minutes: actualMinutes,
+      totalExercises: totalRounds,
+      isBuildMode: false,
+    }, async (durationMinutes, _templateOpts, sessionCalories) => {
+      try {
+        await saveCardio(durationMinutes || actualMinutes, sessionCalories ?? plan.estimated_calories);
+        els.finishedSaveStatus.textContent = 'Workout saved to your log.';
+      } catch (err) {
+        console.error('Failed to save tabata kettlebell workout:', err);
+        els.finishedSaveStatus.textContent = `Save failed: ${err.message}`;
+        throw err;
+      }
+    });
+
+    // Prefill calories with the estimate so users can accept/adjust it.
+    setTimeout(() => {
+      const caloriesInput = document.getElementById('sessionCaloriesInput');
+      if (caloriesInput && plan.estimated_calories) {
+        caloriesInput.value = plan.estimated_calories;
+        const unitLabel = caloriesInput.nextElementSibling;
+        if (unitLabel && unitLabel.tagName === 'SPAN') {
+          unitLabel.textContent = 'cal (est.)';
+        }
+        const statRow = caloriesInput.closest('.session-stat');
+        if (statRow) {
+          statRow.title = 'Estimated calories — tap to adjust';
+        }
+      }
+    }, 50);
+
+    return offcanvas;
   }
 
   // ── Generate ───────────────────────────────────────────────────────────
@@ -660,6 +884,8 @@
         rounds_per_set: selectedRoundsPerSet,
         include_exercises: getIncludedExerciseNames(),
         exclude_exercises: getExcludedExerciseNames(),
+        exercise_variety: selectedVariety,
+        notes: getNotes(),
       };
 
       const response = await fetch('/api/v3/tabata-kettlebell/generate', {
@@ -716,6 +942,7 @@
     segments = [];
     segmentOffsets = [];
     currentSegmentIndex = 0;
+    lastScrolledIndex = -1;
     segmentRemaining = 0;
     totalRemaining = 0;
     workoutStartedAt = null;
@@ -757,7 +984,7 @@
     }
     if (els.totalSub) {
       els.totalSub.textContent =
-        `${selectedSets} set${selectedSets !== 1 ? 's' : ''} × ${selectedRoundsPerSet} rounds · ${work}s / ${rest}s · no warmup`;
+        `${selectedSets} set${selectedSets !== 1 ? 's' : ''} × ${selectedRoundsPerSet} rounds · ${work}s / ${rest}s · ${VARIETY_LABELS[selectedVariety].toLowerCase()} · no warmup`;
     }
   }
 
@@ -783,6 +1010,27 @@
       localStorage.setItem(FOCUS_KEY, JSON.stringify(Array.from(selectedFocus)));
     } catch (e) { /* ignore */ }
     refreshGenerateButtonState();
+  }
+
+  function setVariety(value) {
+    selectedVariety = VARIETY_LABELS[value] ? value : 'mixed';
+    if (els.varietyButtons) {
+      els.varietyButtons.querySelectorAll('.tk-variety-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.value === selectedVariety);
+      });
+    }
+    try { localStorage.setItem(VARIETY_KEY, selectedVariety); } catch (e) { /* ignore */ }
+    updateTotalTimeHelper();
+  }
+
+  function getNotes() {
+    return els.notesInput ? els.notesInput.value.trim().slice(0, NOTES_MAX) : '';
+  }
+
+  function updateNotesCount() {
+    if (els.notesCount && els.notesInput) {
+      els.notesCount.textContent = `${els.notesInput.value.length}/${NOTES_MAX}`;
+    }
   }
 
   function setLength(minutes) {
@@ -954,6 +1202,21 @@
       if (!Number.isNaN(n)) setRoundsPerSet(n);
     });
 
+    if (els.varietyButtons) {
+      els.varietyButtons.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tk-variety-btn');
+        if (!btn) return;
+        setVariety(btn.dataset.value);
+      });
+    }
+
+    if (els.notesInput) {
+      els.notesInput.addEventListener('input', () => {
+        updateNotesCount();
+        try { localStorage.setItem(NOTES_KEY, els.notesInput.value.slice(0, NOTES_MAX)); } catch (e) { /* ignore */ }
+      });
+    }
+
     // Fine-tune panel toggle + chip click + reset
     if (els.finetuneToggleBtn) {
       els.finetuneToggleBtn.addEventListener('click', toggleFinetunePanel);
@@ -982,6 +1245,19 @@
     els.finishedNewWorkoutBtn.addEventListener('click', resetToSelection);
     els.errorRetryBtn.addEventListener('click', resetToSelection);
 
+    // Toggle between focused (windowed) and full segment list views
+    if (els.windowToggleBtn) {
+      els.windowToggleBtn.addEventListener('click', () => {
+        setWindowMode(windowMode === 'windowed' ? 'full' : 'windowed');
+      });
+    }
+
+    // Keep the workout screen sized to the viewport (rotation, browser
+    // chrome showing/hiding, banners dismissed above the content).
+    window.addEventListener('resize', scheduleFitToViewport);
+    window.addEventListener('orientationchange', scheduleFitToViewport);
+    if (window.ResizeObserver) new ResizeObserver(scheduleFitToViewport).observe(document.body);
+
     document.addEventListener('visibilitychange', onVisibilityChange);
   }
 
@@ -1009,6 +1285,17 @@
       if (!Number.isNaN(n) && n >= 4 && n <= 12) selectedRoundsPerSet = n;
     } catch (e) { /* ignore */ }
 
+    try {
+      const v = localStorage.getItem(VARIETY_KEY);
+      if (v && VARIETY_LABELS[v]) selectedVariety = v;
+    } catch (e) { /* ignore */ }
+
+    try {
+      const savedNotes = localStorage.getItem(NOTES_KEY);
+      if (savedNotes && els.notesInput) els.notesInput.value = savedNotes.slice(0, NOTES_MAX);
+    } catch (e) { /* ignore */ }
+    updateNotesCount();
+
     // Apply to UI
     els.protocolButtons.querySelectorAll('.tk-protocol-btn').forEach((b) => {
       b.classList.toggle('active', b.dataset.value === selectedProtocol);
@@ -1022,6 +1309,11 @@
     els.roundsPerSetButtons.querySelectorAll('.tk-rounds-btn').forEach((b) => {
       b.classList.toggle('active', parseInt(b.dataset.value, 10) === selectedRoundsPerSet);
     });
+    if (els.varietyButtons) {
+      els.varietyButtons.querySelectorAll('.tk-variety-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.value === selectedVariety);
+      });
+    }
 
     selectedSets = setsForPresetLength(selectedProtocol, selectedRoundsPerSet, selectedLength);
     updateSetsDisplay();

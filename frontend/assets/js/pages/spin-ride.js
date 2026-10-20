@@ -39,6 +39,8 @@
   const INCLUDE_ALL_OUTS_KEY = 'spinRideIncludeAllOuts';
   const DIFFICULTY_KEY = 'spinRideDifficulty';
   const WINDOW_MODE_KEY = 'spinRideWindowMode';
+  const NOTES_KEY = 'spinRideNotes';
+  const NOTES_MAX = 500;
 
   // The AI's RPM range — anything it outputs maps from this interval onto
   // the user's configured min/max when RPM mapping is enabled.
@@ -164,6 +166,8 @@
       difficultyButtons: $('difficultyButtons'),
       difficultyDescription: $('difficultyDescription'),
       generateBtn: $('generateBtn'),
+      notesInput: $('notesInput'),
+      notesCount: $('notesCount'),
       rideSummaryValue: $('rideSummaryValue'),
       rideSummarySub: $('rideSummarySub'),
       ctaHint: document.querySelector('.sr-cta-hint'),
@@ -925,6 +929,7 @@
           duration_minutes: durationMinutes,
           include_all_outs: includeAllOuts,
           difficulty: difficulty,
+          notes: getNotes(),
         }),
       });
 
@@ -1128,6 +1133,16 @@
     els.rideSummarySub.textContent = `${difficultyLabel} · ${allOutsLabel} · ${gearLabel}`;
   }
 
+  function getNotes() {
+    return els.notesInput ? els.notesInput.value.trim().slice(0, NOTES_MAX) : '';
+  }
+
+  function updateNotesCount() {
+    if (els.notesCount && els.notesInput) {
+      els.notesCount.textContent = `${els.notesInput.value.length}/${NOTES_MAX}`;
+    }
+  }
+
   function getIncludeAllOuts() {
     if (!els.allOutsButtons) return false;
     const active = els.allOutsButtons.querySelector('.spin-all-out-btn.active');
@@ -1225,6 +1240,14 @@
           localStorage.setItem(DIFFICULTY_KEY, btn.dataset.value);
         } catch (err) { /* ignore */ }
         updateSummaryCard();
+      });
+    }
+
+    // Notes for the coach (persist as typed)
+    if (els.notesInput) {
+      els.notesInput.addEventListener('input', () => {
+        updateNotesCount();
+        try { localStorage.setItem(NOTES_KEY, els.notesInput.value.slice(0, NOTES_MAX)); } catch (err) { /* ignore */ }
       });
     }
 
@@ -1390,6 +1413,13 @@
       const savedDifficulty = localStorage.getItem(DIFFICULTY_KEY);
       if (savedDifficulty) setSelectedDifficulty(savedDifficulty);
     } catch (e) { /* ignore */ }
+
+    // Restore notes for the coach
+    try {
+      const savedNotes = localStorage.getItem(NOTES_KEY);
+      if (savedNotes && els.notesInput) els.notesInput.value = savedNotes.slice(0, NOTES_MAX);
+    } catch (e) { /* ignore */ }
+    updateNotesCount();
 
     // Prime the summary card + CTA hint from the restored preferences
     refreshGenerateButtonState();

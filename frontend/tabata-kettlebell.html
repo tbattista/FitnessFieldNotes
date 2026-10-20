@@ -58,9 +58,9 @@
     <link rel="stylesheet" href="/static/assets/css/design-system.css" />
 
     <!-- Spin Ride CSS (reused base layout) -->
-    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20260415a" />
+    <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20261020a" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20260415a" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261020a" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -156,10 +156,38 @@
                   </div>
                 </div>
 
-                <!-- Step 3 — Length / Sets / Rounds per Set -->
+                <!-- Step 3 — Exercise pattern (how moves repeat inside a set) -->
                 <div class="spin-step">
                   <p class="spin-step-title">
-                    <span class="spin-step-number">3</span>Length
+                    <span class="spin-step-number">3</span>Exercise pattern
+                  </p>
+                  <div class="d-flex flex-wrap gap-2" id="varietyButtons">
+                    <button class="btn btn-outline-primary btn-lg tk-variety-btn active" data-value="mixed">
+                      Coach's mix
+                      <span class="d-block small fw-normal">We pick per set</span>
+                    </button>
+                    <button class="btn btn-outline-primary btn-lg tk-variety-btn" data-value="same">
+                      Same per set
+                      <span class="d-block small fw-normal">One move, then switch</span>
+                    </button>
+                    <button class="btn btn-outline-primary btn-lg tk-variety-btn" data-value="alternating">
+                      Alternate 2
+                      <span class="d-block small fw-normal">A / B / A / B</span>
+                    </button>
+                    <button class="btn btn-outline-primary btn-lg tk-variety-btn" data-value="all_different">
+                      All different
+                      <span class="d-block small fw-normal">New move every round</span>
+                    </button>
+                  </div>
+                  <p class="tk-advanced-hint">
+                    <i class="bx bx-transfer-alt me-1"></i>Single-arm and single-leg moves are always balanced left / right.
+                  </p>
+                </div>
+
+                <!-- Step 4 — Length / Sets / Rounds per Set -->
+                <div class="spin-step">
+                  <p class="spin-step-title">
+                    <span class="spin-step-number">4</span>Length
                   </p>
                   <div class="d-flex flex-wrap gap-2 mb-3" id="lengthButtons">
                     <button class="btn btn-outline-primary btn-lg tk-length-btn" data-minutes="10">~10 min</button>
@@ -219,6 +247,21 @@
                   </div>
                 </div>
 
+                <!-- Notes for the coach (optional free text sent with the request) -->
+                <div class="sr-notes">
+                  <label class="sr-notes-label" for="notesInput">
+                    <i class="bx bx-note"></i>
+                    Notes for the coach
+                    <span class="sr-notes-optional">optional</span>
+                  </label>
+                  <textarea class="form-control sr-notes-input" id="notesInput" rows="2" maxlength="500"
+                            placeholder="e.g. Go easy on my left shoulder, no jumping, finish with a core set"></textarea>
+                  <div class="sr-notes-footer">
+                    <span>Saved for next time.</span>
+                    <span id="notesCount">0/500</span>
+                  </div>
+                </div>
+
                 <!-- Total card — summary of the setup -->
                 <div class="tk-total-card" id="totalTimeHelper">
                   <span class="tk-total-value">—</span>
@@ -248,8 +291,10 @@
               <!-- STATE: Ready / Working -->
               <div id="workoutState" class="d-none">
                 <!-- Workout Title -->
-                <h5 class="text-center mb-1" id="workoutTitle"></h5>
-                <p class="text-center text-muted small mb-3" id="workoutMeta"></p>
+                <div class="tk-workout-header">
+                  <h5 class="text-center mb-1" id="workoutTitle"></h5>
+                  <p class="text-center text-muted small mb-2" id="workoutMeta"></p>
+                </div>
 
                 <div class="spin-ride-layout">
                   <!-- Left: Timer + Details + Controls -->
@@ -312,18 +357,24 @@
                   <div class="spin-ride-segments-col">
                     <div class="card spin-plan-card">
                       <div class="card-body p-2">
-                        <div id="segmentList" class="spin-segment-list"></div>
+                        <div id="segmentList" class="spin-segment-list tk-windowed"></div>
+                        <div class="spin-window-toggle-wrap d-none" id="windowToggleWrap">
+                          <button type="button" class="btn btn-link btn-sm spin-window-toggle" id="windowToggleBtn">
+                            <i class="bx bx-chevron-down me-1"></i>
+                            <span class="spin-window-toggle-text">Show full plan</span>
+                          </button>
+                        </div>
+                        <!-- New Workout button -->
+                        <div class="text-center tk-workout-footer">
+                          <button class="btn btn-outline-secondary btn-sm" id="newWorkoutBtn">
+                            <i class="bx bx-refresh me-1"></i>New Workout
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- New Workout button -->
-                <div class="text-center mt-3">
-                  <button class="btn btn-outline-secondary btn-sm" id="newWorkoutBtn">
-                    <i class="bx bx-refresh me-1"></i>New Workout
-                  </button>
-                </div>
               </div>
 
               <!-- STATE: Finished -->
@@ -413,10 +464,13 @@
     <!-- Offcanvas Manager -->
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
 
+    <!-- Unified Offcanvas Factory (for post-workout confirm offcanvas) -->
+    <script type="module" src="/static/assets/js/components/offcanvas/index.js?v=20251220-02"></script>
+
     <!-- Shared segment expander (user-built tabata workouts) -->
     <script src="/static/assets/js/services/tabata-segment-expander.js?v=1.0.0"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20260419a"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261020a"></script>
   </body>
 </html>

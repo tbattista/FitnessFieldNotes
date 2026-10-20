@@ -23,6 +23,11 @@ class GenerateSpinRideRequest(BaseModel):
         default=None,
         description="Requested ride difficulty. If omitted, AI chooses based on ride theme.",
     )
+    notes: str = Field(
+        default="",
+        max_length=500,
+        description="Free-form notes from the rider for the AI coach (preferences, limitations, etc.).",
+    )
 
 
 class SpinRideSegment(BaseModel):

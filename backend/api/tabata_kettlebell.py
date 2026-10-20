@@ -62,6 +62,8 @@ async def generate_tabata_kettlebell(
             rounds_per_set=request.rounds_per_set,
             include_exercises=list(request.include_exercises or []),
             exclude_exercises=list(request.exclude_exercises or []),
+            exercise_variety=request.exercise_variety,
+            notes=request.notes,
         )
         ai_rate_limiter.record_request(user_id)
         logger.info(
@@ -69,7 +71,8 @@ async def generate_tabata_kettlebell(
             f"(protocol={request.protocol}, sets={request.sets}, "
             f"rounds_per_set={request.rounds_per_set}, focus={request.focus_areas}, "
             f"include={len(request.include_exercises or [])}, "
-            f"exclude={len(request.exclude_exercises or [])})"
+            f"exclude={len(request.exclude_exercises or [])}, "
+            f"variety={request.exercise_variety}, notes={'yes' if request.notes.strip() else 'no'})"
         )
         return plan
 

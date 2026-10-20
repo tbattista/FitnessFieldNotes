@@ -67,6 +67,57 @@
   color: var(--bs-secondary-color, #9ca3af);
 }
 
+/* ── Notes for the coach (shared with tabata-kettlebell) ──────────────── */
+.sr-notes {
+  margin: 0 0 1rem;
+  max-width: 640px;
+}
+
+.sr-notes-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gs-gray-700, #334155);
+}
+
+.sr-notes-label i {
+  font-size: 1.1rem;
+  color: var(--gs-primary, #C97C5D);
+}
+
+.sr-notes-optional {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gs-gray-500, #64748b);
+  margin-left: 0.25rem;
+}
+
+.sr-notes-input {
+  font-size: 0.875rem;
+  resize: vertical;
+}
+
+.sr-notes-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--gs-gray-500, #64748b);
+  margin-top: 0.25rem;
+}
+
+[data-bs-theme="dark"] .sr-notes-label {
+  color: var(--bs-body-color, #e4e6eb);
+}
+
+[data-bs-theme="dark"] .sr-notes-footer {
+  color: var(--bs-secondary-color, #9ca3af);
+}
+
 /* ── CTA bar (inline at the bottom of the setup flow) ── */
 .sr-cta-bar {
   margin-top: 1rem;

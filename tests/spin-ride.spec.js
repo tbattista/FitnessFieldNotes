@@ -8,6 +8,50 @@ const { BASE, collectConsoleErrors } = require('./fixtures');
  */
 
 test.describe('Spin Ride Page', () => {
+  test('notes for the coach persist and are sent with the generate request', async ({ page }) => {
+    // Pretend a user is signed in so Generate gets past the auth gate.
+    await page.addInitScript(() => {
+      const user = { uid: 'test-user', getIdToken: async () => 'test-token' };
+      let real = null;
+      Object.defineProperty(window, 'authService', {
+        configurable: true,
+        get() { return real ? Object.assign(real, { currentUser: user }) : { currentUser: user }; },
+        set(v) { real = v; },
+      });
+    });
+    await page.goto(`${BASE}/spin-ride`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.evaluate(() => {
+      localStorage.removeItem('spinRideNotes');
+      sessionStorage.removeItem('spinRideSession');
+    });
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.locator('#notesInput').fill('More standing climbs');
+    await expect(page.locator('#notesCount')).toHaveText('20/500');
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('#notesInput')).toHaveValue('More standing climbs');
+
+    let body = null;
+    await page.route('**/api/v3/spin-ride/generate', async (route) => {
+      body = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          title: 'Notes Ride', duration_minutes: 10, total_seconds: 600, difficulty: 'moderate', estimated_calories: 90,
+          segments: [{ name: 'Flat', segment_type: 'flat', duration_seconds: 600, resistance: 4, rpm_low: 80, rpm_high: 90, cue: 'Go' }],
+        }),
+      });
+    });
+    await page.locator('.spin-duration-btn[data-minutes="10"]').click();
+    await page.locator('#generateBtn').click();
+    await expect(page.locator('#rideState')).toBeVisible();
+    expect(body.notes).toBe('More standing climbs');
+  });
+
   test('page loads and shows duration selection', async ({ page }) => {
     const errors = collectConsoleErrors(page);
 

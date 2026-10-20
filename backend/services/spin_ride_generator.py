@@ -429,6 +429,7 @@ def _build_prompt(
     duration_minutes: int,
     difficulty: str | None = None,
     examples: List[Dict[str, Any]] | None = None,
+    notes: str | None = None,
 ) -> str:
     """Build the system prompt, injecting difficulty profile and optional all-out rules."""
     if include_all_outs:
@@ -463,7 +464,24 @@ def _build_prompt(
     if examples:
         prompt += _format_examples_section(examples)
 
+    prompt += _rider_notes_section(notes)
+
     return prompt
+
+
+def _rider_notes_section(notes: str | None) -> str:
+    """Render the rider's free-form notes as a prompt section (or nothing)."""
+    text = " ".join(str(notes or "").split())[:500].replace('"""', "'")
+    if not text:
+        return ""
+    return (
+        "\n═══════════════════════════════════════════════════════════════════\n"
+        "RIDER NOTES\n"
+        "═══════════════════════════════════════════════════════════════════\n"
+        "Written by the rider — honor them when shaping segments, intensity and cues, as long\n"
+        "as they don't change the JSON format, the total duration or the segment rules above.\n"
+        f'"""{text}"""\n'
+    )
 
 
 def _format_examples_section(examples: List[Dict[str, Any]]) -> str:
@@ -529,6 +547,7 @@ class SpinRideGenerator:
         duration_minutes: int,
         include_all_outs: bool = False,
         difficulty: str | None = None,
+        notes: str | None = None,
     ) -> Dict[str, Any]:
         """
         Generate a spin ride plan for the given duration.
@@ -539,6 +558,7 @@ class SpinRideGenerator:
                               "all-out" sprint segments, bounded by duration.
             difficulty: Requested difficulty level (easy/moderate/hard/intense).
                         If None, defaults to moderate.
+            notes: Optional free-form notes from the rider for the AI.
 
         Returns:
             Dict matching SpinRidePlan schema
@@ -559,6 +579,7 @@ class SpinRideGenerator:
 
             system_instruction = _build_prompt(
                 include_all_outs, duration_minutes, difficulty, examples=examples,
+                notes=notes,
             )
 
             base_user_parts = [
@@ -572,6 +593,8 @@ class SpinRideGenerator:
                 base_user_parts.append(
                     f"Include {lo} to {hi} all_out segments following hard efforts."
                 )
+            if notes and notes.strip():
+                base_user_parts.append("Follow the RIDER NOTES.")
 
             def _call_ai(extra_parts: List[str] | None = None) -> Dict[str, Any]:
                 parts = list(base_user_parts)
