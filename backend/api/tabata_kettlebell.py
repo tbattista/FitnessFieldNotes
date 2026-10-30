@@ -3,7 +3,7 @@ Tabata Kettlebell API Endpoints
 AI-generated kettlebell tabata workouts with structured work/rest segments.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from typing import Dict, Any
 import logging
 import os
@@ -11,7 +11,9 @@ import os
 from ..models.tabata_kettlebell import GenerateTabataKettlebellRequest
 from ..services.tabata_kettlebell_generator import get_tabata_kettlebell_generator
 from ..services.ai_rate_limiter import ai_rate_limiter
-from ..middleware.auth import get_current_user, extract_user_id
+from ..middleware.auth import get_current_user, extract_user_id, extract_user_email
+from ..services.workout_library_service import is_admin_email, criteria_from_tabata_request
+from .workout_library import publish_admin_generation
 
 router = APIRouter(prefix="/api/v3/tabata-kettlebell", tags=["Tabata Kettlebell"])
 logger = logging.getLogger(__name__)
@@ -41,6 +43,7 @@ async def tabata_kettlebell_status():
 @router.post("/generate")
 async def generate_tabata_kettlebell(
     request: GenerateTabataKettlebellRequest,
+    background_tasks: BackgroundTasks,
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Generate an AI-powered tabata kettlebell workout plan."""
@@ -74,6 +77,12 @@ async def generate_tabata_kettlebell(
             f"exclude={len(request.exclude_exercises or [])}, "
             f"variety={request.exercise_variety}, notes={'yes' if request.notes.strip() else 'no'})"
         )
+        # Admin generations are the library's source: publish them for the public
+        # pages (SEO copy is written in the background so the response isn't slowed).
+        email = extract_user_email(current_user)
+        if is_admin_email(email):
+            background_tasks.add_task(
+                publish_admin_generation, "tabata", plan, criteria_from_tabata_request(request), email)
         return plan
 
     except ValueError as e:

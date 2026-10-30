@@ -156,6 +156,9 @@ class MenuInjectionService {
         if (filename.includes('exercise-database')) return 'exercise-database';
         if (filename.includes('exercise-edit')) return 'exercise-database';
 
+        // Public workout library (/free-workouts, /tabata-workouts/{slug}, /spin-workouts/{slug})
+        if (/^\/(free|tabata|spin)-workouts(\/|$)/.test(path)) return 'free-workouts';
+
         // Lab Projects
         if (filename.includes('workout-studio')) return 'workout-studio';
         if (filename.includes('spin-ride-history')) return 'spin-ride-history';

@@ -19,6 +19,7 @@ function getMenuHTML(activePage = 'home') {
     const isSpinRideHistory = activePage === 'spin-ride-history';
     const isTabataKettlebell = activePage === 'tabata-kettlebell';
     const isWorkoutStudio = activePage === 'workout-studio';
+    const isFreeWorkouts = activePage === 'free-workouts';
 
     return `
         <nav aria-label="Main navigation">
@@ -28,23 +29,30 @@ function getMenuHTML(activePage = 'home') {
                 </li>
 
                 <li class="menu-item ${isHome ? 'active' : ''}"${isHome ? ' aria-current="page"' : ''}>
-                    <a href="index.html" class="menu-link">
+                    <a href="/index.html" class="menu-link">
                         <i class="menu-icon tf-icons bx ${isHome ? 'bxs-home' : 'bx-home'}"></i>
                         <div class="text-truncate">Home</div>
                     </a>
                 </li>
 
                 <li class="menu-item ${isWorkouts ? 'active' : ''}"${isWorkouts ? ' aria-current="page"' : ''}>
-                    <a href="workout-database.html" class="menu-link">
+                    <a href="/workout-database.html" class="menu-link">
                         <i class="menu-icon tf-icons bx ${isWorkouts ? 'bx-dumbbell' : 'bx-dumbbell'}"></i>
                         <div class="text-truncate">Workouts</div>
                     </a>
                 </li>
 
                 <li class="menu-item ${isHistory ? 'active' : ''}"${isHistory ? ' aria-current="page"' : ''}>
-                    <a href="workout-history.html?all=true" class="menu-link">
+                    <a href="/workout-history.html?all=true" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-history"></i>
                         <div class="text-truncate">History</div>
+                    </a>
+                </li>
+
+                <li class="menu-item ${isFreeWorkouts ? 'active' : ''}"${isFreeWorkouts ? ' aria-current="page"' : ''}>
+                    <a href="/free-workouts" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-timer"></i>
+                        <div class="text-truncate">Free Workouts</div>
                     </a>
                 </li>
 
@@ -53,7 +61,7 @@ function getMenuHTML(activePage = 'home') {
                 </li>
 
                 <li class="menu-item ${isExercises ? 'active' : ''}"${isExercises ? ' aria-current="page"' : ''}>
-                    <a href="exercise-database.html" class="menu-link">
+                    <a href="/exercise-database.html" class="menu-link">
                         <i class="menu-icon tf-icons bx ${isExercises ? 'bxs-data' : 'bx-data'}"></i>
                         <div class="text-truncate">Exercises</div>
                     </a>
@@ -64,28 +72,28 @@ function getMenuHTML(activePage = 'home') {
                 </li>
 
                 <li class="menu-item ${isWorkoutStudio ? 'active' : ''}"${isWorkoutStudio ? ' aria-current="page"' : ''}>
-                    <a href="workout-studio.html" class="menu-link">
+                    <a href="/workout-studio.html" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-list-plus"></i>
                         <div class="text-truncate">Workout Studio <span class="badge bg-label-primary ms-1" style="font-size:0.65rem;">New</span></div>
                     </a>
                 </li>
 
                 <li class="menu-item ${isSpinRide ? 'active' : ''}"${isSpinRide ? ' aria-current="page"' : ''}>
-                    <a href="spin-ride.html" class="menu-link">
+                    <a href="/spin-ride.html" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-cycling"></i>
                         <div class="text-truncate">Spin Ride</div>
                     </a>
                 </li>
 
                 <li class="menu-item ${isSpinRideHistory ? 'active' : ''}"${isSpinRideHistory ? ' aria-current="page"' : ''}>
-                    <a href="spin-ride-history.html" class="menu-link">
+                    <a href="/spin-ride-history.html" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-history"></i>
                         <div class="text-truncate">Spin History</div>
                     </a>
                 </li>
 
                 <li class="menu-item ${isTabataKettlebell ? 'active' : ''}"${isTabataKettlebell ? ' aria-current="page"' : ''}>
-                    <a href="tabata-kettlebell.html" class="menu-link">
+                    <a href="/tabata-kettlebell.html" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-dumbbell"></i>
                         <div class="text-truncate">Tabata Kettlebell</div>
                     </a>

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wl-hero text-center py-5">
+  <h1>Workout not found</h1>
+  <p class="wl-lede">This workout may have been moved or removed.</p>
+  <a class="btn btn-primary" href="{{ hub_url }}">Browse {{ info.name | lower }}</a>
+</div>
+{% endblock %}

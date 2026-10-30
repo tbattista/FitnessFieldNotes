@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import routers
-from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride, spin_ride_history, tabata_kettlebell
+from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride, spin_ride_history, tabata_kettlebell, workout_library, library_pages
 from .services.sharing_service import sharing_service
 import re
 import html
@@ -73,8 +73,10 @@ app.include_router(exercise_images.router)  # Exercise GIF proxy/cache
 app.include_router(spin_ride.router)  # Spin Ride generator (experimental)
 app.include_router(spin_ride_history.router)  # Saved spin rides (per-user history)
 app.include_router(tabata_kettlebell.router)  # Tabata Kettlebell generator (experimental)
+app.include_router(workout_library.router)  # Public Tabata/Spin workout library API
+app.include_router(library_pages.router)  # Server-rendered library pages (SEO)
 
-logger.info("✅ All routers included successfully (23 routers total)")
+logger.info("✅ All routers included successfully (25 routers total)")
 
 # ============================================
 # SEO Routes (robots.txt, sitemap.xml, llms.txt)
@@ -101,11 +103,11 @@ async def serve_sitemap():
     Static lastmod is acceptable for low-change pages; bump it whenever a
     page's content materially changes.
 
-    We deliberately do NOT list individual public-workout deep links: the
-    only paths that resolve to a workout (workout-builder.html?share_id=,
-    /share/{token}) are either blocked by robots.txt or are private-invite
-    tokens, neither of which Google should crawl. Add a real public-canon
-    route (e.g. /p/{id}) before re-introducing per-workout entries.
+    Community workout deep links (workout-builder.html?share_id=,
+    /share/{token}) are still left out: they're blocked by robots.txt or are
+    private-invite tokens. The public Tabata/Spin library (/free-workouts,
+    /tabata-workouts/{slug}, /spin-workouts/{slug}) is the canonical,
+    crawlable set of per-workout pages and is appended below.
     """
     import time
     from datetime import date
@@ -114,25 +116,26 @@ async def serve_sitemap():
     if _sitemap_cache["xml"] and (now - _sitemap_cache["generated_at"]) < SITEMAP_CACHE_TTL:
         return Response(content=_sitemap_cache["xml"], media_type="application/xml")
 
-    base_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "fitnessfieldnotes.com")
-    base_url = f"https://{base_url}" if not base_url.startswith("http") else base_url
+    from .services.workout_library_service import site_base_url
+    base_url = site_base_url()
 
-    lastmod = date.today().isoformat()
+    today = date.today().isoformat()
 
     urls = [
-        ("/",                 "1.0", "weekly"),
-        ("/public-workouts",  "0.8", "daily"),
-        ("/privacy.html",     "0.3", "yearly"),
-        ("/terms.html",       "0.3", "yearly"),
+        ("/",                 None, "1.0", "weekly"),
+        ("/public-workouts",  None, "0.8", "daily"),
+        ("/privacy.html",     None, "0.3", "yearly"),
+        ("/terms.html",       None, "0.3", "yearly"),
     ]
+    urls += library_pages.library_sitemap_urls()
 
     xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>',
                  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    for path, priority, changefreq in urls:
+    for path, lastmod, priority, changefreq in urls:
         xml_parts.append(
             f'  <url>'
             f'<loc>{base_url}{path}</loc>'
-            f'<lastmod>{lastmod}</lastmod>'
+            f'<lastmod>{lastmod or today}</lastmod>'
             f'<changefreq>{changefreq}</changefreq>'
             f'<priority>{priority}</priority>'
             f'</url>'
@@ -546,6 +549,16 @@ async def serve_tabata_kettlebell():
             content="<h1>Tabata Kettlebell not found</h1><p>Please ensure frontend/tabata-kettlebell.html exists</p>",
             status_code=404
         )
+
+@app.get("/library-admin", response_class=HTMLResponse)
+@app.get("/library-admin.html", response_class=HTMLResponse)
+async def serve_library_admin():
+    """Serve the Workout Library admin page (hide / edit public library workouts)."""
+    try:
+        with open("frontend/library-admin.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Library admin not found</h1>", status_code=404)
 
 @app.get("/launch", response_class=HTMLResponse)
 @app.get("/launch.html", response_class=HTMLResponse)

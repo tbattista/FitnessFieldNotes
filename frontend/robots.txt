@@ -5,6 +5,9 @@ User-agent: *
 Allow: /
 Allow: /launch
 Allow: /public-workouts
+Allow: /free-workouts
+Allow: /tabata-workouts
+Allow: /spin-workouts
 Allow: /privacy.html
 Allow: /terms.html
 
@@ -24,6 +27,7 @@ Disallow: /activity-log
 Disallow: /spin-ride
 Disallow: /spin-ride-history
 Disallow: /spin-ride-feedback-admin
+Disallow: /library-admin
 Disallow: /tabata-kettlebell
 Disallow: /dashboard
 Disallow: /feedback-voting

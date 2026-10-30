@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html
+  lang="en"
+  class="layout-menu-fixed layout-compact"
+  data-assets-path="/static/assets/"
+  data-template="vertical-menu-template-free">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{{ title }} | Fitness Field Notes</title>
+    <meta name="description" content="{{ description }}" />
+    <link rel="canonical" href="{{ canonical }}" />
+    {% if robots %}<meta name="robots" content="{{ robots }}" />{% endif %}
+
+    <meta property="og:type" content="{{ og_type or 'website' }}" />
+    <meta property="og:site_name" content="Fitness Field Notes" />
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:description" content="{{ description }}" />
+    <meta property="og:image" content="{{ base_url }}/static/assets/img/og-image.png" />
+    <meta property="og:url" content="{{ canonical }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ title }}" />
+    <meta name="twitter:description" content="{{ description }}" />
+    <meta name="twitter:image" content="{{ base_url }}/static/assets/img/og-image.png" />
+
+    {% for block in json_ld %}
+    <script type="application/ld+json">{{ block | safe }}</script>
+    {% endfor %}
+
+    <link rel="icon" type="image/svg+xml" href="/static/assets/img/favicon/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/assets/img/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#C97C5D">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="/static/assets/vendor/fonts/iconify-icons.css" />
+    <link rel="stylesheet" href="/static/assets/vendor/css/core.css" />
+    <link rel="stylesheet" href="/static/assets/css/demo.css" />
+    <link rel="stylesheet" href="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <link rel="stylesheet" href="/static/assets/css/ffn-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/components.css?v=20260216" />
+    <link rel="stylesheet" href="/static/assets/css/navbar-custom.css" />
+    <link rel="stylesheet" href="/static/assets/css/global-log-fab.css" />
+    <link rel="stylesheet" href="/static/assets/css/design-system.css" />
+    <link rel="stylesheet" href="/static/assets/css/workout-library.css?v=20261030b" />
+
+    <script src="/static/assets/vendor/js/helpers.js"></script>
+    <script src="/static/assets/js/config.js"></script>
+    <script src="/static/assets/js/services/theme-manager.js"></script>
+    <script src="/static/assets/js/app-config.js"></script>
+    <script type="module" src="/static/assets/js/firebase-loader.js"></script>
+
+    <!-- Matomo -->
+    <script>
+      var _paq = window._paq = window._paq || [];
+      _paq.push(['disableCookies']);
+      _paq.push(['trackPageView']);
+      _paq.push(['enableLinkTracking']);
+      (function() {
+        var u="//matomo-production-72c8.up.railway.app/";
+        _paq.push(['setTrackerUrl', u+'matomo.php']);
+        _paq.push(['setSiteId', '2']);
+        var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+        g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+      })();
+    </script>
+    <!-- End Matomo Code -->
+  </head>
+
+  <body class="wl-page">
+    <div class="layout-wrapper layout-content-navbar">
+      <div class="layout-container">
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+          <!-- Menu injected by menu-injection-service.js -->
+        </aside>
+
+        <div class="layout-page">
+          <div class="content-wrapper">
+            <main class="container-xxl flex-grow-1 container-p-y wl-main">
+              {% block content %}{% endblock %}
+            </main>
+          </div>
+        </div>
+      </div>
+      <div class="layout-overlay layout-menu-toggle"></div>
+    </div>
+
+    <script src="/static/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="/static/assets/vendor/libs/popper/popper.js"></script>
+    <script src="/static/assets/vendor/js/bootstrap.js"></script>
+    <script src="/static/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+    <script src="/static/assets/vendor/js/menu.js"></script>
+
+    <script src="/static/assets/js/components/menu-template.js"></script>
+    <script src="/static/assets/js/components/navbar-template.js"></script>
+    <script src="/static/assets/js/components/auth-modals-template.js"></script>
+    <script src="/static/assets/js/components/modal-manager.js"></script>
+
+    <script src="/static/assets/js/services/menu-injection-service.js?v=20260216"></script>
+    <script src="/static/assets/js/services/global-log-fab-controller.js"></script>
+    <script src="/static/assets/js/services/navbar-injection-service.js"></script>
+    <script src="/static/assets/js/services/beta-banner-service.js?v=20260617-01"></script>
+    <script src="/static/assets/js/services/feedback-injection-service.js"></script>
+    <script src="/static/assets/js/main.js?v=20260216"></script>
+
+    <script src="/static/assets/js/firebase/firebase-init.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-service.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/auth-ui.js?v=20251020-03"></script>
+    <script src="/static/assets/js/firebase/data-manager.js?v=20260228-01"></script>
+    <script src="/static/assets/js/services/settings-manager.js"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

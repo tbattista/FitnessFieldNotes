@@ -1,0 +1,575 @@
+/* ============================================
+   Workout Library — public Tabata + Spin pages
+   (server-rendered: /free-workouts, /tabata-workouts/*, /spin-workouts/*)
+   ============================================ */
+
+.wl-main {
+  max-width: 1040px;
+}
+
+/* ── Breadcrumb ── */
+.wl-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color, #6b7280);
+  margin-bottom: 1rem;
+}
+
+.wl-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.wl-breadcrumb a:hover {
+  color: var(--gs-primary, #C97C5D);
+}
+
+/* ── Hero ── */
+.wl-hero h1 {
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.wl-lede {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--bs-secondary-color, #6b7280);
+  max-width: 680px;
+  margin-bottom: 1.25rem;
+}
+
+.wl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.wl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--gs-primary, #C97C5D);
+  border-radius: 999px;
+  color: var(--gs-primary, #C97C5D);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.wl-chip span {
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.wl-chip:hover {
+  background: rgba(201, 124, 93, 0.08);
+  color: var(--gs-primary, #C97C5D);
+}
+
+/* ── Sections + cards ── */
+.wl-section {
+  margin-bottom: 2.5rem;
+  scroll-margin-top: 5rem;
+}
+
+.wl-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wl-section-head h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.wl-see-all {
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--gs-primary, #C97C5D);
+}
+
+.wl-section-intro {
+  color: var(--bs-secondary-color, #6b7280);
+  max-width: 680px;
+}
+
+.wl-group-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.75rem;
+}
+
+.wl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.875rem;
+}
+
+.wl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem 1.125rem;
+  background: var(--bs-card-bg, #fff);
+  border: 1px solid var(--bs-border-color, #e5e7eb);
+  border-radius: 0.75rem;
+  color: var(--bs-body-color);
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.wl-card:hover {
+  border-color: var(--gs-primary, #C97C5D);
+  color: var(--bs-body-color);
+  transform: translateY(-1px);
+}
+
+.wl-card-meta {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.wl-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(201, 124, 93, 0.12);
+  color: var(--gs-primary, #C97C5D);
+}
+
+.wl-pill-muted {
+  background: var(--bs-secondary-bg, #f1f5f9);
+  color: var(--bs-secondary-color, #6b7280);
+}
+
+.wl-card-title {
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.wl-card-summary {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--bs-secondary-color, #6b7280);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wl-empty,
+.wl-cross-link {
+  color: var(--bs-secondary-color, #6b7280);
+}
+
+/* ── Single workout ── */
+.wl-workout {
+  max-width: 820px;
+}
+
+.wl-workout-title {
+  font-size: clamp(1.5rem, 4.5vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.875rem;
+}
+
+.wl-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  color: var(--bs-body-color);
+  font-size: 0.9375rem;
+}
+
+.wl-stats li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.wl-stats i {
+  color: var(--gs-primary, #C97C5D);
+  font-size: 1.125rem;
+}
+
+.wl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.wl-actions-hint {
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color, #6b7280);
+  margin: 0.5rem 0 1.5rem;
+}
+
+.wl-intro p {
+  font-size: 1rem;
+  line-height: 1.7;
+  max-width: 720px;
+}
+
+.wl-breakdown h2,
+.wl-related h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 1.75rem 0 0.5rem;
+}
+
+.wl-breakdown-note {
+  color: var(--bs-secondary-color, #6b7280);
+  font-size: 0.9375rem;
+}
+
+.wl-set h3 {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.wl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  background: var(--bs-card-bg, #fff);
+  border: 1px solid var(--bs-border-color, #e5e7eb);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.wl-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color, #6b7280);
+  background: var(--bs-secondary-bg, #f8fafc);
+  padding: 0.5rem 0.75rem;
+}
+
+.wl-table td {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--bs-border-color, #e5e7eb);
+  vertical-align: top;
+}
+
+.wl-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color, #6b7280);
+  white-space: nowrap;
+}
+
+.wl-exercise {
+  font-weight: 600;
+}
+
+.wl-side {
+  font-weight: 400;
+  color: var(--bs-secondary-color, #6b7280);
+}
+
+.wl-cue {
+  color: var(--bs-secondary-color, #6b7280);
+  font-size: 0.875rem;
+}
+
+.wl-res {
+  font-weight: 700;
+  color: var(--gs-primary, #C97C5D);
+}
+
+.wl-check-col {
+  display: none; /* checkboxes only on paper */
+}
+
+.wl-box {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1.5px solid #555;
+  border-radius: 2px;
+}
+
+.wl-set-rest {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gs-success, #6fa883);
+  margin: 0.5rem 0 0;
+}
+
+/* Spin intensity profile */
+.wl-profile {
+  margin: 0.75rem 0 1rem;
+}
+
+.wl-profile svg {
+  width: 100%;
+  height: 110px;
+  display: block;
+  background: var(--bs-secondary-bg, #f8fafc);
+  border-radius: 0.5rem;
+}
+
+.wl-profile figcaption {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color, #6b7280);
+  margin-top: 0.25rem;
+}
+
+.wl-bar { fill: #C97C5D; }
+.wl-bar-warmup, .wl-bar-cooldown { fill: #9aa5b1; }
+.wl-bar-recovery { fill: #8CBF9F; }
+.wl-bar-flat { fill: #d9a58c; }
+.wl-bar-climb { fill: #C97C5D; }
+.wl-bar-sprint, .wl-bar-all_out { fill: #a24f33; }
+
+.wl-bottom-cta {
+  margin: 1.75rem 0 0.5rem;
+}
+
+.wl-related {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--bs-border-color, #e5e7eb);
+}
+
+.wl-print-only {
+  display: none;
+}
+
+/* Cue shown under the exercise/block name on phones and paper (cue column hidden) */
+.wl-cue-inline {
+  display: none;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color, #6b7280);
+}
+
+/* The public pages carry their own "Do This Workout" CTA */
+.wl-page .global-log-fab {
+  display: none !important;
+}
+
+@media (max-width: 575.98px) {
+  .wl-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .wl-table {
+    font-size: 0.875rem;
+  }
+
+  .wl-table th,
+  .wl-table td {
+    padding: 0.5rem 0.5rem;
+  }
+
+  .wl-table .wl-cue {
+    display: none;
+  }
+
+  .wl-cue-inline {
+    display: block;
+  }
+}
+
+/* ── Dark mode ── */
+[data-bs-theme="dark"] .wl-pill {
+  background: rgba(212, 147, 120, 0.18);
+  color: #d49378;
+}
+
+[data-bs-theme="dark"] .wl-chip,
+[data-bs-theme="dark"] .wl-see-all,
+[data-bs-theme="dark"] .wl-res {
+  color: #d49378;
+  border-color: #d49378;
+}
+
+/* ── Print: one clean gym sheet ── */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body.wl-page > *:not(.layout-wrapper),
+  .layout-menu,
+  #layout-navbar,
+  .layout-overlay,
+  .ffn-beta-banner,
+  .wl-no-print {
+    display: none !important;
+  }
+
+  html, body, .layout-wrapper, .layout-container, .layout-page, .content-wrapper {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .layout-page,
+  .content-wrapper,
+  .wl-main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .wl-print-only {
+    display: block;
+  }
+
+  .wl-print-brand {
+    font-size: 9pt;
+    color: #555;
+    margin-bottom: 2mm;
+  }
+
+  .wl-workout {
+    max-width: none;
+    font-size: 10pt;
+  }
+
+  .wl-workout-title {
+    font-size: 18pt;
+    margin-bottom: 2mm;
+  }
+
+  .wl-stats {
+    font-size: 9.5pt;
+    margin-bottom: 3mm;
+  }
+
+  .wl-stats i {
+    display: none;
+  }
+
+  .wl-stats {
+    gap: 1mm 5mm;
+  }
+
+  .wl-intro p {
+    font-size: 9.5pt;
+    line-height: 1.4;
+    margin-bottom: 1.5mm;
+  }
+
+  .wl-breakdown h2 {
+    font-size: 13pt;
+    margin: 3mm 0 1mm;
+  }
+
+  .wl-breakdown-note {
+    font-size: 9.5pt;
+    margin-bottom: 1mm;
+  }
+
+  /* Tabata sets side by side so the whole workout fits on one sheet */
+  .wl-sets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4mm;
+  }
+
+  .wl-sets-2,
+  .wl-sets-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wl-sets-1 {
+    grid-template-columns: 1fr;
+  }
+
+  .wl-sets .wl-table .wl-cue {
+    display: none;
+  }
+
+  .wl-sets .wl-cue-inline {
+    display: block;
+    font-size: 8pt;
+    color: #444;
+  }
+
+  .wl-set {
+    break-inside: avoid;
+  }
+
+  .wl-set h3 {
+    font-size: 11pt;
+    margin: 3mm 0 1mm;
+  }
+
+  .wl-table {
+    font-size: 9.5pt;
+    border: 1px solid #999;
+  }
+
+  .wl-table th {
+    background: #eee !important;
+    color: #000;
+    padding: 1mm 2mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .wl-table td {
+    padding: 1mm 2mm;
+    border-top: 1px solid #bbb;
+  }
+
+  .wl-table tr {
+    break-inside: avoid;
+  }
+
+  .wl-check-col {
+    display: table-cell;
+    width: 8mm;
+    text-align: center;
+  }
+
+  .wl-cue,
+  .wl-num,
+  .wl-side,
+  .wl-breakdown-note,
+  .wl-set-rest {
+    color: #333 !important;
+  }
+
+  .wl-res {
+    color: #000;
+  }
+
+  .wl-profile svg {
+    height: 22mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .wl-print-footer {
+    margin-top: 4mm;
+    font-size: 9pt;
+    color: #555;
+  }
+
+  a[href]::after {
+    content: none !important;
+  }
+}

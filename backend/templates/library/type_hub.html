@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="wl-breadcrumb" aria-label="Breadcrumb">
+  <a href="/">Home</a><span>/</span><a href="/free-workouts">Free Workouts</a><span>/</span><span aria-current="page">{{ info.name }}</span>
+</nav>
+
+<header class="wl-hero">
+  <h1><i class="bx {{ info.icon }} me-2"></i>Free {{ info.name }}</h1>
+  <p class="wl-lede">{{ info.intro }}</p>
+  {% if groups %}
+  <nav class="wl-chips" aria-label="Categories">
+    {% for category, cards in groups.items() %}
+    <a class="wl-chip" href="#{{ category | lower | replace(' ', '-') }}">{{ category }} <span>{{ cards | length }}</span></a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+</header>
+
+{% if groups %}
+  {% for category, cards in groups.items() %}
+  <section class="wl-section" id="{{ category | lower | replace(' ', '-') }}">
+    <h2 class="wl-group-title">{{ category }} {{ info.short }} Workouts</h2>
+    <div class="wl-grid">
+      {% for c in cards %}{% include "_card.html" %}{% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+{% else %}
+  <p class="wl-empty">New workouts are on the way. Check back soon.</p>
+{% endif %}
+
+<p class="wl-cross-link">
+  {% if wtype == 'tabata' %}
+  Want something on the bike? <a href="/spin-workouts">Browse spin workouts</a>.
+  {% else %}
+  Want something with a kettlebell? <a href="/tabata-workouts">Browse kettlebell Tabata workouts</a>.
+  {% endif %}
+</p>
+{% endblock %}

@@ -28,6 +28,13 @@ service cloud.firestore {
       match /exercise_history/{historyId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Which public library workouts this user was served / finished.
+      // Written by the backend (Admin SDK); readable by the owner only.
+      match /library_history/{libraryId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
       
       match /favorites/{favoriteId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -123,6 +130,17 @@ service cloud.firestore {
 
       allow delete: if request.auth != null
                     && request.auth.token.email == 'tbattista@gmail.com';
+    }
+
+    // ========================================================================
+    // PUBLIC WORKOUT LIBRARY - Tabata + Spin workouts shown on the public
+    // /tabata-workouts and /spin-workouts pages. Anyone can read; only the
+    // backend (Admin SDK, on admin generations) writes.
+    // ========================================================================
+
+    match /library_workouts/{workoutId} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

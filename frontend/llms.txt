@@ -29,6 +29,9 @@ Combine multiple workouts into complete training programs. Schedule workouts acr
 ### Public Workouts
 Browse community-shared workout templates. Find push/pull/legs splits, strength programs, HIIT workouts, and more. Save workouts to your personal library.
 
+### Free Tabata & Spin Workout Library
+Free, ready-made kettlebell Tabata workouts and spin bike (indoor cycling) rides. Each workout has its own page with the full round-by-round breakdown, a built-in interval timer (no sign-up needed), and a printable one-page gym sheet.
+
 ### Workout Sharing
 Generate shareable links for your workouts. Share privately with training partners or publicly with the community.
 
@@ -37,11 +40,14 @@ Generate shareable links for your workouts. Share privately with training partne
 - `/` - Home page with app overview
 - `/launch` - Marketing landing page
 - `/public-workouts` - Browse all shared workout templates
+- `/free-workouts` - Free Tabata and spin workout library
+- `/tabata-workouts` and `/tabata-workouts/{slug}` - Kettlebell Tabata workouts
+- `/spin-workouts` and `/spin-workouts/{slug}` - Spin bike rides
 - `/share/{token}` - View individual shared workouts
 
 ## Keywords
 
-gym log, workout journal, workout planner, workout builder, fitness tracker, workout tracker, training log, exercise log, gym journal, strength training log, workout templates
+gym log, workout journal, workout planner, workout builder, fitness tracker, workout tracker, training log, exercise log, gym journal, strength training log, workout templates, tabata workout, kettlebell tabata, spin workout, indoor cycling workout, printable workout
 
 ## Technical Details
 

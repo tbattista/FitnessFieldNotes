@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="wl-breadcrumb" aria-label="Breadcrumb">
+  <a href="/">Home</a><span>/</span><span aria-current="page">Free Workouts</span>
+</nav>
+
+<header class="wl-hero">
+  <h1>Free Tabata &amp; Spin Workouts</h1>
+  <p class="wl-lede">
+    Ready-made interval workouts you can do right now. Each one runs on a built-in timer
+    that tells you when to work and when to rest, and prints on one page for the gym.
+  </p>
+</header>
+
+{% for section in sections %}
+<section class="wl-section" id="{{ section.type }}">
+  <div class="wl-section-head">
+    <h2><i class="bx {{ section.info.icon }} me-2"></i>{{ section.info.name }}</h2>
+    <a class="wl-see-all" href="{{ section.hub_url }}">See all {{ section.count }} <i class="bx bx-chevron-right"></i></a>
+  </div>
+  <p class="wl-section-intro">{{ section.info.intro }}</p>
+  {% if section.groups %}
+    {% for category, cards in section.groups.items() %}
+    <h3 class="wl-group-title">{{ category }}</h3>
+    <div class="wl-grid">
+      {% for c in cards[:6] %}{% include "_card.html" %}{% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="wl-empty">New {{ section.info.short | lower }} workouts are on the way.</p>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

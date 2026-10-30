@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="wl-breadcrumb wl-no-print" aria-label="Breadcrumb">
+  <a href="/">Home</a><span>/</span><a href="/free-workouts">Free Workouts</a><span>/</span><a href="{{ hub_url }}">{{ info.name }}</a>
+</nav>
+
+<article class="wl-workout" data-library-id="{{ entry.id }}" data-type="{{ wtype }}">
+  <header class="wl-workout-head">
+    <p class="wl-print-only wl-print-brand">Fitness Field Notes · {{ page_url }}</p>
+    <h1 class="wl-workout-title">{{ seo.title or plan.title }}</h1>
+
+    <ul class="wl-stats" aria-label="Workout summary">
+      <li><i class="bx bx-time-five"></i><strong>{{ minutes }} min</strong></li>
+      {% if wtype == 'tabata' %}
+      <li><i class="bx bx-timer"></i>{{ view.work }}s work / {{ view.rest }}s rest</li>
+      <li><i class="bx bx-repeat"></i>{{ plan.sets }} sets × {{ plan.rounds_per_set }} rounds</li>
+      <li><i class="bx bx-target-lock"></i>{{ view.focus | join(', ') }}</li>
+      <li><i class="bx bx-dumbbell"></i>1 kettlebell</li>
+      {% else %}
+      <li><i class="bx bx-tachometer"></i>{{ seo.category }}</li>
+      <li><i class="bx bx-list-ol"></i>{{ plan.segments | length }} intervals</li>
+      <li><i class="bx bx-trending-up"></i>Peak resistance {{ view.peak }}/10</li>
+      {% endif %}
+      {% if plan.estimated_calories %}<li><i class="bx bx-bolt-circle"></i>~{{ plan.estimated_calories }} kcal</li>{% endif %}
+    </ul>
+
+    <div class="wl-actions wl-no-print">
+      <a class="btn btn-primary btn-lg wl-do-btn" id="doWorkoutBtn" href="{{ play_url }}">
+        <i class="bx bx-play-circle me-1"></i>Do This Workout
+      </a>
+      <button type="button" class="btn btn-outline-primary btn-lg" id="printWorkoutBtn" onclick="window.print()">
+        <i class="bx bx-printer me-1"></i>Print
+      </button>
+    </div>
+    <p class="wl-actions-hint wl-no-print">Free, no sign-up needed. The timer beeps at every work and rest change.</p>
+  </header>
+
+  <section class="wl-intro">
+    {% for para in seo.intro %}<p>{{ para }}</p>{% endfor %}
+  </section>
+
+  {% if wtype == 'tabata' %}
+  <section class="wl-breakdown" aria-labelledby="breakdownTitle">
+    <h2 id="breakdownTitle">The workout</h2>
+    <p class="wl-breakdown-note">
+      Every round: <strong>{{ view.work }} seconds</strong> of work, then <strong>{{ view.rest }} seconds</strong> of rest.
+      Moves used: {{ view.exercises | join(', ') }}.
+    </p>
+    <div class="wl-sets wl-sets-{{ view.sets | length }}">
+    {% for s in view.sets %}
+    <div class="wl-set">
+      <h3>Set {{ loop.index }}</h3>
+      <table class="wl-table">
+        <thead><tr><th scope="col">Round</th><th scope="col">Exercise</th><th scope="col" class="wl-cue">Cue</th><th scope="col" class="wl-check-col">✓</th></tr></thead>
+        <tbody>
+          {% for r in s.rounds %}
+          <tr>
+            <td class="wl-num">{{ loop.index }}</td>
+            <td class="wl-exercise">{{ r.exercise }}{% if r.side and r.side != 'both' %} <span class="wl-side">({{ r.side }})</span>{% endif %}{% if r.cue %}<span class="wl-cue-inline">{{ r.cue }}</span>{% endif %}</td>
+            <td class="wl-cue">{{ r.cue }}</td>
+            <td class="wl-check-col"><span class="wl-box"></span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if s.rest_after %}<p class="wl-set-rest"><i class="bx bx-coffee"></i>Rest {{ s.rest_after | mmss }} before the next set</p>{% endif %}
+    </div>
+    {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <section class="wl-breakdown" aria-labelledby="breakdownTitle">
+    <h2 id="breakdownTitle">The ride</h2>
+    <figure class="wl-profile" aria-label="Intensity profile">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-hidden="true">
+        {% for b in view.bars %}
+        <rect class="wl-bar wl-bar-{{ b.kind }}" x="{{ b.x }}" y="{{ 100 - b.h }}" width="{{ b.w }}" height="{{ b.h }}"><title>{{ b.label }}</title></rect>
+        {% endfor %}
+      </svg>
+      <figcaption>Bar height = resistance, width = time</figcaption>
+    </figure>
+    <table class="wl-table">
+      <thead><tr><th scope="col">Start</th><th scope="col">Block</th><th scope="col">Time</th><th scope="col">Resistance</th><th scope="col">RPM</th><th scope="col" class="wl-cue">Cue</th></tr></thead>
+      <tbody>
+        {% for r in view.rows %}
+        <tr class="wl-row-{{ r.segment_type }}">
+          <td class="wl-num">{{ r.start | mmss }}</td>
+          <td class="wl-exercise">{{ r.name }}{% if r.cue %}<span class="wl-cue-inline">{{ r.cue }}</span>{% endif %}</td>
+          <td>{{ r.duration_seconds | mmss }}</td>
+          <td><span class="wl-res">{{ r.resistance }}</span>/10</td>
+          <td>{{ r.rpm_low }}–{{ r.rpm_high }}</td>
+          <td class="wl-cue">{{ r.cue }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="wl-breakdown-note">Resistance 1 is an easy spin with no load and 10 is your heaviest climb. Adjust the numbers to your bike.</p>
+  </section>
+  {% endif %}
+
+  <div class="wl-bottom-cta wl-no-print">
+    <a class="btn btn-primary btn-lg" href="{{ play_url }}"><i class="bx bx-play-circle me-1"></i>Do This Workout</a>
+  </div>
+
+  {% if related %}
+  <aside class="wl-related wl-no-print" aria-labelledby="relatedTitle">
+    <h2 id="relatedTitle">More {{ info.short | lower }} workouts</h2>
+    <div class="wl-grid">
+      {% for c in related %}{% include "_card.html" %}{% endfor %}
+    </div>
+    <p class="mt-3"><a href="{{ hub_url }}">See all {{ info.name | lower }} <i class="bx bx-chevron-right"></i></a></p>
+  </aside>
+  {% endif %}
+
+  <p class="wl-print-only wl-print-footer">Run this workout with a timer: {{ page_url }}</p>
+</article>
+{% endblock %}

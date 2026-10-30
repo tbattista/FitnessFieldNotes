@@ -3,7 +3,7 @@ Spin Ride API Endpoints
 AI-generated spin bike interval workouts with structured ride plans.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from typing import Dict, Any
 import logging
 import os
@@ -11,7 +11,9 @@ import os
 from ..models.spin_ride import GenerateSpinRideRequest, SpinRidePlan
 from ..services.spin_ride_generator import get_spin_ride_generator
 from ..services.ai_rate_limiter import ai_rate_limiter
-from ..middleware.auth import get_current_user, extract_user_id
+from ..middleware.auth import get_current_user, extract_user_id, extract_user_email
+from ..services.workout_library_service import is_admin_email, criteria_from_spin_request
+from .workout_library import publish_admin_generation
 
 router = APIRouter(prefix="/api/v3/spin-ride", tags=["Spin Ride"])
 logger = logging.getLogger(__name__)
@@ -41,6 +43,7 @@ async def spin_ride_status():
 @router.post("/generate")
 async def generate_spin_ride(
     request: GenerateSpinRideRequest,
+    background_tasks: BackgroundTasks,
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Generate an AI-powered spin ride plan for the given duration."""
@@ -67,6 +70,12 @@ async def generate_spin_ride(
             f"(all_outs={'on' if request.include_all_outs else 'off'}, "
             f"difficulty={request.difficulty or 'auto'})"
         )
+        # Admin generations are the library's source: publish them for the public
+        # pages (SEO copy is written in the background so the response isn't slowed).
+        email = extract_user_email(current_user)
+        if is_admin_email(email):
+            background_tasks.add_task(
+                publish_admin_generation, "spin", plan, criteria_from_spin_request(request), email)
         return plan
 
     except ValueError as e:
