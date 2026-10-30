@@ -12,7 +12,12 @@ from ..models.spin_ride import GenerateSpinRideRequest, SpinRidePlan
 from ..services.spin_ride_generator import get_spin_ride_generator
 from ..services.ai_rate_limiter import ai_rate_limiter
 from ..middleware.auth import get_current_user, extract_user_id, extract_user_email
-from ..services.workout_library_service import is_admin_email, criteria_from_spin_request
+from ..services.workout_library_service import (
+    criteria_from_spin_request,
+    entry_path,
+    is_admin_email,
+    workout_library_service,
+)
 from .workout_library import publish_admin_generation
 
 router = APIRouter(prefix="/api/v3/spin-ride", tags=["Spin Ride"])
@@ -48,6 +53,18 @@ async def generate_spin_ride(
 ):
     """Generate an AI-powered spin ride plan for the given duration."""
     user_id = extract_user_id(current_user)
+    email = extract_user_email(current_user)
+
+    # Reuse a matching library workout the user hasn't done yet instead of
+    # paying for a new generation. Never for the admin (their generations grow
+    # the library), for "fresh" requests, or when rider notes make it bespoke.
+    if not request.fresh and not is_admin_email(email) and not (request.notes or "").strip():
+        reused = workout_library_service.find_reuse("spin", criteria_from_spin_request(request), user_id)
+        if reused:
+            workout_library_service.record_event(reused["id"], "served", user_id)
+            logger.info(f"Served library spin {reused['id']} to user {user_id} instead of generating")
+            return {**reused["plan"], "library": {"id": reused["id"], "url": entry_path(reused)}}
+
     _check_ai_rate_limit(user_id)
 
     generator = get_spin_ride_generator()
@@ -72,7 +89,6 @@ async def generate_spin_ride(
         )
         # Admin generations are the library's source: publish them for the public
         # pages (SEO copy is written in the background so the response isn't slowed).
-        email = extract_user_email(current_user)
         if is_admin_email(email):
             background_tasks.add_task(
                 publish_admin_generation, "spin", plan, criteria_from_spin_request(request), email)

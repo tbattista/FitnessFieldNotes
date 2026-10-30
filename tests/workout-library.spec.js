@@ -186,3 +186,47 @@ test.describe('Do This Workout (signed out)', () => {
     await expect(page.locator('#errorMessage')).toContainText('no longer available');
   });
 });
+
+test.describe('Reuse before generating (signed in)', () => {
+  /** Force a signed-in user on window.authService (same approach as tabata-kettlebell.spec.js). */
+  async function stubAuth(page) {
+    await page.addInitScript(() => {
+      const user = { uid: 'test-user', getIdToken: async () => 'test-token' };
+      let real = null;
+      Object.defineProperty(window, 'authService', {
+        configurable: true,
+        get() { return real ? Object.assign(real, { currentUser: user }) : { currentUser: user }; },
+        set(v) { real = v; },
+      });
+      localStorage.removeItem('tabataKBFocusAreas');
+      sessionStorage.removeItem('tabataKettlebellSession');
+    });
+  }
+
+  test('tabata: a served library workout is labelled and "fresh" regenerates', async ({ page }) => {
+    await stubAuth(page);
+    const lib = await (await page.request.get(`${BASE}/api/v3/library/workouts/fixture-tabata-1`)).json();
+    const bodies = [];
+    await page.route('**/api/v3/tabata-kettlebell/generate', async (route) => {
+      const body = route.request().postDataJSON();
+      bodies.push(body);
+      const plan = body.fresh
+        ? { ...lib.plan, title: 'Freshly Generated Tabata' }
+        : { ...lib.plan, library: { id: lib.id, url: lib.url } };
+      await route.fulfill({ json: plan });
+    });
+
+    await page.goto(`${BASE}/tabata-kettlebell`);
+    await page.locator('.tk-focus-btn[data-value="full_body"]').click();
+    await page.locator('#generateBtn').click();
+
+    await expect(page.locator('#workoutTitle')).toHaveText('Swing and Squat Full Body Tabata');
+    await expect(page.locator('#libraryNote')).toContainText('matched to your settings');
+    expect(bodies[0].fresh).toBe(false);
+
+    await page.locator('.library-fresh-btn').click();
+    await expect(page.locator('#workoutTitle')).toHaveText('Freshly Generated Tabata');
+    await expect(page.locator('#libraryNote')).toBeHidden();
+    expect(bodies[1].fresh).toBe(true);
+  });
+});

@@ -957,7 +957,8 @@
 
   // ── Generate ───────────────────────────────────────────────────────────
 
-  async function generateWorkout() {
+  // options.fresh skips reusing a matching library workout (always generate).
+  async function generateWorkout(options = {}) {
     showState('generatingState');
 
     try {
@@ -976,6 +977,7 @@
         exclude_exercises: getExcludedExerciseNames(),
         exercise_variety: selectedVariety,
         notes: getNotes(),
+        fresh: options.fresh === true,
       };
 
       const response = await fetch('/api/v3/tabata-kettlebell/generate', {
@@ -990,6 +992,13 @@
       }
 
       workoutPlan = await response.json();
+      // A matching library workout may be served instead of a new generation.
+      if (workoutPlan.library) {
+        workoutPlan.library_id = workoutPlan.library.id;
+        workoutPlan.library_url = workoutPlan.library.url;
+        workoutPlan.library_mode = 'reuse';
+        delete workoutPlan.library;
+      }
       segments = workoutPlan.segments || [];
 
       if (segments.length === 0) throw new Error('Empty workout plan received');

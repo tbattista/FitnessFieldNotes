@@ -940,7 +940,8 @@
 
   // ── Generate Ride ──────────────────────────────────────────────────────
 
-  async function generateRide(durationMinutes) {
+  // options.fresh skips reusing a matching library ride (always generate).
+  async function generateRide(durationMinutes, options = {}) {
     // A freshly generated plan is brand-new history, not a re-ride.
     savedRideId = null;
     showState('generatingState');
@@ -964,6 +965,7 @@
           include_all_outs: includeAllOuts,
           difficulty: difficulty,
           notes: getNotes(),
+          fresh: options.fresh === true,
         }),
       });
 
@@ -973,6 +975,13 @@
       }
 
       ridePlan = await response.json();
+      // A matching library ride may be served instead of a new generation.
+      if (ridePlan.library) {
+        ridePlan.library_id = ridePlan.library.id;
+        ridePlan.library_url = ridePlan.library.url;
+        ridePlan.library_mode = 'reuse';
+        delete ridePlan.library;
+      }
       segments = ridePlan.segments || [];
 
       if (segments.length === 0) throw new Error('Empty ride plan received');
@@ -989,6 +998,7 @@
       els.rideTitle.textContent = ridePlan.title;
       const capDifficulty = ridePlan.difficulty.charAt(0).toUpperCase() + ridePlan.difficulty.slice(1);
       els.rideMeta.textContent = `${durationMinutes} min · ${capDifficulty} · ${segments.length} segments`;
+      renderLibraryNote();
 
       renderSegmentList();
       updateSegmentDisplay();

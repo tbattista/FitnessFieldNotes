@@ -28,6 +28,10 @@ class GenerateSpinRideRequest(BaseModel):
         max_length=500,
         description="Free-form notes from the rider for the AI coach (preferences, limitations, etc.).",
     )
+    fresh: bool = Field(
+        default=False,
+        description="Skip reusing a matching library workout and always generate a new one.",
+    )
 
 
 class SpinRideSegment(BaseModel):
