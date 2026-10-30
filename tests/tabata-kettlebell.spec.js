@@ -135,16 +135,35 @@ test.describe('Tabata Kettlebell Page', () => {
       await page.waitForLoadState('domcontentloaded');
 
       const chest = page.locator('.tk-focus-btn[data-value="chest"]');
-      const bg = () => chest.evaluate((el) => getComputedStyle(el).backgroundColor);
+      const back = page.locator('.tk-focus-btn[data-value="back"]');
+      // Everything that can make a chip look "on": fill, focus glow, focus outline
+      const look = (loc) => loc.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { bg: s.backgroundColor, shadow: s.boxShadow, outline: s.outlineStyle };
+      });
+      const OFF = { bg: 'rgba(0, 0, 0, 0)', shadow: 'none', outline: 'none' };
 
+      // Tap on, tap off — several times on the same chip. The finger is still
+      // "hovering" it and it still has focus, but it must look plainly unselected.
+      for (let i = 0; i < 3; i++) {
+        await chest.tap();
+        await expect(chest).toHaveClass(/active/);
+        await expect.poll(async () => (await look(chest)).bg).not.toBe(OFF.bg);
+
+        await chest.tap();
+        await expect(chest).not.toHaveClass(/active/);
+        await expect.poll(() => look(chest)).toEqual(OFF);
+      }
+
+      // Multi-select: tapping a second chip doesn't touch the first
       await chest.tap();
+      await back.tap();
       await expect(chest).toHaveClass(/active/);
-      expect(await bg()).not.toBe('rgba(0, 0, 0, 0)');
-
-      // Tap again — the finger is still "hovering" the chip, but it must look unselected
-      await chest.tap();
-      await expect(chest).not.toHaveClass(/active/);
-      await expect.poll(bg).toBe('rgba(0, 0, 0, 0)');
+      await expect(back).toHaveClass(/active/);
+      await back.tap();
+      await expect(back).not.toHaveClass(/active/);
+      await expect(chest).toHaveClass(/active/);
+      await expect.poll(() => look(back)).toEqual(OFF);
     });
   });
 
@@ -559,6 +578,31 @@ test.describe('Tabata Kettlebell Page', () => {
     await expect(page.locator('#planSheetList .spin-segment-row')).toHaveCount(50);
     await expect(page.locator('#planSheetList .spin-segment-row.active')).toContainText('KB Thruster');
     await expect(page.locator('#planSheetList .spin-segment-row.active')).toBeInViewport();
+  });
+
+  test('New Workout sits under the controls and confirms before discarding', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await openSeeded(page, seededSession(95));
+
+    // Lives in the timer column right below the controls, visible without scrolling
+    const newBtn = page.locator('.spin-ride-timer-col #newWorkoutBtn');
+    await expect(newBtn).toBeInViewport();
+
+    // Cancel keeps the in-progress workout
+    await newBtn.click();
+    const modal = page.locator('.modal.show');
+    await expect(modal).toContainText('Start a new workout?');
+    await expect(modal).toContainText('in progress');
+    await modal.getByRole('button', { name: 'Keep going' }).click();
+    await expect(modal).toHaveCount(0);
+    await expect(page.locator('#workoutState')).toBeVisible();
+    expect(await page.evaluate(() => sessionStorage.getItem('tabataKettlebellSession'))).not.toBeNull();
+
+    // Confirm discards it and returns to the setup screen
+    await newBtn.click();
+    await page.locator('.modal.show').getByRole('button', { name: 'Discard & start new' }).click();
+    await expect(page.locator('#selectState')).toBeVisible();
+    await expect(page.locator('#workoutState')).toBeHidden();
   });
 
   test('tablet keeps set/round badges below the timer', async ({ page }) => {

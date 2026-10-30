@@ -60,7 +60,7 @@
     <!-- Spin Ride CSS (reused base layout) -->
     <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20261020a" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261030a" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261030c" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -339,7 +339,7 @@
                     </p>
 
                     <!-- Controls -->
-                    <div class="d-flex justify-content-center gap-2 mb-4" id="workoutControls">
+                    <div class="d-flex justify-content-center gap-2 mb-1" id="workoutControls">
                       <button class="btn btn-success btn-lg" id="startBtn">
                         <i class="bx bx-play me-1"></i>Start Workout
                       </button>
@@ -351,6 +351,14 @@
                       </button>
                       <button class="btn btn-outline-danger btn-lg d-none" id="endBtn">
                         <i class="bx bx-stop me-1"></i>End Workout
+                      </button>
+                    </div>
+
+                    <!-- New Workout — sits right under the controls so it's always in reach
+                         (confirms before discarding the current plan) -->
+                    <div class="text-center tk-new-workout-wrap">
+                      <button type="button" class="btn btn-link btn-sm tk-new-workout-btn" id="newWorkoutBtn">
+                        <i class="bx bx-refresh me-1"></i>New Workout
                       </button>
                     </div>
                   </div>
@@ -371,12 +379,6 @@
                           <button type="button" class="btn btn-link btn-sm spin-window-toggle" id="windowToggleBtn">
                             <i class="bx bx-chevron-down me-1"></i>
                             <span class="spin-window-toggle-text">Show full plan</span>
-                          </button>
-                        </div>
-                        <!-- New Workout button -->
-                        <div class="text-center tk-workout-footer">
-                          <button class="btn btn-outline-secondary btn-sm" id="newWorkoutBtn">
-                            <i class="bx bx-refresh me-1"></i>New Workout
                           </button>
                         </div>
                       </div>
@@ -483,6 +485,7 @@
 
     <!-- Offcanvas Manager -->
     <script src="/static/assets/js/components/offcanvas/offcanvas-manager.js"></script>
+    <script src="/static/assets/js/components/modal-manager.js"></script>
 
     <!-- Unified Offcanvas Factory (for post-workout confirm offcanvas) -->
     <script type="module" src="/static/assets/js/components/offcanvas/index.js?v=20251220-02"></script>
@@ -491,6 +494,6 @@
     <script src="/static/assets/js/services/tabata-segment-expander.js?v=1.0.0"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261020b"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261030a"></script>
   </body>
 </html>

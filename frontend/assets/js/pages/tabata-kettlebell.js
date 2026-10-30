@@ -989,6 +989,25 @@
 
   // ── Reset ──────────────────────────────────────────────────────────────
 
+  // Ask before throwing away the current plan — the button sits right under
+  // the timer controls, so an accidental tap shouldn't wipe a workout.
+  function confirmNewWorkout() {
+    const inProgress = !!workoutStartedAt;
+    const message = inProgress
+      ? 'Your current workout is in progress. Starting a new one will discard it and it won\'t be saved to your log.'
+      : 'This will discard the current plan and take you back to build a new workout.';
+    if (window.ffnModalManager) {
+      window.ffnModalManager.confirm('Start a new workout?', message, resetToSelection, {
+        confirmText: inProgress ? 'Discard & start new' : 'Start new',
+        confirmClass: inProgress ? 'btn-danger' : 'btn-primary',
+        cancelText: inProgress ? 'Keep going' : 'Cancel',
+        size: 'sm',
+      });
+    } else if (window.confirm(message)) {
+      resetToSelection();
+    }
+  }
+
   function resetToSelection() {
     stopTimer();
     releaseWakeLock();
@@ -1300,7 +1319,7 @@
     els.resumeBtn.addEventListener('click', onResume);
     els.endBtn.addEventListener('click', onEnd);
 
-    els.newWorkoutBtn.addEventListener('click', resetToSelection);
+    els.newWorkoutBtn.addEventListener('click', confirmNewWorkout);
     els.finishedNewWorkoutBtn.addEventListener('click', resetToSelection);
     els.errorRetryBtn.addEventListener('click', resetToSelection);
 

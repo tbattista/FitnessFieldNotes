@@ -99,27 +99,58 @@ body.tk-workout-active .content-wrapper > .container-p-y {
   color: #fff !important;
 }
 
-/* Touch devices keep :hover stuck on the last-tapped button, and the outline
-   button's hover style is a solid fill — so a chip that was just toggled OFF
-   still looked selected. Make hover match the resting state on touch
-   (components/buttons.css sets the hover fill with !important). */
+/* ── Picker buttons: the only "on" look is .active ──────────────────────
+   The global button styles paint the last-tapped button even after it is
+   toggled OFF, so it kept looking selected until another chip was tapped:
+     - components/filter-bar.css      .btn:focus           → 2px primary outline
+     - components/buttons.css         .btn-outline-primary:focus → 4px glow (!important)
+     - components/buttons.css         .btn-outline-primary:hover → solid fill (!important),
+       and phones leave :hover stuck on the tapped element (some even report
+       hover: hover, so a media query alone isn't reliable).
+   Fix: no focus ring for tap/mouse focus (keyboard :focus-visible keeps one),
+   and hover on an unselected chip is only a faint tint on every device. */
+.tk-protocol-btn.btn-outline-primary:focus:not(:focus-visible),
+.tk-variety-btn.btn-outline-primary:focus:not(:focus-visible),
+.tk-focus-btn.btn-outline-primary:focus:not(:focus-visible),
+.tk-length-btn.btn-outline-primary:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none !important;
+}
+
+.tk-protocol-btn.btn-outline-primary:not(.active):hover,
+.tk-variety-btn.btn-outline-primary:not(.active):hover,
+.tk-focus-btn.btn-outline-primary:not(.active):hover,
+.tk-length-btn.btn-outline-primary:not(.active):hover {
+  background-color: rgba(201, 124, 93, 0.08) !important;
+  border-color: #C97C5D !important;
+  color: #C97C5D !important;
+}
+
+[data-bs-theme="dark"] .tk-protocol-btn.btn-outline-primary:not(.active):hover,
+[data-bs-theme="dark"] .tk-variety-btn.btn-outline-primary:not(.active):hover,
+[data-bs-theme="dark"] .tk-focus-btn.btn-outline-primary:not(.active):hover,
+[data-bs-theme="dark"] .tk-length-btn.btn-outline-primary:not(.active):hover {
+  background-color: rgba(212, 147, 120, 0.12) !important;
+  border-color: #d49378 !important;
+  color: #d49378 !important;
+}
+
+/* Touch devices: no hover tint at all, so a just-untapped chip is plainly off */
 @media (hover: none) {
   .tk-protocol-btn.btn-outline-primary:not(.active):hover,
   .tk-variety-btn.btn-outline-primary:not(.active):hover,
   .tk-focus-btn.btn-outline-primary:not(.active):hover,
   .tk-length-btn.btn-outline-primary:not(.active):hover {
     background-color: transparent !important;
-    border-color: #C97C5D !important;
-    color: #C97C5D !important;
   }
+}
 
-  [data-bs-theme="dark"] .tk-protocol-btn.btn-outline-primary:not(.active):hover,
-  [data-bs-theme="dark"] .tk-variety-btn.btn-outline-primary:not(.active):hover,
-  [data-bs-theme="dark"] .tk-focus-btn.btn-outline-primary:not(.active):hover,
-  [data-bs-theme="dark"] .tk-length-btn.btn-outline-primary:not(.active):hover {
-    border-color: #d49378 !important;
-    color: #d49378 !important;
-  }
+/* No grey iOS/Android tap flash over the chip — the .active fill is the feedback */
+.tk-protocol-btn,
+.tk-variety-btn,
+.tk-focus-btn,
+.tk-length-btn {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── Length preset buttons ────────────────── */
@@ -616,11 +647,25 @@ body.tk-workout-active .content-wrapper > .container-p-y {
   flex: 0 0 auto;
 }
 
-/* "New Workout" lives at the end of the plan card */
-.tk-workout-footer {
-  border-top: 1px solid var(--bs-border-color, #e5e7eb);
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
+/* "New Workout" sits under the timer controls (quiet link, confirms first) */
+.tk-new-workout-wrap {
+  margin-bottom: 0.75rem;
+}
+
+.tk-new-workout-btn {
+  color: var(--bs-secondary-color, #6b7280);
+  text-decoration: none;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.tk-new-workout-btn:hover,
+.tk-new-workout-btn:focus {
+  color: var(--gs-primary, #C97C5D);
+}
+
+#workoutState.tk-fit .tk-new-workout-wrap {
+  margin-bottom: 0.25rem;
 }
 
 #workoutState.tk-fit .spin-ride-segments-col {
@@ -659,7 +704,7 @@ body.tk-workout-active .content-wrapper > .container-p-y {
 }
 
 #workoutState.tk-fit #workoutControls {
-  margin-bottom: 0.5rem !important;
+  margin-bottom: 0.25rem !important;
 }
 
 @media (min-width: 992px) {
