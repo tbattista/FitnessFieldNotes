@@ -99,6 +99,29 @@ body.tk-workout-active .content-wrapper > .container-p-y {
   color: #fff !important;
 }
 
+/* Touch devices keep :hover stuck on the last-tapped button, and the outline
+   button's hover style is a solid fill — so a chip that was just toggled OFF
+   still looked selected. Make hover match the resting state on touch
+   (components/buttons.css sets the hover fill with !important). */
+@media (hover: none) {
+  .tk-protocol-btn.btn-outline-primary:not(.active):hover,
+  .tk-variety-btn.btn-outline-primary:not(.active):hover,
+  .tk-focus-btn.btn-outline-primary:not(.active):hover,
+  .tk-length-btn.btn-outline-primary:not(.active):hover {
+    background-color: transparent !important;
+    border-color: #C97C5D !important;
+    color: #C97C5D !important;
+  }
+
+  [data-bs-theme="dark"] .tk-protocol-btn.btn-outline-primary:not(.active):hover,
+  [data-bs-theme="dark"] .tk-variety-btn.btn-outline-primary:not(.active):hover,
+  [data-bs-theme="dark"] .tk-focus-btn.btn-outline-primary:not(.active):hover,
+  [data-bs-theme="dark"] .tk-length-btn.btn-outline-primary:not(.active):hover {
+    border-color: #d49378 !important;
+    color: #d49378 !important;
+  }
+}
+
 /* ── Length preset buttons ────────────────── */
 .tk-length-btn {
   min-width: 90px;

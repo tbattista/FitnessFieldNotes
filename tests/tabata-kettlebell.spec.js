@@ -127,6 +127,27 @@ test.describe('Tabata Kettlebell Page', () => {
     await expect(generateBtn).toBeDisabled();
   });
 
+  test.describe('on a touch device', () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+    test('tapping a selected focus chip off un-fills it (no sticky hover)', async ({ page }) => {
+      await page.goto(`${BASE}/tabata-kettlebell`);
+      await page.waitForLoadState('domcontentloaded');
+
+      const chest = page.locator('.tk-focus-btn[data-value="chest"]');
+      const bg = () => chest.evaluate((el) => getComputedStyle(el).backgroundColor);
+
+      await chest.tap();
+      await expect(chest).toHaveClass(/active/);
+      expect(await bg()).not.toBe('rgba(0, 0, 0, 0)');
+
+      // Tap again — the finger is still "hovering" the chip, but it must look unselected
+      await chest.tap();
+      await expect(chest).not.toHaveClass(/active/);
+      await expect.poll(bg).toBe('rgba(0, 0, 0, 0)');
+    });
+  });
+
   test('toggle protocol updates helper text', async ({ page }) => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');
