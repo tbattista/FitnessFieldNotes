@@ -202,6 +202,7 @@
       newRideBtn: $('newRideBtn'),
       finishedSummary: $('finishedSummary'),
       finishedSaveStatus: $('finishedSaveStatus'),
+      libraryNote: $('libraryNote'),
       finishedNewRideBtn: $('finishedNewRideBtn'),
       rideFeedbackWidget: $('rideFeedbackWidget'),
       rideFeedbackStars: $('rideFeedbackStars'),
@@ -593,7 +594,23 @@
     els.rideTitle.textContent = ridePlan.title;
     const capDifficulty = ridePlan.difficulty.charAt(0).toUpperCase() + ridePlan.difficulty.slice(1);
     els.rideMeta.textContent = `${ridePlan.duration_minutes} min · ${capDifficulty} · ${segments.length} segments`;
+    renderLibraryNote();
     renderSegmentList();
+  }
+
+  // Rides from the public library carry library_id + library_mode
+  // ('page' = opened via Do This Workout, 'reuse' = handed out instead of generating).
+  function renderLibraryNote() {
+    if (!window.LibraryHandoff) return;
+    if (!ridePlan.library_id) {
+      window.LibraryHandoff.hideNote(els.libraryNote);
+      return;
+    }
+    window.LibraryHandoff.renderNote(els.libraryNote, {
+      mode: ridePlan.library_mode,
+      url: ridePlan.library_url,
+      onFresh: () => generateRide(ridePlan.duration_minutes, { fresh: true }),
+    });
   }
 
   // ── Timer ──────────────────────────────────────────────────────────────
@@ -804,8 +821,13 @@
     const allCompleted = currentSegmentIndex >= segments.length;
 
     // Persist to personal history (fire-and-forget — never blocks the
-    // activity-log save flow or the rating widget).
-    persistRideToHistory(actualSeconds);
+    // activity-log save flow or the rating widget). Signed-out library riders
+    // have no history to save to.
+    const signedIn = !!(window.authService && window.authService.currentUser);
+    if (signedIn) persistRideToHistory(actualSeconds);
+    if (ridePlan.library_id && window.LibraryHandoff) {
+      window.LibraryHandoff.recordCompletion(ridePlan.library_id);
+    }
     const startedAtIso = rideStartedAt ? rideStartedAt.toISOString() : new Date().toISOString();
 
     // Build summary
@@ -835,6 +857,18 @@
     });
     const notes = notesLines.join('\n').substring(0, 500);
 
+    // Library rides can be done signed out — saving waits for sign-in.
+    if (!signedIn && window.LibraryHandoff) {
+      window.LibraryHandoff.whenSignedIn(els.finishedSaveStatus, () => {
+        persistRideToHistory(actualSeconds);
+        offerSaveToLog(notes, startedAtIso, actualMinutes);
+      }, 'Sign in to save this ride to your log.');
+      return;
+    }
+    return offerSaveToLog(notes, startedAtIso, actualMinutes);
+  }
+
+  async function offerSaveToLog(notes, startedAtIso, actualMinutes) {
     const saveCardio = async (durationMinutes, calories) => {
       if (!window.universalLogService || !window.universalLogService.saveCardio) {
         throw new Error('Log service not available');
@@ -978,9 +1012,16 @@
   // ── Reset ──────────────────────────────────────────────────────────────
 
   function resetToSelection() {
+    // Opened from a public library page → back to the library for another one.
+    const wasLibraryPage = !!(ridePlan && ridePlan.library_mode === 'page')
+      || !!(window.LibraryHandoff && window.LibraryHandoff.getLibraryIdFromURL());
     stopTimer();
     releaseWakeLock();
     clearSession();
+    if (wasLibraryPage) {
+      window.location.href = '/spin-workouts';
+      return;
+    }
     ridePlan = null;
     savedRideId = null;
     segments = [];
@@ -1096,6 +1137,39 @@
       els.errorMessage.textContent = `Couldn't load saved ride: ${err.message}`;
       showState('errorState');
       return false;
+    }
+  }
+
+  /** "Do This Workout" from a public library page — no sign-in needed. */
+  async function loadLibraryRide(libraryId) {
+    showState('generatingState');
+    try {
+      const data = await window.LibraryHandoff.fetchWorkout(libraryId);
+      savedRideId = null;
+      ridePlan = { ...data.plan, library_id: data.id, library_url: data.url, library_mode: 'page' };
+      segments = ridePlan.segments;
+
+      computeSegmentOffsets();
+      currentSegmentIndex = 0;
+      segmentRemaining = segments[0].duration_seconds;
+      totalRemaining = ridePlan.total_seconds;
+      rideStartedAt = null;
+      pausedAt = null;
+
+      populateRideUI();
+      updateSegmentDisplay();
+
+      els.startBtn.classList.remove('d-none');
+      els.pauseBtn.classList.add('d-none');
+      els.resumeBtn.classList.add('d-none');
+      els.endBtn.classList.add('d-none');
+
+      showState('rideState');
+      saveSession(false);
+    } catch (err) {
+      console.error('Failed to load library ride:', err);
+      els.errorMessage.textContent = err.message || 'Could not load this ride.';
+      showState('errorState');
     }
   }
 
@@ -1423,6 +1497,20 @@
 
     // Prime the summary card + CTA hint from the restored preferences
     refreshGenerateButtonState();
+
+    // ?library={id}: a public library ride. Runs without signing in; a
+    // refresh mid-ride resumes the in-progress session for the same ride.
+    const libraryId = window.LibraryHandoff && window.LibraryHandoff.getLibraryIdFromURL();
+    if (libraryId) {
+      const saved = loadSession();
+      if (saved && saved.ridePlan && saved.ridePlan.library_id === libraryId) {
+        restoreSession(saved);
+      } else {
+        clearSession();
+        await loadLibraryRide(libraryId);
+      }
+      return;
+    }
 
     const isAuth = await waitForAuth();
     if (!isAuth) {

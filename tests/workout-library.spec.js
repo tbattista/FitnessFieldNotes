@@ -111,3 +111,78 @@ test.describe('Workout library pages', () => {
     await expect(page.locator('#adminMessage')).toContainText('Sign in', { timeout: 10000 });
   });
 });
+
+test.describe('Do This Workout (signed out)', () => {
+  test('tabata: library page opens the player ready to start, no sign-in', async ({ page }) => {
+    await page.goto(`${BASE}/tabata-workouts/${TABATA_SLUG}`);
+    await page.locator('#doWorkoutBtn').click();
+    await expect(page).toHaveURL(/\/tabata-kettlebell\?library=fixture-tabata-0/);
+
+    await expect(page.locator('#workoutState')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#authRequired')).toBeHidden();
+    await expect(page.locator('#workoutTitle')).toHaveText('Full Body Kettlebell Tabata Burner');
+    await expect(page.locator('#libraryNote')).toContainText('From the free workout library');
+    await expect(page.locator('#libraryNote a')).toHaveAttribute('href', `/tabata-workouts/${TABATA_SLUG}`);
+
+    await page.locator('#startBtn').click();
+    await expect(page.locator('#pauseBtn')).toBeVisible();
+    await expect(page.locator('#currentExerciseName')).toHaveText('KB Swing');
+  });
+
+  test('tabata: finishing signed out records the completion and offers sign-in to save', async ({ page }) => {
+    // Load once to get the plan, then seed a session that started long ago so it finishes on reload.
+    const lib = await (await page.request.get(`${BASE}/api/v3/library/workouts/fixture-tabata-3`)).json();
+    await page.addInitScript((plan) => {
+      sessionStorage.setItem('tabataKettlebellSession', JSON.stringify({
+        workoutPlan: { ...plan.plan, library_id: plan.id, library_url: plan.url, library_mode: 'page' },
+        workoutStartedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        pausedAt: null, timerRunning: true, savedAt: Date.now(),
+      }));
+    }, lib);
+    const completed = page.waitForRequest((r) => r.method() === 'POST'
+      && r.url().endsWith('/api/v3/library/workouts/fixture-tabata-3/completed'));
+    await page.goto(`${BASE}/tabata-kettlebell?library=fixture-tabata-3`);
+
+    await expect(page.locator('#finishedState')).toBeVisible({ timeout: 10000 });
+    await completed;
+    await expect(page.locator('#finishedSaveStatus')).toContainText('Sign in to save');
+    await expect(page.locator('.library-signin-btn')).toBeVisible();
+
+    // "Start Another" goes back to the library, not the (sign-in only) generator
+    await page.locator('#finishedNewWorkoutBtn').click();
+    await expect(page).toHaveURL(/\/tabata-workouts$/);
+  });
+
+  test('spin: library page opens the ride player without sign-in', async ({ page }) => {
+    await page.goto(`${BASE}/spin-workouts/${SPIN_SLUG}`);
+    await page.locator('#doWorkoutBtn').click();
+    await expect(page).toHaveURL(/\/spin-ride\?library=fixture-spin-4/);
+    await expect(page.locator('#rideState')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#rideTitle')).toHaveText('30-Minute Rolling Hills Ride');
+    await expect(page.locator('#libraryNote')).toContainText('From the free workout library');
+  });
+
+  test('spin: finishing signed out offers sign-in to save', async ({ page }) => {
+    const lib = await (await page.request.get(`${BASE}/api/v3/library/workouts/fixture-spin-4`)).json();
+    await page.addInitScript((plan) => {
+      sessionStorage.setItem('spinRideSession', JSON.stringify({
+        ridePlan: { ...plan.plan, library_id: plan.id, library_url: plan.url, library_mode: 'page' },
+        savedRideId: null,
+        rideStartedAt: new Date(Date.now() - 2 * 60 * 60 * 1000 + 60000).toISOString(),
+        pausedAt: null, timerRunning: true, savedAt: Date.now(),
+      }));
+    }, lib);
+    const completed = page.waitForRequest((r) => r.method() === 'POST'
+      && r.url().endsWith('/api/v3/library/workouts/fixture-spin-4/completed'));
+    await page.goto(`${BASE}/spin-ride?library=fixture-spin-4`);
+    await expect(page.locator('#finishedState')).toBeVisible({ timeout: 10000 });
+    await completed;
+    await expect(page.locator('#finishedSaveStatus')).toContainText('Sign in to save this ride');
+  });
+
+  test('unknown library id shows an error with a way back', async ({ page }) => {
+    await page.goto(`${BASE}/tabata-kettlebell?library=nope`);
+    await expect(page.locator('#errorState')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#errorMessage')).toContainText('no longer available');
+  });
+});

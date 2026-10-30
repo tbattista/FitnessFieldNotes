@@ -170,6 +170,7 @@
       newWorkoutBtn: $('newWorkoutBtn'),
       finishedSummary: $('finishedSummary'),
       finishedSaveStatus: $('finishedSaveStatus'),
+      libraryNote: $('libraryNote'),
       finishedNewWorkoutBtn: $('finishedNewWorkoutBtn'),
       errorMessage: $('errorMessage'),
       errorRetryBtn: $('errorRetryBtn'),
@@ -634,8 +635,24 @@
       els.workoutMeta.appendChild(setsBit);
       els.workoutMeta.appendChild(document.createTextNode(` · ${totalMin} min · ${focusText}${varietyBit}`));
     }
+    renderLibraryNote();
     renderSegmentList();
     scheduleFitToViewport();
+  }
+
+  // Workouts from the public library carry library_id + library_mode
+  // ('page' = opened via Do This Workout, 'reuse' = handed out instead of generating).
+  function renderLibraryNote() {
+    if (!window.LibraryHandoff) return;
+    if (!workoutPlan.library_id) {
+      window.LibraryHandoff.hideNote(els.libraryNote);
+      return;
+    }
+    window.LibraryHandoff.renderNote(els.libraryNote, {
+      mode: workoutPlan.library_mode,
+      url: workoutPlan.library_url,
+      onFresh: () => generateWorkout({ fresh: true }),
+    });
   }
 
   // ── Session Persistence ─────────────────────────────────────────────────
@@ -839,6 +856,10 @@
 
     showState('finishedState');
 
+    if (workoutPlan.library_id && window.LibraryHandoff) {
+      window.LibraryHandoff.recordCompletion(workoutPlan.library_id);
+    }
+
     const isUserBuilt = !!workoutPlan.is_user_built;
     const notesLines = isUserBuilt
       ? [
@@ -857,6 +878,16 @@
     const sessionDate = workoutStartedAt ? workoutStartedAt.toISOString() : new Date().toISOString();
     const plan = workoutPlan;
 
+    // Library workouts can be run signed out — saving waits for sign-in.
+    if (window.LibraryHandoff && !(window.authService && window.authService.currentUser)) {
+      window.LibraryHandoff.whenSignedIn(els.finishedSaveStatus,
+        () => offerSaveToLog(plan, notes, sessionDate, actualMinutes, totalRounds, isUserBuilt));
+      return;
+    }
+    return offerSaveToLog(plan, notes, sessionDate, actualMinutes, totalRounds, isUserBuilt);
+  }
+
+  async function offerSaveToLog(plan, notes, sessionDate, actualMinutes, totalRounds, isUserBuilt) {
     const saveCardio = async (durationMinutes, calories) => {
       if (!window.universalLogService || !window.universalLogService.saveCardio) {
         throw new Error('log service not available');
@@ -1016,6 +1047,9 @@
     // their library rather than dropping into the AI protocol picker they
     // never used — that picker isn't the entrypoint for this flow.
     const wasUserBuilt = !!(workoutPlan && workoutPlan.is_user_built);
+    // Opened from a public library page → back to the library for another one.
+    const wasLibraryPage = !!(workoutPlan && workoutPlan.library_mode === 'page')
+      || !!(window.LibraryHandoff && window.LibraryHandoff.getLibraryIdFromURL());
     workoutPlan = null;
     segments = [];
     segmentOffsets = [];
@@ -1027,6 +1061,10 @@
     pausedAt = null;
     if (wasUserBuilt) {
       window.location.href = '/workout-database.html';
+      return;
+    }
+    if (wasLibraryPage) {
+      window.location.href = '/tabata-workouts';
       return;
     }
     showState('selectState');
@@ -1463,29 +1501,47 @@
         throw new Error('This workout has no tabata sections with exercises.');
       }
 
-      workoutPlan = expanded;
-      segments = expanded.segments;
-      computeSegmentOffsets();
-      currentSegmentIndex = 0;
-      segmentRemaining = segments[0].duration_seconds;
-      totalRemaining = workoutPlan.total_seconds;
-      workoutStartedAt = null;
-      pausedAt = null;
-
-      populateWorkoutUI();
-      updateSegmentDisplay();
-
-      els.startBtn.classList.remove('d-none');
-      els.pauseBtn.classList.add('d-none');
-      els.resumeBtn.classList.add('d-none');
-      els.endBtn.classList.add('d-none');
-
-      if (els.audioHint) els.audioHint.hidden = false;
-
-      showState('workoutState');
-      saveSession(false);
+      showReadyPlan(expanded);
     } catch (err) {
       console.error('Failed to load user-built tabata workout:', err);
+      els.errorMessage.textContent = err.message || 'Could not load this workout.';
+      showState('errorState');
+    }
+  }
+
+  /** Put a plan on the ready screen (not started). */
+  function showReadyPlan(plan) {
+    workoutPlan = plan;
+    segments = plan.segments;
+    computeSegmentOffsets();
+    currentSegmentIndex = 0;
+    segmentRemaining = segments[0].duration_seconds;
+    totalRemaining = workoutPlan.total_seconds;
+    workoutStartedAt = null;
+    pausedAt = null;
+
+    populateWorkoutUI();
+    updateSegmentDisplay();
+
+    els.startBtn.classList.remove('d-none');
+    els.pauseBtn.classList.add('d-none');
+    els.resumeBtn.classList.add('d-none');
+    els.endBtn.classList.add('d-none');
+
+    if (els.audioHint) els.audioHint.hidden = false;
+
+    showState('workoutState');
+    saveSession(false);
+  }
+
+  /** "Do This Workout" from a public library page — no sign-in needed. */
+  async function loadLibraryWorkout(libraryId) {
+    showState('generatingState');
+    try {
+      const data = await window.LibraryHandoff.fetchWorkout(libraryId);
+      showReadyPlan({ ...data.plan, library_id: data.id, library_url: data.url, library_mode: 'page' });
+    } catch (err) {
+      console.error('Failed to load library workout:', err);
       els.errorMessage.textContent = err.message || 'Could not load this workout.';
       showState('errorState');
     }
@@ -1496,6 +1552,20 @@
     bindEvents();
     restorePreferences();
     placeLiveBadges();
+
+    // ?library={id}: a public library workout. Runs without signing in; a
+    // refresh mid-workout resumes the in-progress session for the same workout.
+    const libraryId = window.LibraryHandoff && window.LibraryHandoff.getLibraryIdFromURL();
+    if (libraryId) {
+      const saved = loadSession();
+      if (saved && saved.workoutPlan && saved.workoutPlan.library_id === libraryId) {
+        restoreSession(saved);
+      } else {
+        clearSession();
+        await loadLibraryWorkout(libraryId);
+      }
+      return;
+    }
 
     const isAuth = await waitForAuth();
     if (!isAuth) {
