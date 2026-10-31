@@ -60,6 +60,26 @@
                 <a class="btn btn-outline-primary" href="/free-workouts" target="_blank" rel="noopener">View public pages</a>
               </div>
 
+              <div class="card mb-3" id="seedCard">
+                <div class="card-body">
+                  <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                    <div>
+                      <h6 class="mb-1">Fill the library</h6>
+                      <p class="text-muted small mb-0">Generates a random 10–30 Tabata workouts and 10–30 spin rides across every category. Takes a few minutes; you can leave this page.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="seedBtn">
+                      <i class="bx bx-layer-plus me-1"></i>Fill library
+                    </button>
+                  </div>
+                  <div id="seedProgress" class="mt-3 d-none">
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" id="seedBar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p class="small text-muted mt-2 mb-0" id="seedStatus"></p>
+                  </div>
+                </div>
+              </div>
+
               <div class="card mb-3">
                 <div class="card-body py-3 d-flex flex-wrap gap-2 align-items-center">
                   <select id="typeFilter" class="form-select form-select-sm" style="max-width: 180px;">
@@ -106,6 +126,6 @@
     <script src="/static/assets/js/firebase/auth-service.js?v=20251020-03"></script>
     <script src="/static/assets/js/firebase/auth-ui.js?v=20251020-03"></script>
 
-    <script src="/static/assets/js/pages/library-admin.js?v=20261030a"></script>
+    <script src="/static/assets/js/pages/library-admin.js?v=20261031a"></script>
   </body>
 </html>

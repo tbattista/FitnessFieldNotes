@@ -28,6 +28,7 @@ import os
 import random
 import re
 import secrets
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
@@ -365,6 +366,8 @@ class WorkoutLibraryService:
         self._store = None
         self._list_cache: Optional[List[Dict[str, Any]]] = None
         self._list_cache_at = 0.0
+        # Serializes slug allocation when several publishes run at once (bulk fill).
+        self._publish_lock = threading.Lock()
 
     def _get_store(self):
         if self._store is None:
@@ -446,27 +449,28 @@ class WorkoutLibraryService:
             logger.warning("library: store unavailable — not publishing")
             return None
         seo = {**fallback_seo(workout_type, plan), **(seo or {})}
-        self._invalidate()
-        slug = self._unique_slug(workout_type, slugify(seo.get("slug") or seo["title"]))
-        seo.pop("slug", None)
-        now = _now()
-        entry = {
-            "id": f"{workout_type}-{now.strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(3)}",
-            "type": workout_type,
-            "slug": slug,
-            "status": "published",
-            "plan": plan,
-            "criteria": criteria,
-            "seo": seo,
-            "source": source,
-            "created_by": created_by,
-            "created_at": now,
-            "updated_at": now,
-            "times_served": 0,
-            "times_completed": 0,
-        }
-        store.put(entry)
-        self._invalidate()
+        with self._publish_lock:
+            self._invalidate()
+            slug = self._unique_slug(workout_type, slugify(seo.get("slug") or seo["title"]))
+            seo.pop("slug", None)
+            now = _now()
+            entry = {
+                "id": f"{workout_type}-{now.strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(3)}",
+                "type": workout_type,
+                "slug": slug,
+                "status": "published",
+                "plan": plan,
+                "criteria": criteria,
+                "seo": seo,
+                "source": source,
+                "created_by": created_by,
+                "created_at": now,
+                "updated_at": now,
+                "times_served": 0,
+                "times_completed": 0,
+            }
+            store.put(entry)
+            self._invalidate()
         logger.info(f"library: published {workout_type} '{seo['title']}' as /{slug} ({source})")
         return entry
 

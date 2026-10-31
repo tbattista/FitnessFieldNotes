@@ -120,6 +120,37 @@ async def admin_update_library_workout(
     return {**card(updated), "seo": updated.get("seo") or {}}
 
 
+class SeedLibraryRequest(BaseModel):
+    """Counts to generate; omitted counts are random between 10 and 30."""
+    tabata: Optional[int] = Field(None, ge=0, le=60)
+    spin: Optional[int] = Field(None, ge=0, le=60)
+
+
+@router.post("/admin/seed")
+async def admin_seed_library(
+    request: SeedLibraryRequest,
+    current_user: Dict[str, Any] = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Start a background run that generates + publishes a batch of workouts."""
+    from ..services.library_seeder import _default_generators, start_background_seed
+    if not workout_library_service.is_available():
+        raise HTTPException(status_code=503, detail="Library storage (Firestore) is not available")
+    if not all(g.is_available() for g in _default_generators().values()):
+        raise HTTPException(status_code=503, detail="AI generation is not available (GEMINI_API_KEY not set)")
+    try:
+        job = start_background_seed(request.tabata, request.spin, extract_user_email(current_user))
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return job.snapshot()
+
+
+@router.get("/admin/seed")
+async def admin_seed_status(_: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+    from ..services.library_seeder import current_job
+    job = current_job()
+    return job.snapshot() if job else {"running": False, "total": 0, "done": 0}
+
+
 # ── Publishing hook (called from the generate endpoints) ─────────────────
 
 

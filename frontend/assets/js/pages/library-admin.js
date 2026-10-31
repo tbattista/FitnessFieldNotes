@@ -129,6 +129,56 @@
     }
   }
 
+  // ── Fill library (background generation on the server) ──
+
+  let seedPoll = null;
+
+  function renderSeed(job) {
+    const wrap = document.getElementById('seedProgress');
+    const btn = document.getElementById('seedBtn');
+    if (!job || !job.total) return;
+    wrap.classList.remove('d-none');
+    const pct = Math.round((job.done / job.total) * 100);
+    document.getElementById('seedBar').style.width = `${pct}%`;
+    const ok = job.done - job.failed;
+    let text = job.running
+      ? `Generating ${job.tabata} Tabata + ${job.spin} spin… ${job.done}/${job.total} done`
+      : `Finished: ${ok} of ${job.total} published`;
+    if (job.failed) text += ` · ${job.failed} failed`;
+    if (job.published && job.published.length && job.running) {
+      text += ` · latest: ${job.published[job.published.length - 1].title}`;
+    }
+    if (!job.running && job.errors && job.errors.length) text += ` · last error: ${job.errors[job.errors.length - 1]}`;
+    document.getElementById('seedStatus').textContent = text;
+    btn.disabled = !!job.running;
+  }
+
+  async function pollSeed() {
+    try {
+      const job = await api('/admin/seed');
+      renderSeed(job);
+      if (job.running) {
+        seedPoll = setTimeout(pollSeed, 3000);
+      } else if (job.total) {
+        workouts = (await api('/admin/all')).workouts;
+        render();
+      }
+    } catch (err) {
+      showMessage(`Couldn't read fill progress: ${err.message}`);
+    }
+  }
+
+  async function startSeed() {
+    showMessage('');
+    try {
+      renderSeed(await api('/admin/seed', { method: 'POST', body: JSON.stringify({}) }));
+      clearTimeout(seedPoll);
+      seedPoll = setTimeout(pollSeed, 3000);
+    } catch (err) {
+      showMessage(`Couldn't start: ${err.message}`);
+    }
+  }
+
   async function init() {
     document.getElementById('typeFilter').addEventListener('change', render);
     document.getElementById('libraryList').addEventListener('click', onListClick);
@@ -140,6 +190,8 @@
     try {
       workouts = (await api('/admin/all')).workouts;
       render();
+      document.getElementById('seedBtn').addEventListener('click', startSeed);
+      pollSeed(); // resume showing a fill that is already running
     } catch (err) {
       showMessage(err.status === 403 ? 'This account is not a library admin.' : `Failed to load: ${err.message}`);
     }

@@ -230,3 +230,43 @@ test.describe('Reuse before generating (signed in)', () => {
     expect(bodies[1].fresh).toBe(true);
   });
 });
+
+test.describe('Library admin: Fill library', () => {
+  test('starts a fill and shows progress until it finishes', async ({ page }) => {
+    await page.addInitScript(() => {
+      const user = { uid: 'admin', email: 'tbattista@gmail.com', getIdToken: async () => 'test-token' };
+      let real = null;
+      Object.defineProperty(window, 'authService', {
+        configurable: true,
+        get() { return real ? Object.assign(real, { currentUser: user }) : { currentUser: user }; },
+        set(v) { real = v; },
+      });
+    });
+    let polls = 0;
+    let started = false;
+    await page.route('**/api/v3/library/admin/all', (route) => route.fulfill({ json: { workouts: [] } }));
+    await page.route('**/api/v3/library/admin/seed', async (route) => {
+      if (route.request().method() === 'POST') {
+        started = true;
+        return route.fulfill({ json: { running: true, tabata: 14, spin: 22, total: 36, done: 0, failed: 0, published: [] } });
+      }
+      if (!started) return route.fulfill({ json: { running: false, total: 0, done: 0 } });
+      polls += 1;
+      const job = polls < 2
+        ? { running: true, tabata: 14, spin: 22, total: 36, done: 12, failed: 0, published: [{ type: 'spin', title: 'Rolling Hills', slug: 'rolling-hills' }] }
+        : { running: false, tabata: 14, spin: 22, total: 36, done: 36, failed: 1, published: [], errors: ['tabata: ValueError: bad'] };
+      return route.fulfill({ json: job });
+    });
+
+    await page.goto(`${BASE}/library-admin`);
+    await expect(page.locator('#libraryList')).toContainText('No library workouts yet');
+    await expect(page.locator('#seedProgress')).toBeHidden();
+
+    await page.locator('#seedBtn').click();
+    await expect(page.locator('#seedStatus')).toContainText('Generating 14 Tabata + 22 spin');
+    await expect(page.locator('#seedBtn')).toBeDisabled();
+    await expect(page.locator('#seedStatus')).toContainText('12/36 done', { timeout: 8000 });
+    await expect(page.locator('#seedStatus')).toContainText('Finished: 35 of 36 published · 1 failed', { timeout: 8000 });
+    await expect(page.locator('#seedBtn')).toBeEnabled();
+  });
+});

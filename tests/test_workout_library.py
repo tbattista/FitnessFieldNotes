@@ -33,12 +33,18 @@ SPIN_REQ = {"duration_minutes": 30, "difficulty": "moderate"}
 class _Client:
     """Minimal sync wrapper around httpx's ASGI transport (no network)."""
 
-    def post(self, path, json):
+    def _send(self, method, path, json=None):
         async def go():
             transport = httpx.ASGITransport(app=app)
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-                return await client.post(path, json=json)
+                return await client.request(method, path, json=json)
         return asyncio.run(go())
+
+    def post(self, path, json):
+        return self._send("POST", path, json)
+
+    def get(self, path):
+        return self._send("GET", path)
 
 
 def _client(email="rider@example.com", uid="user-1"):
@@ -115,6 +121,75 @@ def test_admin_generation_publishes_to_library():
     # Same title again gets a unique slug
     publish_admin_generation("spin", {**plan, "title": "Brand New Ride"}, {}, "tbattista@gmail.com")
     assert wls.workout_library_service.get_by_slug("spin", "brand-new-ride-2")
+
+
+# ── Bulk fill ──
+
+
+class _FakeTabata:
+    def __init__(self):
+        self.calls = 0
+
+    def generate(self, protocol, focus_areas, sets, rounds_per_set, **_):
+        from backend.services.workout_library_fixtures import _tabata_plan
+        self.calls += 1
+        if self.calls == 2:
+            raise ValueError("model returned junk")  # one failure is counted, not fatal
+        return _tabata_plan(f"Seeded {focus_areas[0]} Tabata {self.calls}",
+                            ["KB Swing", "Goblet Squat"], focus_areas, sets=sets,
+                            rounds=rounds_per_set, protocol=protocol)
+
+
+class _FakeSpin:
+    def __init__(self):
+        self.calls = 0
+
+    def generate(self, duration_minutes, include_all_outs=False, difficulty=None, notes=None):
+        from backend.services.workout_library_fixtures import _spin_plan
+        self.calls += 1
+        return _spin_plan(f"Seeded {difficulty} Ride", duration_minutes, difficulty, [
+            ("Warm Up", "warmup", 300, 3, 80, 90, "Easy"),
+            ("Climb", "climb", duration_minutes * 60 - 300, 6, 65, 75, "Grind"),
+        ])
+
+
+def test_seed_requests_cover_every_category():
+    import random
+    from backend.services import library_seeder as ls
+    rng = random.Random(7)
+    for _ in range(50):
+        assert 10 <= ls.random_count(rng) <= 30
+    focus = {r["focus_areas"][0] for r in ls.tabata_requests(14, rng)}
+    assert focus == set(ls.TABATA_FOCUS)
+    spin = ls.spin_requests(16, rng)
+    assert {r["difficulty"] for r in spin} == set(ls.SPIN_DIFFICULTY)
+    assert {r["duration_minutes"] for r in spin} == set(ls.SPIN_DURATIONS)
+
+
+def test_run_seed_publishes_batch_with_unique_slugs():
+    import random
+    from backend.services import library_seeder as ls
+    _client()
+    before = len(wls.workout_library_service.list_published())
+    job = ls.run_seed(ls.SeedJob(6, 5), "tbattista@gmail.com", random.Random(1),
+                      generators={"tabata": _FakeTabata(), "spin": _FakeSpin()},
+                      seo_writer=wls.fallback_seo)
+    snap = job.snapshot()
+    assert not snap["running"] and snap["done"] == 11 and snap["failed"] == 1
+    published = wls.workout_library_service.list_published()
+    assert len(published) == before + 10
+    seeded = [e for e in published if e["created_by"] == "tbattista@gmail.com"]
+    assert len({(e["type"], e["slug"]) for e in seeded}) == 10  # same titles → -2, -3 … slugs
+    assert any(e["slug"].endswith("-2") for e in seeded if e["type"] == "spin")
+
+
+def test_seed_endpoint_is_admin_only_and_needs_ai():
+    client = _client()
+    assert client.post("/api/v3/library/admin/seed", json={}).status_code == 403
+    admin = _client(email="tbattista@gmail.com", uid="admin")
+    res = admin.post("/api/v3/library/admin/seed", json={})
+    assert res.status_code == 503 and "GEMINI_API_KEY" in res.json()["detail"]
+    assert admin.get("/api/v3/library/admin/seed").json()["running"] is False
 
 
 if __name__ == "__main__":
