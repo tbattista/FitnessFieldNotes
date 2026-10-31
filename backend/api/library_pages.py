@@ -214,8 +214,12 @@ def _tabata_view(plan: Dict[str, Any]) -> Dict[str, Any]:
         elif seg.get("segment_type") == "set_rest":
             s["rest_after"] = seg.get("duration_seconds") or 0
     work, rest = (plan.get("protocol") or "20/10").split("/")
+    sets_list = list(sets.values())
     return {
-        "sets": list(sets.values()),
+        "sets": sets_list,
+        "set_rest": max((s["rest_after"] for s in sets_list), default=0),
+        # rounds + one heading per set — the print sheet packs tighter past ~30
+        "sheet_rows": sum(len(s["rounds"]) for s in sets_list) + len(sets_list),
         "work": work,
         "rest": rest,
         "exercises": tabata_exercises(plan),
@@ -238,7 +242,7 @@ def _spin_view(plan: Dict[str, Any]) -> Dict[str, Any]:
                      "kind": seg.get("segment_type") or "flat", "label": seg.get("name")})
         x += width
         t += dur
-    return {"rows": rows, "bars": bars,
+    return {"rows": rows, "bars": bars, "sheet_rows": len(rows) + 1,
             "peak": max((s.get("resistance") or 0 for s in plan.get("segments") or []), default=0)}
 
 

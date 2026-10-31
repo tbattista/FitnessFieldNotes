@@ -6,7 +6,6 @@
 
 <article class="wl-workout" data-library-id="{{ entry.id }}" data-type="{{ wtype }}">
   <header class="wl-workout-head">
-    <p class="wl-print-only wl-print-brand">Fitness Field Notes · {{ page_url }}</p>
     <h1 class="wl-workout-title">{{ seo.title or plan.title }}</h1>
 
     <ul class="wl-stats" aria-label="Workout summary">
@@ -51,14 +50,13 @@
     <div class="wl-set">
       <h3>Set {{ loop.index }}</h3>
       <table class="wl-table">
-        <thead><tr><th scope="col">Round</th><th scope="col">Exercise</th><th scope="col" class="wl-cue">Cue</th><th scope="col" class="wl-check-col">✓</th></tr></thead>
+        <thead><tr><th scope="col">Round</th><th scope="col">Exercise</th><th scope="col" class="wl-cue">Cue</th></tr></thead>
         <tbody>
           {% for r in s.rounds %}
           <tr>
             <td class="wl-num">{{ loop.index }}</td>
             <td class="wl-exercise">{{ r.exercise }}{% if r.side and r.side != 'both' %} <span class="wl-side">({{ r.side }})</span>{% endif %}{% if r.cue %}<span class="wl-cue-inline">{{ r.cue }}</span>{% endif %}</td>
             <td class="wl-cue">{{ r.cue }}</td>
-            <td class="wl-check-col"><span class="wl-box"></span></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -112,6 +110,50 @@
   </aside>
   {% endif %}
 
-  <p class="wl-print-only wl-print-footer">Run this workout with a timer: {{ page_url }}</p>
 </article>
+{% endblock %}
+
+{% block print_sheet %}
+  {# Print-only gym sheet: just the name and the list, stretched to fill the page. #}
+  <section class="wl-sheet{% if view.sheet_rows > 30 %} wl-sheet-dense{% endif %}" aria-hidden="true">
+    <header class="wl-sheet-head">
+      <h2 class="wl-sheet-title">{{ seo.title or plan.title }}</h2>
+      {% if wtype == 'tabata' %}
+      <p class="wl-sheet-meta">{{ minutes }} min · {{ view.work }}s on / {{ view.rest }}s off · {{ plan.sets }} × {{ plan.rounds_per_set }}{% if view.set_rest %} · {{ view.set_rest | mmss }} rest between sets{% endif %}</p>
+      {% else %}
+      <p class="wl-sheet-meta">{{ minutes }} min · {{ seo.category }} · resistance 1–10</p>
+      {% endif %}
+    </header>
+    <ol class="wl-sheet-list">
+      {% if wtype == 'tabata' %}
+        {% for s in view.sets %}
+        <li class="wl-sheet-set">Set {{ loop.index }}</li>
+          {% for r in s.rounds %}
+          <li class="wl-sheet-row">
+            <span class="wl-sheet-num">{{ loop.index }}</span>
+            <span class="wl-sheet-name">{{ r.exercise }}{% if r.side and r.side != 'both' %} ({{ r.side }}){% endif %}</span>
+            <span class="wl-sheet-box"></span>
+          </li>
+          {% endfor %}
+        {% endfor %}
+      {% else %}
+        <li class="wl-sheet-cols">
+          <span class="wl-sheet-num">Start</span><span class="wl-sheet-name">Block</span>
+          <span class="wl-sheet-len">Time</span><span class="wl-sheet-res">Res</span>
+          <span class="wl-sheet-rpm">RPM</span><span class="wl-sheet-box wl-sheet-box-blank"></span>
+        </li>
+        {% for r in view.rows %}
+        <li class="wl-sheet-row">
+          <span class="wl-sheet-num">{{ r.start | mmss }}</span>
+          <span class="wl-sheet-name">{{ r.name }}</span>
+          <span class="wl-sheet-len">{{ r.duration_seconds | mmss }}</span>
+          <span class="wl-sheet-res">{{ r.resistance }}</span>
+          <span class="wl-sheet-rpm">{{ r.rpm_low }}–{{ r.rpm_high }}</span>
+          <span class="wl-sheet-box"></span>
+        </li>
+        {% endfor %}
+      {% endif %}
+    </ol>
+    <p class="wl-sheet-url">{{ page_url }}</p>
+  </section>
 {% endblock %}

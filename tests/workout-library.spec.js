@@ -63,18 +63,42 @@ test.describe('Workout library pages', () => {
     await expect(page.locator('#doWorkoutBtn')).toHaveAttribute('href', '/spin-ride?library=fixture-spin-4');
   });
 
-  test('print view is a clean sheet: no nav or buttons, URL footer, checkboxes', async ({ page }) => {
+  test('print view is a bare gym sheet: name, one top-to-bottom list, nothing else', async ({ page }) => {
     await page.goto(`${BASE}/tabata-workouts/${TABATA_SLUG}`);
+    await expect(page.locator('.wl-sheet')).toBeHidden(); // screen view unchanged
+
     await page.emulateMedia({ media: 'print' });
-    await expect(page.locator('#layout-menu')).toBeHidden();
-    await expect(page.locator('#doWorkoutBtn')).toBeHidden();
-    await expect(page.locator('.wl-related')).toBeHidden();
-    await expect(page.locator('.wl-print-footer')).toBeVisible();
-    await expect(page.locator('.wl-print-footer')).toContainText(`/tabata-workouts/${TABATA_SLUG}`);
-    await expect(page.locator('.wl-box').first()).toBeVisible();
-    // Sets sit side by side so the sheet fits on one page
-    const tops = await page.locator('.wl-set h3').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-    expect(new Set(tops).size).toBe(1);
+    // Only the sheet prints: no menu, intro text, buttons, breakdown or related workouts
+    for (const sel of ['#layout-menu', '.wl-intro', '#doWorkoutBtn', '.wl-breakdown', '.wl-related', 'h1']) {
+      await expect(page.locator(sel)).toBeHidden();
+    }
+    const sheet = page.locator('.wl-sheet');
+    await expect(sheet.locator('.wl-sheet-title')).toHaveText('Full Body Kettlebell Tabata Burner');
+    await expect(sheet.locator('.wl-sheet-meta')).toHaveText('14 min · 20s on / 10s off · 3 × 8 · 1:00 rest between sets');
+    await expect(sheet.locator('.wl-sheet-set')).toHaveText(['Set 1', 'Set 2', 'Set 3']);
+    await expect(sheet.locator('.wl-sheet-row')).toHaveCount(24);
+    await expect(sheet.locator('.wl-sheet-row').first()).toContainText('KB Swing');
+    await expect(sheet.locator('.wl-sheet-url')).toContainText(`/tabata-workouts/${TABATA_SLUG}`);
+
+    // One column straight down the page, stretched to fill it
+    const rows = await sheet.locator('.wl-sheet-row').evaluateAll((els) =>
+      els.map((e) => { const r = e.getBoundingClientRect(); return { left: Math.round(r.left), top: r.top, bottom: r.bottom }; }));
+    expect(new Set(rows.map((r) => r.left)).size).toBe(1);
+    rows.slice(1).forEach((r, i) => expect(r.top).toBeGreaterThanOrEqual(rows[i].bottom - 1));
+    const listShare = await page.evaluate(() =>
+      document.querySelector('.wl-sheet-list').getBoundingClientRect().height / window.innerHeight);
+    expect(listShare).toBeGreaterThan(0.8);
+  });
+
+  test('printed sheets fit on one page, including a long spin ride', async ({ page }) => {
+    for (const path of [`/tabata-workouts/${TABATA_SLUG}`, `/spin-workouts/${SPIN_SLUG}`]) {
+      await page.goto(`${BASE}${path}`);
+      const pdf = (await page.pdf({ format: 'Letter' })).toString('latin1');
+      expect((pdf.match(/\/Type\s*\/Page[^s]/g) || []).length).toBe(1);
+    }
+    await page.emulateMedia({ media: 'print' });
+    await expect(page.locator('.wl-sheet-cols')).toContainText('Res');
+    await expect(page.locator('.wl-sheet-row')).toHaveCount(8);
   });
 
   test('unknown slug returns a 404 page that is not indexed', async ({ page }) => {

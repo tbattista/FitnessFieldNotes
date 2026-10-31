@@ -294,18 +294,6 @@
   color: var(--gs-primary, #C97C5D);
 }
 
-.wl-check-col {
-  display: none; /* checkboxes only on paper */
-}
-
-.wl-box {
-  display: inline-block;
-  width: 0.9rem;
-  height: 0.9rem;
-  border: 1.5px solid #555;
-  border-radius: 2px;
-}
-
 .wl-set-rest {
   display: flex;
   align-items: center;
@@ -352,11 +340,7 @@
   border-top: 1px solid var(--bs-border-color, #e5e7eb);
 }
 
-.wl-print-only {
-  display: none;
-}
-
-/* Cue shown under the exercise/block name on phones and paper (cue column hidden) */
+/* Cue shown under the exercise/block name on phones (cue column hidden) */
 .wl-cue-inline {
   display: none;
   font-weight: 400;
@@ -405,168 +389,164 @@
   border-color: #d49378;
 }
 
-/* ── Print: one clean gym sheet ── */
+/* ── Print: a bare gym sheet ──────────────────────────────────────────
+   Only .wl-sheet prints: the name, one line of numbers, and a single
+   top-to-bottom list stretched to fill the page. Print it, use it, toss it. */
+.wl-sheet {
+  display: none;
+}
+
 @media print {
   @page {
-    margin: 12mm;
+    margin: 10mm;
   }
 
-  body.wl-page > *:not(.layout-wrapper),
-  .layout-menu,
-  #layout-navbar,
-  .layout-overlay,
-  .ffn-beta-banner,
-  .wl-no-print {
+  /* The sheet sits outside the site layout; nothing else prints */
+  body.wl-page > *:not(.wl-sheet) {
     display: none !important;
   }
 
-  html, body, .layout-wrapper, .layout-container, .layout-page, .content-wrapper {
+  html,
+  body.wl-page {
     background: #fff !important;
-    color: #000 !important;
-  }
-
-  .layout-page,
-  .content-wrapper,
-  .wl-main {
-    padding: 0 !important;
     margin: 0 !important;
-    max-width: none !important;
+    padding: 0 !important;
   }
 
-  .wl-print-only {
-    display: block;
+  .wl-sheet {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 1mm);
+    break-inside: avoid;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
-  .wl-print-brand {
-    font-size: 9pt;
-    color: #555;
-    margin-bottom: 2mm;
+  .wl-sheet-head {
+    flex: 0 0 auto;
+    border-bottom: 2.5px solid #000;
+    padding-bottom: 2mm;
   }
 
-  .wl-workout {
-    max-width: none;
+  .wl-sheet-title {
+    font-size: 17pt;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0;
+    color: #000;
+  }
+
+  .wl-sheet-meta {
     font-size: 10pt;
+    margin: 1mm 0 0;
+    color: #222;
   }
 
-  .wl-workout-title {
-    font-size: 18pt;
-    margin-bottom: 2mm;
+  .wl-sheet-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
-  .wl-stats {
-    font-size: 9.5pt;
-    margin-bottom: 3mm;
-  }
-
-  .wl-stats i {
-    display: none;
-  }
-
-  .wl-stats {
-    gap: 1mm 5mm;
-  }
-
-  .wl-intro p {
-    font-size: 9.5pt;
-    line-height: 1.4;
-    margin-bottom: 1.5mm;
-  }
-
-  .wl-breakdown h2 {
-    font-size: 13pt;
-    margin: 3mm 0 1mm;
-  }
-
-  .wl-breakdown-note {
-    font-size: 9.5pt;
-    margin-bottom: 1mm;
-  }
-
-  /* Tabata sets side by side so the whole workout fits on one sheet */
-  .wl-sets {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+  .wl-sheet-row,
+  .wl-sheet-cols {
+    display: flex;
+    align-items: center;
     gap: 4mm;
   }
 
-  .wl-sets-2,
-  .wl-sets-4 {
-    grid-template-columns: repeat(2, 1fr);
+  /* Rows share the page height evenly */
+  .wl-sheet-row {
+    flex: 1 1 0;
+    min-height: 0;
+    border-bottom: 1px solid #aaa;
+    font-size: 16pt;
   }
 
-  .wl-sets-1 {
-    grid-template-columns: 1fr;
-  }
-
-  .wl-sets .wl-table .wl-cue {
-    display: none;
-  }
-
-  .wl-sets .wl-cue-inline {
-    display: block;
-    font-size: 8pt;
-    color: #444;
-  }
-
-  .wl-set {
-    break-inside: avoid;
-  }
-
-  .wl-set h3 {
-    font-size: 11pt;
-    margin: 3mm 0 1mm;
-  }
-
-  .wl-table {
-    font-size: 9.5pt;
-    border: 1px solid #999;
-  }
-
-  .wl-table th {
-    background: #eee !important;
-    color: #000;
-    padding: 1mm 2mm;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  .wl-table td {
-    padding: 1mm 2mm;
-    border-top: 1px solid #bbb;
-  }
-
-  .wl-table tr {
-    break-inside: avoid;
-  }
-
-  .wl-check-col {
-    display: table-cell;
-    width: 8mm;
-    text-align: center;
-  }
-
-  .wl-cue,
-  .wl-num,
-  .wl-side,
-  .wl-breakdown-note,
-  .wl-set-rest {
-    color: #333 !important;
-  }
-
-  .wl-res {
-    color: #000;
-  }
-
-  .wl-profile svg {
-    height: 22mm;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  .wl-print-footer {
-    margin-top: 4mm;
+  .wl-sheet-set,
+  .wl-sheet-cols {
+    flex: 0 0 auto;
     font-size: 9pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2.5mm 0 1mm;
+    border-bottom: 1.5px solid #000;
+  }
+
+  .wl-sheet-num {
+    flex: 0 0 13mm;
+    text-align: right;
+    font-size: 0.7em;
+    color: #444;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wl-sheet-cols .wl-sheet-num,
+  .wl-sheet-cols span {
+    font-size: 9pt;
+    color: #000;
+  }
+
+  .wl-sheet-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 700;
+  }
+
+  .wl-sheet-len,
+  .wl-sheet-rpm {
+    flex: 0 0 22mm;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8em;
+  }
+
+  .wl-sheet-res {
+    flex: 0 0 13mm;
+    text-align: center;
+    font-weight: 800;
+  }
+
+  .wl-sheet-box {
+    flex: 0 0 auto;
+    width: 6mm;
+    height: 6mm;
+    border: 1.5px solid #000;
+    border-radius: 1mm;
+    margin-right: 1mm;
+  }
+
+  .wl-sheet-box-blank {
+    border-color: transparent;
+  }
+
+  /* Long workouts (5–6 sets): tighter type so everything still fits one page */
+  .wl-sheet-dense .wl-sheet-row {
+    font-size: 10pt;
+  }
+
+  .wl-sheet-dense .wl-sheet-set {
+    font-size: 7.5pt;
+    padding: 0.8mm 0 0.3mm;
+  }
+
+  .wl-sheet-dense .wl-sheet-box {
+    width: 3.2mm;
+    height: 3.2mm;
+    border-width: 1px;
+  }
+
+  .wl-sheet-url {
+    flex: 0 0 auto;
+    font-size: 7.5pt;
     color: #555;
+    text-align: right;
+    margin: 1.5mm 0 0;
   }
 
   a[href]::after {
