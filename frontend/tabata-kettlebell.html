@@ -60,7 +60,7 @@
     <!-- Spin Ride CSS (reused base layout) -->
     <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20261020a" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261030c" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261110a" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -316,7 +316,14 @@
                     </div>
 
                     <!-- Current Exercise Name -->
-                    <h4 class="text-center mb-1 tk-exercise-name" id="currentExerciseName"></h4>
+                    <div class="tk-exercise-row">
+                      <h4 class="text-center mb-1 tk-exercise-name" id="currentExerciseName"></h4>
+                      <!-- Opens the move in the exercise database (new tab, so the timer keeps running) -->
+                      <a class="tk-exercise-info" id="exerciseInfoLink" target="_blank" rel="noopener" hidden
+                         aria-label="View exercise in the exercise database" title="View exercise">
+                        <i class="bx bx-info-circle"></i>
+                      </a>
+                    </div>
 
                     <!-- Set / Round Badges -->
                     <div class="spin-segment-details" id="segmentDetails">
@@ -494,8 +501,9 @@
     <!-- Shared segment expander (user-built tabata workouts) -->
     <script src="/static/assets/js/services/tabata-segment-expander.js?v=1.0.0"></script>
     <script src="/static/assets/js/services/library-handoff.js?v=20261030a"></script>
+    <script src="/static/assets/js/services/exercise-link.js?v=20261110a"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261030c"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261110a"></script>
   </body>
 </html>

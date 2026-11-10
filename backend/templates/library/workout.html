@@ -43,7 +43,8 @@
     <h2 id="breakdownTitle">The workout</h2>
     <p class="wl-breakdown-note">
       Every round: <strong>{{ view.work }} seconds</strong> of work, then <strong>{{ view.rest }} seconds</strong> of rest.
-      Moves used: {{ view.exercises | join(', ') }}.
+      Moves used:
+      {% for ex in view.exercises %}<a class="wl-ex-link" href="{{ ex | exercise_href }}">{{ ex }}</a>{{ ", " if not loop.last else "." }}{% endfor %}
     </p>
     <div class="wl-sets wl-sets-{{ view.sets | length }}">
     {% for s in view.sets %}
@@ -55,7 +56,7 @@
           {% for r in s.rounds %}
           <tr>
             <td class="wl-num">{{ loop.index }}</td>
-            <td class="wl-exercise">{{ r.exercise }}{% if r.side and r.side != 'both' %} <span class="wl-side">({{ r.side }})</span>{% endif %}{% if r.cue %}<span class="wl-cue-inline">{{ r.cue }}</span>{% endif %}</td>
+            <td class="wl-exercise"><a class="wl-ex-link" href="{{ r.exercise | exercise_href }}">{{ r.exercise }}</a>{% if r.side and r.side != 'both' %} <span class="wl-side">({{ r.side }})</span>{% endif %}{% if r.cue %}<span class="wl-cue-inline">{{ r.cue }}</span>{% endif %}</td>
             <td class="wl-cue">{{ r.cue }}</td>
           </tr>
           {% endfor %}

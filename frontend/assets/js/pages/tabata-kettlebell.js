@@ -59,27 +59,41 @@
   // in the "Fine tune" section. Kept short so the chip grid stays scannable
   // on mobile. Canonical names match the exercise library in the backend
   // generator prompt so the AI recognizes them as-is.
+  // Names match the generator's exercise library (tabata_kettlebell_generator.py)
   const EXERCISE_CHIPS = [
-    { id: 'two_hand_swing',       label: 'Swing (2H)',     name: 'Two-Hand KB Swing' },
-    { id: 'one_arm_swing',        label: 'Swing (1-arm)',  name: 'Single-Arm KB Swing' },
-    { id: 'goblet_squat',         label: 'Goblet Squat',   name: 'KB Goblet Squat' },
-    { id: 'front_squat',          label: 'Front Squat',    name: 'KB Front Squat' },
-    { id: 'kb_lunge',             label: 'Lunge',          name: 'KB Lunge' },
-    { id: 'kb_clean',             label: 'Clean',          name: 'KB Clean' },
-    { id: 'clean_and_press',      label: 'Clean & Press',  name: 'KB Clean and Press' },
-    { id: 'kb_snatch',            label: 'Snatch',         name: 'KB Snatch' },
-    { id: 'strict_press',         label: 'Strict Press',   name: 'KB Strict Press' },
-    { id: 'push_press',           label: 'Push Press',     name: 'KB Push Press' },
-    { id: 'thruster',             label: 'Thruster',       name: 'KB Thruster' },
-    { id: 'single_arm_row',       label: 'Row',            name: 'KB Single-Arm Row' },
-    { id: 'renegade_row',         label: 'Renegade Row',   name: 'KB Renegade Row' },
-    { id: 'high_pull',            label: 'High Pull',      name: 'KB High Pull' },
-    { id: 'kb_halo',              label: 'Halo',           name: 'KB Halo' },
-    { id: 'turkish_get_up',       label: 'Get-Up',         name: 'KB Turkish Get-Up' },
-    { id: 'kb_windmill',          label: 'Windmill',       name: 'KB Windmill' },
-    { id: 'russian_twist',        label: 'Russian Twist',  name: 'KB Russian Twist' },
-    { id: 'figure_8',             label: 'Figure 8',       name: 'KB Figure 8' },
-    { id: 'kb_burpee',            label: 'KB Burpee',      name: 'KB Burpee with Clean' },
+    { id: 'two_hand_swing',       label: 'Swing (2H)',        name: 'Two-Hand KB Swing' },
+    { id: 'one_arm_swing',        label: 'Swing (1-arm)',     name: 'Single-Arm KB Swing' },
+    { id: 'hand_to_hand_swing',   label: 'Hand-to-Hand Swing', name: 'Hand-to-Hand KB Swing' },
+    { id: 'goblet_squat',         label: 'Goblet Squat',      name: 'KB Goblet Squat' },
+    { id: 'front_squat',          label: 'Front Squat',       name: 'KB Front Squat' },
+    { id: 'kb_lunge',             label: 'Reverse Lunge',     name: 'KB Reverse Lunge' },
+    { id: 'cossack_squat',        label: 'Cossack Squat',     name: 'KB Cossack Squat' },
+    { id: 'glute_bridge',         label: 'Glute Bridge',      name: 'KB Glute Bridge' },
+    { id: 'hip_thrust',           label: 'Hip Thrust',        name: 'KB Hip Thrust' },
+    { id: 'kb_deadlift',          label: 'Deadlift',          name: 'KB Deadlift' },
+    { id: 'kb_clean',             label: 'Clean',             name: 'KB Clean' },
+    { id: 'dead_clean',           label: 'Dead Clean',        name: 'KB Dead Clean' },
+    { id: 'clean_and_press',      label: 'Clean & Press',     name: 'KB Clean and Press' },
+    { id: 'kb_snatch',            label: 'Snatch',            name: 'KB Snatch' },
+    { id: 'strict_press',         label: 'Strict Press',      name: 'KB Strict Press' },
+    { id: 'push_press',           label: 'Push Press',        name: 'KB Push Press' },
+    { id: 'bottoms_up_press',     label: 'Bottoms-Up Press',  name: 'KB Bottoms-Up Press' },
+    { id: 'floor_press',          label: 'Floor Press',       name: 'KB Floor Press' },
+    { id: 'thruster',             label: 'Thruster',          name: 'KB Thruster' },
+    { id: 'single_arm_row',       label: 'Row',               name: 'KB Single-Arm Row' },
+    { id: 'renegade_row',         label: 'Renegade Row',      name: 'KB Renegade Row' },
+    { id: 'high_pull',            label: 'High Pull',         name: 'KB High Pull' },
+    { id: 'floor_pullover',       label: 'Pullover',          name: 'KB Floor Pullover' },
+    { id: 'kb_curl',              label: 'Curl',              name: 'KB Curl' },
+    { id: 'triceps_extension',    label: 'Triceps Ext.',      name: 'KB Overhead Triceps Extension' },
+    { id: 'kb_halo',              label: 'Halo',              name: 'KB Halo' },
+    { id: 'turkish_sit_up',       label: 'Turkish Sit-Up',    name: 'KB Turkish Sit-Up' },
+    { id: 'woodchop',             label: 'Woodchop',          name: 'KB Standing Woodchop' },
+    { id: 'kb_windmill',          label: 'Windmill',          name: 'KB Windmill' },
+    { id: 'russian_twist',        label: 'Russian Twist',     name: 'KB Russian Twist' },
+    { id: 'figure_8',             label: 'Figure 8',          name: 'KB Figure 8' },
+    { id: 'squat_thrust',         label: 'Squat Thrust',      name: 'KB Squat Thrust' },
+    { id: 'kb_burpee',            label: 'KB Burpee',         name: 'KB Burpee with Clean' },
   ];
 
   // Map from chip id → the actual exercise name sent to the backend
@@ -151,6 +165,7 @@
       segmentName: $('segmentName'),
       segmentTime: $('segmentTime'),
       currentExerciseName: $('currentExerciseName'),
+      exerciseInfoLink: $('exerciseInfoLink'),
       segmentDetails: $('segmentDetails'),
       liveBadgesSlot: $('liveBadgesSlot'),
       viewAllBtn: $('viewAllBtn'),
@@ -443,6 +458,7 @@
     } else {
       els.currentExerciseName.textContent = seg.name || '';
     }
+    updateExerciseInfoLink(seg);
 
     // Set / Round badges
     if (workoutPlan) {
@@ -653,6 +669,24 @@
       url: workoutPlan.library_url,
       onFresh: () => generateWorkout({ fresh: true }),
     });
+  }
+
+  // Info button → the move in the exercise database. During rests it points at
+  // the next exercise, so the athlete can check what's coming up.
+  function updateExerciseInfoLink(seg) {
+    const link = els.exerciseInfoLink;
+    if (!link || !window.ExerciseLink) return;
+    let name = seg && seg.segment_type === 'work' ? (seg.exercise || seg.name) : '';
+    if (!name) {
+      const next = segments.slice(currentSegmentIndex + 1).find((s) => s.segment_type === 'work');
+      name = next ? (next.exercise || next.name) : '';
+    }
+    link.hidden = !name;
+    if (!name) return;
+    link.href = window.ExerciseLink.href(name);
+    const label = `View ${window.ExerciseLink.cleanName(name)} in the exercise database`;
+    link.setAttribute('aria-label', label);
+    link.title = label;
   }
 
   // ── Session Persistence ─────────────────────────────────────────────────

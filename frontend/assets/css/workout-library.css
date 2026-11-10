@@ -279,6 +279,19 @@
   font-weight: 600;
 }
 
+/* Exercise names link to the move in the exercise database */
+.wl-ex-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(201, 124, 93, 0.5);
+  text-underline-offset: 3px;
+}
+
+.wl-ex-link:hover {
+  color: var(--gs-primary, #C97C5D);
+  text-decoration-color: currentColor;
+}
+
 .wl-side {
   font-weight: 400;
   color: var(--bs-secondary-color, #6b7280);

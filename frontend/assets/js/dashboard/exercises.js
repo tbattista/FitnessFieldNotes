@@ -194,6 +194,9 @@ async function initializeExerciseDatabase(page) {
             window.ExerciseCart.init();
         }
 
+        // Deep link from a workout: ?find=<exercise name>
+        openExerciseFromURL();
+
         console.log('✅ Exercise Database initialized with components');
 
     } catch (error) {
@@ -443,10 +446,55 @@ function fetchFullDatabaseInBackground(cacheService) {
             window.applyFiltersAndRender({ ...window.currentFilters, _softRefresh: true });
         }
 
+        // A ?find= link that the starter data couldn't match may match the full database
+        if (_findFromURL && !_findFromURL.opened) openExerciseFromURL();
+
         console.log(`[ExerciseDB] Background load complete: ${fullExercises.length} exercises`);
     }).catch(error => {
         console.error('[ExerciseDB] Background fetch failed:', error);
     });
+}
+
+/**
+ * ?find=<name> (from a Tabata workout or library page): open the best-matching
+ * exercise's details, or fall back to search results for the move's core words.
+ */
+let _findFromURL = null;
+
+function openExerciseFromURL() {
+    if (!window.ExerciseLink) return;
+    if (!_findFromURL) {
+        const name = new URLSearchParams(window.location.search).get('find');
+        if (!name) return;
+        _findFromURL = { name, opened: false };
+    }
+    const exercises = [...window.ffn.exercises.all, ...window.ffn.exercises.custom];
+    const { match, query } = window.ExerciseLink.findMatch(_findFromURL.name, exercises);
+
+    // Search for the move itself; if no exercise has every word, widen to its last words
+    const words = query.split(' ').filter(Boolean);
+    let search = query;
+    for (let n = words.length; n >= 1; n--) {
+        const terms = words.slice(-n);
+        const hits = exercises.some((e) => {
+            const text = `${e.name} ${e.targetMuscleGroup || ''} ${e.primaryEquipment || ''}`.toLowerCase();
+            return terms.every((t) => text.includes(t));
+        });
+        if (hits) { search = terms.join(' '); break; }
+    }
+    if (match) search = match.name;
+
+    const searchInput = document.getElementById('exerciseSearchInput');
+    if (searchInput) searchInput.value = search;
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) clearBtn.style.display = search ? 'block' : 'none';
+    window.currentFilters.search = search;
+    if (window.applyFiltersAndRender) window.applyFiltersAndRender(window.currentFilters);
+
+    if (match) {
+        _findFromURL.opened = true;
+        showExerciseDetailsAdaptive(match.id);
+    }
 }
 
 /**

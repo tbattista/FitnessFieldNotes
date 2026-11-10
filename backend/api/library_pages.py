@@ -13,9 +13,11 @@ description, full breakdown and structured data in the initial HTML.
 
 import json
 import logging
+import re
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
@@ -81,6 +83,17 @@ def _fmt_time(seconds: int) -> str:
 
 
 _env.filters["mmss"] = _fmt_time
+
+_SIDE_RE = re.compile(r"\((left|right|l|r|both)\)", re.IGNORECASE)
+
+
+def _exercise_href(name: str) -> str:
+    """Exercise database deep link (same as ExerciseLink.href in exercise-link.js)."""
+    clean = re.sub(r"\s+", " ", _SIDE_RE.sub("", name or "")).strip()
+    return f"/exercise-database.html?find={quote(clean)}"
+
+
+_env.filters["exercise_href"] = _exercise_href
 
 
 def _group(cards: List[Dict[str, Any]], order: List[str]) -> "OrderedDict[str, List[Dict[str, Any]]]":

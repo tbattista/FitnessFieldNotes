@@ -194,6 +194,38 @@ body.tk-workout-active .content-wrapper > .container-p-y {
   margin-bottom: 0.5rem;
 }
 
+/* Exercise name + info button that opens it in the exercise database */
+.tk-exercise-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.tk-exercise-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-bottom: 0.5rem;
+  border-radius: 50%;
+  color: var(--gs-primary, #C97C5D);
+  font-size: 1.5rem;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
+.tk-exercise-info:hover,
+.tk-exercise-info:focus-visible {
+  background: rgba(201, 124, 93, 0.12);
+  color: var(--gs-primary, #C97C5D);
+}
+
+.tk-exercise-info[hidden] {
+  display: none;
+}
+
 /* ── Dark mode overrides ──────────────────── */
 [data-bs-theme="dark"] .tk-exercise-name {
   color: var(--bs-body-color, #e4e6eb);

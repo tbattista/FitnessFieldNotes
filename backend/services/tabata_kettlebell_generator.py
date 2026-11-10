@@ -56,50 +56,61 @@ Across Sets, rotate themes so the whole body gets worked (unless the focus is na
 {variety_instructions}
 
 SIDE HANDLING (unilateral exercises — single-arm swing, KB snatch, single-KB clean / press / row,
-TGU, windmill, suitcase carry, single-leg deadlift, Bulgarian split squat): the athlete must ALWAYS
-be balanced — every unilateral exercise gets the SAME number of rounds on the left and the right
-within a Set. Alternate L / R across consecutive rounds and mark `side` as "left" or "right". For
-bilateral exercises (two-handed swing, goblet squat, thruster, sumo deadlift, plank pulls), set
-`side` to null.
+bottoms-up press, windmill, suitcase march, single-leg deadlift, Bulgarian split squat, cossack
+squat): the athlete must ALWAYS be balanced — every unilateral exercise gets the SAME number of
+rounds on the left and the right within a Set. Alternate L / R across consecutive rounds and mark
+`side` as "left" or "right". For bilateral exercises (two-hand swing, hand-to-hand swing, goblet
+squat, thruster, sumo deadlift, glute bridge, plank pull-through), set `side` to null.
+
+ONE KETTLEBELL: every exercise uses a single kettlebell. Never program double-kettlebell moves.
 
 ═══════════════════════════════════════════════════════════════════
 KETTLEBELL EXERCISE LIBRARY BY FOCUS AREA
 ═══════════════════════════════════════════════════════════════════
+Pick from these and use these exact names (they link to the exercise database).
+Every move suits a 20–40s interval: continuous reps, simple to set up, safe when tired.
 
 LOWER_BODY (legs, hips, glutes):
-  Goblet Squat · Two-Hand Swing · Sumo Deadlift High Pull · KB Front Squat (2 KB) ·
-  KB Lunge (forward/reverse/cossack) · KB Step-Up · KB Box Squat · KB Deadlift ·
-  KB Swing (heavy, two-hand) · KB Single-Leg Deadlift · KB Goblet Lunge ·
-  KB Bulgarian Split Squat · KB Kickstand Deadlift
+  KB Goblet Squat · KB Front Squat · Two-Hand KB Swing · Single-Arm KB Swing ·
+  Sumo Deadlift High Pull · KB Deadlift · KB Single-Leg Deadlift · KB Kickstand Deadlift ·
+  KB Reverse Lunge · KB Goblet Lunge · KB Cossack Squat · KB Curtsy Lunge · KB Step-Up ·
+  KB Box Squat · KB Bulgarian Split Squat · KB Glute Bridge · KB Hip Thrust
 
 UPPER_BODY (shoulders, arms, overall push/pull):
-  KB Strict Press · KB Push Press · KB Clean · KB Clean and Press · KB Snatch ·
-  KB Row (single-arm or two-hand) · KB High Pull · KB Renegade Row ·
-  KB Floor Press · KB Z-Press · KB Halo · KB Around-the-Body Pass · KB Upright Row
+  KB Strict Press · KB Push Press · KB Bottoms-Up Press · KB Clean · KB Dead Clean ·
+  KB Clean and Press · KB Snatch · KB Single-Arm Row · KB High Pull · KB Renegade Row ·
+  KB Floor Press · KB Z-Press · KB Halo · KB Around-the-Body Pass · KB Upright Row ·
+  KB Overhead Triceps Extension · KB Curl · KB Hammer Curl
 
 CHEST (pressing focus):
-  KB Floor Press · KB Single-Arm Floor Press · KB Push-Up on KB · KB Bent Press ·
-  KB Z-Press · KB Svend Press · KB Crush Grip Press · KB Chest-Supported Row
+  KB Floor Press · KB Single-Arm Floor Press · KB Floor Fly · KB Push-Up on KB ·
+  KB Squeeze Push-Up · KB Z-Press · KB Svend Press · KB Crush Grip Press
 
 BACK (pulling focus):
-  KB Bent-Over Row · KB Single-Arm Row · KB Renegade Row · KB High Pull ·
-  KB Dead Stop Row · KB Good Morning · KB Romanian Deadlift · KB Pendlay Row ·
-  KB Gorilla Row · KB Bat Wing · KB Suitcase Carry
+  KB Bent-Over Row · KB Single-Arm Row · KB Renegade Row · KB High Pull · KB Dead Stop Row ·
+  KB Gorilla Row · KB Pendlay Row · KB Bat Wing · KB Floor Pullover · KB Swing to Row ·
+  KB Good Morning · KB Romanian Deadlift
 
 CORE (rotational + anti-rotation + flexion):
-  KB Russian Twist · KB Windmill · KB Turkish Get-Up · KB Halo ·
-  KB Dead Bug with KB · KB Plank Pull-Through · KB Side Bend · KB Suitcase Carry ·
-  KB Seated Press Out · KB Half-Kneeling Chop · KB V-Up Pass
+  KB Russian Twist · KB Turkish Sit-Up · KB Sit-Up to Press · KB Standing Woodchop ·
+  KB Half-Kneeling Chop · KB Halo · KB Dead Bug with KB · KB Plank Pull-Through ·
+  KB Hollow Hold · KB Side Bend · KB Suitcase March · KB Seated Press Out · KB V-Up Pass ·
+  KB Windmill (light bell, slow controlled reps only)
 
 FULL_BODY (compound/total-body):
   KB Clean and Press · KB Snatch · KB Thruster · KB Clean to Squat · KB Swing to Squat ·
-  KB Turkish Get-Up · KB Man Maker · KB Snatch to Overhead Reverse Lunge ·
-  KB Burpee with Clean · KB Swing + Squat combo
+  Hand-to-Hand KB Swing · KB Snatch to Overhead Reverse Lunge · KB Burpee with Clean ·
+  KB Swing + Squat combo
 
 CONDITIONING (metabolic, high heart-rate):
-  Two-Hand Swing · KB Snatch · KB High Pull · KB Thruster · KB Clean and Jerk ·
-  KB Burpee · KB Swing to Squat · KB Figure 8 · KB Mountain Climber with KB ·
+  Two-Hand KB Swing · Hand-to-Hand KB Swing · KB Snatch · KB High Pull · KB Thruster ·
+  KB Clean and Jerk · KB Burpee · KB Squat Thrust · KB Swing + Push-Up combo ·
+  KB Clean to Press Ladder · KB Swing to Squat · KB Figure 8 · KB Mountain Climber ·
   KB Russian Swing + Jumping Jack
+
+DO NOT USE in Tabata intervals: Turkish Get-Up (too slow and technical — use KB Turkish Sit-Up),
+Bent Press (too risky when fatigued), any carry or walking move (use KB Suitcase March in place),
+bench-supported moves, and Man Makers (a two-dumbbell move).
 
 ═══════════════════════════════════════════════════════════════════
 NO WARMUP
@@ -194,10 +205,12 @@ _UNILATERAL_HINTS = (
     "single-arm", "single arm", "one-arm", "one arm", "1-arm", "1 arm",
     "single-leg", "single leg", "one-leg", "one leg",
     "suitcase", "windmill", "get-up", "get up", "bulgarian", "snatch",
-    "bent press", "kickstand", "half-kneeling", "offset",
+    "bent press", "kickstand", "half-kneeling", "offset", "bottoms-up", "bottoms up",
+    "cossack",
 )
 # Name fragments that mean both sides are worked inside the interval.
-_BILATERAL_HINTS = ("double", "two-hand", "two hand", "2-hand", "2h", "alternating")
+_BILATERAL_HINTS = ("double", "two-hand", "two hand", "2-hand", "2h", "alternating",
+                    "hand-to-hand", "hand to hand")
 
 _SIDE_SUFFIX_RE = re.compile(
     r"\s*[\(\[]\s*(?:l|r|left|right)(?:\s+(?:side|arm|leg))?\s*[\)\]]\s*$"
