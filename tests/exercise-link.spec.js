@@ -101,3 +101,93 @@ test.describe('Links from Tabata workouts', () => {
     await expect(chips.filter({ hasText: 'Get-Up' })).toHaveCount(0);
   });
 });
+
+test.describe('Exercise info pauses the workout and resumes on return', () => {
+  /** Remaining seconds on the big segment timer. */
+  async function remaining(page) {
+    const [m, s] = (await page.locator('#segmentTime').textContent()).trim().split(':').map(Number);
+    return m * 60 + s;
+  }
+
+  test('tapping ⓘ pauses; coming back resumes without losing time', async ({ page, context }) => {
+    await page.goto(`${BASE}/tabata-kettlebell?library=fixture-tabata-0`);
+    await expect(page.locator('#workoutState')).toBeVisible({ timeout: 10000 });
+    await page.locator('#startBtn').click();
+    await expect(page.locator('#pauseBtn')).toBeVisible();
+    await page.waitForTimeout(1500);
+
+    const [infoTab] = await Promise.all([
+      context.waitForEvent('page'),
+      page.locator('#exerciseInfoLink').click(),
+    ]);
+    await expect(page.locator('#resumeBtn')).toBeVisible();
+    await expect(page.locator('#pauseBtn')).toBeHidden();
+    const pausedAt = await remaining(page);
+
+    // Athlete reads the exercise in the other tab; the workout tab is away
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await page.waitForTimeout(2500);
+    expect(await remaining(page)).toBe(pausedAt);
+
+    // Back to the workout tab → resumes from where it paused
+    await infoTab.close();
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.locator('#pauseBtn')).toBeVisible();
+    await expect(page.locator('#resumeBtn')).toBeHidden();
+    expect(await remaining(page)).toBeGreaterThanOrEqual(pausedAt - 1);
+    expect(await page.evaluate(() => sessionStorage.getItem('tabataKBInfoPause'))).toBeNull();
+  });
+
+  test('does not resume if the page was never left (new tab blocked / opened in background)', async ({ page, context }) => {
+    await page.goto(`${BASE}/tabata-kettlebell?library=fixture-tabata-0`);
+    await expect(page.locator('#workoutState')).toBeVisible({ timeout: 10000 });
+    await page.locator('#startBtn').click();
+    const opened = context.waitForEvent('page');
+    await page.locator('#exerciseInfoLink').click();
+    await (await opened).close();
+    await page.evaluate(() => window.dispatchEvent(new Event('focus'))); // no blur first
+    await page.waitForTimeout(500);
+    await expect(page.locator('#resumeBtn')).toBeVisible();
+  });
+
+  test('a manual pause is never auto-resumed, and ⓘ before Start does nothing to the timer', async ({ page, context }) => {
+    await page.goto(`${BASE}/tabata-kettlebell?library=fixture-tabata-0`);
+    await expect(page.locator('#workoutState')).toBeVisible({ timeout: 10000 });
+
+    // Not started yet: info opens, timer untouched
+    let opened = context.waitForEvent('page');
+    await page.locator('#exerciseInfoLink').click();
+    await (await opened).close();
+    await expect(page.locator('#startBtn')).toBeVisible();
+
+    // Manually paused, then info + leave + return: stays paused
+    await page.locator('#startBtn').click();
+    await page.locator('#pauseBtn').click();
+    opened = context.waitForEvent('page');
+    await page.locator('#exerciseInfoLink').click();
+    await (await opened).close();
+    await page.evaluate(() => { window.dispatchEvent(new Event('blur')); window.dispatchEvent(new Event('focus')); });
+    await page.waitForTimeout(500);
+    await expect(page.locator('#resumeBtn')).toBeVisible();
+  });
+
+  test('if the phone reloads the tab while away, it still resumes on return', async ({ page }) => {
+    await page.goto(`${BASE}/tabata-kettlebell?library=fixture-tabata-0`);
+    await expect(page.locator('#workoutState')).toBeVisible({ timeout: 10000 });
+    await page.locator('#startBtn').click();
+    await page.evaluate(() => {
+      // Paused 5s into the workout, info-paused and away
+      const s = JSON.parse(sessionStorage.getItem('tabataKettlebellSession'));
+      s.workoutStartedAt = new Date(Date.now() - 65 * 1000).toISOString();
+      s.pausedAt = new Date(Date.now() - 60 * 1000).toISOString();
+      s.timerRunning = false;
+      sessionStorage.setItem('tabataKettlebellSession', JSON.stringify(s));
+      sessionStorage.setItem('tabataKBInfoPause', 'away');
+    });
+    await page.reload();
+    await expect(page.locator('#pauseBtn')).toBeVisible({ timeout: 10000 });
+    // The minute away didn't count: still in round 1 with ~15s left
+    expect(await remaining(page)).toBeGreaterThanOrEqual(13);
+    await expect(page.locator('#currentExerciseName')).toHaveText('KB Swing');
+  });
+});

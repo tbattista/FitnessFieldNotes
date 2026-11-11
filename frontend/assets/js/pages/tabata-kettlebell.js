@@ -27,6 +27,8 @@
   const SESSION_KEY = 'tabataKettlebellSession';
   const PROTOCOL_KEY = 'tabataKBProtocol';
   const FOCUS_KEY = 'tabataKBFocusAreas';
+  // Set while the timer is paused because the athlete opened exercise info
+  const INFO_PAUSE_KEY = 'tabataKBInfoPause';
   const SETS_KEY = 'tabataKBSets';
   const ROUNDS_PER_SET_KEY = 'tabataKBRoundsPerSet';
   const LENGTH_KEY = 'tabataKBLength';
@@ -706,6 +708,41 @@
 
   function clearSession() {
     try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+    clearInfoPause();
+  }
+
+  // ── Exercise info auto-pause ────────────────────────────────────────────
+  //
+  // Opening exercise info (ⓘ, new tab) mid-workout pauses the timer; coming
+  // back to this tab resumes it. 'pending' = paused, haven't left yet;
+  // 'away' = the tab was hidden or lost focus, so returning should resume.
+  // Kept in sessionStorage so a tab the phone reloads while away still resumes.
+
+  function getInfoPause() {
+    try { return sessionStorage.getItem(INFO_PAUSE_KEY); } catch (e) { return null; }
+  }
+
+  function setInfoPause(state) {
+    try { sessionStorage.setItem(INFO_PAUSE_KEY, state); } catch (e) { /* ignore */ }
+  }
+
+  function clearInfoPause() {
+    try { sessionStorage.removeItem(INFO_PAUSE_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function onExerciseInfoClick() {
+    const running = !!(timerInterval && workoutStartedAt && !pausedAt);
+    if (!running) return; // not started / already paused: nothing to resume later
+    onPause();
+    setInfoPause('pending');
+  }
+
+  function onPageLeft() {
+    if (getInfoPause() === 'pending') setInfoPause('away');
+  }
+
+  function onPageReturned() {
+    if (getInfoPause() === 'away' && workoutStartedAt && pausedAt) onResume();
   }
 
   function loadSession() {
@@ -798,6 +835,8 @@
   }
 
   function onVisibilityChange() {
+    if (document.visibilityState === 'hidden') onPageLeft();
+    if (document.visibilityState === 'visible') onPageReturned();
     if (document.visibilityState === 'visible' && timerInterval) {
       const { finished } = deriveSegmentState();
       if (finished) {
@@ -849,6 +888,7 @@
   }
 
   function onResume() {
+    clearInfoPause();
     if (pausedAt && workoutStartedAt) {
       const pauseDurationMs = Date.now() - pausedAt.getTime();
       workoutStartedAt = new Date(workoutStartedAt.getTime() + pauseDurationMs);
@@ -1421,6 +1461,13 @@
     if (window.ResizeObserver) new ResizeObserver(scheduleFitToViewport).observe(document.body);
 
     document.addEventListener('visibilitychange', onVisibilityChange);
+
+    // Exercise info: pause while away, resume on return. Desktop browsers may
+    // keep this tab "visible" behind the new one, so focus/blur count too.
+    if (els.exerciseInfoLink) els.exerciseInfoLink.addEventListener('click', onExerciseInfoClick);
+    window.addEventListener('blur', onPageLeft);
+    window.addEventListener('focus', onPageReturned);
+    window.addEventListener('pageshow', onPageReturned);
   }
 
   function restorePreferences() {
@@ -1603,6 +1650,7 @@
       const saved = loadSession();
       if (saved && saved.workoutPlan && saved.workoutPlan.library_id === libraryId) {
         restoreSession(saved);
+        onPageReturned();
       } else {
         clearSession();
         await loadLibraryWorkout(libraryId);
@@ -1627,6 +1675,7 @@
     const saved = loadSession();
     if (saved && saved.workoutPlan) {
       restoreSession(saved);
+      onPageReturned();
     } else {
       showState('selectState');
     }
