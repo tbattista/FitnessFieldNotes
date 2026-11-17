@@ -142,3 +142,6 @@ Tutorial Posts*.json
 
 # Root-level duplicate files
 (1).gitignore
+
+# Garmin spike output (personal activity data, FIT files)
+garmin-spike-output/
