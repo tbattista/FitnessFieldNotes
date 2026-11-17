@@ -339,6 +339,26 @@ test.describe('Tabata Kettlebell Page', () => {
     await expect(page.locator('#startBtn')).toHaveClass(/d-none/);
   });
 
+  test('Start runs a 5-second get-ready countdown before the first work interval', async ({ page }) => {
+    const session = { ...seededSession(0), workoutStartedAt: null, pausedAt: null };
+    await openSeeded(page, session);
+
+    await page.locator('#startBtn').click();
+    await expect(page.locator('#segmentName')).toHaveText('GET READY');
+    const first = Number((await page.locator('#segmentTime').textContent() || '').trim());
+    expect(first).toBeGreaterThanOrEqual(4);
+    expect(first).toBeLessThanOrEqual(5);
+    await expect(page.locator('#currentExerciseName')).toContainText('KB Goblet Squat');
+    await expect(page.locator('#totalElapsed')).toHaveText('00:00');
+
+    // After the lead-in the first work interval starts at the top.
+    await expect(page.locator('#segmentName')).toHaveText('WORK INTERVAL', { timeout: 8000 });
+    await expect(page.locator('#currentExerciseName')).toHaveText('KB Goblet Squat');
+    const segTime = (await page.locator('#segmentTime').textContent() || '').trim();
+    const [m, s] = segTime.split(':').map(Number);
+    expect(m * 60 + s).toBeGreaterThanOrEqual(18);
+  });
+
   test('intercept generate request and verify body payload', async ({ page }) => {
     await page.goto(`${BASE}/tabata-kettlebell`);
     await page.waitForLoadState('domcontentloaded');

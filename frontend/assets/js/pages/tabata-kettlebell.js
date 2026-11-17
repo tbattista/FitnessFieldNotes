@@ -110,6 +110,10 @@
   //   Set            = N Rounds back-to-back (classic Tabata = 8 Rounds = 4 min)
   //   Set Rest       = recovery between Sets
   const SET_REST_SECONDS = 60;
+  // Lead-in after tapping Start so there's time to get to the kettlebell
+  // before the first work interval begins.
+  const GET_READY_SECONDS = 5;
+  let wasCountingDown = false;
   const MIN_SETS = 1;
   const MAX_SETS = 12;
 
@@ -403,6 +407,29 @@
     return Math.max(0, Math.floor((ref - workoutStartedAt.getTime()) / 1000));
   }
 
+  /**
+   * Seconds left in the get-ready lead-in. Start sets workoutStartedAt
+   * GET_READY_SECONDS in the future, so elapsed time stays at 0 (and pause /
+   * resume / session restore all keep working) until the countdown ends.
+   */
+  function getCountdownRemaining() {
+    if (!workoutStartedAt) return 0;
+    const ref = pausedAt ? pausedAt.getTime() : Date.now();
+    return Math.max(0, Math.ceil((workoutStartedAt.getTime() - ref) / 1000));
+  }
+
+  function showCountdownDisplay(remaining) {
+    const first = segments[0];
+    els.segmentName.textContent = 'GET READY';
+    els.segmentTime.textContent = String(remaining);
+    els.totalElapsed.textContent = formatTime(0);
+    const firstName = first ? (first.exercise || first.name || '') : '';
+    els.currentExerciseName.textContent = firstName ? `Up first: ${firstName}` : 'Get ready';
+    els.segmentCue.textContent = 'Grab your kettlebell';
+    setProgressColor('rest');
+    updateProgressArc(remaining / GET_READY_SECONDS);
+  }
+
   function deriveSegmentState() {
     if (!workoutPlan || segments.length === 0) {
       return { segmentChanged: false, finished: false };
@@ -439,6 +466,8 @@
   function updateSegmentDisplay() {
     const seg = segments[currentSegmentIndex];
     if (!seg) return;
+
+    const countdown = getCountdownRemaining();
 
     // Timer center — show the full human label
     const typeLabel = {
@@ -510,6 +539,9 @@
       lastScrolledIndex = currentSegmentIndex;
       scrollActiveRowToTop(activeRow, 'smooth');
     }
+
+    // Get-ready lead-in overrides the timer face until the first interval.
+    if (countdown > 0) showCountdownDisplay(countdown);
   }
 
   // ── Phone layout: live badges up top + "View all" sheet ────────────────
@@ -810,6 +842,22 @@
   // ── Timer ──────────────────────────────────────────────────────────────
 
   function tick() {
+    const countdown = getCountdownRemaining();
+    if (countdown > 0) {
+      wasCountingDown = true;
+      if (countdown <= 3) playBeep(660, 0.12);
+      deriveSegmentState();
+      updateSegmentDisplay();
+      saveSession(true);
+      return;
+    }
+    if (wasCountingDown) {
+      // Countdown just hit zero — the first work interval starts now.
+      wasCountingDown = false;
+      playBeep(1100, 0.3);
+      vibrate(300);
+    }
+
     const { segmentChanged, finished } = deriveSegmentState();
 
     if (finished) {
@@ -861,14 +909,17 @@
   // ── Workout Controls ───────────────────────────────────────────────────
 
   function onStart() {
-    workoutStartedAt = new Date();
+    workoutStartedAt = new Date(Date.now() + GET_READY_SECONDS * 1000);
     pausedAt = null;
+    wasCountingDown = true;
     deriveSegmentState();
     updateSegmentDisplay();
     startTimer();
     requestWakeLock();
 
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    // Short beep inside the tap so mobile browsers unlock audio for the cues.
+    playBeep(660, 0.12);
 
     if (els.audioHint) els.audioHint.hidden = true;
 
