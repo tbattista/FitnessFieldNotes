@@ -60,7 +60,7 @@
     <!-- Spin Ride CSS (reused base layout) -->
     <link rel="stylesheet" href="/static/assets/css/spin-ride.css?v=20261020a" />
     <!-- Tabata Kettlebell overrides -->
-    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261110a" />
+    <link rel="stylesheet" href="/static/assets/css/tabata-kettlebell.css?v=20261117a" />
 
     <!-- Helpers -->
     <script src="/static/assets/vendor/js/helpers.js"></script>
@@ -179,9 +179,15 @@
                       <span class="d-block small fw-normal">New move every round</span>
                     </button>
                   </div>
-                  <p class="tk-advanced-hint">
-                    <i class="bx bx-transfer-alt me-1"></i>Single-arm and single-leg moves are always balanced left / right.
-                  </p>
+                  <div class="tk-start-side">
+                    <p class="tk-advanced-hint mb-0">
+                      <i class="bx bx-transfer-alt me-1"></i>Single-arm and single-leg moves are always balanced left / right. Start on:
+                    </p>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Single-side start" id="startSideButtons">
+                      <button type="button" class="btn btn-outline-primary tk-side-btn active" data-value="left" aria-pressed="true">Left</button>
+                      <button type="button" class="btn btn-outline-primary tk-side-btn" data-value="right" aria-pressed="false">Right</button>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Step 4 — Length / Sets / Rounds per Set -->
@@ -504,6 +510,6 @@
     <script src="/static/assets/js/services/exercise-link.js?v=20261110a"></script>
 
     <!-- Tabata Kettlebell Controller -->
-    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261117a"></script>
+    <script src="/static/assets/js/pages/tabata-kettlebell.js?v=20261117b"></script>
   </body>
 </html>
