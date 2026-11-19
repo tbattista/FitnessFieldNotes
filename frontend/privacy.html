@@ -66,21 +66,8 @@
     <!-- Firebase SDK Loader (Centralized) -->
     <script type="module" src="/static/assets/js/firebase-loader.js"></script>
 
-    <!-- Matomo -->
-    <script>
-      var _paq = window._paq = window._paq || [];
-      _paq.push(['disableCookies']);
-      _paq.push(['trackPageView']);
-      _paq.push(['enableLinkTracking']);
-      (function() {
-        var u="//matomo-production-72c8.up.railway.app/";
-        _paq.push(['setTrackerUrl', u+'matomo.php']);
-        _paq.push(['setSiteId', '2']);
-        var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
-        g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
-      })();
-    </script>
-    <!-- End Matomo Code -->
+    <!-- Analytics (Cloudflare Web Analytics + Matomo during migration) -->
+    <script src="/static/assets/js/services/analytics-loader.js"></script>
 
     <style>
       .legal-content { max-width: 800px; margin: 0 auto; }
@@ -167,7 +154,7 @@
                 <p>If you use the AI-powered logging feature, you may upload photos or text descriptions of your workout. These are sent to Google's Generative AI service (Gemini) for processing. We do not store the images after processing is complete. See <a href="#third-party-services">Third-Party Services</a> for details.</p>
 
                 <h3>Usage Analytics</h3>
-                <p>We collect anonymous usage data through Matomo, a privacy-focused analytics platform. This includes page views, feature usage, and general interaction patterns. <strong>We do not use cookies for analytics.</strong> See <a href="#cookies">Cookies & Local Storage</a> for details.</p>
+                <p>We collect anonymous usage data through Cloudflare Web Analytics, a privacy-focused analytics service. This includes page views, referrers, device type, and page performance. <strong>We do not use cookies for analytics.</strong> See <a href="#cookies">Cookies & Local Storage</a> for details.</p>
 
                 <h3>Anonymous Usage (No Account)</h3>
                 <p>You can use Fitness Field Notes without creating an account. In this case, your data is stored only in your browser's local storage and is never sent to our servers.</p>
@@ -200,8 +187,8 @@
                 <h3>Google Generative AI (Gemini)</h3>
                 <p>When you use the AI workout logging feature, your uploaded photos and/or text descriptions are sent to Google's Generative AI API for processing. Google may process this data according to their <a href="https://ai.google.dev/terms" target="_blank" rel="noopener">Generative AI terms</a>. We do not store the raw images after the AI has processed them.</p>
 
-                <h3>Matomo Analytics</h3>
-                <p>We use Matomo for privacy-friendly analytics. Matomo is self-hosted on our infrastructure and configured with cookies disabled. It collects anonymous page view and feature usage data. No personally identifiable information is sent to Matomo.</p>
+                <h3>Cloudflare Web Analytics</h3>
+                <p>We use Cloudflare Web Analytics for privacy-friendly analytics. It does not use cookies, local storage, or fingerprinting to track visitors. It collects anonymous page view and performance data. No personally identifiable information is sent to Cloudflare. While we finish moving to Cloudflare, our self-hosted Matomo instance (also cookieless) may still receive the same anonymous data.</p>
 
                 <h3>Gotenberg (PDF Generation)</h3>
                 <p>When you export a workout as a PDF, your workout data is sent to our self-hosted Gotenberg instance for rendering. This service is hosted on our own infrastructure and does not share data with third parties.</p>
@@ -216,7 +203,7 @@
                 <h2 id="cookies">5. Cookies & Local Storage</h2>
 
                 <h3>Cookies</h3>
-                <p><strong>We do not use cookies.</strong> Our analytics (Matomo) are explicitly configured with cookies disabled.</p>
+                <p><strong>We do not use cookies.</strong> Our analytics (Cloudflare Web Analytics) do not set cookies.</p>
 
                 <h3>Local Storage</h3>
                 <p>We use your browser's local storage to:</p>
