@@ -279,6 +279,12 @@ class FirestoreSessionOps:
                 completion_data['calories'] = complete_request.calories
                 logger.info(f"Saving session calories: {complete_request.calories}")
 
+            # Watch import (e.g. Garmin opened in the session screen): keep its link and data
+            for field in ('started_at', 'avg_heart_rate', 'max_heart_rate', 'source', 'external_id', 'import_meta'):
+                value = getattr(complete_request, field, None)
+                if value is not None:
+                    completion_data[field] = value
+
             # Update session
             session_ref.update(completion_data)
 

@@ -9,7 +9,7 @@
  *
  * Also used on History: undoFromHistory() and the "to review" banner.
  * Requires window.garminImportService.
- * @version 2.0.0
+ * @version 2.1.0
  */
 (function () {
     'use strict';
@@ -245,10 +245,13 @@
             <div class="col-lg-6">${exercisesHtml(p)}</div>
           </div>
           <div class="alert alert-danger small mt-3 d-none" id="garminImportError" role="alert"></div>
-          <div class="d-flex gap-2 mt-3">
+          <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
             <button class="btn btn-outline-secondary" id="garminBack">${backLabel}</button>
             <button class="btn btn-primary flex-grow-1 flex-sm-grow-0 px-4" id="garminConfirm">Import</button>
-          </div>`;
+            <button class="btn btn-link btn-sm d-none" id="garminSaveDirect" type="button">Save without editing</button>
+          </div>
+          <p class="small text-muted mt-2 mb-0 d-none" id="garminSessionHint">Opens in the session screen with
+            Garmin's sets, reps, weights and heart rate filled in, so you can adjust anything before you finish.</p>`;
 
         const unitSel = document.getElementById('garminWeightUnit');
         if (unitSel) {
@@ -260,19 +263,36 @@
             };
         }
         document.getElementById('garminBack').onclick = close;
-        document.getElementById('garminConfirm').onclick = () => submit(opts);
-        body().querySelectorAll('input[name="garminAction"]').forEach(r => {
-            r.onchange = () => {
-                const action = opts[Number(r.value)].action;
-                document.getElementById('garminConfirm').textContent =
-                    action === 'skip' ? (state.opts.mode === 'activity' ? 'Dismiss' : 'Close') : 'Import';
-            };
-        });
+        document.getElementById('garminConfirm').onclick = () => submit(opts, opensSession(chosenOpt(opts)));
+        document.getElementById('garminSaveDirect').onclick = () => submit(opts, false);
+        const updateButtons = () => {
+            const chosen = chosenOpt(opts);
+            const session = opensSession(chosen);
+            const btn = document.getElementById('garminConfirm');
+            if (chosen.action === 'skip') btn.textContent = state.opts.mode === 'activity' ? 'Dismiss' : 'Close';
+            else if (chosen.action === 'merge') btn.textContent = 'Merge';
+            else btn.innerHTML = session ? '<i class="bx bx-edit-alt me-1"></i>Open in session' : 'Import';
+            document.getElementById('garminSaveDirect').classList.toggle('d-none', !session);
+            document.getElementById('garminSessionHint').classList.toggle('d-none', !session);
+        };
+        body().querySelectorAll('input[name="garminAction"]').forEach(r => { r.onchange = updateButtons; });
+        updateButtons();
     }
 
-    async function submit(opts) {
+    function chosenOpt(opts) {
+        return opts[Number((body().querySelector('input[name="garminAction"]:checked') || {}).value || 0)];
+    }
+
+    /** Strength and HIIT logged against a workout open in the session screen for editing. */
+    function opensSession(chosen) {
+        const kind = state.preview && state.preview.activity.kind;
+        return !!(chosen && (chosen.action === 'attach' || chosen.action === 'new')
+            && (kind === 'strength' || kind === 'interval') && window.garminSessionBridge);
+    }
+
+    async function submit(opts, openInSession) {
         const p = state.preview;
-        const chosen = opts[Number((body().querySelector('input[name="garminAction"]:checked') || {}).value || 0)];
+        const chosen = chosenOpt(opts);
         const errorBox = document.getElementById('garminImportError');
         if (chosen.action === 'skip') {
             if (state.opts.mode === 'activity') {
@@ -305,10 +325,31 @@
         }
 
         const btn = document.getElementById('garminConfirm');
+        const saveBox = document.getElementById('garminSaveMappings');
         btn.disabled = true;
+        if (openInSession) {
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Opening…';
+            try {
+                const prefill = await window.garminImportService.prepareSession({
+                    activity: p.activity,
+                    action: chosen.action,
+                    target_id: chosen.target_id,
+                    exercise_mappings: mappings,
+                    save_mappings: saveBox ? saveBox.checked : true,
+                    weight_unit: state.unit,
+                    pending_id: state.opts.mode === 'activity' ? state.opts.activityId : null,
+                });
+                window.garminSessionBridge.open(prefill);
+            } catch (e) {
+                errorBox.textContent = e.message;
+                errorBox.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bx bx-edit-alt me-1"></i>Open in session';
+            }
+            return;
+        }
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importing…';
         try {
-            const saveBox = document.getElementById('garminSaveMappings');
             state.result = await window.garminImportService.confirm({
                 activity: p.activity,
                 action: chosen.action,

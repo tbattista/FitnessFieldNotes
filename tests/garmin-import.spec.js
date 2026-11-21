@@ -195,10 +195,15 @@ test.describe('Garmin page', () => {
 
         await rows.nth(0).locator('.garmin-ex-name').fill('Back Squat');
         await rows.nth(2).locator('.garmin-ex-name').fill('Leg Press');
+        // Merging stays on this page; logging against a workout opens the session screen.
+        await expect(page.locator('#garminConfirm')).toHaveText('Merge');
         await page.locator('.garmin-option', { hasText: 'Log as “Lower Body”' }).click();
-        await page.locator('#garminConfirm').click();
-        await expect(page.locator('#garminImportDone')).toBeVisible();
+        await expect(page.locator('#garminConfirm')).toContainText('Open in session');
+        await expect(page.locator('#garminSessionHint')).toBeVisible();
 
+        // "Save without editing" imports directly, as before.
+        await page.locator('#garminSaveDirect').click();
+        await expect(page.locator('#garminImportDone')).toBeVisible();
         const confirm = calls.find(c => c[0] === 'confirm')[1];
         expect(confirm.action).toBe('attach');
         expect(confirm.target_id).toBe('workout-9');
@@ -210,6 +215,29 @@ test.describe('Garmin page', () => {
         await expect(page.locator('#garminListView')).toBeVisible();
         await expect(page.locator('#garminCountReview')).toHaveText('1');
         await expect(page.locator('#garminCountImported')).toHaveText('2');
+    });
+
+    test('Open in session prepares the workout and opens the session screen pre-filled', async ({ page }) => {
+        await openGarminPage(page);
+        const prepared = [];
+        await page.route('**/api/v3/garmin/import/prepare-session', route => {
+            prepared.push(route.request().postDataJSON());
+            return json(route, { ...PREFILL, pending_id: '25137407059' });
+        });
+        await page.route('**/workout-mode.html*', route =>
+            route.fulfill({ contentType: 'text/html', body: '<html><body>session screen</body></html>' }));
+        await page.locator('[data-garmin-item="25137407059"] [data-act="review"]').click();
+        await page.locator('.garmin-ex-row').nth(2).locator('.garmin-ex-name').fill('Leg Press');
+        await page.locator('.garmin-option', { hasText: 'Log as “Lower Body”' }).click();
+        await page.locator('#garminConfirm').click();
+
+        await page.waitForURL(/workout-mode\.html\?id=workout-9&garmin=1/);
+        expect(prepared[0].action).toBe('attach');
+        expect(prepared[0].target_id).toBe('workout-9');
+        expect(prepared[0].pending_id).toBe('25137407059');
+        const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('ffn_garmin_session_prefill')));
+        expect(stored.workout_id).toBe('workout-9');
+        expect(stored.session_id).toBeNull();
     });
 
     test('dismiss from the review screen', async ({ page }) => {
@@ -279,6 +307,127 @@ test.describe('Garmin page', () => {
         await expect(page.locator('#garminConnectHint')).toBeVisible();
         await expect(page.locator('#garminUploadBtn')).toBeVisible();
         await expect(page.locator('#garminEmpty')).toBeVisible();
+    });
+});
+
+// ── Session screen pre-filled from Garmin ─────────────────────────────────
+
+const SESSION_WORKOUT = {
+    id: 'workout-9', name: 'Lower Body', description: '',
+    exercise_groups: [
+        { group_id: 'group-squat', exercises: { a: 'Back Squat' }, sets: '3', reps: '8', rest: '90s',
+          default_weight: '185', default_weight_unit: 'lbs', group_type: 'standard' },
+        { group_id: 'group-dl', exercises: { a: 'Barbell Deadlift' }, sets: '3', reps: '5', rest: '120s',
+          default_weight: '225', default_weight_unit: 'lbs', group_type: 'standard' },
+    ],
+    sections: [], tags: [], created_date: '2026-03-01T10:00:00Z', modified_date: '2026-03-01T10:00:00Z',
+    is_archived: false,
+};
+
+const PREFILL = {
+    workout_id: 'workout-9', workout_name: 'Lower Body',
+    exercises: [
+        { exercise_name: 'Back Squat', group_id: 'group-squat', sets_completed: 4, target_sets: '4',
+          target_reps: '7-9', weight: '215', weight_unit: 'lbs', avg_heart_rate: 128, max_heart_rate: 145,
+          set_details: [
+              { set_number: 1, reps_completed: 8, weight: 165, avg_heart_rate: 120 },
+              { set_number: 2, reps_completed: 9, weight: 165 },
+              { set_number: 3, reps_completed: 7, weight: 215 },
+              { set_number: 4, reps_completed: 7, weight: 215 }] },
+        { exercise_name: 'Barbell Deadlift', group_id: 'group-dl', sets_completed: 2, target_sets: '2',
+          target_reps: '9', weight: '215', weight_unit: 'lbs',
+          set_details: [{ set_number: 1, reps_completed: 9, weight: 215 }, { set_number: 2, reps_completed: 9, weight: 215 }] },
+        { exercise_name: 'Leg Press', group_id: 'garmin-2', sets_completed: 1, target_sets: '1', target_reps: '12',
+          weight: '45', weight_unit: 'lbs', set_details: [{ set_number: 1, reps_completed: 12, weight: 44 }] },
+    ],
+    started_at: '2026-11-18T22:27:26Z', completed_at: '2026-11-18T22:45:35Z', duration_minutes: 18,
+    calories: 216, avg_heart_rate: 127, max_heart_rate: 149, source: 'garmin', external_id: 'garmin:123:1795040846',
+    import_meta: { type: 'created', garmin_started_at: '2026-11-18T22:27:26Z' }, pending_id: null,
+    activity_name: 'Strength', kind: 'strength',
+};
+
+/** Same offline setup as build-log-session-persistence.spec.js: Firebase stubbed, anonymous, localStorage. */
+async function stubFirebaseReady(page) {
+    await page.addInitScript(() => {
+        window.firebaseAuth = { currentUser: null, authStateReady: () => Promise.resolve(), onAuthStateChanged: () => () => {} };
+        window.firebaseReady = true;
+        setTimeout(() => { try { window.dispatchEvent(new Event('firebaseReady')); } catch (_) {} }, 0);
+    });
+}
+
+test.describe('Garmin in the session screen', () => {
+
+    test('opens pre-filled with the watch values and saves as a Garmin import', async ({ page }) => {
+        await stubFirebaseReady(page);
+        await page.goto(`${BASE}/settings.html`);
+        await page.evaluate(({ workout, prefill }) => {
+            localStorage.setItem('gym_workouts', JSON.stringify([workout]));
+            // A stale in-progress session for the same workout must not take over.
+            localStorage.setItem('ffn_active_workout_session', JSON.stringify({
+                sessionId: 'stale', workoutId: workout.id, workoutName: workout.name,
+                startedAt: new Date().toISOString(), status: 'in_progress', sessionMode: 'timed', exercises: {},
+                sessionNotes: [], exerciseOrder: [], lastPageActive: new Date().toISOString(), schemaVersion: 2 }));
+            sessionStorage.setItem('ffn_garmin_session_prefill', JSON.stringify({ ...prefill, session_id: null }));
+        }, { workout: SESSION_WORKOUT, prefill: PREFILL });
+
+        // source=public lets an anonymous test browser start a session.
+        await page.goto(`${BASE}/workout-mode.html?id=workout-9&garmin=1&source=public`);
+        await page.waitForFunction(() => {
+            const s = window.workoutSessionService && window.workoutSessionService.currentSession;
+            return s && s.exercises && s.exercises['Back Squat'];
+        }, null, { timeout: 20000 });
+
+        const state = await page.evaluate(() => {
+            const s = window.workoutSessionService.currentSession;
+            return {
+                id: s.id,
+                squat: s.exercises['Back Squat'],
+                deadlift: s.exercises['Barbell Deadlift'],
+                url: window.location.search,
+                fields: window.garminSessionBridge.completionFields(s),
+                finish: window.garminSessionBridge.finishDefaults(s),
+            };
+        });
+        expect(state.id).not.toBe('stale');
+        expect(state.squat.weight).toBe('215');
+        expect([state.squat.target_sets, state.squat.target_reps]).toEqual(['4', '7-9']);
+        expect(state.squat.set_details).toHaveLength(4);
+        expect(state.squat.notes).toBe('From Garmin: 8×165, 9×165, 7×215, 7×215 lbs · avg HR 128 (max 145)');
+        expect(state.deadlift.target_sets).toBe('2');
+        expect(state.url).not.toContain('garmin=1');              // a reload resumes instead of re-applying
+
+        // Saving carries the Garmin link, times and heart rate; Leg Press isn't in the workout -> session note.
+        expect(state.fields).toMatchObject({ source: 'garmin', external_id: 'garmin:123:1795040846',
+            started_at: '2026-11-18T22:27:26Z', completed_at: '2026-11-18T22:45:35Z', avg_heart_rate: 127 });
+        expect(state.fields.notes).toContain('Also recorded by Garmin: Leg Press');
+        expect(state.finish).toEqual({ minutes: 18, calories: 216 });
+
+        // The exercise card shows the watch's weight in place of the template's 185.
+        const card = page.locator('.workout-card', { hasText: 'Back Squat' }).first();
+        await expect(card).toContainText('215');
+        await expect(card).not.toContainText('185');
+    });
+
+    test('a normal session of the same workout is not treated as a Garmin import', async ({ page }) => {
+        await stubFirebaseReady(page);
+        await page.goto(`${BASE}/settings.html`);
+        await page.evaluate(({ workout, prefill }) => {
+            localStorage.setItem('gym_workouts', JSON.stringify([workout]));
+            localStorage.removeItem('ffn_active_workout_session');
+            // Leftover prefill already bound to some earlier session.
+            sessionStorage.setItem('ffn_garmin_session_prefill', JSON.stringify({ ...prefill, session_id: 'old' }));
+        }, { workout: SESSION_WORKOUT, prefill: PREFILL });
+        await page.goto(`${BASE}/workout-mode.html?id=workout-9&source=public`);
+        await page.waitForFunction(() => {
+            const s = window.workoutSessionService && window.workoutSessionService.currentSession;
+            return s && s.exercises && s.exercises['Back Squat'];
+        }, null, { timeout: 20000 });
+        const state = await page.evaluate(() => {
+            const s = window.workoutSessionService.currentSession;
+            return { weight: s.exercises['Back Squat'].weight, fields: window.garminSessionBridge.completionFields(s) };
+        });
+        expect(state.weight).toBe('185');
+        expect(state.fields).toEqual({});
     });
 });
 

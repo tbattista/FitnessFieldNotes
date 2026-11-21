@@ -154,6 +154,12 @@ class GarminSessionPrefill(BaseModel):
     kind: Literal["strength", "interval", "cardio"]
 
 
+class GarminMarkImportedRequest(BaseModel):
+    session_id: str
+    session_type: Literal["workout", "cardio"] = "workout"
+    action: Literal["attach", "new", "merge"] = "new"
+
+
 class GarminImportResult(BaseModel):
     success: bool
     action: ImportAction

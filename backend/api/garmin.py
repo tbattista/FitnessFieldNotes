@@ -19,6 +19,7 @@ from ..models.garmin import (
     GarminImportConfirmRequest,
     GarminImportPreview,
     GarminImportResult,
+    GarminMarkImportedRequest,
     GarminPrepareSessionRequest,
     GarminSessionPrefill,
     GarminSyncResult,
@@ -186,6 +187,16 @@ async def patch_activity(activity_id: str, req: GarminActivityStatusUpdate,
         return await sync_service.set_status(user_id, activity_id, req.status)
     except import_service.GarminImportError as e:
         _raise(e)
+
+
+@router.post("/activities/{activity_id}/mark-imported")
+async def mark_activity_imported(activity_id: str, req: GarminMarkImportedRequest,
+                                 current_user: Dict[str, Any] = Depends(get_current_user)):
+    """The session screen saved this Garmin activity: link it to the session on the Garmin page."""
+    user_id = _require(current_user)
+    await sync_service.mark_imported(user_id, activity_id, GarminImportResult(
+        success=True, action=req.action, session_id=req.session_id, session_type=req.session_type))
+    return {"success": True}
 
 
 @router.post("/activities/dismiss-all")

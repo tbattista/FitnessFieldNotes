@@ -211,7 +211,11 @@ class WorkoutDataManager {
                 next_weight_direction: directionToSave,  // Weight Progression Indicator
                 original_weight: toStr(exerciseData?.original_weight ?? null),
                 original_sets: toStr(exerciseData?.original_sets ?? null),
-                original_reps: toStr(exerciseData?.original_reps ?? null)
+                original_reps: toStr(exerciseData?.original_reps ?? null),
+                // Per-set detail and heart rate (filled by Garmin imports)
+                set_details: Array.isArray(exerciseData?.set_details) ? exerciseData.set_details : [],
+                avg_heart_rate: exerciseData?.avg_heart_rate || null,
+                max_heart_rate: exerciseData?.max_heart_rate || null
             });
         });
         

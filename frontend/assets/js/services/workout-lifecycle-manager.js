@@ -203,9 +203,10 @@ class WorkoutLifecycleManager {
             return;
         }
 
-        // Calculate session stats
+        // Calculate session stats (a Garmin import uses the watch's duration and calories)
         const elapsed = Math.floor((Date.now() - session.startedAt.getTime()) / 1000);
-        const minutes = Math.floor(elapsed / 60);
+        const garminDefaults = window.garminSessionBridge?.finishDefaults(session) || null;
+        const minutes = garminDefaults?.minutes || Math.floor(elapsed / 60);
         const exerciseCount = this.currentWorkout?.exercise_groups?.length || 0;
         const totalExercises = exerciseCount;
 
@@ -225,6 +226,7 @@ class WorkoutLifecycleManager {
         window.UnifiedOffcanvasFactory.createCompleteWorkout({
             workoutName: this.currentWorkout.name,
             minutes,
+            calories: garminDefaults?.calories || null,
             totalExercises,
             isQuickLog: false,
             isBuildMode
@@ -239,6 +241,9 @@ class WorkoutLifecycleManager {
                     durationMinutes,  // null for timed sessions, number for Quick Log
                     sessionCalories   // session-level calories from finish offcanvas
                 );
+
+                // Garmin import: mark the activity imported on the Garmin page
+                await window.garminSessionBridge?.onCompleted(session, completedSession);
 
                 // Update template weights
                 await this.onUpdateTemplateWeights(exercisesPerformed);

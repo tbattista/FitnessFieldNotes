@@ -98,6 +98,7 @@ class SessionLifecycleApiService {
                 if (workoutData) {
                     localSession.exercises = this._initializeExercisesFromTemplate(workoutData);
                     console.log('✅ Pre-populated', Object.keys(localSession.exercises).length, 'exercises from template');
+                    window.garminSessionBridge?.applyToSession(localSession, workoutData);
                 }
 
                 this.onSetCurrentSession(localSession);
@@ -159,6 +160,8 @@ class SessionLifecycleApiService {
             if (workoutData) {
                 newSession.exercises = this._initializeExercisesFromTemplate(workoutData);
                 console.log('\u2705 Pre-populated', Object.keys(newSession.exercises).length, 'exercises from template');
+                // Garmin import: fill the cards with what the watch recorded
+                window.garminSessionBridge?.applyToSession(newSession, workoutData);
             }
 
             // Set the session on the parent
@@ -331,6 +334,9 @@ class SessionLifecycleApiService {
                 console.log('🔥 Including session calories:', sessionCalories);
             }
 
+            // Garmin import: keep the watch's times, heart rate and import link
+            Object.assign(requestBody, window.garminSessionBridge?.completionFields(currentSession) || {});
+
             const response = await this._fetchWithRetry(url, {
                 method: 'POST',
                 headers: {
@@ -434,6 +440,8 @@ class SessionLifecycleApiService {
             requestBody.calories = sessionCalories;
         }
 
+        Object.assign(requestBody, window.garminSessionBridge?.completionFields(currentSession) || {});
+
         console.log('\ud83d\ude80 Trying atomic create-and-complete endpoint...');
         const response = await this._fetchWithRetry(url, {
             method: 'POST',
@@ -525,6 +533,8 @@ class SessionLifecycleApiService {
         if (sessionCalories !== null && sessionCalories > 0) {
             requestBody.calories = sessionCalories;
         }
+
+        Object.assign(requestBody, window.garminSessionBridge?.completionFields(currentSession) || {});
 
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
             const delay = BASE_DELAY_MS * Math.pow(2, attempt);

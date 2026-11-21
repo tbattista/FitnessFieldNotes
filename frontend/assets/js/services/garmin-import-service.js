@@ -51,6 +51,16 @@ window.garminImportService = {
         return this._handle(response, 'Import failed.');
     },
 
+    /** Find or create the workout and get values to pre-fill the session screen (saves nothing). */
+    async prepareSession(payload) {
+        const response = await fetch('/api/v3/garmin/import/prepare-session', {
+            method: 'POST',
+            headers: await this._headers(),
+            body: JSON.stringify(payload),
+        });
+        return this._handle(response, 'Could not open this activity.');
+    },
+
     /** Undo an import: deletes a created session or restores a merged one. */
     async undo(sessionId, sessionType) {
         const response = await fetch('/api/v3/garmin/import/undo', {
