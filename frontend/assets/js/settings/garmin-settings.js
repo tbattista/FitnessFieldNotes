@@ -1,7 +1,7 @@
 /**
  * Garmin settings card: connect a Garmin Personal API key, sync, review
  * setting, disconnect. Requires window.garminImportService.
- * @version 1.0.0
+ * @version 1.1.0
  */
 (function () {
     'use strict';
@@ -122,6 +122,34 @@
         return parts.length ? ` · ${parts.join(', ')}` : ' · nothing new';
     }
 
+    const OUTCOME = {
+        imported: ['bg-label-success', 'Imported'],
+        review: ['bg-label-warning', 'To review'],
+        skipped: ['bg-label-secondary', 'Skipped'],
+        error: ['bg-label-danger', 'Failed'],
+    };
+
+    function activityLogHtml(entries) {
+        if (!entries || !entries.length) return '';
+        const items = entries.map(e => {
+            const [cls, label] = OUTCOME[e.outcome] || ['bg-label-secondary', e.outcome];
+            return `
+              <li class="d-flex gap-2 align-items-start mb-2" data-garmin-log="${esc(e.outcome)}">
+                <span class="badge ${cls} flex-shrink-0 mt-1">${esc(label)}</span>
+                <span>
+                  <span class="fw-medium">${esc(e.name)}</span>
+                  <span class="text-muted"> · ${esc(fmtDate(e.started_at, true))}</span>
+                  <span class="d-block text-muted">${esc(e.detail)}</span>
+                </span>
+              </li>`;
+        }).join('');
+        return `
+          <details class="mt-3" id="garminActivityLog" open>
+            <summary class="small fw-medium">What sync did with each activity</summary>
+            <ul class="list-unstyled small mt-2 mb-0">${items}</ul>
+          </details>`;
+    }
+
     function renderConnected() {
         const s = status;
         if (replacing) {
@@ -146,6 +174,7 @@
           ${expiryHtml(s)}
           ${s.pending_count ? `<div class="small mt-1"><a href="/workout-history.html">${s.pending_count}
               ${s.pending_count === 1 ? 'activity' : 'activities'} waiting for review in History</a></div>` : ''}
+          ${activityLogHtml(s.recent_activity)}
 
           <div class="d-flex justify-content-between align-items-center my-3">
             <div class="me-3">
@@ -160,6 +189,8 @@
 
           <div class="d-flex flex-wrap gap-2">
             <button type="button" class="btn btn-primary" id="garminSyncNow"><i class="bx bx-refresh me-1"></i>Sync now</button>
+            <button type="button" class="btn btn-outline-secondary" id="garminRecheck"
+                    title="Look at every activity since the start date again. Nothing is imported twice.">Check again</button>
             <button type="button" class="btn btn-outline-secondary" id="garminReplaceKey">Replace key</button>
             <button type="button" class="btn btn-outline-danger" id="garminDisconnect">Disconnect</button>
           </div>
@@ -176,6 +207,14 @@
             }
         };
         document.getElementById('garminSyncNow').onclick = syncNow;
+        document.getElementById('garminRecheck').onclick = async () => {
+            try {
+                await window.garminImportService.updateConnection({ recheck: true });
+                await syncNow();
+            } catch (e) {
+                message(esc(e.message), 'danger');
+            }
+        };
         document.getElementById('garminReplaceKey').onclick = () => { replacing = true; renderConnected(); };
         document.getElementById('garminDisconnect').onclick = disconnect;
     }

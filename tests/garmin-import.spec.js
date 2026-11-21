@@ -245,6 +245,16 @@ test.describe('Garmin sync settings', () => {
         await expect(page.locator('#garminLastSync')).toContainText('1 imported, 1 to review');
         await expect(page.locator('#garminSettingsBody')).toContainText('1 activity waiting for review');
 
+        await page.evaluate(c => window.garminSettings._setStatus({ ...c, recent_activity: [
+            { garmin_activity_id: '4', name: 'Strength', started_at: '2026-11-20T22:00:00Z', outcome: 'review',
+              detail: 'Waiting for review: new exercise names to confirm' },
+            { garmin_activity_id: '2', name: 'Strength Training', started_at: '2026-11-19T19:28:00Z', outcome: 'skipped',
+              detail: 'Entered by hand in Garmin Connect, so there are no sets or heart rate to import' },
+        ] }), CONNECTED);
+        const log = page.locator('#garminActivityLog');
+        await expect(log.locator('[data-garmin-log="review"]')).toContainText('new exercise names to confirm');
+        await expect(log.locator('[data-garmin-log="skipped"]')).toContainText('Entered by hand');
+
         await page.locator('#garminReviewAll').check();
         await expect(page.locator('#garminSettingsMessage')).toContainText('wait for review');
         expect(patches).toEqual([{ review_all: true }]);

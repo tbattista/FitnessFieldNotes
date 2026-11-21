@@ -181,6 +181,14 @@ def test_sync_imports_confident_and_queues_the_rest():
     pending = run(sync_service.list_pending(UID))
     assert [p.id for p in pending] == ["4"] and pending[0].reason == "New exercise names to confirm"
 
+    # Every activity in the window is logged with its outcome and reason.
+    log = {d.garmin_activity_id: d for d in result.details}
+    assert (log["2"].outcome, log["3"].outcome, log["4"].outcome) == ("skipped", "imported", "review")
+    assert "by hand" in log["2"].detail and "new exercise names" in log["4"].detail
+    assert "1" not in log                       # before the start date: not considered
+    recent = run(sync_service.status(UID, OWNER)).recent_activity
+    assert [e.garmin_activity_id for e in recent] == ["4", "3", "2"]   # newest first
+
     # Nothing new on the second sync, and nothing re-downloaded.
     again = run(sync_service.sync(UID))
     assert (len(again.imported), again.pending, again.skipped) == (0, 0, 0)
@@ -226,6 +234,19 @@ def test_replacing_key_keeps_sync_position():
     FakeClient.downloads = []
     run(sync_service.sync(UID))
     assert FakeClient.downloads == []          # nothing downloaded twice
+
+
+def test_check_again_relooks_without_duplicating():
+    fake = setup()
+    run(sync_service.sync(UID))
+    run(sync_service.update(UID, OWNER, review_all=None, recheck=True))
+    FakeClient.downloads = []
+    again = run(sync_service.sync(UID))
+    # The run was imported and the strength session is still queued: the run is
+    # downloaded and recognised as a duplicate; the queued one isn't touched.
+    assert FakeClient.downloads == [3] and again.imported == [] and again.pending == 0
+    assert {d.garmin_activity_id: d.outcome for d in again.details} == {"2": "skipped", "3": "skipped"}
+    assert len(fake._col(UID, "cardio_sessions").stream()) == 1
 
 
 def test_rejected_key_flags_connection():

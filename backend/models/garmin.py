@@ -142,6 +142,21 @@ class GarminConnectRequest(BaseModel):
 
 class GarminConnectionUpdate(BaseModel):
     review_all: Optional[bool] = Field(None, description="Send every synced activity to review")
+    recheck: Optional[bool] = Field(
+        None, description="Forget which activities were already handled, so the next sync looks at "
+                          "everything since the start date again (imports are still never duplicated)")
+
+
+class GarminSyncLogEntry(BaseModel):
+    """What sync did with one Garmin activity, and why."""
+
+    garmin_activity_id: str
+    name: str
+    activity_type: Optional[str] = Field(None, description="Garmin type, e.g. strength_training")
+    started_at: Optional[datetime] = None
+    outcome: Literal["imported", "review", "skipped", "error"]
+    detail: str = ""
+    synced_at: Optional[datetime] = None
 
 
 class GarminConnectionStatus(BaseModel):
@@ -158,6 +173,8 @@ class GarminConnectionStatus(BaseModel):
     last_error: Optional[str] = None
     last_summary: Optional[Dict[str, int]] = None
     pending_count: int = 0
+    recent_activity: List[GarminSyncLogEntry] = Field(
+        default_factory=list, description="Latest synced activities with their outcome, newest first")
 
 
 class GarminSyncImported(BaseModel):
@@ -177,6 +194,7 @@ class GarminSyncResult(BaseModel):
     errors: List[str] = Field(default_factory=list)
     more: bool = Field(False, description="More new activities remain; sync again")
     last_sync_at: Optional[datetime] = None
+    details: List[GarminSyncLogEntry] = Field(default_factory=list, description="Outcome per activity in this sync")
 
 
 class GarminPendingItem(BaseModel):

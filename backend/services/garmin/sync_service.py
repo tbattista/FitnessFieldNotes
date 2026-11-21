@@ -24,6 +24,7 @@ from ...models.garmin import (
     GarminImportConfirmRequest,
     GarminPendingItem,
     GarminSyncImported,
+    GarminSyncLogEntry,
     GarminSyncResult,
     ParsedGarminActivity,
 )
@@ -46,6 +47,7 @@ LIST_LIMIT = 50            # newest activities checked per sync
 MAX_DOWNLOADS_PER_RUN = 10  # keep each sync short and gentle on Garmin
 PROCESSED_KEEP = 300        # remembered activity IDs (newest)
 EXPIRY_WARNING_DAYS = 7
+LOG_KEEP = 30               # per-activity sync outcomes shown in Settings
 
 # Swappable in tests.
 client_factory = PersonalApiClient
@@ -114,6 +116,7 @@ async def status(user_id: str, email: Optional[str]) -> GarminConnectionStatus:
         last_error=conn.get("last_error"),
         last_summary=conn.get("last_summary"),
         pending_count=pending,
+        recent_activity=[GarminSyncLogEntry(**e) for e in conn.get("recent_activity") or []],
     )
 
 
@@ -149,11 +152,19 @@ async def connect(user_id: str, email: Optional[str], req: GarminConnectRequest)
     return await status(user_id, email)
 
 
-async def update(user_id: str, email: Optional[str], review_all: Optional[bool]) -> GarminConnectionStatus:
+async def update(user_id: str, email: Optional[str], review_all: Optional[bool],
+                 recheck: Optional[bool] = None) -> GarminConnectionStatus:
     if not _load(user_id):
         raise GarminImportError("Garmin isn't connected.", 404)
+    changes: Dict[str, Any] = {}
     if review_all is not None:
-        _conn_ref(user_id).update({"review_all": bool(review_all)})
+        changes["review_all"] = bool(review_all)
+    if recheck:
+        # Safe: already-imported files are detected by external_id and
+        # queued ones by their pending entry, so nothing is imported twice.
+        changes["processed_ids"] = []
+    if changes:
+        _conn_ref(user_id).update(changes)
     return await status(user_id, email)
 
 
@@ -205,6 +216,14 @@ def _queue(user_id: str, garmin_id: str, activity: ParsedGarminActivity, reason:
     })
 
 
+def _imported_detail(proposed) -> str:
+    if proposed.action == "merge":
+        return f"Merged into your session \u201c{proposed.target_name}\u201d"
+    if proposed.action == "attach":
+        return f"Logged as \u201c{proposed.target_name}\u201d"
+    return "Saved as a new session"
+
+
 def _review_reason(preview, review_all: bool) -> str:
     if review_all:
         return "You review every import"
@@ -236,6 +255,13 @@ async def sync(user_id: str) -> GarminSyncResult:
     seen = set(processed)
     pending_ids = {d.id for d in _pending_col(user_id).stream()}
     result = GarminSyncResult()
+    now = _now()
+
+    def log(gid, a, outcome, detail, start=None):
+        result.details.append(GarminSyncLogEntry(
+            garmin_activity_id=gid, name=a.get("activityName") or "Activity",
+            activity_type=(a.get("activityType") or {}).get("typeKey"), started_at=start or activity_start(a),
+            outcome=outcome, detail=detail, synced_at=now))
 
     try:
         listed = await client.list_activities(limit=LIST_LIMIT)
@@ -258,6 +284,7 @@ async def sync(user_id: str) -> GarminSyncResult:
             # Typed into Garmin Connect by hand: the file has no sets or heart rate.
             result.skipped += 1
             processed.append(gid)
+            log(gid, a, "skipped", "Entered by hand in Garmin Connect, so there are no sets or heart rate to import")
             continue
         new.append((start, gid, a))
     new.sort(key=lambda t: t[0])                  # oldest first, so history stays in order
@@ -271,6 +298,7 @@ async def sync(user_id: str) -> GarminSyncResult:
             preview = await import_service.build_preview_for_activity(user_id, activity)
             if preview.duplicate_of:
                 result.skipped += 1
+                log(gid, a, "skipped", "Already in your history", start)
             elif preview.auto_importable and not review_all:
                 p = preview.proposed
                 saved = await import_service.confirm(user_id, GarminImportConfirmRequest(
@@ -279,25 +307,36 @@ async def sync(user_id: str) -> GarminSyncResult:
                 result.imported.append(GarminSyncImported(
                     garmin_activity_id=gid, name=activity.name, started_at=activity.started_at,
                     action=saved.action, session_id=saved.session_id, session_type=saved.session_type))
+                log(gid, a, "imported", _imported_detail(p), start)
             else:
-                _queue(user_id, gid, preview.activity, _review_reason(preview, review_all))
+                reason = _review_reason(preview, review_all)
+                _queue(user_id, gid, preview.activity, reason)
                 result.pending += 1
+                log(gid, a, "review", f"Waiting for review: {reason[0].lower()}{reason[1:]}", start)
             processed.append(gid)
         except FitParseError as e:
             result.errors.append(f"{name} ({start:%b %d}): {e}")
             processed.append(gid)                 # a bad file won't get better on retry
+            log(gid, a, "error", f"Couldn't read the file: {e}", start)
         except GarminRateLimited as e:
             result.errors.append(str(e))
             result.more = True
+            log(gid, a, "error", f"{e} It will be tried again next sync.", start)
             break
         except (GarminApiError, GarminImportError) as e:
             result.errors.append(f"{name} ({start:%b %d}): {e}")   # retried next sync
+            log(gid, a, "error", f"{e} It will be tried again next sync.", start)
         except Exception as e:  # noqa: BLE001 - one bad activity must not stop the rest
             logger.exception(f"Garmin sync failed for activity {gid}")
             result.errors.append(f"{name} ({start:%b %d}): unexpected error ({type(e).__name__})")
+            log(gid, a, "error", f"Unexpected error ({type(e).__name__}). It will be tried again next sync.", start)
 
-    now = _now()
     result.last_sync_at = now
+    # Activity log: this sync's outcomes first, then older ones not seen again.
+    fresh_ids = {d.garmin_activity_id for d in result.details}
+    recent = [d.model_dump() for d in result.details]
+    recent += [e for e in (conn.get("recent_activity") or []) if e.get("garmin_activity_id") not in fresh_ids]
+    recent.sort(key=lambda e: _utc(e.get("started_at")) or now, reverse=True)
     result.pending_total = len(list(_pending_col(user_id).stream()))
     _conn_ref(user_id).update({
         "processed_ids": processed[-PROCESSED_KEEP:],
@@ -306,6 +345,7 @@ async def sync(user_id: str) -> GarminSyncResult:
         "last_error": "; ".join(result.errors)[:500] or None,
         "last_summary": {"imported": len(result.imported), "pending": result.pending, "skipped": result.skipped,
                          "errors": len(result.errors)},
+        "recent_activity": recent[:LOG_KEEP],
     })
     logger.info(f"Garmin sync for {user_id}: {len(result.imported)} imported, {result.pending} to review, "
                 f"{result.skipped} skipped, {len(result.errors)} errors")
