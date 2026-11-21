@@ -35,6 +35,7 @@
   const INCLUDE_EX_KEY = 'tabataKBIncludeExercises';
   const EXCLUDE_EX_KEY = 'tabataKBExcludeExercises';
   const VARIETY_KEY = 'tabataKBExerciseVariety';
+  const START_SIDE_KEY = 'tabataKBStartSide';
   const NOTES_KEY = 'tabataKBNotes';
   const WINDOW_MODE_KEY = 'tabataKBWindowMode';
   const NOTES_MAX = 500;
@@ -110,6 +111,10 @@
   //   Set            = N Rounds back-to-back (classic Tabata = 8 Rounds = 4 min)
   //   Set Rest       = recovery between Sets
   const SET_REST_SECONDS = 60;
+  // Lead-in after tapping Start so there's time to get to the kettlebell
+  // before the first work interval begins.
+  const GET_READY_SECONDS = 5;
+  let wasCountingDown = false;
   const MIN_SETS = 1;
   const MAX_SETS = 12;
 
@@ -120,6 +125,7 @@
   let selectedRoundsPerSet = 8;
   let selectedLength = 20; // preset minutes
   let selectedVariety = 'mixed';
+  let selectedStartSide = 'left'; // which hand single-side moves start on
   // Chip id → 'include' | 'exclude'. Absent = neutral.
   let exercisePrefs = {};
 
@@ -146,6 +152,7 @@
       setsUpBtn: $('setsUpBtn'),
       roundsPerSetButtons: $('roundsPerSetButtons'),
       varietyButtons: $('varietyButtons'),
+      startSideButtons: $('startSideButtons'),
       notesInput: $('notesInput'),
       notesCount: $('notesCount'),
       totalTimeHelper: $('totalTimeHelper'),
@@ -388,6 +395,49 @@
     </div>`;
   }
 
+  // ── Start side (single-arm / single-leg moves) ─────────────────────────
+  //
+  // Plans come out left-first (generator and library alike). When the user
+  // prefers right, flip each unilateral move inside each set so its first
+  // round is on the right. Idempotent: a plan already starting on the
+  // preferred side is left untouched.
+
+  const SIDE_SUFFIX_RE = /\s*\((L|R)\)\s*$/;
+
+  function segSide(seg) {
+    if (seg.side === 'left' || seg.side === 'right') return seg.side;
+    const m = SIDE_SUFFIX_RE.exec(seg.name || '') || SIDE_SUFFIX_RE.exec(seg.exercise || '');
+    return m ? (m[1] === 'L' ? 'left' : 'right') : null;
+  }
+
+  function flipSuffix(str) {
+    return (str || '').replace(/\((L|R)\)(\s*)$/, (_, c, ws) => `(${c === 'L' ? 'R' : 'L'})${ws}`);
+  }
+
+  function flipSegmentSide(seg) {
+    if (seg.side === 'left') seg.side = 'right';
+    else if (seg.side === 'right') seg.side = 'left';
+    if (seg.name) seg.name = flipSuffix(seg.name);
+    if (seg.exercise) seg.exercise = flipSuffix(seg.exercise);
+  }
+
+  function applyStartSide(plan, side) {
+    if (!plan || !Array.isArray(plan.segments)) return plan;
+    const want = side === 'right' ? 'right' : 'left';
+    const groups = new Map(); // "set|move" → unilateral work segments
+    for (const seg of plan.segments) {
+      if (seg.segment_type !== 'work' || !segSide(seg)) continue;
+      const move = (seg.exercise || seg.name || '').replace(SIDE_SUFFIX_RE, '').trim().toLowerCase();
+      const key = `${seg.set_index || 1}|${move}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(seg);
+    }
+    groups.forEach((segs) => {
+      if (segSide(segs[0]) !== want) segs.forEach(flipSegmentSide);
+    });
+    return plan;
+  }
+
   function computeSegmentOffsets() {
     segmentOffsets = [];
     let acc = 0;
@@ -401,6 +451,29 @@
     if (!workoutStartedAt) return 0;
     const ref = pausedAt ? pausedAt.getTime() : Date.now();
     return Math.max(0, Math.floor((ref - workoutStartedAt.getTime()) / 1000));
+  }
+
+  /**
+   * Seconds left in the get-ready lead-in. Start sets workoutStartedAt
+   * GET_READY_SECONDS in the future, so elapsed time stays at 0 (and pause /
+   * resume / session restore all keep working) until the countdown ends.
+   */
+  function getCountdownRemaining() {
+    if (!workoutStartedAt) return 0;
+    const ref = pausedAt ? pausedAt.getTime() : Date.now();
+    return Math.max(0, Math.ceil((workoutStartedAt.getTime() - ref) / 1000));
+  }
+
+  function showCountdownDisplay(remaining) {
+    const first = segments[0];
+    els.segmentName.textContent = 'GET READY';
+    els.segmentTime.textContent = String(remaining);
+    els.totalElapsed.textContent = formatTime(0);
+    const firstName = first ? (first.exercise || first.name || '') : '';
+    els.currentExerciseName.textContent = firstName ? `Up first: ${firstName}` : 'Get ready';
+    els.segmentCue.textContent = 'Grab your kettlebell';
+    setProgressColor('rest');
+    updateProgressArc(remaining / GET_READY_SECONDS);
   }
 
   function deriveSegmentState() {
@@ -440,6 +513,8 @@
     const seg = segments[currentSegmentIndex];
     if (!seg) return;
 
+    const countdown = getCountdownRemaining();
+
     // Timer center — show the full human label
     const typeLabel = {
       work: 'WORK INTERVAL',
@@ -465,7 +540,12 @@
     // Set / Round badges
     if (workoutPlan) {
       if (seg.segment_type === 'work' || seg.segment_type === 'rest' || seg.segment_type === 'set_rest') {
-        els.segmentSet.textContent = `${seg.set_index || 1}/${workoutPlan.sets}`;
+        // Set rest belongs to the upcoming set: the counter flips to the next
+        // set as soon as the previous one finishes, not when work resumes.
+        const setNum = seg.segment_type === 'set_rest'
+          ? Math.min((seg.set_index || 1) + 1, workoutPlan.sets || 1)
+          : (seg.set_index || 1);
+        els.segmentSet.textContent = `${setNum}/${workoutPlan.sets}`;
         if (seg.segment_type === 'work' || seg.segment_type === 'rest') {
           // User-built workouts: rounds-per-section varies, so prefer the
           // segment's own section_rounds when available.
@@ -510,6 +590,9 @@
       lastScrolledIndex = currentSegmentIndex;
       scrollActiveRowToTop(activeRow, 'smooth');
     }
+
+    // Get-ready lead-in overrides the timer face until the first interval.
+    if (countdown > 0) showCountdownDisplay(countdown);
   }
 
   // ── Phone layout: live badges up top + "View all" sheet ────────────────
@@ -760,6 +843,9 @@
 
   function restoreSession(data) {
     workoutPlan = data.workoutPlan;
+    // A started workout keeps its order; a not-yet-started one follows the
+    // current start-side preference.
+    if (!data.workoutStartedAt) applyStartSide(workoutPlan, selectedStartSide);
     segments = workoutPlan.segments || [];
     computeSegmentOffsets();
 
@@ -810,6 +896,22 @@
   // ── Timer ──────────────────────────────────────────────────────────────
 
   function tick() {
+    const countdown = getCountdownRemaining();
+    if (countdown > 0) {
+      wasCountingDown = true;
+      if (countdown <= 3) playBeep(660, 0.12);
+      deriveSegmentState();
+      updateSegmentDisplay();
+      saveSession(true);
+      return;
+    }
+    if (wasCountingDown) {
+      // Countdown just hit zero — the first work interval starts now.
+      wasCountingDown = false;
+      playBeep(1100, 0.3);
+      vibrate(300);
+    }
+
     const { segmentChanged, finished } = deriveSegmentState();
 
     if (finished) {
@@ -861,14 +963,17 @@
   // ── Workout Controls ───────────────────────────────────────────────────
 
   function onStart() {
-    workoutStartedAt = new Date();
+    workoutStartedAt = new Date(Date.now() + GET_READY_SECONDS * 1000);
     pausedAt = null;
+    wasCountingDown = true;
     deriveSegmentState();
     updateSegmentDisplay();
     startTimer();
     requestWakeLock();
 
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    // Short beep inside the tap so mobile browsers unlock audio for the cues.
+    playBeep(660, 0.12);
 
     if (els.audioHint) els.audioHint.hidden = true;
 
@@ -1073,6 +1178,7 @@
         workoutPlan.library_mode = 'reuse';
         delete workoutPlan.library;
       }
+      applyStartSide(workoutPlan, selectedStartSide);
       segments = workoutPlan.segments || [];
 
       if (segments.length === 0) throw new Error('Empty workout plan received');
@@ -1209,6 +1315,18 @@
       localStorage.setItem(FOCUS_KEY, JSON.stringify(Array.from(selectedFocus)));
     } catch (e) { /* ignore */ }
     refreshGenerateButtonState();
+  }
+
+  function setStartSide(value) {
+    selectedStartSide = value === 'right' ? 'right' : 'left';
+    if (els.startSideButtons) {
+      els.startSideButtons.querySelectorAll('.tk-side-btn').forEach((b) => {
+        const on = b.dataset.value === selectedStartSide;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    try { localStorage.setItem(START_SIDE_KEY, selectedStartSide); } catch (e) { /* ignore */ }
   }
 
   function setVariety(value) {
@@ -1401,6 +1519,12 @@
       if (!Number.isNaN(n)) setRoundsPerSet(n);
     });
 
+    if (els.startSideButtons) {
+      els.startSideButtons.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tk-side-btn');
+        if (btn) setStartSide(btn.dataset.value);
+      });
+    }
     if (els.varietyButtons) {
       els.varietyButtons.addEventListener('click', (e) => {
         const btn = e.target.closest('.tk-variety-btn');
@@ -1498,6 +1622,10 @@
       const v = localStorage.getItem(VARIETY_KEY);
       if (v && VARIETY_LABELS[v]) selectedVariety = v;
     } catch (e) { /* ignore */ }
+
+    try {
+      setStartSide(localStorage.getItem(START_SIDE_KEY) || 'left');
+    } catch (e) { setStartSide('left'); }
 
     try {
       const savedNotes = localStorage.getItem(NOTES_KEY);
@@ -1602,6 +1730,7 @@
   /** Put a plan on the ready screen (not started). */
   function showReadyPlan(plan) {
     workoutPlan = plan;
+    applyStartSide(plan, selectedStartSide);
     segments = plan.segments;
     computeSegmentOffsets();
     currentSegmentIndex = 0;

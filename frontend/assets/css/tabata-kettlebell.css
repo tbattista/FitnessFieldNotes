@@ -879,3 +879,20 @@ body.tk-workout-active .content-wrapper > .container-p-y {
     color: var(--bs-secondary-color, #9ca3af);
   }
 }
+
+/* Single-side start picker (under step 3) */
+.tk-start-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.tk-start-side .tk-advanced-hint {
+  margin: 0;
+}
+
+.tk-side-btn {
+  min-width: 64px;
+}

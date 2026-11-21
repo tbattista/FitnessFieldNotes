@@ -72,6 +72,7 @@ test.describe('Tabata Kettlebell Page', () => {
       localStorage.removeItem('tabataKBExerciseVariety');
       localStorage.removeItem('tabataKBNotes');
       localStorage.removeItem('tabataKBWindowMode');
+      localStorage.removeItem('tabataKBStartSide');
       sessionStorage.removeItem('tabataKettlebellSession');
     });
   });
@@ -337,6 +338,53 @@ test.describe('Tabata Kettlebell Page', () => {
     // Resume button visible (was paused)
     await expect(page.locator('#resumeBtn')).toBeVisible();
     await expect(page.locator('#startBtn')).toHaveClass(/d-none/);
+  });
+
+  test('Start runs a 5-second get-ready countdown before the first work interval', async ({ page }) => {
+    const session = { ...seededSession(0), workoutStartedAt: null, pausedAt: null };
+    await openSeeded(page, session);
+
+    await page.locator('#startBtn').click();
+    await expect(page.locator('#segmentName')).toHaveText('GET READY');
+    const first = Number((await page.locator('#segmentTime').textContent() || '').trim());
+    expect(first).toBeGreaterThanOrEqual(4);
+    expect(first).toBeLessThanOrEqual(5);
+    await expect(page.locator('#currentExerciseName')).toContainText('KB Goblet Squat');
+    await expect(page.locator('#totalElapsed')).toHaveText('00:00');
+
+    // After the lead-in the first work interval starts at the top.
+    await expect(page.locator('#segmentName')).toHaveText('WORK INTERVAL', { timeout: 8000 });
+    await expect(page.locator('#currentExerciseName')).toHaveText('KB Goblet Squat');
+    const segTime = (await page.locator('#segmentTime').textContent() || '').trim();
+    const [m, s] = segTime.split(':').map(Number);
+    expect(m * 60 + s).toBeGreaterThanOrEqual(18);
+  });
+
+  test('set counter flips to the next set as soon as the set rest starts', async ({ page }) => {
+    // Set 1 = 8 × 30s = 240s, then a 60s set rest (240-300s). 250s in = set rest.
+    await openSeeded(page, seededSession(250));
+    await expect(page.locator('#currentExerciseName')).toHaveText('Set Rest');
+    await expect(page.locator('#segmentSet')).toHaveText('2/3');
+  });
+
+  test('start-side picker defaults to Left, persists Right, and flips single-side order', async ({ page }) => {
+    await stubAuth(page);
+    await page.goto(`${BASE}/tabata-kettlebell`);
+    await expect(page.locator('#startSideButtons .tk-side-btn.active')).toHaveText('Left');
+    await page.locator('#startSideButtons .tk-side-btn[data-value="right"]').click();
+    await expect(page.locator('#startSideButtons .tk-side-btn.active')).toHaveText('Right');
+    expect(await page.evaluate(() => localStorage.getItem('tabataKBStartSide'))).toBe('right');
+
+    // A not-yet-started left-first plan now starts single-arm work on the right.
+    const session = { ...seededSession(0), workoutStartedAt: null, pausedAt: null };
+    await page.evaluate((data) => {
+      sessionStorage.setItem('tabataKettlebellSession', JSON.stringify(data));
+    }, session);
+    await page.reload();
+    await expect(page.locator('#workoutState')).toBeVisible({ timeout: 8000 });
+    const names = page.locator('#segmentList .spin-segment-row .spin-segment-name');
+    await expect(names.nth(2)).toHaveText('Single-Arm KB Swing (R)');
+    await expect(names.nth(4)).toHaveText('Single-Arm KB Swing (L)');
   });
 
   test('intercept generate request and verify body payload', async ({ page }) => {
