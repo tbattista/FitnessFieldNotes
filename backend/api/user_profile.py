@@ -101,6 +101,7 @@ async def delete_user_account(
             'exercise_history',
             'garmin_exercise_map',
             'garmin_pending',
+            'garmin_activities',
             'integrations'
         ]
         

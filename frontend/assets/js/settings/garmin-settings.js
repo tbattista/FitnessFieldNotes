@@ -1,7 +1,7 @@
 /**
  * Garmin settings card: connect a Garmin Personal API key, sync, review
  * setting, disconnect. Requires window.garminImportService.
- * @version 1.1.2
+ * @version 2.0.0
  */
 (function () {
     'use strict';
@@ -22,12 +22,6 @@
             ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }
             : { month: 'short', day: 'numeric', year: 'numeric' };
         return new Date(iso).toLocaleString([], opts);
-    }
-
-    function todayInput() {
-        const d = new Date();
-        const pad = n => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     }
 
     function root() {
@@ -78,11 +72,6 @@
                 <option value="">Not sure</option>
               </select>
             </div>
-            ${isReplace ? '' : `
-            <div class="col-sm-6">
-              <label class="form-label" for="garminSyncFrom">Import activities from</label>
-              <input type="date" class="form-control" id="garminSyncFrom" value="${todayInput()}" max="${todayInput()}">
-            </div>`}
           </div>
           <div class="d-flex gap-2">
             <button type="button" class="btn btn-primary" id="garminConnectBtn">${isReplace ? 'Save new key' : 'Connect Garmin'}</button>
@@ -93,8 +82,8 @@
 
     function renderNotConnected() {
         root().innerHTML = `
-          <p class="mb-3">Connect your Garmin account to pull in watch workouts with <strong>Sync</strong> on the
-            History page, instead of uploading files.</p>
+          <p class="mb-3">Connect your Garmin account so <strong>Sync</strong> on the
+            <a href="/garmin.html">Garmin page</a> lists all your watch activities, instead of uploading files.</p>
           ${connectFormHtml(false)}`;
         bindConnect(false);
     }
@@ -122,39 +111,11 @@
         return parts.length ? ` · ${parts.join(', ')}` : ' · nothing new';
     }
 
-    const OUTCOME = {
-        imported: ['bg-label-success', 'Imported'],
-        review: ['bg-label-warning', 'To review'],
-        skipped: ['bg-label-secondary', 'Skipped'],
-        error: ['bg-label-danger', 'Failed'],
-    };
-
-    function activityLogHtml(entries) {
-        if (!entries || !entries.length) return '';
-        const items = entries.map(e => {
-            const [cls, label] = OUTCOME[e.outcome] || ['bg-label-secondary', e.outcome];
-            return `
-              <li class="d-flex gap-2 align-items-start mb-2" data-garmin-log="${esc(e.outcome)}">
-                <span class="badge ${cls} flex-shrink-0 mt-1">${esc(label)}</span>
-                <span>
-                  <span class="fw-medium">${esc(e.name)}</span>
-                  <span class="text-muted"> · ${esc(fmtDate(e.started_at, true))}</span>
-                  <span class="d-block text-muted">${esc(e.detail)}</span>
-                </span>
-              </li>`;
-        }).join('');
-        return `
-          <details class="mt-3" id="garminActivityLog" open>
-            <summary class="small fw-medium">What sync did with each activity</summary>
-            <ul class="list-unstyled small mt-2 mb-0">${items}</ul>
-          </details>`;
-    }
-
     function renderConnected() {
         const s = status;
         if (replacing) {
-            root().innerHTML = `<p class="mb-3">Replace the key ending ${esc(s.key_hint)}. Sync carries on from where it
-                                left off.</p>${connectFormHtml(true)}`;
+            root().innerHTML = `<p class="mb-3">Replace the key ending ${esc(s.key_hint)}. Your Garmin
+                                list and imports stay as they are.</p>${connectFormHtml(true)}`;
             bindConnect(true);
             return;
         }
@@ -167,58 +128,44 @@
               ${s.status === 'needs_attention' ? 'Needs attention' : 'Connected'}</span>
             <span class="small text-muted">Key ending ${esc(s.key_hint)}</span>
           </div>
-          <div class="small text-muted" id="garminStartRow">Importing activities from
-            <span id="garminStartDate">${esc(fmtDate(s.sync_from))}</span>
-            · <a href="#" id="garminChangeStart">Change</a></div>
           <div class="small text-muted" id="garminLastSync">${s.last_sync_at
               ? `Last sync ${esc(fmtDate(s.last_sync_at, true))}${esc(summaryText(s.last_summary))}`
               : 'Not synced yet'}</div>
           ${expiryHtml(s)}
-          ${s.pending_count ? `<div class="small mt-1"><a href="/workout-history.html?garmin=review" id="garminReviewLink">Review ${s.pending_count}
-              ${s.pending_count === 1 ? 'activity' : 'activities'} waiting</a></div>` : ''}
-          ${activityLogHtml(s.recent_activity)}
+          <div class="small mt-1"><a href="/garmin.html" id="garminPageLink">${s.pending_count
+              ? `Review ${s.pending_count} ${s.pending_count === 1 ? 'activity' : 'activities'} on the Garmin page`
+              : 'Open the Garmin page'}</a></div>
 
           <div class="d-flex justify-content-between align-items-center my-3">
             <div class="me-3">
-              <label class="form-check-label fw-medium" for="garminReviewAll">Review every import</label>
-              <div class="form-text mt-0">Off: activities that clearly match are saved automatically and you can
-                undo them. On: everything waits for you to check it.</div>
+              <label class="form-check-label fw-medium" for="garminAutoImport">Import clear matches automatically</label>
+              <div class="form-text mt-0">Off: every synced activity waits for you on the Garmin page. On: ones
+                whose exercises you've already named, and that clearly match, are saved for you (you can undo them).</div>
             </div>
             <div class="form-check form-switch mb-0 flex-shrink-0">
-              <input class="form-check-input" type="checkbox" id="garminReviewAll" ${s.review_all ? 'checked' : ''}>
+              <input class="form-check-input" type="checkbox" id="garminAutoImport" ${s.auto_import ? 'checked' : ''}>
             </div>
           </div>
 
           <div class="d-flex flex-wrap gap-2">
             <button type="button" class="btn btn-primary" id="garminSyncNow"><i class="bx bx-refresh me-1"></i>Sync now</button>
-            <button type="button" class="btn btn-outline-secondary" id="garminRecheck"
-                    title="Look at every activity since the start date again. Nothing is imported twice.">Check again</button>
             <button type="button" class="btn btn-outline-secondary" id="garminReplaceKey">Replace key</button>
             <button type="button" class="btn btn-outline-danger" id="garminDisconnect">Disconnect</button>
           </div>
           <div id="garminSettingsMessage" class="d-none"></div>`;
 
-        document.getElementById('garminReviewAll').onchange = async e => {
+        document.getElementById('garminAutoImport').onchange = async e => {
             try {
-                status = await window.garminImportService.updateConnection({ review_all: e.target.checked });
-                message(e.target.checked ? 'Every synced activity will wait for review.'
-                    : 'Clear matches will be saved automatically.', 'success');
+                status = await window.garminImportService.updateConnection({ auto_import: e.target.checked });
+                message(e.target.checked ? 'Clear matches will be imported automatically.'
+                    : 'Every synced activity will wait for you on the Garmin page.', 'success');
             } catch (err) {
                 e.target.checked = !e.target.checked;
                 message(esc(err.message), 'danger');
             }
         };
         document.getElementById('garminSyncNow').onclick = syncNow;
-        document.getElementById('garminRecheck').onclick = async () => {
-            try {
-                await window.garminImportService.updateConnection({ recheck: true });
-                await syncNow();
-            } catch (e) {
-                message(esc(e.message), 'danger');
-            }
-        };
         document.getElementById('garminReplaceKey').onclick = () => { replacing = true; renderConnected(); };
-        document.getElementById('garminChangeStart').onclick = e => { e.preventDefault(); editStartDate(); };
         document.getElementById('garminDisconnect').onclick = disconnect;
     }
 
@@ -242,54 +189,20 @@
                 return;
             }
             const expiry = document.getElementById('garminKeyExpiry').value;
-            const fromInput = document.getElementById('garminSyncFrom');
-            const syncFrom = fromInput && fromInput.value ? new Date(`${fromInput.value}T00:00:00`).toISOString() : null;
             const btn = document.getElementById('garminConnectBtn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking key…';
             try {
-                status = await window.garminImportService.connect(key, expiry ? Number(expiry) : null, syncFrom);
+                status = await window.garminImportService.connect(key, expiry ? Number(expiry) : null);
                 keyInput.value = '';
                 replacing = false;
                 render();
-                message(isReplace ? 'Key replaced.' : 'Garmin connected. Use Sync now, or Sync on the History page.',
+                message(isReplace ? 'Key replaced.'
+                    : 'Garmin connected. Press Sync now, then review your activities on the <a href="/garmin.html">Garmin page</a>.',
                     'success');
             } catch (e) {
                 btn.disabled = false;
                 btn.textContent = isReplace ? 'Save new key' : 'Connect Garmin';
-                message(esc(e.message), 'danger');
-            }
-        };
-    }
-
-    function dateInputValue(iso) {
-        const d = iso ? new Date(iso) : new Date();
-        const pad = n => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    }
-
-    function editStartDate() {
-        const row = document.getElementById('garminStartRow');
-        row.innerHTML = `
-          <label class="form-label small mb-1" for="garminNewStart">Import activities from</label>
-          <div class="d-flex gap-2 align-items-center">
-            <input type="date" class="form-control form-control-sm w-auto" id="garminNewStart"
-                   value="${dateInputValue(status.sync_from)}" max="${todayInput()}">
-            <button type="button" class="btn btn-sm btn-primary" id="garminSaveStart">Save and sync</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="garminCancelStart">Cancel</button>
-          </div>
-          <div class="form-text">Everything from this date is checked. Sessions already in your history are skipped,
-            so nothing is imported twice.</div>`;
-        document.getElementById('garminCancelStart').onclick = () => render();
-        document.getElementById('garminSaveStart').onclick = async () => {
-            const value = document.getElementById('garminNewStart').value;
-            if (!value) return;
-            try {
-                status = await window.garminImportService.updateConnection({
-                    sync_from: new Date(`${value}T00:00:00`).toISOString() });
-                render();
-                await syncNow();
-            } catch (e) {
                 message(esc(e.message), 'danger');
             }
         };
@@ -314,7 +227,7 @@
             return;
         }
         const extra = result.pending_total
-            ? ` <a href="/workout-history.html?garmin=review">Review them now</a>` : '';
+            ? ` <a href="/garmin.html">Review them on the Garmin page</a>` : '';
         const errors = (result.errors || []).map(e => `<li>${esc(e)}</li>`).join('');
         message(`${esc(window.garminImportService.describeSync(result))}.${extra}${errors ? `<ul class="mb-0 mt-1">${errors}</ul>` : ''}`,
             result.errors && result.errors.length ? 'warning' : 'success');

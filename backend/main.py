@@ -525,6 +525,20 @@ async def serve_spin_ride():
             status_code=404
         )
 
+@app.get("/garmin", response_class=HTMLResponse)
+@app.get("/garmin.html", response_class=HTMLResponse)
+async def serve_garmin():
+    """Garmin page: every Garmin activity, review and import status"""
+    try:
+        with open("frontend/garmin.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Garmin page not found</h1><p>Please ensure frontend/garmin.html exists</p>",
+            status_code=404
+        )
+
+
 @app.get("/spin-ride-history", response_class=HTMLResponse)
 @app.get("/spin-ride-history.html", response_class=HTMLResponse)
 async def serve_spin_ride_history():

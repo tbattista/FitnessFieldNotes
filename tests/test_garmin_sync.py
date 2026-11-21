@@ -1,7 +1,8 @@
 """
 Backend tests for Garmin Personal API sync: key encryption, the HTTP client
-(against httpx.MockTransport), connect/sync/review/disconnect against an
-in-memory Firestore, and the owner-only gate on the API.
+(against httpx.MockTransport), the Garmin list (sync lists everything; files
+download on review), auto-import, dismiss, disconnect, against an in-memory
+Firestore, and the owner-only gate on the API.
 
     python tests/test_garmin_sync.py      (also collectable by pytest)
 """
@@ -40,9 +41,10 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def listing(gid, start, type_key, manual=False, name=None):
+def listing(gid, start, type_key, manual=False, name=None, sets=None):
     return {"activityId": gid, "activityName": name or type_key, "manualActivity": manual,
-            "activityType": {"typeKey": type_key}, "startTimeGMT": start.strftime("%Y-%m-%d %H:%M:%S")}
+            "activityType": {"typeKey": type_key}, "startTimeGMT": start.strftime("%Y-%m-%d %H:%M:%S"),
+            "duration": 1800.0, "calories": 300.0, "averageHR": 130.0, "summarizedExerciseSets": sets or []}
 
 
 class FakeClient:
@@ -77,18 +79,19 @@ def setup():
     import_service.fds = fake
     sync_service.client_factory = FakeClient
     FakeClient.activities = [
-        listing(1, CONNECTED - timedelta(days=2), "running"),              # before sync_from: ignored
+        listing(1, CONNECTED - timedelta(days=2), "running"),              # older run
         listing(2, CONNECTED + timedelta(hours=1), "strength_training", manual=True),
         listing(3, RUN_START, "treadmill_running", name="Treadmill Running"),
-        listing(4, STRENGTH_START, "strength_training", name="Strength"),
+        listing(4, STRENGTH_START, "strength_training", name="Strength",
+                sets=[{"category": "SQUAT", "sets": 2, "reps": 17},
+                      {"category": "DEADLIFT", "subCategory": "BARBELL_DEADLIFT", "sets": 1, "reps": 9}]),
     ]
     FakeClient.files = {3: cardio_file(RUN_START, 1831.41, 3169.22, serial=99),
                         4: strength_file(STRENGTH_START, SETS, serial=99)}
     FakeClient.downloads = []
     FakeClient.list_calls = []
     FakeClient.reject = False
-    run(sync_service.connect(UID, OWNER, GarminConnectRequest(api_key=KEY, expires_in_days=90,
-                                                               sync_from=CONNECTED)))
+    run(sync_service.connect(UID, OWNER, GarminConnectRequest(api_key=KEY, expires_in_days=90)))
     return fake
 
 
@@ -169,120 +172,161 @@ def test_connect_stores_key_encrypted():
         assert "didn't accept" in str(e)
 
 
-def test_sync_imports_confident_and_queues_the_rest():
-    fake = setup()
+def pending_ids():
+    return [p.id for p in run(sync_service.list_activities(UID, "review"))]
+
+
+def status_of(gid):
+    return next(i for i in run(sync_service.list_activities(UID)) if i.id == gid)
+
+
+def test_sync_lists_everything_without_downloading():
+    setup()
     result = run(sync_service.sync(UID))
-    # Run (cardio, nothing else that day) imports straight away; strength has
-    # unconfirmed exercise names, so it waits for review.
-    assert [i.garmin_activity_id for i in result.imported] == ["3"]
-    assert result.pending == 1 and result.pending_total == 1
-    assert result.skipped == 1               # the manual activity
-    assert FakeClient.downloads == [3, 4]     # oldest first; the old run was never downloaded
-    cardio = fake._col(UID, "cardio_sessions").stream()
-    assert len(cardio) == 1 and cardio[0].to_dict()["source"] == "garmin"
-
-    pending = run(sync_service.list_pending(UID))
-    assert [p.id for p in pending] == ["4"] and pending[0].reason == "New exercise names to confirm"
-
-    # Every activity in the window is logged with its outcome and reason.
+    # No start date: everything Garmin has is listed, newest first. Nothing is
+    # downloaded until the user opens an activity. Hand-entered ones are skipped.
+    assert pending_ids() == ["4", "3", "1"]
+    assert FakeClient.downloads == [] and result.imported == []
+    assert (result.pending, result.pending_total, result.skipped) == (3, 3, 1)
+    strength = status_of("4")
+    assert strength.kind == "strength" and strength.summary == "Squat 2 sets, Barbell Deadlift 1 set"
+    assert (strength.duration_minutes, strength.calories, strength.avg_heart_rate) == (30.0, 300, 130)
     log = {d.garmin_activity_id: d for d in result.details}
-    assert (log["2"].outcome, log["3"].outcome, log["4"].outcome) == ("skipped", "imported", "review")
-    assert "by hand" in log["2"].detail and "new exercise names" in log["4"].detail
-    assert "1" not in log                       # before the start date: not considered
-    recent = run(sync_service.status(UID, OWNER)).recent_activity
-    assert [e.garmin_activity_id for e in recent] == ["4", "3", "2"]   # newest first
+    assert log["2"].outcome == "skipped" and log["4"].outcome == "review"
+    # The hand-entered one stays visible on the Garmin page, with why it was skipped.
+    manual = status_of("2")
+    assert manual.status == "skipped" and "by hand" in manual.detail
 
-    # Nothing new on the second sync, and nothing re-downloaded.
     again = run(sync_service.sync(UID))
-    assert (len(again.imported), again.pending, again.skipped) == (0, 0, 0)
-    assert FakeClient.downloads == [3, 4]
+    assert (again.pending, again.skipped) == (0, 0) and pending_ids() == ["4", "3", "1"]
 
-    # Review the queued strength session: preview, confirm, queue empties.
-    preview = run(sync_service.pending_preview(UID, "4"))
-    assert preview.activity.exercises[0].garmin_key == "squat"
-    run(import_service.confirm(UID, GarminImportConfirmRequest(
+
+def test_review_downloads_once_then_import_removes_it():
+    fake = setup()
+    run(sync_service.sync(UID))
+    preview = run(sync_service.activity_preview(UID, "4"))
+    assert preview.activity.exercises[0].garmin_key == "squat" and FakeClient.downloads == [4]
+    run(sync_service.activity_preview(UID, "4"))
+    assert FakeClient.downloads == [4]              # cached on the record
+
+    saved = run(import_service.confirm(UID, GarminImportConfirmRequest(
         activity=preview.activity, action="new", exercise_mappings={"squat": "Back Squat"}, pending_id="4")))
-    run(sync_service.dismiss_pending(UID, "4"))   # the API does this after a successful confirm
-    assert run(sync_service.list_pending(UID)) == []
-    assert run(sync_service.status(UID, OWNER)).last_summary == {"imported": 0, "pending": 0, "skipped": 0,
-                                                                  "errors": 0}
+    run(sync_service.mark_imported(UID, "4", saved))   # the API does this after a successful confirm
+    assert pending_ids() == ["3", "1"]
+    item = status_of("4")
+    assert (item.status, item.session_id, item.session_type) == ("imported", saved.session_id, "workout")
+    run(sync_service.sync(UID))
+    assert pending_ids() == ["3", "1"]              # imported one doesn't come back
+    assert len(fake._col(UID, "workout_sessions").stream()) == 1
+
+    # Undo puts it back on the review list.
+    run(import_service.undo(UID, saved.session_id, "workout"))
+    run(sync_service.after_undo(UID, saved.session_id))
+    assert status_of("4").status == "review" and status_of("4").session_id is None
 
 
-def test_saved_names_let_strength_auto_import():
+def test_dismissed_activities_stay_dismissed():
+    setup()
+    run(sync_service.sync(UID))
+    run(sync_service.set_status(UID, "1", "dismissed"))
+    assert run(sync_service.dismiss_all(UID)) == 2
+    assert pending_ids() == [] and status_of("1").status == "dismissed"
+    FakeClient.activities.append(listing(9, STRENGTH_START + timedelta(days=1), "hiit", name="HIIT"))
+    result = run(sync_service.sync(UID))
+    assert pending_ids() == ["9"] and result.pending == 1   # only the genuinely new one
+    run(sync_service.set_status(UID, "1", "review"))        # restore a dismissed one
+    assert pending_ids() == ["9", "1"]
+
+
+def test_already_imported_sessions_are_left_out():
+    setup()
+    # The strength session was uploaded as a file before sync was connected.
+    preview = run(import_service.build_preview(UID, FakeClient.files[4]))
+    run(import_service.confirm(UID, GarminImportConfirmRequest(activity=preview.activity, action="new")))
+    result = run(sync_service.sync(UID))
+    assert "4" not in pending_ids()
+    assert {d.garmin_activity_id: d.detail for d in result.details}["4"] == "Already in your history"
+    item = status_of("4")
+    assert item.status == "imported" and item.session_type == "workout" and item.source == "sync"
+    # The upload isn't listed twice (as an upload and as a synced record).
+    assert len([i for i in run(sync_service.list_activities(UID)) if i.status == "imported"]) == 1
+
+
+def test_auto_import_saves_clear_matches():
     fake = setup()
     run(import_service.save_exercise_map(UID, {"squat": "Back Squat", "deadlift/barbell_deadlift": "Deadlift"}))
+    FakeClient.files[1] = cardio_file(CONNECTED - timedelta(days=2), 1500, 4000, serial=1)
+    status = run(sync_service.update(UID, OWNER, auto_import=True))
+    assert status.auto_import
     result = run(sync_service.sync(UID))
-    assert sorted(i.garmin_activity_id for i in result.imported) == ["3", "4"] and result.pending == 0
+    assert sorted(i.garmin_activity_id for i in result.imported) == ["1", "3", "4"] and pending_ids() == []
+    assert FakeClient.downloads == [1, 3, 4]        # oldest first
     sessions = [s.to_dict() for s in fake._col(UID, "workout_sessions").stream()]
     assert [e["exercise_name"] for e in sessions[0]["exercises_performed"]] == ["Back Squat", "Deadlift"]
 
 
-def test_review_all_queues_everything():
-    fake = setup()
-    run(sync_service.update(UID, OWNER, review_all=True))
+def test_auto_import_lists_what_needs_a_decision():
+    setup()
+    FakeClient.files[1] = cardio_file(CONNECTED - timedelta(days=2), 1500, 4000, serial=1)
+    run(sync_service.update(UID, OWNER, auto_import=True))
     result = run(sync_service.sync(UID))
-    assert result.imported == [] and result.pending == 2
-    assert {p.reason for p in run(sync_service.list_pending(UID))} == {"You review every import"}
-    assert fake._col(UID, "cardio_sessions").stream() == []
-
-
-def test_replacing_key_keeps_sync_position():
-    fake = setup()
-    run(sync_service.sync(UID))
-    processed = conn_doc(fake)["processed_ids"]
-    run(sync_service.connect(UID, OWNER, GarminConnectRequest(api_key="replacement-key-9876")))
-    doc = conn_doc(fake)
-    assert doc["key_hint"] == "9876" and doc["processed_ids"] == processed
-    assert doc["sync_from"] == CONNECTED
+    assert sorted(i.garmin_activity_id for i in result.imported) == ["1", "3"]
+    items = run(sync_service.list_activities(UID, "review"))
+    assert [i.id for i in items] == ["4"] and items[0].detail == "New exercise names to confirm"
+    assert status_of("3").status == "imported" and status_of("3").session_type == "cardio"
     FakeClient.downloads = []
-    run(sync_service.sync(UID))
-    assert FakeClient.downloads == []          # nothing downloaded twice
+    run(sync_service.activity_preview(UID, "4"))
+    assert FakeClient.downloads == []               # file already fetched during auto-import
 
 
-def test_check_again_relooks_without_duplicating():
+def test_auto_import_works_in_batches_and_lists_page_back():
     fake = setup()
-    run(sync_service.sync(UID))
-    run(sync_service.update(UID, OWNER, review_all=None, recheck=True))
-    FakeClient.downloads = []
-    again = run(sync_service.sync(UID))
-    # The run was imported and the strength session is still queued: the run is
-    # downloaded and recognised as a duplicate; the queued one isn't touched.
-    assert FakeClient.downloads == [3] and again.imported == [] and again.pending == 0
-    assert {d.garmin_activity_id: d.outcome for d in again.details} == {"2": "skipped", "3": "skipped"}
-    assert len(fake._col(UID, "cardio_sessions").stream()) == 1
-
-
-def test_moving_start_date_back_pulls_older_activities():
-    fake = setup()
-    # 60 HIIT sessions on earlier days, newest first: more than one list page.
-    early = CONNECTED - timedelta(days=20)
-    for i in range(60):
+    early = CONNECTED - timedelta(days=40)
+    for i in range(110):
         gid = 100 + i
         start = early + timedelta(hours=8 * i)
         FakeClient.activities.append(listing(gid, start, "hiit", name="HIIT"))
         FakeClient.files[gid] = cardio_file(start, 900, 0, sport="training", sub_sport="hiit", serial=gid)
     FakeClient.files[1] = cardio_file(CONNECTED - timedelta(days=2), 1500, 4000, serial=1)
-    run(sync_service.sync(UID))
-    assert not [d for d in FakeClient.downloads if d >= 100]     # before the start date: untouched
-
-    run(sync_service.update(UID, OWNER, review_all=None, sync_from=early))
-    assert conn_doc(fake)["sync_from"] == early and conn_doc(fake)["processed_ids"] == []
-    FakeClient.list_calls, FakeClient.downloads = [], []
+    run(sync_service.update(UID, OWNER, auto_import=True))
     first = run(sync_service.sync(UID))
-    assert FakeClient.list_calls == [0, 50]       # paged back past the newest 50
+    assert FakeClient.list_calls == [0, 50, 100]    # paged back through all 114 activities
     assert first.more and len(FakeClient.downloads) == sync_service.MAX_DOWNLOADS_PER_RUN
-    assert FakeClient.downloads[0] == 100         # oldest first
     rounds = 1
-    while first.more and rounds < 20:
+    while first.more and rounds < 30:
         first = run(sync_service.sync(UID))
         rounds += 1
-    hiit = [s.to_dict() for s in fake._col(UID, "cardio_sessions").stream() if s.to_dict()["activity_type"] == "hiit"]
-    assert len(hiit) == 60 and rounds == 7
-    try:
-        run(sync_service.update(UID, OWNER, review_all=None, sync_from=datetime.now(timezone.utc) + timedelta(days=2)))
-        raise AssertionError("expected future date to be refused")
-    except import_service.GarminImportError:
-        pass
+    hiit = [s for s in fake._col(UID, "cardio_sessions").stream() if s.to_dict()["activity_type"] == "hiit"]
+    assert len(hiit) == 110 and rounds == 12        # 113 downloads, 10 per round
+
+
+def test_replacing_key_keeps_dismissals():
+    fake = setup()
+    run(sync_service.sync(UID))
+    run(sync_service.dismiss_all(UID))
+    run(sync_service.connect(UID, OWNER, GarminConnectRequest(api_key="replacement-key-9876")))
+    assert conn_doc(fake)["key_hint"] == "9876"
+    run(sync_service.sync(UID))
+    assert pending_ids() == []
+
+
+def test_old_review_list_is_migrated():
+    fake = setup()
+    fake._col(UID, "garmin_pending").document("4").set({"name": "Strength", "kind": "strength",
+                                                         "started_at": STRENGTH_START, "reason": "x"})
+    run(sync_service.sync(UID))
+    assert fake._col(UID, "garmin_pending").stream() == []
+    assert status_of("4").status == "review"
+
+
+def test_uploads_listed_without_sync():
+    fake = FakeFDS()
+    import_service.fds = fake
+    preview = run(import_service.build_preview(UID, FakeClient.files.get(4) or strength_file(STRENGTH_START, SETS)))
+    run(import_service.confirm(UID, GarminImportConfirmRequest(activity=preview.activity, action="new")))
+    items = run(sync_service.list_activities(UID))
+    assert len(items) == 1 and items[0].source == "upload" and items[0].status == "imported"
+    assert items[0].session_type == "workout" and items[0].id.startswith("session:workout:")
 
 
 def test_rejected_key_flags_connection():
@@ -292,7 +336,7 @@ def test_rejected_key_flags_connection():
         run(sync_service.sync(UID))
         raise AssertionError("expected error")
     except import_service.GarminImportError as e:
-        assert e.status_code == 401 and "reconnect" in str(e).lower()
+        assert e.status_code == 401 and "replace key" in str(e).lower()
     assert conn_doc(fake)["status"] == "needs_attention"
     assert run(sync_service.status(UID, OWNER)).status == "needs_attention"
 
@@ -300,10 +344,24 @@ def test_rejected_key_flags_connection():
 def test_bad_file_does_not_block_others():
     fake = setup()
     FakeClient.files[3] = b"not a fit file at all"
+    run(sync_service.update(UID, OWNER, auto_import=True))
+    FakeClient.files[1] = cardio_file(CONNECTED - timedelta(days=2), 1500, 4000, serial=1)
     result = run(sync_service.sync(UID))
     assert len(result.errors) == 1 and "Treadmill Running" in result.errors[0]
-    assert result.pending == 1                     # strength still processed
-    assert "3" in conn_doc(fake)["processed_ids"]  # bad file isn't retried forever
+    assert [i.garmin_activity_id for i in result.imported] == ["1"] and pending_ids() == ["4"]
+    bad = status_of("3")                           # bad file isn't retried forever
+    assert bad.status == "skipped" and "couldn't read" in bad.detail.lower()
+
+    # Opening a listed activity whose file is bad gives a clear message.
+    run(sync_service.update(UID, OWNER, auto_import=False))
+    FakeClient.activities.append(listing(8, STRENGTH_START + timedelta(days=1), "hiit", name="HIIT"))
+    FakeClient.files[8] = b"garbage"
+    run(sync_service.sync(UID))
+    try:
+        run(sync_service.activity_preview(UID, "8"))
+        raise AssertionError("expected error")
+    except import_service.GarminImportError as e:
+        assert "couldn't be read" in str(e)
 
 
 def test_disconnect_removes_key_and_queue():
@@ -311,7 +369,7 @@ def test_disconnect_removes_key_and_queue():
     run(sync_service.sync(UID))
     run(sync_service.disconnect(UID))
     assert not fake._col(UID, "integrations").document("garmin").get().exists
-    assert fake._col(UID, "garmin_pending").stream() == []
+    assert pending_ids() == []
     assert not run(sync_service.status(UID, OWNER)).connected
 
 
@@ -337,7 +395,9 @@ def test_api_owner_only():
         other_sync = run(call("someone@example.com", "POST", "/api/v3/garmin/sync"))
         owner_status = run(call(OWNER, "GET", "/api/v3/garmin/connection"))
         owner_sync = run(call(OWNER, "POST", "/api/v3/garmin/sync"))
-        owner_pending = run(call(OWNER, "GET", "/api/v3/garmin/pending"))
+        owner_pending = run(call(OWNER, "GET", "/api/v3/garmin/activities?status=review"))
+        owner_clear = run(call(OWNER, "POST", "/api/v3/garmin/activities/dismiss-all"))
+        other_list = run(call("someone@example.com", "GET", "/api/v3/garmin/activities"))
     finally:
         app.dependency_overrides.clear()
         firebase_service.is_available = original
@@ -347,7 +407,9 @@ def test_api_owner_only():
     body = owner_status.json()
     assert body["allowed"] and body["connected"] and "key_encrypted" not in body and KEY not in str(body)
     assert owner_sync.status_code == 200, owner_sync.text
-    assert [p["id"] for p in owner_pending.json()] == ["4"]
+    assert [p["id"] for p in owner_pending.json()] == ["4", "3", "1"]
+    assert owner_clear.json()["dismissed"] == 3
+    assert other_list.status_code == 200      # anyone can see their own uploads on the Garmin page
 
 
 if __name__ == "__main__":

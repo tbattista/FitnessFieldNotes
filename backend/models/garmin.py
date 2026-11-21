@@ -110,7 +110,8 @@ class GarminImportConfirmRequest(BaseModel):
     )
     save_mappings: bool = Field(True, description="Remember the chosen mappings for future imports")
     weight_unit: Literal["lbs", "kg"] = "lbs"
-    pending_id: Optional[str] = Field(None, description="Synced activity waiting for review, cleared on success")
+    pending_id: Optional[str] = Field(
+        None, description="Garmin activity ID from the Garmin page; marked imported on success")
 
 
 class GarminImportResult(BaseModel):
@@ -136,17 +137,11 @@ class GarminConnectRequest(BaseModel):
     api_key: str = Field(..., min_length=10, max_length=4096, description="Garmin Personal API key")
     expires_in_days: Optional[int] = Field(
         None, ge=1, le=366, description="Expiry chosen when the key was created, for reminders")
-    sync_from: Optional[datetime] = Field(
-        None, description="Import activities that started at or after this time (default: now)")
 
 
 class GarminConnectionUpdate(BaseModel):
-    review_all: Optional[bool] = Field(None, description="Send every synced activity to review")
-    sync_from: Optional[datetime] = Field(
-        None, description="New start date. Activities from then on are (re)checked; duplicates are skipped")
-    recheck: Optional[bool] = Field(
-        None, description="Forget which activities were already handled, so the next sync looks at "
-                          "everything since the start date again (imports are still never duplicated)")
+    auto_import: Optional[bool] = Field(
+        None, description="Import clear matches automatically instead of listing them for review")
 
 
 class GarminSyncLogEntry(BaseModel):
@@ -167,16 +162,13 @@ class GarminConnectionStatus(BaseModel):
     status: Optional[Literal["connected", "needs_attention"]] = None
     key_hint: Optional[str] = Field(None, description="Last 4 characters of the key")
     connected_at: Optional[datetime] = None
-    sync_from: Optional[datetime] = None
     key_expires_at: Optional[datetime] = None
     days_until_expiry: Optional[int] = None
-    review_all: bool = False
+    auto_import: bool = False
     last_sync_at: Optional[datetime] = None
     last_error: Optional[str] = None
     last_summary: Optional[Dict[str, int]] = None
-    pending_count: int = 0
-    recent_activity: List[GarminSyncLogEntry] = Field(
-        default_factory=list, description="Latest synced activities with their outcome, newest first")
+    pending_count: int = Field(0, description="Garmin activities waiting for review")
 
 
 class GarminSyncImported(BaseModel):
@@ -199,9 +191,30 @@ class GarminSyncResult(BaseModel):
     details: List[GarminSyncLogEntry] = Field(default_factory=list, description="Outcome per activity in this sync")
 
 
-class GarminPendingItem(BaseModel):
-    id: str
+GarminActivityStatus = Literal["review", "imported", "dismissed", "skipped"]
+
+
+class GarminActivityItem(BaseModel):
+    """One Garmin activity on the Garmin page: synced, or uploaded as a file."""
+
+    id: str = Field(..., description="Garmin activity ID for synced items; 'session:<type>:<id>' for uploads")
+    source: Literal["sync", "upload"] = "sync"
+    status: GarminActivityStatus
     name: str
     kind: Literal["strength", "cardio"]
+    activity_type: Optional[str] = Field(None, description="Garmin type, e.g. strength_training, hiit")
     started_at: Optional[datetime] = None
-    reason: str = ""
+    duration_minutes: Optional[float] = None
+    calories: Optional[int] = None
+    avg_heart_rate: Optional[int] = None
+    distance_m: Optional[float] = None
+    summary: str = Field("", description="e.g. 'Squat 4 sets, Deadlift 3 sets'")
+    detail: str = Field("", description="Why it has this status, e.g. 'Entered by hand in Garmin Connect'")
+    action: Optional[ImportAction] = Field(None, description="How it was imported")
+    session_id: Optional[str] = None
+    session_type: Optional[Literal["workout", "cardio"]] = None
+    decided_at: Optional[datetime] = None
+
+
+class GarminActivityStatusUpdate(BaseModel):
+    status: Literal["review", "dismissed"] = Field(..., description="Dismiss, or put a dismissed one back")

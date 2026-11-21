@@ -184,9 +184,10 @@ def _created_meta(workout_id: Optional[str] = None) -> Dict[str, Any]:
     return meta
 
 
-def _merge_meta(snapshot: Dict[str, Any], previous_external_id: Optional[str]) -> Dict[str, Any]:
+def _merge_meta(snapshot: Dict[str, Any], previous_external_id: Optional[str],
+                garmin_started_at: datetime) -> Dict[str, Any]:
     return {"type": "merge", "snapshot": snapshot, "previous_external_id": previous_external_id,
-            "merged_at": datetime.now(timezone.utc)}
+            "garmin_started_at": garmin_started_at, "merged_at": datetime.now(timezone.utc)}
 
 
 async def confirm(user_id: str, req: GarminImportConfirmRequest) -> GarminImportResult:
@@ -222,7 +223,7 @@ async def _confirm_strength(user_id: str, req: GarminImportConfirmRequest,
         perfs = matching.build_performances(activity, named, unit)
         update, snapshot, notes = matching.merge_strength(existing, perfs, activity)
         update["external_id"] = activity.external_id
-        update["import_meta"] = _merge_meta(snapshot, existing.get("external_id"))
+        update["import_meta"] = _merge_meta(snapshot, existing.get("external_id"), activity.started_at)
         ref.update(update)
         return GarminImportResult(success=True, action="merge", session_id=doc.id, session_type="workout",
                                   message="; ".join(notes))
@@ -288,7 +289,7 @@ async def _confirm_cardio(user_id: str, req: GarminImportConfirmRequest) -> Garm
         existing = doc.to_dict()
         update, snapshot, notes = matching.merge_cardio(existing, fields)
         update["external_id"] = activity.external_id
-        update["import_meta"] = _merge_meta(snapshot, existing.get("external_id"))
+        update["import_meta"] = _merge_meta(snapshot, existing.get("external_id"), activity.started_at)
         ref.update(update)
         return GarminImportResult(success=True, action="merge", session_id=doc.id, session_type="cardio",
                                   message="; ".join(notes))

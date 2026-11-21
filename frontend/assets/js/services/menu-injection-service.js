@@ -146,6 +146,7 @@ class MenuInjectionService {
 
         // Primary nav pages
         if (filename.includes('workout-history')) return 'workout-history';
+        if (filename === 'garmin' || filename.includes('garmin.html')) return 'garmin';
         if (filename.includes('workout-database')) return 'workout-database';
         if (filename.includes('profile')) return 'profile';
 

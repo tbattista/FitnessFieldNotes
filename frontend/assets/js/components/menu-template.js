@@ -14,6 +14,7 @@ function getMenuHTML(activePage = 'home') {
     const isHome = activePage === 'home';
     const isWorkouts = activePage === 'workout-database';
     const isHistory = activePage === 'workout-history';
+    const isGarmin = activePage === 'garmin';
     const isExercises = activePage === 'exercise-database';
     const isSpinRide = activePage === 'spin-ride';
     const isSpinRideHistory = activePage === 'spin-ride-history';
@@ -46,6 +47,13 @@ function getMenuHTML(activePage = 'home') {
                     <a href="/workout-history.html?all=true" class="menu-link">
                         <i class="menu-icon tf-icons bx bx-history"></i>
                         <div class="text-truncate">History</div>
+                    </a>
+                </li>
+
+                <li class="menu-item ${isGarmin ? 'active' : ''}"${isGarmin ? ' aria-current="page"' : ''}>
+                    <a href="/garmin.html" class="menu-link">
+                        <i class="menu-icon tf-icons bx bx-stopwatch"></i>
+                        <div class="text-truncate">Garmin</div>
                     </a>
                 </li>
 

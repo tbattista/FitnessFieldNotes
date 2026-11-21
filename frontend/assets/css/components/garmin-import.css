@@ -50,3 +50,47 @@
     width: 100vw;
   }
 }
+
+/* ── Garmin page ────────────────────────────────────────────────────────── */
+
+.garmin-filters {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.garmin-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.garmin-filters .nav-link {
+  white-space: nowrap;
+  padding: 0.35rem 0.75rem;
+}
+
+.garmin-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background: var(--bs-primary-bg-subtle, rgba(105, 108, 255, 0.12));
+  color: var(--bs-primary);
+  font-size: 1.25rem;
+}
+
+.garmin-row .min-w-0 {
+  min-width: 0;
+}
+
+.garmin-row-actions {
+  padding-left: calc(2.25rem + 1rem);
+}
+
+@media (max-width: 575.98px) {
+  .garmin-row-actions {
+    padding-left: 0;
+  }
+}

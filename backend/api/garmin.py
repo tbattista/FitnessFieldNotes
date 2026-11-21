@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from ..middleware.auth import extract_user_email, extract_user_id, get_current_user
 from ..models.garmin import (
+    GarminActivityItem,
+    GarminActivityStatusUpdate,
     GarminConnectionStatus,
     GarminConnectionUpdate,
     GarminConnectRequest,
@@ -17,7 +19,6 @@ from ..models.garmin import (
     GarminImportConfirmRequest,
     GarminImportPreview,
     GarminImportResult,
-    GarminPendingItem,
     GarminSyncResult,
     GarminUndoRequest,
 )
@@ -66,7 +67,7 @@ async def confirm_import(req: GarminImportConfirmRequest, current_user: Dict[str
     except import_service.GarminImportError as e:
         _raise(e)
     if req.pending_id:
-        await sync_service.dismiss_pending(user_id, req.pending_id)
+        await sync_service.mark_imported(user_id, req.pending_id, result)
     logger.info(f"Garmin import for {user_id}: {result.action} -> {result.session_id}")
     return result
 
@@ -75,9 +76,11 @@ async def confirm_import(req: GarminImportConfirmRequest, current_user: Dict[str
 async def undo_import(req: GarminUndoRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = _require(current_user)
     try:
-        return await import_service.undo(user_id, req.session_id, req.session_type)
+        result = await import_service.undo(user_id, req.session_id, req.session_type)
     except import_service.GarminImportError as e:
         _raise(e)
+    await sync_service.after_undo(user_id, req.session_id)
+    return result
 
 
 @router.get("/exercise-map")
@@ -123,8 +126,7 @@ async def put_connection(req: GarminConnectRequest, current_user: Dict[str, Any]
 async def patch_connection(req: GarminConnectionUpdate, current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = _require_sync(current_user)
     try:
-        return await sync_service.update(user_id, extract_user_email(current_user), req.review_all, req.recheck,
-                                         req.sync_from)
+        return await sync_service.update(user_id, extract_user_email(current_user), req.auto_import)
     except import_service.GarminImportError as e:
         _raise(e)
 
@@ -145,23 +147,36 @@ async def run_sync(current_user: Dict[str, Any] = Depends(get_current_user)):
         _raise(e)
 
 
-@router.get("/pending", response_model=List[GarminPendingItem])
-async def get_pending(current_user: Dict[str, Any] = Depends(get_current_user)):
-    user_id = _require_sync(current_user)
-    return await sync_service.list_pending(user_id)
+# ── Garmin page ──────────────────────────────────────────────────────────────
+
+@router.get("/activities", response_model=List[GarminActivityItem])
+async def get_activities(status: str = None, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Everything from Garmin, newest first: synced activities (any status) and file uploads."""
+    user_id = _require(current_user)
+    return await sync_service.list_activities(user_id, status)
 
 
-@router.get("/pending/{pending_id}/preview", response_model=GarminImportPreview)
-async def get_pending_preview(pending_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/activities/{activity_id}/preview", response_model=GarminImportPreview)
+async def get_activity_preview(activity_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = _require_sync(current_user)
     try:
-        return await sync_service.pending_preview(user_id, pending_id)
+        return await sync_service.activity_preview(user_id, activity_id)
     except import_service.GarminImportError as e:
         _raise(e)
 
 
-@router.delete("/pending/{pending_id}")
-async def dismiss_pending(pending_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+@router.patch("/activities/{activity_id}", response_model=GarminActivityItem)
+async def patch_activity(activity_id: str, req: GarminActivityStatusUpdate,
+                         current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Dismiss an activity, or put a dismissed one back on the review list."""
     user_id = _require_sync(current_user)
-    await sync_service.dismiss_pending(user_id, pending_id)
-    return {"success": True}
+    try:
+        return await sync_service.set_status(user_id, activity_id, req.status)
+    except import_service.GarminImportError as e:
+        _raise(e)
+
+
+@router.post("/activities/dismiss-all")
+async def dismiss_all(current_user: Dict[str, Any] = Depends(get_current_user)):
+    user_id = _require_sync(current_user)
+    return {"success": True, "dismissed": await sync_service.dismiss_all(user_id)}

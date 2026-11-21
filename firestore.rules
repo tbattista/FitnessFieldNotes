@@ -51,8 +51,14 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // Garmin sync: synced activities waiting for review. Backend writes;
-      // owner may read.
+      // Garmin page: every synced Garmin activity and its status. Backend
+      // writes; owner may read.
+      match /garmin_activities/{activityId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
+
+      // Earlier name of the review list; migrated by the backend on sync.
       match /garmin_pending/{activityId} {
         allow read: if request.auth != null && request.auth.uid == userId;
         allow write: if false;

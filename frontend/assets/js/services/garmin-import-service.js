@@ -2,7 +2,7 @@
  * Garmin Import Service
  * API calls for importing Garmin watch activities (.fit / Garmin Connect .zip).
  * Backend: backend/api/garmin.py
- * @version 1.1.0
+ * @version 2.0.0
  */
 
 window.garminImportService = {
@@ -77,9 +77,9 @@ window.garminImportService = {
         return this._json('GET', '/api/v3/garmin/connection', undefined, 'Could not load Garmin status.');
     },
 
-    connect(apiKey, expiresInDays, syncFrom) {
+    connect(apiKey, expiresInDays) {
         return this._json('PUT', '/api/v3/garmin/connection',
-            { api_key: apiKey, expires_in_days: expiresInDays || null, sync_from: syncFrom || null },
+            { api_key: apiKey, expires_in_days: expiresInDays || null },
             'Could not connect Garmin.');
     },
 
@@ -125,25 +125,33 @@ window.garminImportService = {
         return totals;
     },
 
-    listPending() {
-        return this._json('GET', '/api/v3/garmin/pending', undefined, 'Could not load activities to review.');
+    /** Everything from Garmin, newest first. status: 'review' | 'imported' | 'dismissed' | 'skipped' | null (all). */
+    listActivities(status) {
+        const q = status ? `?status=${encodeURIComponent(status)}` : '';
+        return this._json('GET', `/api/v3/garmin/activities${q}`, undefined, 'Could not load your Garmin activities.');
     },
 
-    pendingPreview(id) {
-        return this._json('GET', `/api/v3/garmin/pending/${encodeURIComponent(id)}/preview`, undefined,
+    /** Download (first time only) and build the review for one synced activity. */
+    activityPreview(id) {
+        return this._json('GET', `/api/v3/garmin/activities/${encodeURIComponent(id)}/preview`, undefined,
             'Could not load that activity.');
     },
 
-    dismissPending(id) {
-        return this._json('DELETE', `/api/v3/garmin/pending/${encodeURIComponent(id)}`, undefined,
-            'Could not dismiss that activity.');
+    /** 'dismissed' to dismiss, 'review' to restore a dismissed one. */
+    setActivityStatus(id, status) {
+        return this._json('PATCH', `/api/v3/garmin/activities/${encodeURIComponent(id)}`, { status },
+            'Could not update that activity.');
+    },
+
+    dismissAll() {
+        return this._json('POST', '/api/v3/garmin/activities/dismiss-all', undefined, 'Could not dismiss them.');
     },
 
     /** Plain-language summary of a sync result. */
     describeSync(r) {
         const parts = [];
         if (r.imported && r.imported.length) parts.push(`${r.imported.length} imported`);
-        if (r.pending_total) parts.push(`${r.pending_total} to review`);
+        if (r.pending) parts.push(`${r.pending} new to review`);
         if (!parts.length) parts.push('No new activities');
         if (r.errors && r.errors.length) parts.push(`${r.errors.length} couldn't be read`);
         if (r.more) parts.push('more waiting: sync again');
