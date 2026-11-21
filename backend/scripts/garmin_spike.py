@@ -73,14 +73,15 @@ class GarminPersonalClient:
     def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url.rstrip("/")
         self.session = requests.Session()
-        self.session.headers["Accept"] = "application/json"
+        # Accept anything: Garmin answers 406 to a strict JSON-only Accept header.
+        self.session.headers["Accept"] = "*/*"
         self.token = self._exchange_key(api_key)
         self.session.headers["Authorization"] = f"Bearer {self.token}"
 
     def _exchange_key(self, api_key: str) -> str:
         resp = requests.post(
             self.base_url + TOKEN_PATH,
-            headers={"Authorization": f"ApiKey {api_key}", "Accept": "application/json"},
+            headers={"Authorization": f"ApiKey {api_key}", "Accept": "*/*"},
             timeout=TIMEOUT,
         )
         if resp.status_code in (401, 403):
