@@ -88,7 +88,8 @@ class FakeFDS:
         return WorkoutTemplate(**snap.to_dict()) if snap.exists else None
 
     async def create_workout(self, uid, req):
-        w = WorkoutTemplate(name=req.name, description=req.description, exercise_groups=req.exercise_groups)
+        w = WorkoutTemplate(name=req.name, description=req.description, exercise_groups=req.exercise_groups,
+                            sections=req.sections, workout_type=req.workout_type)
         self._col(uid, "workouts").document(w.id).set(w.model_dump())
         return w
 

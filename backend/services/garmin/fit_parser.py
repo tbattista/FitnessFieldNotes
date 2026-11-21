@@ -152,12 +152,18 @@ def extract_fit_bytes(blob: bytes) -> bytes:
 
 
 def _read_messages(fit: bytes) -> Dict[str, List[Dict[str, Any]]]:
-    wanted = {"file_id", "session", "set"}
+    wanted = {"file_id", "session", "set", "record"}
     out: Dict[str, List[Dict[str, Any]]] = {k: [] for k in wanted}
     try:
         with fitdecode.FitReader(io.BytesIO(fit), check_crc=fitdecode.CrcCheck.WARN) as reader:
             for frame in reader:
                 if isinstance(frame, fitdecode.FitDataMessage) and frame.name in wanted:
+                    if frame.name == "record":
+                        # Only heart rate over time is needed from the per-second samples.
+                        ts, hr = frame.get_value("timestamp", fallback=None), frame.get_value("heart_rate", fallback=None)
+                        if ts is not None and hr:
+                            out["record"].append({"timestamp": ts, "heart_rate": hr})
+                        continue
                     out[frame.name].append({f.name: f.value for f in frame.fields})
     except fitdecode.FitError as e:
         raise FitParseError(f"Couldn't read the FIT file: {e}")
@@ -170,12 +176,36 @@ def _external_id(file_id: Dict[str, Any], started_at: datetime) -> str:
     return f"garmin:{serial or 'connect'}:{int(created.timestamp())}"
 
 
-def _group_sets(raw_sets: List[Dict[str, Any]]):
-    """Active sets -> consecutive runs of the same exercise. Returns (exercises, dropped)."""
+class _HeartRate:
+    """Heart-rate samples, for averaging over a time window."""
+
+    def __init__(self, records: List[Dict[str, Any]]):
+        self.samples = sorted((_aware(r["timestamp"]), int(r["heart_rate"])) for r in records)
+
+    def window(self, start: Optional[datetime], seconds: Optional[float]):
+        if not self.samples or start is None or not seconds:
+            return None, None
+        end = start + timedelta(seconds=float(seconds))
+        values = [hr for ts, hr in self.samples if start <= ts <= end]
+        if not values:
+            return None, None
+        return round(sum(values) / len(values)), max(values)
+
+
+def _group_sets(raw_sets: List[Dict[str, Any]], hr: Optional["_HeartRate"] = None):
+    """Active sets -> consecutive runs of the same exercise. Returns (exercises, dropped).
+
+    Each set also gets the rest recorded after it, and its average/max heart rate.
+    """
+    hr = hr or _HeartRate([])
     exercises: List[ParsedGarminExercise] = []
     dropped = 0
+    last: Optional[ParsedGarminSet] = None
     for s in raw_sets:
         if str(s.get("set_type")) not in ("active", "1"):
+            rest = s.get("duration")
+            if last is not None and isinstance(rest, (int, float)) and last.rest_s is None:
+                last.rest_s = round(float(rest), 1)
             continue
         reps = s.get("repetitions")
         duration = s.get("duration")
@@ -190,17 +220,38 @@ def _group_sets(raw_sets: List[Dict[str, Any]]):
         label = humanize(sub or cat)
 
         weight = s.get("weight")
+        start = _aware(s.get("start_time"))
+        avg_hr, max_hr = hr.window(start, duration)
         parsed = ParsedGarminSet(
             reps=reps,
             weight_kg=round(float(weight), 3) if isinstance(weight, (int, float)) and weight > 0 else None,
             duration_s=round(float(duration), 1) if isinstance(duration, (int, float)) else None,
-            start_time=_aware(s.get("start_time")),
+            start_time=start,
+            avg_heart_rate=avg_hr,
+            max_heart_rate=max_hr,
         )
+        last = parsed
         if exercises and exercises[-1].garmin_key == key:
             exercises[-1].sets.append(parsed)
         else:
             exercises.append(ParsedGarminExercise(garmin_key=key, garmin_label=label, category=cat, sets=[parsed]))
+
+    for ex in exercises:   # exercise heart rate: time-weighted over its sets
+        timed = [(st.avg_heart_rate, st.duration_s or 0) for st in ex.sets if st.avg_heart_rate]
+        total = sum(d for _, d in timed)
+        if timed:
+            ex.avg_heart_rate = round(sum(h * d for h, d in timed) / total) if total else round(
+                sum(h for h, _ in timed) / len(timed))
+            ex.max_heart_rate = max(st.max_heart_rate for st in ex.sets if st.max_heart_rate)
     return exercises, dropped
+
+
+def _median(values: List[float]) -> Optional[int]:
+    values = sorted(v for v in values if v)
+    if not values:
+        return None
+    mid = len(values) // 2
+    return round(values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2)
 
 
 def cardio_activity_type(sport: Optional[str], sub_sport: Optional[str]) -> str:
@@ -228,6 +279,7 @@ def parse_activity(blob: bytes) -> ParsedGarminActivity:
     sport = str(sport) if sport is not None else None
     sub_sport = str(sub_sport) if sub_sport is not None else None
     is_strength = sub_sport == "strength_training"
+    is_hiit = sub_sport == "hiit" or sport == "hiit"
 
     device = file_id.get("garmin_product") or file_id.get("product")
     common = dict(
@@ -243,10 +295,21 @@ def parse_activity(blob: bytes) -> ParsedGarminActivity:
         max_heart_rate=session.get("max_heart_rate"),
     )
 
+    hr = _HeartRate(msgs["record"])
     if is_strength:
-        exercises, dropped = _group_sets(msgs["set"])
+        exercises, dropped = _group_sets(msgs["set"], hr)
         return ParsedGarminActivity(kind="strength", name="Strength", exercises=exercises,
                                     dropped_sets=dropped, **common)
+
+    if is_hiit:
+        exercises, dropped = _group_sets(msgs["set"], hr)
+        if exercises:
+            all_sets = [st for ex in exercises for st in ex.sets]
+            return ParsedGarminActivity(
+                kind="interval", name="HIIT", exercises=exercises, dropped_sets=dropped,
+                work_seconds=_median([st.duration_s for st in all_sets]),
+                rest_seconds=_median([st.rest_s for st in all_sets]),
+                **common)
 
     distance = session.get("total_distance")
     activity_type = cardio_activity_type(sport, sub_sport)

@@ -59,6 +59,7 @@ LIST_MAX = 500              # most recent activities one sync looks at
 MAX_DOWNLOADS_PER_RUN = 10  # auto-import downloads per sync call; the UI repeats until caught up
 SAME_START = timedelta(seconds=90)
 STRENGTH_TYPES = {"strength_training", "indoor_strength_training"}
+INTERVAL_TYPES = {"hiit"}
 
 # Swappable in tests.
 client_factory = PersonalApiClient
@@ -210,7 +211,7 @@ def _record(a: Dict[str, Any], start: datetime, status: str, detail: str = "", *
         "status": status,
         "detail": detail,
         "name": a.get("activityName") or humanize(type_key or "activity"),
-        "kind": "strength" if type_key in STRENGTH_TYPES else "cardio",
+        "kind": "strength" if type_key in STRENGTH_TYPES else ("interval" if type_key in INTERVAL_TYPES else "cardio"),
         "activity_type": type_key,
         "started_at": start,
         "duration_minutes": round(a["duration"] / 60, 1) if isinstance(a.get("duration"), (int, float)) else None,
@@ -364,9 +365,9 @@ async def after_undo(user_id: str, session_id: str) -> None:
 
 def _review_reason(preview) -> str:
     a = preview.activity
-    if a.kind == "strength" and not a.exercises:
+    if a.kind in ("strength", "interval") and not a.exercises:
         return "No sets recorded"
-    if a.kind == "strength" and any(ex.needs_review for ex in a.exercises):
+    if a.kind in ("strength", "interval") and any(ex.needs_review for ex in a.exercises):
         return "New exercise names to confirm"
     if preview.proposed.confidence != "high":
         return f"Check the match: {preview.proposed.reason.lower()}"

@@ -14,6 +14,7 @@ from ...models.session import ExercisePerformance, SetDetail
 from .exercise_mapper import normalize
 
 KG_TO_LB = 2.20462
+SET_KINDS = ("strength", "interval")   # activities made of sets: saved as workout sessions
 OVERLAP_TOLERANCE = timedelta(minutes=10)
 SAME_DAY_WINDOW = timedelta(hours=12)
 ATTACH_MIN_OVERLAP = 0.5
@@ -114,7 +115,7 @@ def propose(activity: ParsedGarminActivity, sessions: List[MatchCandidate],
         top = sessions[0]
         return ProposedAction(action="merge", target_id=top.id, target_name=top.name,
                               confidence="high" if top.score >= 1.0 else "low", reason=top.reason)
-    if activity.kind == "strength" and workouts:
+    if activity.kind in SET_KINDS and workouts:
         top = workouts[0]
         return ProposedAction(action="attach", target_id=top.id, target_name=top.name,
                               confidence="high" if top.score >= 0.8 else "low", reason=top.reason)
@@ -124,7 +125,7 @@ def propose(activity: ParsedGarminActivity, sessions: List[MatchCandidate],
 def auto_importable(activity: ParsedGarminActivity, proposed: ProposedAction) -> bool:
     if proposed.action == "skip" or proposed.confidence != "high":
         return False
-    if activity.kind == "strength":
+    if activity.kind in SET_KINDS:
         if not activity.exercises:
             return False
         return all(not ex.needs_review for ex in activity.exercises)
@@ -155,16 +156,25 @@ def build_performances(activity: ParsedGarminActivity, mappings: Dict[str, str],
     for i, key in enumerate(order):
         name, sets = combined[key]["name"], combined[key]["sets"]
         weights = [convert_weight(s.weight_kg, unit) for s in sets]
-        reps = [s.reps for s in sets if s.reps is not None]
+        reps = [s.reps for s in sets if s.reps]
         top = max((w for w in weights if w is not None), default=None)
         details = [
-            SetDetail(set_number=n, reps_completed=s.reps, weight=w)
+            SetDetail(set_number=n, reps_completed=s.reps, weight=w, duration_s=s.duration_s, rest_s=s.rest_s,
+                      avg_heart_rate=s.avg_heart_rate, max_heart_rate=s.max_heart_rate)
             for n, (s, w) in enumerate(zip(sets, weights), start=1)
         ]
         if reps and min(reps) != max(reps):
             target_reps = f"{min(reps)}-{max(reps)}"
-        else:
-            target_reps = str(reps[0]) if reps else "0"
+        elif reps:
+            target_reps = str(reps[0])
+        else:   # timed sets (HIIT, planks): show the work time instead of reps
+            secs = sorted(round(s.duration_s) for s in sets if s.duration_s)
+            target_reps = f"{secs[len(secs) // 2]}s" if secs else "0"
+        timed_hr = [(s.avg_heart_rate, s.duration_s or 0) for s in sets if s.avg_heart_rate]
+        total = sum(d for _, d in timed_hr)
+        avg_hr = (round(sum(h * d for h, d in timed_hr) / total) if total
+                  else (round(sum(h for h, _ in timed_hr) / len(timed_hr)) if timed_hr else None))
+        max_hr = max((s.max_heart_rate for s in sets if s.max_heart_rate), default=None)
         out.append(ExercisePerformance(
             exercise_name=name,
             group_id=group_ids.get(key) or f"garmin-{i}",
@@ -174,6 +184,8 @@ def build_performances(activity: ParsedGarminActivity, mappings: Dict[str, str],
             weight=format_weight(top),
             weight_unit=unit,
             set_details=details,
+            avg_heart_rate=avg_hr,
+            max_heart_rate=max_hr,
             order_index=i,
         ))
     return out

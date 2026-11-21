@@ -20,9 +20,13 @@ from ...models import (
     CreateCardioSessionRequest,
     CreateWorkoutRequest,
     ExerciseGroup,
+    SectionExercise,
+    WorkoutSection,
     UpdateWorkoutRequest,
 )
 from ...models.garmin import (
+    GarminPrepareSessionRequest,
+    GarminSessionPrefill,
     GarminImportConfirmRequest,
     GarminImportPreview,
     GarminImportResult,
@@ -30,6 +34,7 @@ from ...models.garmin import (
 )
 from ..firestore_data_service import firestore_data_service as fds
 from . import matching
+from .matching import SET_KINDS
 from .exercise_mapper import apply_mappings, map_key_to_doc_id, normalize
 from .fit_parser import parse_activity
 
@@ -95,7 +100,7 @@ def _workout_exercises(workout) -> List[Tuple[str, str]]:
 
 async def _context(user_id: str, activity: ParsedGarminActivity):
     workouts = [w for w in await fds.get_user_workouts(user_id, limit=HISTORY_LOOKBACK) if not w.is_archived]
-    if activity.kind == "strength":
+    if activity.kind in SET_KINDS:
         raw = await fds.get_user_sessions(user_id, limit=HISTORY_LOOKBACK)
         sessions = [s.model_dump() for s in raw if s.status == "completed"]
         for s in sessions:
@@ -137,16 +142,16 @@ async def build_preview(user_id: str, blob: bytes) -> GarminImportPreview:
 async def build_preview_for_activity(user_id: str, activity: ParsedGarminActivity) -> GarminImportPreview:
     workouts, sessions = await _context(user_id, activity)
     known = _known_names(workouts, sessions)
-    unit = _preferred_unit(sessions) if activity.kind == "strength" else "lbs"
+    unit = _preferred_unit(sessions) if activity.kind in SET_KINDS else "lbs"
 
-    if activity.kind == "strength":
+    if activity.kind in SET_KINDS:
         apply_mappings(activity.exercises, await load_exercise_map(user_id), known)
 
     dup = await find_duplicate(user_id, activity.external_id)
-    kind = "workout_session" if activity.kind == "strength" else "cardio_session"
+    kind = "workout_session" if activity.kind in SET_KINDS else "cardio_session"
     s_cands = matching.session_candidates(activity, sessions, kind)
     w_cands = []
-    if activity.kind == "strength":
+    if activity.kind in SET_KINDS:
         mapped = [ex.mapped_name for ex in activity.exercises if ex.mapped_name]
         w_cands = matching.workout_candidates(
             mapped, [{"id": w.id, "name": w.name, "exercises": [n for n, _ in _workout_exercises(w)]}
@@ -156,7 +161,7 @@ async def build_preview_for_activity(user_id: str, activity: ParsedGarminActivit
     merge_notes: List[str] = []
     if proposed.action == "merge":
         target = next(s for s in sessions if s["id"] == proposed.target_id)
-        if activity.kind == "strength":
+        if activity.kind in SET_KINDS:
             perfs = matching.build_performances(activity, {}, unit)
             _, _, merge_notes = matching.merge_strength(target, perfs, activity)
         else:
@@ -173,6 +178,85 @@ async def build_preview_for_activity(user_id: str, activity: ParsedGarminActivit
         weight_unit=unit,
         merge_notes=merge_notes,
     )
+
+
+# ── workout format ───────────────────────────────────────────────────────────
+
+def workout_request_for(activity: ParsedGarminActivity, perfs, unit: str) -> CreateWorkoutRequest:
+    """The app workout a Garmin activity becomes when it matches no existing workout.
+
+    Strength: one exercise group per exercise. Interval (HIIT): one Tabata section
+    with the watch's typical work/rest time and the most sets of any exercise as rounds.
+    """
+    date_label = f"{activity.started_at:%b} {activity.started_at.day}"
+    name = f"Garmin {activity.name} {date_label}"[:50]
+    if activity.kind == "interval":
+        rounds = max((p.sets_completed for p in perfs), default=1) or 1
+        section = WorkoutSection(
+            type="tabata", name="HIIT",
+            config={"work_seconds": activity.work_seconds or 20, "rest_seconds": activity.rest_seconds or 10,
+                    "rounds": rounds},
+            exercises=[SectionExercise(exercise_id=p.group_id, name=p.exercise_name, sets=p.target_sets,
+                                       reps=p.target_reps, rest=f"{activity.rest_seconds or 10}s",
+                                       default_weight=p.weight, default_weight_unit=unit)
+                       for p in perfs])
+        return CreateWorkoutRequest(name=name, description="Imported from Garmin (HIIT)", sections=[section],
+                                    workout_type="tabata", tags=[])
+    groups = [ExerciseGroup(group_id=p.group_id, exercises={"a": p.exercise_name}, sets=p.target_sets,
+                            reps=p.target_reps, default_weight=p.weight, default_weight_unit=unit)
+              for p in perfs]
+    return CreateWorkoutRequest(name=name, description="Imported from Garmin", exercise_groups=groups, tags=[])
+
+
+# ── open in the session screen ───────────────────────────────────────────────
+
+async def prepare_session(user_id: str, req: GarminPrepareSessionRequest) -> GarminSessionPrefill:
+    """Find or create the workout and return the values to pre-fill the session screen.
+
+    Nothing is logged here: the session is saved by the session screen when the
+    user finishes it, carrying source/external_id/import_meta from this prefill.
+    """
+    activity, unit = req.activity, req.weight_unit
+    if activity.kind not in SET_KINDS or not activity.exercises:
+        raise GarminImportError("Only strength and HIIT activities with sets open in the session screen.")
+    if await find_duplicate(user_id, activity.external_id):
+        raise GarminImportError("This activity was already imported. Undo that import first.", 409)
+
+    named = {ex.garmin_key: matching.resolved_name(ex, req.exercise_mappings) for ex in activity.exercises}
+    if req.save_mappings:
+        await save_exercise_map(user_id, {k: v for k, v in named.items() if k.split("/")[0] != "unknown" and v})
+
+    created_workout_id = None
+    if req.action == "attach":
+        workout = await fds.get_workout(user_id, req.target_id or "-")
+        if not workout:
+            raise GarminImportError("That workout no longer exists.", 404)
+        group_ids = {normalize(n): gid for n, gid in _workout_exercises(workout) if gid}
+        perfs = matching.build_performances(activity, named, unit, group_ids)
+    else:
+        perfs = matching.build_performances(activity, named, unit)
+        workout = await fds.create_workout(user_id, workout_request_for(activity, perfs, unit))
+        if not workout:
+            raise GarminImportError("Couldn't create the workout record.", 500)
+        await fds.update_workout(user_id, workout.id, UpdateWorkoutRequest(is_archived=True))
+        created_workout_id = workout.id
+
+    meta = _created_meta(created_workout_id)
+    meta["garmin_started_at"] = activity.started_at
+    meta["opened_in_session_screen"] = True
+    return GarminSessionPrefill(
+        workout_id=workout.id, workout_name=workout.name,
+        exercises=[p.model_dump(mode="json") for p in perfs],
+        started_at=activity.started_at, completed_at=activity.completed_at,
+        duration_minutes=max(1, round(activity.duration_minutes or 1)),
+        calories=activity.calories, avg_heart_rate=activity.avg_heart_rate, max_heart_rate=activity.max_heart_rate,
+        external_id=activity.external_id, import_meta=jsonable(meta), pending_id=req.pending_id,
+        activity_name=activity.name, kind=activity.kind,
+    )
+
+
+def jsonable(d: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in d.items()}
 
 
 # ── confirm ──────────────────────────────────────────────────────────────────
@@ -199,7 +283,7 @@ async def confirm(user_id: str, req: GarminImportConfirmRequest) -> GarminImport
     if dup:
         raise GarminImportError("This activity was already imported. Undo that import first.", 409)
 
-    if activity.kind == "strength":
+    if activity.kind in SET_KINDS:
         if not activity.exercises and req.action != "merge":
             raise GarminImportError("This activity has no sets to import.")
         named = {ex.garmin_key: matching.resolved_name(ex, req.exercise_mappings) for ex in activity.exercises}
@@ -240,16 +324,7 @@ async def _confirm_strength(user_id: str, req: GarminImportConfirmRequest,
     perfs = matching.build_performances(activity, named, unit, group_ids)
 
     if req.action == "new":
-        groups = [ExerciseGroup(group_id=p.group_id, exercises={"a": p.exercise_name}, sets=p.target_sets,
-                                reps=p.target_reps, default_weight=p.weight, default_weight_unit=unit)
-                  for p in perfs]
-        date_label = f"{activity.started_at:%b} {activity.started_at.day}"
-        workout = await fds.create_workout(user_id, CreateWorkoutRequest(
-            name=f"Garmin {activity.name} {date_label}"[:50],
-            description="Imported from Garmin",
-            exercise_groups=groups,
-            tags=[],
-        ))
+        workout = await fds.create_workout(user_id, workout_request_for(activity, perfs, unit))
         if not workout:
             raise GarminImportError("Couldn't create the workout record.", 500)
         await fds.update_workout(user_id, workout.id, UpdateWorkoutRequest(is_archived=True))

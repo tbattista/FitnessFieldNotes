@@ -19,6 +19,8 @@ from ..models.garmin import (
     GarminImportConfirmRequest,
     GarminImportPreview,
     GarminImportResult,
+    GarminPrepareSessionRequest,
+    GarminSessionPrefill,
     GarminSyncResult,
     GarminUndoRequest,
 )
@@ -70,6 +72,16 @@ async def confirm_import(req: GarminImportConfirmRequest, current_user: Dict[str
         await sync_service.mark_imported(user_id, req.pending_id, result)
     logger.info(f"Garmin import for {user_id}: {result.action} -> {result.session_id}")
     return result
+
+
+@router.post("/import/prepare-session", response_model=GarminSessionPrefill)
+async def prepare_session(req: GarminPrepareSessionRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Find or create the workout and return values to pre-fill the session screen. Saves no session."""
+    user_id = _require(current_user)
+    try:
+        return await import_service.prepare_session(user_id, req)
+    except import_service.GarminImportError as e:
+        _raise(e)
 
 
 @router.post("/import/undo")

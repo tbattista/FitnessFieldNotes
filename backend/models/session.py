@@ -11,6 +11,10 @@ class SetDetail(BaseModel):
     reps_completed: Optional[int] = Field(None, ge=0, description="Actual reps completed")
     weight: Optional[float] = Field(None, ge=0, description="Weight used for this set")
     notes: Optional[str] = Field(None, max_length=200, description="Notes about this set")
+    duration_s: Optional[float] = Field(None, ge=0, description="Time under work for this set (from a watch)")
+    rest_s: Optional[float] = Field(None, ge=0, description="Rest after this set (from a watch)")
+    avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Average heart rate during the set")
+    max_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Highest heart rate during the set")
 
 class ExercisePerformance(BaseModel):
     """Exercise performance data within a workout session"""
@@ -55,6 +59,10 @@ class ExercisePerformance(BaseModel):
     original_weight: Optional[str] = Field(None, description="Original template weight before modification")
     original_sets: Optional[str] = Field(None, description="Original template sets before modification")
     original_reps: Optional[str] = Field(None, description="Original template reps before modification")
+
+    # Heart rate for this exercise (from a watch import)
+    avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Average heart rate across the sets")
+    max_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Highest heart rate across the sets")
 
     # Calories Burned (from smartwatch or manual entry)
     calories_burned: Optional[int] = Field(None, ge=0, description="Calories burned during this exercise (from smartwatch or manual entry)")

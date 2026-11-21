@@ -111,11 +111,20 @@ class FitBuilder:
         return body + struct.pack("<H", crc16(body))
 
 
-def strength_file(start: datetime, sets, serial=123456789, calories=216, avg_hr=127, max_hr=149) -> bytes:
-    """sets: list of dicts with keys category, subtype, reps, weight_kg, duration_s, set_type."""
+def strength_file(start: datetime, sets, serial=123456789, calories=216, avg_hr=127, max_hr=149,
+                  heart_rate=None, sport="training", sub_sport="strength_training") -> bytes:
+    """sets: list of dicts with keys category, subtype, reps, weight_kg, duration_s, set_type.
+
+    heart_rate: optional function(seconds_since_start) -> bpm, written as one
+    record per second for the whole activity.
+    """
     b = FitBuilder()
     b.add("file_id", type="activity", manufacturer="garmin", product=4260, serial_number=serial, time_created=start)
     from datetime import timedelta
+    if heart_rate:
+        total_s = int(sum(st.get("duration_s", 40) for st in sets))
+        for sec in range(total_s + 1):
+            b.add("record", timestamp=start + timedelta(seconds=sec), heart_rate=int(heart_rate(sec)))
     t = start
     for i, s in enumerate(sets):
         b.add("set",
@@ -130,7 +139,7 @@ def strength_file(start: datetime, sets, serial=123456789, calories=216, avg_hr=
               message_index=i)
         t = t + timedelta(seconds=s.get("duration_s", 40))
     total = (t - start).total_seconds()
-    b.add("session", timestamp=t, start_time=start, sport="training", sub_sport="strength_training",
+    b.add("session", timestamp=t, start_time=start, sport=sport, sub_sport=sub_sport,
           total_elapsed_time=total, total_timer_time=total, total_calories=calories,
           avg_heart_rate=avg_hr, max_heart_rate=max_hr, num_laps=1)
     return b.build()

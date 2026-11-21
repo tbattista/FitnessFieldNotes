@@ -122,7 +122,7 @@
             opts.push({ action: 'merge', target_id: c.id, label: `Merge into “${c.name}”`,
                         detail: `${fmtDateTime(c.started_at)} · ${c.reason}` });
         }
-        if (a.kind === 'strength') {
+        if (a.kind === 'strength' || a.kind === 'interval') {
             for (const w of p.workout_candidates || []) {
                 opts.push({ action: 'attach', target_id: w.id, label: `Log as “${w.name}”`, detail: w.reason });
             }
@@ -149,7 +149,7 @@
         if (a.avg_heart_rate) bits.push(`${a.avg_heart_rate} bpm avg${a.max_heart_rate ? ` / ${a.max_heart_rate} max` : ''}`);
         if (a.calories) bits.push(`${a.calories} cal`);
         const setCount = (a.exercises || []).reduce((n, e) => n + e.sets.length, 0);
-        if (a.kind === 'strength') bits.push(`${setCount} sets`);
+        if (a.kind !== 'cardio') bits.push(`${setCount} sets`);
         return `
           <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
             <div>
@@ -157,13 +157,13 @@
               <div class="small text-muted">${esc(fmtDateTime(a.started_at))}${a.device ? ` · ${esc(a.device)}` : ''}</div>
               <div class="small mt-1">${esc(bits.join(' · '))}</div>
             </div>
-            <span class="badge bg-label-info flex-shrink-0">${a.kind === 'strength' ? 'Strength' : 'Cardio'}</span>
+            <span class="badge bg-label-info flex-shrink-0">${a.kind === 'strength' ? 'Strength' : (a.kind === 'interval' ? 'HIIT' : 'Cardio')}</span>
           </div>`;
     }
 
     function exercisesHtml(p) {
         const a = p.activity;
-        if (a.kind !== 'strength') return '';
+        if (a.kind === 'cardio') return '';
         if (!a.exercises.length) {
             return `<div class="alert alert-warning small">This activity has no sets. If you entered it by hand in
                     Garmin Connect, there's nothing to import beyond the time and calories.</div>`;

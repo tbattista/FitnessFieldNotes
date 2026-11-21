@@ -20,7 +20,7 @@ from garmin_fakes import FakeFDS  # noqa: E402
 from garmin_fit_builder import cardio_file, strength_file  # noqa: E402
 
 from backend.models import WorkoutSession, WorkoutTemplate  # noqa: E402
-from backend.models.garmin import GarminImportConfirmRequest  # noqa: E402
+from backend.models.garmin import GarminImportConfirmRequest, GarminPrepareSessionRequest  # noqa: E402
 from backend.services.firestore_session_ops import _is_before  # noqa: E402
 from backend.services.garmin import import_service, matching  # noqa: E402
 from backend.services.garmin.exercise_mapper import apply_mappings  # noqa: E402
@@ -85,6 +85,56 @@ def test_parser_groups_sets_and_drops_misfires():
     assert [s.reps for s in a.exercises[0].sets] == [8, 9, 7, 7]
     assert a.exercises[1].garmin_label == "Straight Leg Deadlift"
     assert (a.calories, a.avg_heart_rate, a.max_heart_rate) == (216, 127, 149)
+
+
+def test_parser_heart_rate_and_rest_per_set():
+    # 57s squat set at 120 bpm, 90s rest at 100 bpm, then 60s set at 140 bpm.
+    sets = [dict(category=28, reps=8, weight_kg=74.8125, duration_s=57), dict(set_type="rest", duration_s=90),
+            dict(category=28, reps=9, weight_kg=74.8125, duration_s=60)]
+    a = parse_activity(strength_file(START, sets, heart_rate=lambda s: 120 if s <= 57 else (100 if s < 147 else 140)))
+    first, second = a.exercises[0].sets
+    assert (first.rest_s, first.avg_heart_rate, first.max_heart_rate) == (90, 120, 120)
+    assert second.avg_heart_rate == 140 and second.rest_s is None
+    assert a.exercises[0].avg_heart_rate == 130 and a.exercises[0].max_heart_rate == 140   # time-weighted
+    perf = matching.build_performances(a, {}, "lbs")[0]
+    assert (perf.avg_heart_rate, perf.max_heart_rate) == (130, 140)
+    assert (perf.set_details[0].rest_s, perf.set_details[0].avg_heart_rate) == (90, 120)
+
+
+HIIT_SETS = [dict(category=27, reps=7, duration_s=40), dict(set_type="rest", duration_s=20),
+             dict(category=65534, reps=0, duration_s=40), dict(set_type="rest", duration_s=20),
+             dict(category=27, reps=8, duration_s=40), dict(set_type="rest", duration_s=20),
+             dict(category=65534, reps=0, duration_s=40)]
+
+
+def hiit_file():
+    return strength_file(START, HIIT_SETS, sport="training", sub_sport="hiit", heart_rate=lambda s: 150)
+
+
+def test_parser_hiit_is_an_interval_workout():
+    a = parse_activity(hiit_file())
+    assert (a.kind, a.name, a.work_seconds, a.rest_seconds) == ("interval", "HIIT", 40, 20)
+    # Alternating moves stay in order; untimed-reps "unknown" sets are kept (40s isn't a misfire).
+    assert [e.garmin_key for e in a.exercises] == ["sit_up", "unknown", "sit_up", "unknown"]
+    perfs = matching.build_performances(a, {"unknown": "Mountain Climber"}, "lbs")
+    assert [p.exercise_name for p in perfs] == ["Sit Up", "Mountain Climber"]
+    assert (perfs[0].sets_completed, perfs[0].target_reps) == (2, "7-8")
+    assert (perfs[1].sets_completed, perfs[1].target_reps, perfs[1].avg_heart_rate) == (2, "40s", 150)
+
+
+def test_hiit_new_import_creates_a_tabata_workout():
+    fake = fresh_service()
+    preview = run(import_service.build_preview(UID, hiit_file()))
+    result = run(import_service.confirm(UID, GarminImportConfirmRequest(
+        activity=preview.activity, action="new", exercise_mappings={"unknown": "Mountain Climber"})))
+    session = fake._col(UID, "workout_sessions").document(result.session_id).get().to_dict()
+    workout = fake._col(UID, "workouts").document(session["workout_id"]).get().to_dict()
+    assert workout["workout_type"] == "tabata"
+    section = workout["sections"][0]
+    assert section["type"] == "tabata"
+    assert section["config"] == {"work_seconds": 40, "rest_seconds": 20, "rounds": 2}
+    assert [e["name"] for e in section["exercises"]] == ["Sit Up", "Mountain Climber"]
+    assert session["exercises_performed"][1]["avg_heart_rate"] == 150
 
 
 def test_parser_cardio_and_zip():
@@ -270,6 +320,32 @@ def test_flow_cardio_new():
     s = fake._col(UID, "cardio_sessions").document(result.session_id).get().to_dict()
     assert (s["activity_type"], s["distance"], s["distance_unit"], s["source"]) == ("running", 1.97, "mi", "garmin")
     assert s["pace_per_unit"] == "15:30" and s["avg_heart_rate"] == 135
+
+
+def test_prepare_session_against_a_template():
+    fake = fresh_service()
+    w = add_workout(fake, "Lower Body", ["Squat", "Straight Leg Deadlift", "Barbell Deadlift"])
+    preview = run(import_service.build_preview(UID, strength_file(START, SESSION_SETS)))
+    prefill = run(import_service.prepare_session(UID, GarminPrepareSessionRequest(
+        activity=preview.activity, action="attach", target_id=w.id, pending_id="25137407059")))
+    assert (prefill.workout_id, prefill.workout_name) == (w.id, "Lower Body")
+    squat = prefill.exercises[0]
+    assert squat["exercise_name"] == "Squat" and squat["group_id"] == w.exercise_groups[0].group_id
+    assert [d["weight"] for d in squat["set_details"]] == [165.0, 165.0, 215.0, 215.0]
+    assert prefill.import_meta["type"] == "created" and "workout_id" not in prefill.import_meta
+    assert prefill.pending_id == "25137407059" and prefill.external_id == preview.activity.external_id
+    assert len(fake._col(UID, "workout_sessions").stream()) == 0     # nothing logged until Finish
+
+
+def test_prepare_session_new_hiit_creates_tabata_workout():
+    fake = fresh_service()
+    preview = run(import_service.build_preview(UID, hiit_file()))
+    prefill = run(import_service.prepare_session(UID, GarminPrepareSessionRequest(
+        activity=preview.activity, action="new", exercise_mappings={"unknown": "Mountain Climber"})))
+    workout = fake._col(UID, "workouts").document(prefill.workout_id).get().to_dict()
+    assert workout["workout_type"] == "tabata" and workout["is_archived"] is True
+    assert prefill.import_meta["workout_id"] == prefill.workout_id and prefill.kind == "interval"
+    assert [e["exercise_name"] for e in prefill.exercises] == ["Sit Up", "Mountain Climber"]
 
 
 # ── API ──────────────────────────────────────────────────────────────────────

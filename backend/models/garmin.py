@@ -4,7 +4,7 @@ user, and the confirm request that saves it.
 """
 
 from datetime import datetime
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,9 @@ class ParsedGarminSet(BaseModel):
     weight_kg: Optional[float] = Field(None, ge=0)
     duration_s: Optional[float] = Field(None, ge=0)
     start_time: Optional[datetime] = None
+    rest_s: Optional[float] = Field(None, ge=0, description="Rest the watch recorded after this set")
+    avg_heart_rate: Optional[int] = Field(None, description="Average heart rate during the set")
+    max_heart_rate: Optional[int] = Field(None, description="Highest heart rate during the set")
 
 
 class ParsedGarminExercise(BaseModel):
@@ -25,6 +28,8 @@ class ParsedGarminExercise(BaseModel):
     garmin_label: str = Field(..., description="Readable Garmin name, e.g. 'Straight Leg Deadlift'")
     category: str = Field(..., description="Garmin exercise category, e.g. 'deadlift' or 'unknown'")
     sets: List[ParsedGarminSet] = Field(default_factory=list)
+    avg_heart_rate: Optional[int] = Field(None, description="Average heart rate across this exercise's sets")
+    max_heart_rate: Optional[int] = Field(None, description="Highest heart rate across this exercise's sets")
 
     # Filled in by the exercise mapper
     mapped_name: Optional[str] = Field(None, description="App exercise name this will be saved as")
@@ -43,7 +48,8 @@ class ParsedGarminActivity(BaseModel):
     """A watch activity read from a FIT file."""
 
     external_id: str = Field(..., description="Stable ID: 'garmin:<serial>:<created epoch>'")
-    kind: Literal["strength", "cardio"]
+    kind: Literal["strength", "interval", "cardio"] = Field(
+        ..., description="strength: sets with reps/weight; interval: timed work/rest sets (HIIT); cardio: no sets")
     sport: Optional[str] = None
     sub_sport: Optional[str] = None
     activity_type: Optional[str] = Field(None, description="App cardio activity type (cardio only)")
@@ -65,6 +71,8 @@ class ParsedGarminActivity(BaseModel):
     # Strength
     exercises: List[ParsedGarminExercise] = Field(default_factory=list)
     dropped_sets: int = Field(0, description="Sets discarded as misfires (0 reps, a few seconds)")
+    work_seconds: Optional[int] = Field(None, description="Interval: typical work time per set")
+    rest_seconds: Optional[int] = Field(None, description="Interval: typical rest between sets")
 
 
 ImportAction = Literal["merge", "attach", "new", "skip"]
@@ -112,6 +120,38 @@ class GarminImportConfirmRequest(BaseModel):
     weight_unit: Literal["lbs", "kg"] = "lbs"
     pending_id: Optional[str] = Field(
         None, description="Garmin activity ID from the Garmin page; marked imported on success")
+
+
+class GarminPrepareSessionRequest(BaseModel):
+    """Open a Garmin activity in the session screen, pre-filled, against a workout."""
+
+    activity: ParsedGarminActivity
+    action: Literal["attach", "new"] = Field(..., description="attach: log against an existing workout; new: create one")
+    target_id: Optional[str] = Field(None, description="Workout to log against (attach)")
+    exercise_mappings: Dict[str, str] = Field(default_factory=dict)
+    save_mappings: bool = True
+    weight_unit: Literal["lbs", "kg"] = "lbs"
+    pending_id: Optional[str] = Field(None, description="Garmin activity ID from the Garmin page")
+
+
+class GarminSessionPrefill(BaseModel):
+    """What the session screen needs to start pre-filled and to save the result as a Garmin import."""
+
+    workout_id: str
+    workout_name: str
+    exercises: List[Dict[str, Any]] = Field(..., description="ExercisePerformance dicts, in order")
+    started_at: datetime
+    completed_at: datetime
+    duration_minutes: int
+    calories: Optional[int] = None
+    avg_heart_rate: Optional[int] = None
+    max_heart_rate: Optional[int] = None
+    source: Literal["garmin"] = "garmin"
+    external_id: str
+    import_meta: Dict[str, Any]
+    pending_id: Optional[str] = None
+    activity_name: str
+    kind: Literal["strength", "interval", "cardio"]
 
 
 class GarminImportResult(BaseModel):
@@ -201,7 +241,7 @@ class GarminActivityItem(BaseModel):
     source: Literal["sync", "upload"] = "sync"
     status: GarminActivityStatus
     name: str
-    kind: Literal["strength", "cardio"]
+    kind: Literal["strength", "interval", "cardio"]
     activity_type: Optional[str] = Field(None, description="Garmin type, e.g. strength_training, hiit")
     started_at: Optional[datetime] = None
     duration_minutes: Optional[float] = None
