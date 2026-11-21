@@ -17,3 +17,4 @@ from .cardio import *
 from .sharing import *
 from .importing import *
 from .spin_ride import *
+from .garmin import *

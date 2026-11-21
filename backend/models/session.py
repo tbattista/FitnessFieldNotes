@@ -126,6 +126,16 @@ class WorkoutSession(BaseModel):
     )
     notes: Optional[str] = Field(None, max_length=500, description="Session notes")
     calories: Optional[int] = Field(None, ge=0, le=99999, description="Total calories burned during session")
+    avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Average heart rate (from a watch import)")
+    max_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Maximum heart rate (from a watch import)")
+
+    # External import (Garmin etc.)
+    source: str = Field(default="manual", description="Where the session came from: 'manual' or 'garmin'")
+    external_id: Optional[str] = Field(None, description="ID from the external source, used to detect duplicate imports")
+    import_meta: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Import bookkeeping: pre-merge snapshot or created workout id, used to undo an import"
+    )
 
     # Session Notes (inline notes interspersed with exercises)
     session_notes: List[SessionNote] = Field(
@@ -331,6 +341,12 @@ class CreateAndCompleteSessionRequest(BaseModel):
         le=99999,
         description="Total calories burned during session"
     )
+
+    avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Average heart rate")
+    max_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Maximum heart rate")
+    source: str = Field(default="manual", description="Session source: 'manual' or 'garmin'")
+    external_id: Optional[str] = Field(None, description="External source ID for duplicate detection")
+    import_meta: Optional[Dict[str, Any]] = Field(None, description="Import bookkeeping for undo")
 
     @field_validator('exercise_order', mode='before')
     @classmethod

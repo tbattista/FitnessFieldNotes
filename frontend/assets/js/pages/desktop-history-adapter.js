@@ -130,6 +130,7 @@
             '    <div class="d-flex align-items-center gap-2">' +
             '      <span class="session-date">' + dateStr + '</span>' +
                    badge +
+                   (window.garminBadge ? window.garminBadge(session) : '') +
             '    </div>' +
             '    <span class="session-meta">' +
                    duration +
@@ -152,6 +153,7 @@
             '          <i class="bx bx-copy-alt me-2"></i>Save as Template' +
             '        </a>' +
             '      </li>' +
+                   (window.garminUndoItem ? window.garminUndoItem(session, 'workout') : '') +
             '      <li><hr class="dropdown-divider"></li>' +
             '      <li>' +
             '        <a class="dropdown-item text-danger" href="javascript:void(0);"' +

@@ -43,6 +43,13 @@ service cloud.firestore {
       match /spin_rides/{rideId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Garmin exercise name -> app exercise name. Written by the backend
+      // (Admin SDK) during imports; readable by the owner only.
+      match /garmin_exercise_map/{garminKey} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
     }
     
     // ========================================================================

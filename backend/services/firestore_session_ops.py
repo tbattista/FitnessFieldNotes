@@ -16,6 +16,29 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _sort_key(value) -> float:
+    """Timestamp for ordering history entries; tolerant of naive/aware/missing dates."""
+    if value is None:
+        return 0.0
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        except ValueError:
+            return 0.0
+    if not hasattr(value, 'timestamp'):
+        return 0.0
+    if getattr(value, 'tzinfo', None) is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.timestamp()
+
+
+def _is_before(new_date, last_date) -> bool:
+    """True when new_date is strictly older than last_date (both present)."""
+    if new_date is None or last_date is None:
+        return False
+    return _sort_key(new_date) < _sort_key(last_date)
+
+
 class FirestoreSessionOps:
     """Mixin for workout session and exercise history operations"""
 
@@ -333,7 +356,12 @@ class FirestoreSessionOps:
                 ],
                 exercise_order=request.exercise_order,
                 duration_minutes=duration_minutes,
-                calories=getattr(request, 'calories', None)
+                calories=getattr(request, 'calories', None),
+                avg_heart_rate=getattr(request, 'avg_heart_rate', None),
+                max_heart_rate=getattr(request, 'max_heart_rate', None),
+                source=getattr(request, 'source', 'manual') or 'manual',
+                external_id=getattr(request, 'external_id', None),
+                import_meta=getattr(request, 'import_meta', None),
             )
 
             # Single write with completed state
@@ -524,9 +552,15 @@ class FirestoreSessionOps:
                 # Update existing history
                 current_history = doc.to_dict()
 
-                # Update recent sessions (keep last 5)
+                # An older session (e.g. an imported watch file) must not
+                # overwrite "last weight" from a newer one.
+                is_older = _is_before(session_data.get('date'), current_history.get('last_session_date'))
+
+                # Update recent sessions (keep last 5, newest first)
                 recent_sessions = current_history.get('recent_sessions', [])
                 recent_sessions.insert(0, session_data)
+                if is_older:
+                    recent_sessions.sort(key=lambda r: _sort_key(r.get('date')), reverse=True)
                 recent_sessions = recent_sessions[:5]  # Keep only last 5
 
                 # Check if this is a new PR
@@ -534,15 +568,18 @@ class FirestoreSessionOps:
                 new_weight = session_data.get('weight')
 
                 update_data = {
-                    'last_weight': new_weight,
-                    'last_weight_unit': session_data.get('weight_unit', 'lbs'),
-                    'last_session_id': session_data.get('session_id'),
-                    'last_session_date': session_data.get('date'),
-                    'last_weight_direction': next_weight_direction,
                     'total_sessions': current_history.get('total_sessions', 0) + 1,
                     'recent_sessions': recent_sessions,
                     'updated_at': firestore.SERVER_TIMESTAMP
                 }
+                if not is_older:
+                    update_data.update({
+                        'last_weight': new_weight,
+                        'last_weight_unit': session_data.get('weight_unit', 'lbs'),
+                        'last_session_id': session_data.get('session_id'),
+                        'last_session_date': session_data.get('date'),
+                        'last_weight_direction': next_weight_direction,
+                    })
 
                 # Update PR if applicable (compare numerically to avoid string ordering bugs)
                 def _is_new_pr(new_w, best_w):

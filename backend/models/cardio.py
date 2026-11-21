@@ -62,6 +62,10 @@ class CardioSession(BaseModel):
     # External Data Source (future-proof for imports)
     source: str = Field(default="manual", description="Data source: 'manual', 'strava', 'garmin', 'apple_health'")
     external_id: Optional[str] = Field(None, description="ID from external source for deduplication")
+    import_meta: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Import bookkeeping: pre-merge snapshot, used to undo an import"
+    )
 
     # Metadata
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="When this record was created")
@@ -92,6 +96,9 @@ class CreateCardioSessionRequest(BaseModel):
     elevation_unit: str = Field(default="ft", description="Elevation unit")
     activity_details: Dict[str, Any] = Field(default_factory=dict, description="Activity-specific fields")
     notes: Optional[str] = Field(None, max_length=500, description="Session notes")
+    source: str = Field(default="manual", description="Data source: 'manual' or 'garmin'")
+    external_id: Optional[str] = Field(None, description="External source ID for deduplication")
+    import_meta: Optional[Dict[str, Any]] = Field(None, description="Import bookkeeping for undo")
 
 class UpdateCardioSessionRequest(BaseModel):
     """Request to update a cardio session"""

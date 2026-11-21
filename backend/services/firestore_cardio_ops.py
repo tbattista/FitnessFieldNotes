@@ -44,6 +44,9 @@ class FirestoreCardioOps:
                 elevation_unit=getattr(session_request, 'elevation_unit', 'ft'),
                 activity_details=getattr(session_request, 'activity_details', {}),
                 notes=getattr(session_request, 'notes', None),
+                source=getattr(session_request, 'source', 'manual') or 'manual',
+                external_id=getattr(session_request, 'external_id', None),
+                import_meta=getattr(session_request, 'import_meta', None),
                 status="completed"
             )
 

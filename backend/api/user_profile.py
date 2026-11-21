@@ -98,7 +98,8 @@ async def delete_user_account(
             'programs',
             'workout_sessions',
             'favorites',
-            'exercise_history'
+            'exercise_history',
+            'garmin_exercise_map'
         ]
         
         for collection_name in collections_to_delete:

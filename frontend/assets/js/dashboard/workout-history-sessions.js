@@ -205,6 +205,30 @@ function renderSessionGroup(title, sessions) {
  * In Single Workout Mode: date is primary
  * Supports delete mode with checkbox selection
  */
+/**
+ * "Garmin" badge for sessions created by or merged with a Garmin import.
+ */
+function isGarminSession(session) {
+  return !!(session && typeof session.external_id === 'string' && session.external_id.startsWith('garmin:'));
+}
+
+function garminBadge(session) {
+  return isGarminSession(session)
+    ? ' <span class="badge bg-label-info garmin-badge" title="Imported from Garmin">Garmin</span>'
+    : '';
+}
+
+function garminUndoItem(session, sessionType) {
+  if (!isGarminSession(session) || !session.import_meta) return '';
+  return `
+          <li>
+            <a class="dropdown-item" href="javascript:void(0);"
+               onclick="window.garminImportReview && window.garminImportReview.undoFromHistory('${session.id}', '${sessionType}');">
+              <i class="bx bx-undo me-2"></i>Undo Garmin import
+            </a>
+          </li>`;
+}
+
 function createSessionEntry(session) {
   // Route to cardio renderer if this is a cardio session
   if (session._sessionType === 'cardio' && window.renderCardioHistoryEntry) {
@@ -274,7 +298,7 @@ function createSessionEntry(session) {
       </div>
       <div class="session-info">
         ${workoutNameHtml}
-        <span class="session-date">${dateStr}</span>
+        <span class="session-date">${dateStr}${garminBadge(session)}</span>
         <span class="session-meta">${duration}${hasNotes ? ' • <i class="bx bx-note"></i>' : ''}</span>
       </div>
       <div class="dropdown session-menu">
@@ -297,7 +321,7 @@ function createSessionEntry(session) {
                onclick="createTemplateFromSession('${session.id}');">
               <i class="bx bx-copy-alt me-2"></i>Save as Template
             </a>
-          </li>
+          </li>${garminUndoItem(session, 'workout')}
           <li><hr class="dropdown-divider"></li>
           <li>
             <a class="dropdown-item text-danger" href="javascript:void(0);"
@@ -618,7 +642,7 @@ function renderCardioHistoryEntry(session) {
       </div>
       <div class="session-info">
         <span class="session-workout-name">${escapeHtml(name)}</span>
-        <span class="session-date">${dateStr}</span>
+        <span class="session-date">${dateStr}${garminBadge(session)}</span>
         <span class="session-meta">${metaParts.join(' · ')}</span>
       </div>
       <div class="dropdown session-menu">
@@ -635,7 +659,7 @@ function renderCardioHistoryEntry(session) {
                onclick="openEditCardioSessionModal('${session.id}');">
               <i class="bx bx-edit-alt me-2"></i>Edit Session
             </a>
-          </li>
+          </li>${garminUndoItem(session, 'cardio')}
           <li><hr class="dropdown-divider"></li>
           <li>
             <a class="dropdown-item text-danger" href="javascript:void(0);"
@@ -748,6 +772,8 @@ window.renderSessionHistory = renderSessionHistory;
 window.groupSessionsByTimePeriod = groupSessionsByTimePeriod;
 window.renderSessionGroup = renderSessionGroup;
 window.createSessionEntry = createSessionEntry;
+window.garminBadge = garminBadge;
+window.garminUndoItem = garminUndoItem;
 window.renderSessionDetails = renderSessionDetails;
 window.renderExerciseTableRow = renderExerciseTableRow;
 window.scrollToSession = scrollToSession;

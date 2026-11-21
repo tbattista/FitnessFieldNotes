@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import routers
-from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride, spin_ride_history, tabata_kettlebell, workout_library, library_pages
+from .api import health, documents, workouts, programs, exercises, favorites, personal_records, auth, data, migration, workout_sessions, sharing, user_profile, export, cardio_sessions, import_routes, universal_log_routes, cron, exercise_images, spin_ride, spin_ride_history, tabata_kettlebell, workout_library, library_pages, garmin
 from .services.sharing_service import sharing_service
 import re
 import html
@@ -75,6 +75,7 @@ app.include_router(spin_ride_history.router)  # Saved spin rides (per-user histo
 app.include_router(tabata_kettlebell.router)  # Tabata Kettlebell generator (experimental)
 app.include_router(workout_library.router)  # Public Tabata/Spin workout library API
 app.include_router(library_pages.router)  # Server-rendered library pages (SEO)
+app.include_router(garmin.router)  # Garmin FIT import (upload, review, undo)
 
 logger.info("✅ All routers included successfully (25 routers total)")
 
