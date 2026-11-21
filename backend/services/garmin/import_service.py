@@ -131,7 +131,10 @@ def _preferred_unit(sessions) -> str:
 # ── preview ──────────────────────────────────────────────────────────────────
 
 async def build_preview(user_id: str, blob: bytes) -> GarminImportPreview:
-    activity = parse_activity(blob)
+    return await build_preview_for_activity(user_id, parse_activity(blob))
+
+
+async def build_preview_for_activity(user_id: str, activity: ParsedGarminActivity) -> GarminImportPreview:
     workouts, sessions = await _context(user_id, activity)
     known = _known_names(workouts, sessions)
     unit = _preferred_unit(sessions) if activity.kind == "strength" else "lbs"

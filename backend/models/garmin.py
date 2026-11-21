@@ -110,6 +110,7 @@ class GarminImportConfirmRequest(BaseModel):
     )
     save_mappings: bool = Field(True, description="Remember the chosen mappings for future imports")
     weight_unit: Literal["lbs", "kg"] = "lbs"
+    pending_id: Optional[str] = Field(None, description="Synced activity waiting for review, cleared on success")
 
 
 class GarminImportResult(BaseModel):
@@ -127,3 +128,60 @@ class GarminUndoRequest(BaseModel):
 
 class GarminExerciseMapUpdate(BaseModel):
     mappings: Dict[str, str] = Field(..., description="garmin_key -> app exercise name; empty name deletes")
+
+
+# ── Personal API sync (Phase 2) ──────────────────────────────────────────────
+
+class GarminConnectRequest(BaseModel):
+    api_key: str = Field(..., min_length=10, max_length=4096, description="Garmin Personal API key")
+    expires_in_days: Optional[int] = Field(
+        None, ge=1, le=366, description="Expiry chosen when the key was created, for reminders")
+    sync_from: Optional[datetime] = Field(
+        None, description="Import activities that started at or after this time (default: now)")
+
+
+class GarminConnectionUpdate(BaseModel):
+    review_all: Optional[bool] = Field(None, description="Send every synced activity to review")
+
+
+class GarminConnectionStatus(BaseModel):
+    allowed: bool = Field(..., description="Whether this account may use key-based sync")
+    connected: bool = False
+    status: Optional[Literal["connected", "needs_attention"]] = None
+    key_hint: Optional[str] = Field(None, description="Last 4 characters of the key")
+    connected_at: Optional[datetime] = None
+    sync_from: Optional[datetime] = None
+    key_expires_at: Optional[datetime] = None
+    days_until_expiry: Optional[int] = None
+    review_all: bool = False
+    last_sync_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+    last_summary: Optional[Dict[str, int]] = None
+    pending_count: int = 0
+
+
+class GarminSyncImported(BaseModel):
+    garmin_activity_id: str
+    name: str
+    started_at: Optional[datetime] = None
+    action: ImportAction
+    session_id: Optional[str] = None
+    session_type: Optional[Literal["workout", "cardio"]] = None
+
+
+class GarminSyncResult(BaseModel):
+    imported: List[GarminSyncImported] = Field(default_factory=list)
+    pending: int = Field(0, description="New activities waiting for review in this run")
+    pending_total: int = Field(0, description="All activities waiting for review")
+    skipped: int = Field(0, description="Already imported, or entered by hand in Garmin Connect")
+    errors: List[str] = Field(default_factory=list)
+    more: bool = Field(False, description="More new activities remain; sync again")
+    last_sync_at: Optional[datetime] = None
+
+
+class GarminPendingItem(BaseModel):
+    id: str
+    name: str
+    kind: Literal["strength", "cardio"]
+    started_at: Optional[datetime] = None
+    reason: str = ""

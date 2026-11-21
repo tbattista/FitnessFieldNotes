@@ -5,7 +5,7 @@
  *
  * Open with any element carrying [data-garmin-import], or
  * window.garminImportReview.open(). Requires window.garminImportService.
- * @version 1.0.0
+ * @version 1.1.0
  */
 (function () {
     'use strict';
@@ -13,7 +13,8 @@
     const KG_TO_LB = 2.20462;
     const ID = 'garminImportOffcanvas';
 
-    const state = { preview: null, unit: 'lbs', result: null };
+    // pendingId / queue: reviewing activities that Garmin sync couldn't import on its own.
+    const state = { preview: null, unit: 'lbs', result: null, pendingId: null, queue: [], changed: false };
 
     // ── helpers ────────────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@
           <div class="offcanvas-body" id="garminImportBody"></div>`;
         document.body.appendChild(el);
         el.addEventListener('hidden.bs.offcanvas', () => {
-            if (state.result && window.location.pathname.includes('workout-history')) window.location.reload();
+            if (state.changed && window.location.pathname.includes('workout-history')) window.location.reload();
         });
         return el;
     }
@@ -102,6 +103,8 @@
     function renderPick(error) {
         state.preview = null;
         state.result = null;
+        state.pendingId = null;
+        state.queue = [];
         body().innerHTML = `
           ${error ? `<div class="alert alert-danger small" role="alert" id="garminImportError">${esc(error)}</div>` : ''}
           <p class="small text-muted">
@@ -239,8 +242,14 @@
               <div class="alert alert-info small" id="garminDuplicate">
                 This activity is already in your history. To import it again, undo the earlier import first.
               </div>
-              <button class="btn btn-outline-secondary w-100" id="garminPickAnother">Choose another file</button>`;
-            document.getElementById('garminPickAnother').onclick = () => renderPick();
+              ${state.pendingId
+                ? '<button class="btn btn-outline-secondary w-100" id="garminRemovePending">Remove from review list</button>'
+                : '<button class="btn btn-outline-secondary w-100" id="garminPickAnother">Choose another file</button>'}`;
+            if (state.pendingId) {
+                document.getElementById('garminRemovePending').onclick = () => dismissCurrent();
+            } else {
+                document.getElementById('garminPickAnother').onclick = () => renderPick();
+            }
             return;
         }
 
@@ -259,7 +268,12 @@
                <p class="small text-muted mt-1 mb-0">Anything you already logged in the app is kept as is.</p>`
             : '';
 
+        const queueHeader = state.pendingId
+            ? `<div class="small text-muted mb-2" id="garminQueueHeader">From Garmin sync${state.queue.length > 1
+                ? ` · ${state.queue.length} waiting` : ''}${state.pendingReason ? ` · ${esc(state.pendingReason)}` : ''}</div>`
+            : '';
         body().innerHTML = `
+          ${queueHeader}
           ${summaryHtml(a)}
           <h6 class="mb-2">Where should this go?</h6>
           <div class="list-group mb-1" id="garminOptions">${optionsHtml}</div>
@@ -267,7 +281,7 @@
           ${exercisesHtml(p)}
           <div class="alert alert-danger small mt-3 d-none" id="garminImportError" role="alert"></div>
           <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-outline-secondary" id="garminBack">Back</button>
+            <button class="btn btn-outline-secondary" id="garminBack">${state.pendingId ? 'Later' : 'Back'}</button>
             <button class="btn btn-primary flex-grow-1" id="garminConfirm">Import</button>
           </div>`;
 
@@ -280,7 +294,7 @@
                 });
             };
         }
-        document.getElementById('garminBack').onclick = () => renderPick();
+        document.getElementById('garminBack').onclick = () => (state.pendingId ? hide() : renderPick());
         document.getElementById('garminConfirm').onclick = () => submit(opts);
         body().querySelectorAll('input[name="garminAction"]').forEach(r => {
             r.onchange = () => {
@@ -294,7 +308,10 @@
         const p = state.preview;
         const chosen = opts[Number((body().querySelector('input[name="garminAction"]:checked') || {}).value || 0)];
         const errorBox = document.getElementById('garminImportError');
-        if (chosen.action === 'skip') { hide(); return; }
+        if (chosen.action === 'skip') {
+            if (state.pendingId) { dismissCurrent(); } else { hide(); }
+            return;
+        }
 
         const mappings = {};
         let missing = false;
@@ -323,7 +340,10 @@
                 exercise_mappings: mappings,
                 save_mappings: saveBox ? saveBox.checked : true,
                 weight_unit: state.unit,
+                pending_id: state.pendingId,
             });
+            state.changed = true;
+            state.queue = state.queue.filter(item => item.id !== state.pendingId);
             renderDone();
         } catch (e) {
             errorBox.textContent = e.message;
@@ -346,15 +366,16 @@
           </div>
           <div class="d-flex gap-2">
             <button class="btn btn-outline-danger" id="garminUndo"><i class="bx bx-undo me-1"></i>Undo</button>
-            <button class="btn btn-primary flex-grow-1" id="garminDone">Done</button>
+            <button class="btn btn-primary flex-grow-1" id="garminDone">${state.queue.length
+                ? `Next activity (${state.queue.length} left)` : 'Done'}</button>
           </div>`;
-        document.getElementById('garminDone').onclick = () => hide();
+        document.getElementById('garminDone').onclick = () => (state.queue.length ? reviewNext() : hide());
         document.getElementById('garminUndo').onclick = async () => {
             try {
                 await window.garminImportService.undo(r.session_id, r.session_type);
-                state.result = { undone: true };
-                renderPick();
+                state.result = null;
                 notify('Import undone', 'info');
+                if (state.queue.length) { reviewNext(); } else { renderPick(); }
             } catch (e) {
                 notify(e.message, 'danger');
             }
@@ -363,6 +384,115 @@
 
     function notify(message, type) {
         if (window.showToast) window.showToast({ message, type });
+    }
+
+    // ── review queue from Garmin sync ──────────────────────────────────────
+
+    function loading(text) {
+        body().innerHTML = `
+          <div class="text-center py-5" id="garminImportLoading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3 text-muted">${esc(text)}</p>
+          </div>`;
+    }
+
+    async function reviewNext() {
+        const item = state.queue[0];
+        if (!item) { hide(); return; }
+        state.pendingId = item.id;
+        state.pendingReason = item.reason;
+        state.result = null;
+        loading(`Loading ${item.name}…`);
+        try {
+            state.preview = await window.garminImportService.pendingPreview(item.id);
+            state.unit = state.preview.weight_unit || 'lbs';
+            renderReview();
+        } catch (e) {
+            body().innerHTML = `<div class="alert alert-danger small">${esc(e.message)}</div>`;
+        }
+    }
+
+    async function dismissCurrent() {
+        try {
+            await window.garminImportService.dismissPending(state.pendingId);
+            state.changed = true;
+            state.queue = state.queue.filter(item => item.id !== state.pendingId);
+            refreshSyncControls();
+            if (state.queue.length) { reviewNext(); } else { hide(); }
+        } catch (e) {
+            notify(e.message, 'danger');
+        }
+    }
+
+    async function openPendingQueue() {
+        ensureShell();
+        show();
+        loading('Loading activities to review…');
+        try {
+            state.queue = await window.garminImportService.listPending();
+        } catch (e) {
+            body().innerHTML = `<div class="alert alert-danger small">${esc(e.message)}</div>`;
+            return;
+        }
+        if (!state.queue.length) {
+            body().innerHTML = '<p class="text-muted text-center py-4">Nothing waiting for review.</p>';
+            return;
+        }
+        reviewNext();
+    }
+
+    // ── History page: Sync button and "needs review" banner ────────────────
+
+    let connection = null;
+
+    function renderSyncControls() {
+        const connected = !!(connection && connection.allowed && connection.connected);
+        document.querySelectorAll('[data-garmin-sync]').forEach(btn => btn.classList.toggle('d-none', !connected));
+        const count = connected ? connection.pending_count || 0 : 0;
+        document.querySelectorAll('[data-garmin-pending-banner]').forEach(banner => {
+            banner.classList.toggle('d-none', count === 0);
+            const label = banner.querySelector('[data-garmin-pending-count]');
+            if (label) label.textContent = `${count} Garmin ${count === 1 ? 'activity needs' : 'activities need'} review`;
+        });
+        const attention = connected && connection.status === 'needs_attention';
+        document.querySelectorAll('[data-garmin-attention]').forEach(el => el.classList.toggle('d-none', !attention));
+    }
+
+    async function refreshSyncControls() {
+        if (!document.querySelector('[data-garmin-sync], [data-garmin-pending-banner]')) return;
+        try {
+            connection = await window.garminImportService.getConnection();
+        } catch (e) {
+            connection = null;
+        }
+        renderSyncControls();
+    }
+
+    async function runSync(button) {
+        const original = button ? button.innerHTML : '';
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Syncing…';
+        }
+        try {
+            const result = await window.garminImportService.sync();
+            notify(`Garmin: ${window.garminImportService.describeSync(result)}`,
+                result.errors && result.errors.length ? 'warning' : 'success');
+            if (result.imported && result.imported.length) {
+                setTimeout(() => window.location.reload(), 900);
+                return;
+            }
+            await refreshSyncControls();
+            if (result.pending) openPendingQueue();
+        } catch (e) {
+            notify(e.message, 'danger');
+            await refreshSyncControls();
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = original;
+            }
+        }
     }
 
     // ── undo from the history list ─────────────────────────────────────────
@@ -399,8 +529,29 @@
         if (trigger) {
             e.preventDefault();
             open();
+            return;
+        }
+        const sync = e.target.closest('[data-garmin-sync]');
+        if (sync) {
+            e.preventDefault();
+            runSync(sync);
+            return;
+        }
+        if (e.target.closest('[data-garmin-review]')) {
+            e.preventDefault();
+            openPendingQueue();
         }
     });
 
-    window.garminImportReview = { open, undoFromHistory };
+    window.addEventListener('authStateChanged', e => {
+        if (e.detail && e.detail.isAuthenticated) {
+            refreshSyncControls();
+        } else {
+            connection = null;
+            renderSyncControls();
+        }
+    });
+    if (window.authService && window.authService.isAuthenticated) refreshSyncControls();
+
+    window.garminImportReview = { open, undoFromHistory, openPendingQueue, runSync, refreshSyncControls };
 })();

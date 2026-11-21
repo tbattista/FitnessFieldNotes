@@ -120,6 +120,14 @@
                     </div>
                   </div>
 
+                  <!-- Garmin Settings Card -->
+                  <div class="card mb-4" id="garmin">
+                    <h5 class="card-header"><i class="bx bx-stopwatch me-1"></i>Garmin</h5>
+                    <div class="card-body" id="garminSettingsBody">
+                      <p class="text-muted mb-0">Loading…</p>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -176,5 +184,10 @@
 
     <!-- Settings Page Script -->
     <script src="/static/assets/js/settings/settings-page.js"></script>
+
+    <!-- Garmin sync settings -->
+    <script src="/static/assets/js/components/modal-manager.js"></script>
+    <script src="/static/assets/js/services/garmin-import-service.js?v=1.1.0"></script>
+    <script src="/static/assets/js/settings/garmin-settings.js?v=1.0.0"></script>
   </body>
 </html>

@@ -2,7 +2,7 @@
  * Garmin Import Service
  * API calls for importing Garmin watch activities (.fit / Garmin Connect .zip).
  * Backend: backend/api/garmin.py
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 window.garminImportService = {
@@ -59,6 +59,66 @@ window.garminImportService = {
             body: JSON.stringify({ session_id: sessionId, session_type: sessionType }),
         });
         return this._handle(response, 'Undo failed.');
+    },
+
+    // ── Personal API key sync ───────────────────────────────────────────
+
+    async _json(method, path, body, fallback) {
+        const response = await fetch(path, {
+            method,
+            headers: await this._headers(),
+            body: body === undefined ? undefined : JSON.stringify(body),
+        });
+        return this._handle(response, fallback);
+    },
+
+    /** Connection status: { allowed, connected, status, key_hint, last_sync_at, pending_count, ... } */
+    getConnection() {
+        return this._json('GET', '/api/v3/garmin/connection', undefined, 'Could not load Garmin status.');
+    },
+
+    connect(apiKey, expiresInDays, syncFrom) {
+        return this._json('PUT', '/api/v3/garmin/connection',
+            { api_key: apiKey, expires_in_days: expiresInDays || null, sync_from: syncFrom || null },
+            'Could not connect Garmin.');
+    },
+
+    updateConnection(changes) {
+        return this._json('PATCH', '/api/v3/garmin/connection', changes, 'Could not save the setting.');
+    },
+
+    disconnect() {
+        return this._json('DELETE', '/api/v3/garmin/connection', undefined, 'Could not disconnect Garmin.');
+    },
+
+    /** Pull new activities. Returns { imported, pending, pending_total, skipped, errors, more }. */
+    sync() {
+        return this._json('POST', '/api/v3/garmin/sync', undefined, 'Sync failed.');
+    },
+
+    listPending() {
+        return this._json('GET', '/api/v3/garmin/pending', undefined, 'Could not load activities to review.');
+    },
+
+    pendingPreview(id) {
+        return this._json('GET', `/api/v3/garmin/pending/${encodeURIComponent(id)}/preview`, undefined,
+            'Could not load that activity.');
+    },
+
+    dismissPending(id) {
+        return this._json('DELETE', `/api/v3/garmin/pending/${encodeURIComponent(id)}`, undefined,
+            'Could not dismiss that activity.');
+    },
+
+    /** Plain-language summary of a sync result. */
+    describeSync(r) {
+        const parts = [];
+        if (r.imported && r.imported.length) parts.push(`${r.imported.length} imported`);
+        if (r.pending_total) parts.push(`${r.pending_total} to review`);
+        if (!parts.length) parts.push('No new activities');
+        if (r.errors && r.errors.length) parts.push(`${r.errors.length} couldn't be read`);
+        if (r.more) parts.push('more waiting: sync again');
+        return parts.join(' · ');
     },
 
     /** True for sessions created by or merged with a Garmin import. */

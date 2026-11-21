@@ -153,3 +153,155 @@ test.describe('Garmin import', () => {
         expect(html.cardio).toContain("undoFromHistory('c1', 'cardio')");
     });
 });
+
+// ── Phase 2: Personal API key sync ────────────────────────────────────────
+
+const CONNECTED = {
+    allowed: true, connected: true, status: 'connected', key_hint: '1234',
+    connected_at: '2026-11-21T12:00:00Z', sync_from: '2026-11-21T05:00:00Z',
+    key_expires_at: '2027-02-19T12:00:00Z', days_until_expiry: 90, review_all: false,
+    last_sync_at: null, last_error: null, last_summary: null, pending_count: 0,
+};
+
+/**
+ * Open a page and wait for the Firebase sign-in check to report (signed out in
+ * tests), so it can't reset the Garmin UI after the test has set it up.
+ */
+async function gotoAfterAuthCheck(page, path) {
+    await page.addInitScript(() => {
+        window.__authEvents = 0;
+        window.addEventListener('authStateChanged', () => { window.__authEvents += 1; });
+    });
+    await page.goto(`${BASE}/${path}`);
+    await page.waitForFunction(() => window.__authEvents > 0, null, { timeout: 15000 });
+}
+
+function json(route, body, status = 200) {
+    return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+}
+
+test.describe('Garmin sync settings', () => {
+
+    test('non-owner sees that sync is owner-only', async ({ page }) => {
+        await gotoAfterAuthCheck(page, 'settings.html');
+        await page.waitForFunction(() => !!window.garminSettings);
+        await page.evaluate(() => window.garminSettings._setStatus({ allowed: false, connected: false }));
+        await expect(page.locator('#garminSettingsBody')).toContainText('limited to the site owner');
+        await expect(page.locator('#garminApiKey')).toHaveCount(0);
+    });
+
+    test('connect sends the key, expiry and start date, then shows the connection', async ({ page }) => {
+        const sent = [];
+        await page.route('**/api/v3/garmin/connection', async route => {
+            if (route.request().method() === 'PUT') {
+                sent.push(route.request().postDataJSON());
+                return json(route, CONNECTED);
+            }
+            return json(route, { allowed: true, connected: false });
+        });
+        await gotoAfterAuthCheck(page, 'settings.html');
+        await page.waitForFunction(() => !!window.garminSettings);
+        await page.evaluate(() => window.garminSettings._setStatus({ allowed: true, connected: false }));
+
+        await page.locator('#garminConnectBtn').click();
+        await expect(page.locator('#garminSettingsMessage')).toContainText('Paste the full key');
+        expect(sent).toHaveLength(0);
+
+        await page.fill('#garminApiKey', 'my-personal-api-key-1234');
+        await page.selectOption('#garminKeyExpiry', '180');
+        await page.locator('#garminConnectBtn').click();
+
+        await expect(page.locator('#garminStatusBadge')).toHaveText('Connected');
+        await expect(page.locator('#garminSettingsBody')).toContainText('Key ending 1234');
+        await expect(page.locator('#garminSettingsMessage')).toContainText('Garmin connected');
+        expect(sent).toHaveLength(1);
+        expect(sent[0].api_key).toBe('my-personal-api-key-1234');
+        expect(sent[0].expires_in_days).toBe(180);
+        expect(new Date(sent[0].sync_from).getTime()).not.toBeNaN();
+        // The key never stays on the page after connecting.
+        expect(await page.content()).not.toContain('my-personal-api-key-1234');
+    });
+
+    test('sync now, review toggle and expiry warning', async ({ page }) => {
+        const patches = [];
+        await page.route('**/api/v3/garmin/sync', route => json(route, {
+            imported: [{ garmin_activity_id: '3', name: 'Treadmill Run', action: 'new' }],
+            pending: 1, pending_total: 1, skipped: 0, errors: [], more: false }));
+        await page.route('**/api/v3/garmin/connection', async route => {
+            if (route.request().method() === 'PATCH') {
+                patches.push(route.request().postDataJSON());
+                return json(route, { ...CONNECTED, review_all: true });
+            }
+            return json(route, { ...CONNECTED, last_sync_at: '2026-11-21T13:00:00Z', pending_count: 1,
+                                 last_summary: { imported: 1, pending: 1, skipped: 0, errors: 0 } });
+        });
+        await gotoAfterAuthCheck(page, 'settings.html');
+        await page.waitForFunction(() => !!window.garminSettings);
+        await page.evaluate(c => window.garminSettings._setStatus({ ...c, days_until_expiry: 3 }), CONNECTED);
+        await expect(page.locator('#garminSettingsBody')).toContainText('expires in 3 days');
+
+        await page.locator('#garminSyncNow').click();
+        await expect(page.locator('#garminSettingsMessage')).toContainText('1 imported · 1 to review');
+        await expect(page.locator('#garminLastSync')).toContainText('1 imported, 1 to review');
+        await expect(page.locator('#garminSettingsBody')).toContainText('1 activity waiting for review');
+
+        await page.locator('#garminReviewAll').check();
+        await expect(page.locator('#garminSettingsMessage')).toContainText('wait for review');
+        expect(patches).toEqual([{ review_all: true }]);
+    });
+});
+
+test.describe('Garmin sync on History', () => {
+
+    test('connected account shows Sync and a review banner; review queue walks pending items', async ({ page }) => {
+        const dismissed = [];
+        await page.route('**/api/v3/garmin/connection', route =>
+            json(route, { ...CONNECTED, pending_count: 2 }));
+        await page.route('**/api/v3/garmin/pending', route => json(route, [
+            { id: '4', name: 'Strength', kind: 'strength', started_at: START, reason: 'New exercise names to confirm' },
+            { id: '5', name: 'HIIT', kind: 'cardio', started_at: START, reason: 'Check the match' },
+        ]));
+        await page.route('**/api/v3/garmin/pending/*/preview', route => {
+            const id = route.request().url().split('/pending/')[1].split('/')[0];
+            const preview = strengthPreview();
+            preview.activity.name = id === '4' ? 'Strength' : 'HIIT';
+            return json(route, preview);
+        });
+        await page.route('**/api/v3/garmin/pending/*', route => {
+            if (route.request().method() === 'DELETE') {
+                dismissed.push(route.request().url().split('/pending/')[1]);
+                return json(route, { success: true });
+            }
+            return route.fallback();
+        });
+
+        await gotoAfterAuthCheck(page, 'workout-history.html');
+        await page.waitForFunction(() => !!window.garminImportReview);
+        await page.evaluate(() => window.garminImportReview.refreshSyncControls());
+
+        // Header buttons live inside history content that may be hidden for a
+        // signed-out test browser, so check state rather than visibility.
+        await expect(page.locator('[data-garmin-sync]').first()).not.toHaveClass(/d-none/);
+        await expect(page.locator('[data-garmin-pending-count]').first()).toHaveText('2 Garmin activities need review');
+
+        await page.evaluate(() => window.garminImportReview.openPendingQueue());
+        await expect(page.locator('#garminActivityName')).toHaveText('Strength');
+        await expect(page.locator('#garminQueueHeader')).toContainText('2 waiting');
+        await expect(page.locator('#garminQueueHeader')).toContainText('New exercise names to confirm');
+        await expect(page.locator('#garminBack')).toHaveText('Later');
+
+        await page.locator('.garmin-option', { hasText: "Don't import" }).click();
+        await page.locator('#garminConfirm').click();
+        await expect(page.locator('#garminActivityName')).toHaveText('HIIT');
+        expect(dismissed).toEqual(['4']);
+    });
+
+    test('signed-out or unconnected users do not see Sync', async ({ page }) => {
+        await page.route('**/api/v3/garmin/connection', route => json(route, { allowed: true, connected: false }));
+        await gotoAfterAuthCheck(page, 'workout-history.html');
+        await page.waitForFunction(() => !!window.garminImportReview);
+        await page.evaluate(() => window.garminImportReview.refreshSyncControls());
+        await expect(page.locator('[data-garmin-sync]').first()).toHaveClass(/d-none/);
+        await expect(page.locator('[data-garmin-pending-banner]').first()).toHaveClass(/d-none/);
+    });
+});

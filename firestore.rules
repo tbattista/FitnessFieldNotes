@@ -50,6 +50,19 @@ service cloud.firestore {
         allow read: if request.auth != null && request.auth.uid == userId;
         allow write: if false;
       }
+
+      // Garmin sync: synced activities waiting for review. Backend writes;
+      // owner may read.
+      match /garmin_pending/{activityId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
+
+      // Connected services. Holds the encrypted Garmin API key, so no client
+      // access at all: only the backend (Admin SDK) reads or writes it.
+      match /integrations/{provider} {
+        allow read, write: if false;
+      }
     }
     
     // ========================================================================

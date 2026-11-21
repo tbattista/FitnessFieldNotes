@@ -172,9 +172,24 @@
                       <h5 class="mb-1"><i class="bx bx-history me-1"></i>History</h5>
                       <p class="text-muted small mb-0">View your past sessions and track progress</p>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 garmin-import-btn" data-garmin-import>
-                      <i class="bx bx-upload me-1"></i><span class="d-none d-sm-inline">Import from </span>Garmin
-                    </button>
+                    <div class="d-flex gap-2 flex-shrink-0">
+                      <button type="button" class="btn btn-sm btn-primary d-none garmin-sync-btn" data-garmin-sync
+                              title="Pull new activities from Garmin">
+                        <i class="bx bx-refresh me-1"></i>Sync
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-primary garmin-import-btn" data-garmin-import
+                              title="Upload a .fit or .zip file from Garmin Connect">
+                        <i class="bx bx-upload me-1"></i><span class="d-none d-sm-inline">Import from </span>Garmin
+                      </button>
+                    </div>
+                  </div>
+                  <div class="alert alert-info d-flex align-items-center justify-content-between gap-2 py-2 d-none"
+                       data-garmin-pending-banner role="status">
+                    <span class="small"><i class="bx bx-stopwatch me-1"></i><span data-garmin-pending-count></span></span>
+                    <button type="button" class="btn btn-sm btn-primary flex-shrink-0" data-garmin-review>Review</button>
+                  </div>
+                  <div class="alert alert-warning small py-2 d-none" data-garmin-attention role="status">
+                    Garmin sync stopped: the key was rejected. <a href="/settings.html#garmin">Reconnect in Settings</a>
                   </div>
                   <div class="mb-4" id="workoutHistorySubheader" style="display: none;">
                     <h6 class="mb-1" id="workoutHistoryTitle">
@@ -298,9 +313,24 @@
                       <h5 class="mb-1"><i class="bx bx-history me-1"></i>History</h5>
                       <p class="text-muted small mb-0">View your past sessions and track progress</p>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 garmin-import-btn" data-garmin-import>
-                      <i class="bx bx-upload me-1"></i><span class="d-none d-sm-inline">Import from </span>Garmin
-                    </button>
+                    <div class="d-flex gap-2 flex-shrink-0">
+                      <button type="button" class="btn btn-sm btn-primary d-none garmin-sync-btn" data-garmin-sync
+                              title="Pull new activities from Garmin">
+                        <i class="bx bx-refresh me-1"></i>Sync
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-primary garmin-import-btn" data-garmin-import
+                              title="Upload a .fit or .zip file from Garmin Connect">
+                        <i class="bx bx-upload me-1"></i><span class="d-none d-sm-inline">Import from </span>Garmin
+                      </button>
+                    </div>
+                  </div>
+                  <div class="alert alert-info d-flex align-items-center justify-content-between gap-2 py-2 d-none"
+                       data-garmin-pending-banner role="status">
+                    <span class="small"><i class="bx bx-stopwatch me-1"></i><span data-garmin-pending-count></span></span>
+                    <button type="button" class="btn btn-sm btn-primary flex-shrink-0" data-garmin-review>Review</button>
+                  </div>
+                  <div class="alert alert-warning small py-2 d-none" data-garmin-attention role="status">
+                    Garmin sync stopped: the key was rejected. <a href="/settings.html#garmin">Reconnect in Settings</a>
                   </div>
                   <div class="mb-4" id="desktopWorkoutHistorySubheader" style="display: none;">
                     <h6 class="mb-1">
@@ -534,8 +564,8 @@
     <script src="/static/assets/js/dashboard/workout-history-workout-filter.js?v=1.0.0"></script>
     <script src="/static/assets/js/dashboard/workout-history-sessions.js?v=1.4.0"></script>
     <script src="/static/assets/js/dashboard/workout-history-edit.js?v=1.0.0"></script>
-    <script src="/static/assets/js/services/garmin-import-service.js?v=1.0.0"></script>
-    <script src="/static/assets/js/components/garmin-import-review.js?v=1.0.1"></script>
+    <script src="/static/assets/js/services/garmin-import-service.js?v=1.1.0"></script>
+    <script src="/static/assets/js/components/garmin-import-review.js?v=1.1.0"></script>
     <script src="/static/assets/js/data/exercise-seed-data.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
     <script src="/static/assets/js/services/exercise-cache-service.js"></script>
