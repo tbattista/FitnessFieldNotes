@@ -483,7 +483,11 @@
             button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Syncing…';
         }
         try {
-            const result = await window.garminImportService.sync();
+            const result = await window.garminImportService.syncAll(t => {
+                if (button) {
+                    button.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${t.details.length} checked…`;
+                }
+            });
             notify(`Garmin: ${window.garminImportService.describeSync(result)}`,
                 result.errors && result.errors.length ? 'warning' : 'success');
             if (result.imported && result.imported.length) {

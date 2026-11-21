@@ -123,7 +123,8 @@ async def put_connection(req: GarminConnectRequest, current_user: Dict[str, Any]
 async def patch_connection(req: GarminConnectionUpdate, current_user: Dict[str, Any] = Depends(get_current_user)):
     user_id = _require_sync(current_user)
     try:
-        return await sync_service.update(user_id, extract_user_email(current_user), req.review_all, req.recheck)
+        return await sync_service.update(user_id, extract_user_email(current_user), req.review_all, req.recheck,
+                                         req.sync_from)
     except import_service.GarminImportError as e:
         _raise(e)
 

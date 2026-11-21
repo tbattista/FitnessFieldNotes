@@ -43,7 +43,8 @@ from .personal_api_client import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_ALLOWED_EMAILS = "tbattista@gmail.com"
-LIST_LIMIT = 50            # newest activities checked per sync
+LIST_PAGE = 50             # activities per list request
+LIST_MAX = 400             # how far back one sync will page (newest first)
 MAX_DOWNLOADS_PER_RUN = 10  # keep each sync short and gentle on Garmin
 PROCESSED_KEEP = 300        # remembered activity IDs (newest)
 EXPIRY_WARNING_DAYS = 7
@@ -153,12 +154,17 @@ async def connect(user_id: str, email: Optional[str], req: GarminConnectRequest)
 
 
 async def update(user_id: str, email: Optional[str], review_all: Optional[bool],
-                 recheck: Optional[bool] = None) -> GarminConnectionStatus:
+                 recheck: Optional[bool] = None, sync_from: Optional[datetime] = None) -> GarminConnectionStatus:
     if not _load(user_id):
         raise GarminImportError("Garmin isn't connected.", 404)
     changes: Dict[str, Any] = {}
     if review_all is not None:
         changes["review_all"] = bool(review_all)
+    if sync_from is not None:
+        if _utc(sync_from) > _now():
+            raise GarminImportError("The start date can't be in the future.")
+        changes["sync_from"] = _utc(sync_from)
+        recheck = True   # look at everything from the new date
     if recheck:
         # Safe: already-imported files are detected by external_id and
         # queued ones by their pending entry, so nothing is imported twice.
@@ -239,6 +245,19 @@ def _review_reason(preview, review_all: bool) -> str:
 
 # ── sync ─────────────────────────────────────────────────────────────────────
 
+async def _list_since(client, since: datetime) -> List[Dict[str, Any]]:
+    """Page back through the activity list (newest first) until before `since`."""
+    out: List[Dict[str, Any]] = []
+    while len(out) < LIST_MAX:
+        page = await client.list_activities(limit=LIST_PAGE, start=len(out))
+        out.extend(page)
+        starts = [activity_start(a) for a in page]
+        oldest = min((s for s in starts if s), default=None)
+        if len(page) < LIST_PAGE or oldest is None or oldest < since:
+            break
+    return out
+
+
 async def sync(user_id: str) -> GarminSyncResult:
     conn = _load(user_id)
     if not conn:
@@ -264,7 +283,7 @@ async def sync(user_id: str) -> GarminSyncResult:
             outcome=outcome, detail=detail, synced_at=now))
 
     try:
-        listed = await client.list_activities(limit=LIST_LIMIT)
+        listed = await _list_since(client, since)
     except GarminAuthError as e:
         _conn_ref(user_id).update({"status": "needs_attention", "last_error": str(e), "last_sync_at": _now()})
         raise GarminImportError(f"{e} Create a new key and reconnect in Settings.", 401)

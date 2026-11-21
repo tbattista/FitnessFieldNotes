@@ -142,6 +142,8 @@ class GarminConnectRequest(BaseModel):
 
 class GarminConnectionUpdate(BaseModel):
     review_all: Optional[bool] = Field(None, description="Send every synced activity to review")
+    sync_from: Optional[datetime] = Field(
+        None, description="New start date. Activities from then on are (re)checked; duplicates are skipped")
     recheck: Optional[bool] = Field(
         None, description="Forget which activities were already handled, so the next sync looks at "
                           "everything since the start date again (imports are still never duplicated)")

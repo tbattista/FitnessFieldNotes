@@ -167,7 +167,9 @@
               ${s.status === 'needs_attention' ? 'Needs attention' : 'Connected'}</span>
             <span class="small text-muted">Key ending ${esc(s.key_hint)}</span>
           </div>
-          <div class="small text-muted">Importing activities from ${esc(fmtDate(s.sync_from))}</div>
+          <div class="small text-muted" id="garminStartRow">Importing activities from
+            <span id="garminStartDate">${esc(fmtDate(s.sync_from))}</span>
+            · <a href="#" id="garminChangeStart">Change</a></div>
           <div class="small text-muted" id="garminLastSync">${s.last_sync_at
               ? `Last sync ${esc(fmtDate(s.last_sync_at, true))}${esc(summaryText(s.last_summary))}`
               : 'Not synced yet'}</div>
@@ -216,6 +218,7 @@
             }
         };
         document.getElementById('garminReplaceKey').onclick = () => { replacing = true; renderConnected(); };
+        document.getElementById('garminChangeStart').onclick = e => { e.preventDefault(); editStartDate(); };
         document.getElementById('garminDisconnect').onclick = disconnect;
     }
 
@@ -259,6 +262,39 @@
         };
     }
 
+    function dateInputValue(iso) {
+        const d = iso ? new Date(iso) : new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function editStartDate() {
+        const row = document.getElementById('garminStartRow');
+        row.innerHTML = `
+          <label class="form-label small mb-1" for="garminNewStart">Import activities from</label>
+          <div class="d-flex gap-2 align-items-center">
+            <input type="date" class="form-control form-control-sm w-auto" id="garminNewStart"
+                   value="${dateInputValue(status.sync_from)}" max="${todayInput()}">
+            <button type="button" class="btn btn-sm btn-primary" id="garminSaveStart">Save and sync</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="garminCancelStart">Cancel</button>
+          </div>
+          <div class="form-text">Everything from this date is checked. Sessions already in your history are skipped,
+            so nothing is imported twice.</div>`;
+        document.getElementById('garminCancelStart').onclick = () => render();
+        document.getElementById('garminSaveStart').onclick = async () => {
+            const value = document.getElementById('garminNewStart').value;
+            if (!value) return;
+            try {
+                status = await window.garminImportService.updateConnection({
+                    sync_from: new Date(`${value}T00:00:00`).toISOString() });
+                render();
+                await syncNow();
+            } catch (e) {
+                message(esc(e.message), 'danger');
+            }
+        };
+    }
+
     async function syncNow() {
         const btn = document.getElementById('garminSyncNow');
         btn.disabled = true;
@@ -266,7 +302,9 @@
         let result = null;
         let error = null;
         try {
-            result = await window.garminImportService.sync();
+            result = await window.garminImportService.syncAll(t => {
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Syncing… ${t.details.length} checked`;
+            });
         } catch (e) {
             error = e;
         }

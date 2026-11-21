@@ -139,6 +139,9 @@ def test_matching_proposals():
                "completed_at": START + timedelta(minutes=30)}
     later = {"id": "s2", "name": "Upper", "started_at": START + timedelta(hours=4), "duration_minutes": 40}
     far = {"id": "s3", "name": "Old", "started_at": START - timedelta(days=3), "duration_minutes": 40}
+    other_watch = {"id": "s4", "name": "Strength", "started_at": START + timedelta(minutes=1), "duration_minutes": 20,
+                   "external_id": "garmin:99:1"}   # another Garmin activity: never a merge target
+    assert matching.session_candidates(a, [other_watch], "workout_session") == []
     c = matching.session_candidates(a, [far, later, overlap], "workout_session")
     assert [x.id for x in c] == ["s1", "s2"] and c[0].score == 1.0
     p = matching.propose(a, c, [], None)

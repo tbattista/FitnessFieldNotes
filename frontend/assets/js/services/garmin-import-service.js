@@ -96,6 +96,35 @@ window.garminImportService = {
         return this._json('POST', '/api/v3/garmin/sync', undefined, 'Sync failed.');
     },
 
+    /**
+     * Sync until caught up. The server handles at most 10 activities per call
+     * (to go easy on Garmin) and sets `more` when others are waiting.
+     * onProgress(totals) runs after each round. Returns combined totals.
+     */
+    async syncAll(onProgress, maxRounds = 15) {
+        const totals = { imported: [], pending: 0, pending_total: 0, skipped: 0, errors: [], more: false, details: [] };
+        for (let round = 1; round <= maxRounds; round++) {
+            let r;
+            try {
+                r = await this.sync();
+            } catch (e) {
+                if (round === 1) throw e;
+                totals.errors.push(e.message);
+                break;
+            }
+            totals.imported.push(...(r.imported || []));
+            totals.pending += r.pending || 0;
+            totals.pending_total = r.pending_total || 0;
+            totals.skipped += r.skipped || 0;
+            totals.errors.push(...(r.errors || []));
+            totals.details.push(...(r.details || []));
+            totals.more = !!r.more;
+            if (onProgress) onProgress(totals, round);
+            if (!r.more) break;
+        }
+        return totals;
+    },
+
     listPending() {
         return this._json('GET', '/api/v3/garmin/pending', undefined, 'Could not load activities to review.');
     },

@@ -262,6 +262,44 @@ test.describe('Garmin sync settings', () => {
     });
 });
 
+test.describe('Garmin sync: start date and catching up', () => {
+
+    test('changing the start date saves it and syncs until caught up', async ({ page }) => {
+        const patches = [];
+        let syncCalls = 0;
+        await page.route('**/api/v3/garmin/connection', async route => {
+            if (route.request().method() === 'PATCH') {
+                patches.push(route.request().postDataJSON());
+                return json(route, { ...CONNECTED, sync_from: '2026-11-01T04:00:00Z' });
+            }
+            return json(route, { ...CONNECTED, sync_from: '2026-11-01T04:00:00Z' });
+        });
+        await page.route('**/api/v3/garmin/sync', route => {
+            syncCalls += 1;
+            const last = syncCalls === 3;
+            return json(route, {
+                imported: Array.from({ length: last ? 2 : 10 }, (_, i) => ({ garmin_activity_id: `${syncCalls}-${i}`,
+                    name: 'HIIT', action: 'new' })),
+                pending: 0, pending_total: 0, skipped: 0, errors: [], more: !last,
+                details: Array.from({ length: last ? 2 : 10 }, () => ({ garmin_activity_id: 'x', name: 'HIIT',
+                    outcome: 'imported', detail: 'Saved as a new session' })) });
+        });
+        await gotoAfterAuthCheck(page, 'settings.html');
+        await page.waitForFunction(() => !!window.garminSettings);
+        await page.evaluate(c => window.garminSettings._setStatus(c), CONNECTED);
+
+        await page.locator('#garminChangeStart').click();
+        await page.fill('#garminNewStart', '2026-11-01');
+        await page.locator('#garminSaveStart').click();
+
+        await expect(page.locator('#garminSettingsMessage')).toContainText('22 imported');
+        expect(syncCalls).toBe(3);
+        expect(patches).toHaveLength(1);
+        expect(new Date(patches[0].sync_from).getDate()).toBe(1);
+        await expect(page.locator('#garminStartDate')).toContainText('Nov 1');
+    });
+});
+
 test.describe('Garmin sync on History', () => {
 
     test('connected account shows Sync and a review banner; review queue walks pending items', async ({ page }) => {

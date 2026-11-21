@@ -68,6 +68,8 @@ def session_candidates(activity: ParsedGarminActivity, sessions: Sequence[Dict[s
     for s in sessions:
         if s.get("external_id") and s["external_id"] == activity.external_id:
             continue  # handled as duplicate
+        if str(s.get("external_id") or "").startswith("garmin:"):
+            continue  # already holds another watch activity: two watch activities are never one session
         start, end = _window(s)
         if not start:
             continue

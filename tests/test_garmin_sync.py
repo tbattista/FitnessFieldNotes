@@ -60,10 +60,12 @@ class FakeClient:
             raise pac.GarminAuthError("Garmin rejected the API key.")
         return "tok"
 
-    async def list_activities(self, limit=50):
+    async def list_activities(self, limit=50, start=0):
         if FakeClient.reject:
             raise pac.GarminAuthError("Garmin rejected the API key.")
-        return list(FakeClient.activities)
+        FakeClient.list_calls.append(start)
+        newest_first = sorted(FakeClient.activities, key=lambda a: a["startTimeGMT"], reverse=True)
+        return newest_first[start:start + limit]
 
     async def download_original(self, gid):
         FakeClient.downloads.append(gid)
@@ -83,6 +85,7 @@ def setup():
     FakeClient.files = {3: cardio_file(RUN_START, 1831.41, 3169.22, serial=99),
                         4: strength_file(STRENGTH_START, SETS, serial=99)}
     FakeClient.downloads = []
+    FakeClient.list_calls = []
     FakeClient.reject = False
     run(sync_service.connect(UID, OWNER, GarminConnectRequest(api_key=KEY, expires_in_days=90,
                                                                sync_from=CONNECTED)))
@@ -247,6 +250,39 @@ def test_check_again_relooks_without_duplicating():
     assert FakeClient.downloads == [3] and again.imported == [] and again.pending == 0
     assert {d.garmin_activity_id: d.outcome for d in again.details} == {"2": "skipped", "3": "skipped"}
     assert len(fake._col(UID, "cardio_sessions").stream()) == 1
+
+
+def test_moving_start_date_back_pulls_older_activities():
+    fake = setup()
+    # 60 HIIT sessions on earlier days, newest first: more than one list page.
+    early = CONNECTED - timedelta(days=20)
+    for i in range(60):
+        gid = 100 + i
+        start = early + timedelta(hours=8 * i)
+        FakeClient.activities.append(listing(gid, start, "hiit", name="HIIT"))
+        FakeClient.files[gid] = cardio_file(start, 900, 0, sport="training", sub_sport="hiit", serial=gid)
+    FakeClient.files[1] = cardio_file(CONNECTED - timedelta(days=2), 1500, 4000, serial=1)
+    run(sync_service.sync(UID))
+    assert not [d for d in FakeClient.downloads if d >= 100]     # before the start date: untouched
+
+    run(sync_service.update(UID, OWNER, review_all=None, sync_from=early))
+    assert conn_doc(fake)["sync_from"] == early and conn_doc(fake)["processed_ids"] == []
+    FakeClient.list_calls, FakeClient.downloads = [], []
+    first = run(sync_service.sync(UID))
+    assert FakeClient.list_calls == [0, 50]       # paged back past the newest 50
+    assert first.more and len(FakeClient.downloads) == sync_service.MAX_DOWNLOADS_PER_RUN
+    assert FakeClient.downloads[0] == 100         # oldest first
+    rounds = 1
+    while first.more and rounds < 20:
+        first = run(sync_service.sync(UID))
+        rounds += 1
+    hiit = [s.to_dict() for s in fake._col(UID, "cardio_sessions").stream() if s.to_dict()["activity_type"] == "hiit"]
+    assert len(hiit) == 60 and rounds == 7
+    try:
+        run(sync_service.update(UID, OWNER, review_all=None, sync_from=datetime.now(timezone.utc) + timedelta(days=2)))
+        raise AssertionError("expected future date to be refused")
+    except import_service.GarminImportError:
+        pass
 
 
 def test_rejected_key_flags_connection():

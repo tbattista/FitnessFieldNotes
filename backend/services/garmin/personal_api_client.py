@@ -111,8 +111,9 @@ class PersonalApiClient:
             return resp
         raise GarminAuthError("Garmin rejected the API key.")
 
-    async def list_activities(self, limit: int = 50) -> List[Dict[str, Any]]:
-        resp = await self._get(ACTIVITY_SEARCH_PATH, "activity list", start=0, limit=limit)
+    async def list_activities(self, limit: int = 50, start: int = 0) -> List[Dict[str, Any]]:
+        """Newest first. `start` skips that many activities (paging)."""
+        resp = await self._get(ACTIVITY_SEARCH_PATH, "activity list", start=start, limit=limit)
         body = resp.json()
         if isinstance(body, dict):
             body = body.get("activityList") or body.get("activities") or []
