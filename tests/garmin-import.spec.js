@@ -243,7 +243,8 @@ test.describe('Garmin sync settings', () => {
         await page.locator('#garminSyncNow').click();
         await expect(page.locator('#garminSettingsMessage')).toContainText('1 imported · 1 to review');
         await expect(page.locator('#garminLastSync')).toContainText('1 imported, 1 to review');
-        await expect(page.locator('#garminSettingsBody')).toContainText('1 activity waiting for review');
+        await expect(page.locator('#garminReviewLink')).toHaveText('Review 1 activity waiting');
+        await expect(page.locator('#garminReviewLink')).toHaveAttribute('href', '/workout-history.html?garmin=review');
 
         await page.evaluate(c => window.garminSettings._setStatus({ ...c, recent_activity: [
             { garmin_activity_id: '4', name: 'Strength', started_at: '2026-11-20T22:00:00Z', outcome: 'review',
@@ -304,6 +305,18 @@ test.describe('Garmin sync on History', () => {
         await page.locator('#garminConfirm').click();
         await expect(page.locator('#garminActivityName')).toHaveText('HIIT');
         expect(dismissed).toEqual(['4']);
+    });
+
+    test('link from Settings opens the review list directly', async ({ page }) => {
+        await page.route('**/api/v3/garmin/connection', route => json(route, { ...CONNECTED, pending_count: 1 }));
+        await page.route('**/api/v3/garmin/pending', route => json(route, [
+            { id: '4', name: 'Strength', kind: 'strength', started_at: START, reason: 'New exercise names to confirm' }]));
+        await page.route('**/api/v3/garmin/pending/*/preview', route => json(route, strengthPreview()));
+        await gotoAfterAuthCheck(page, 'workout-history.html?garmin=review');
+        await page.waitForFunction(() => !!window.garminImportReview);
+        await page.evaluate(() => window.garminImportReview.refreshSyncControls());
+        await expect(page.locator('#garminActivityName')).toHaveText('Strength');
+        await expect(page.locator('#garminQueueHeader')).toContainText('From Garmin sync');
     });
 
     test('signed-out or unconnected users do not see Sync', async ({ page }) => {

@@ -458,6 +458,8 @@
         document.querySelectorAll('[data-garmin-attention]').forEach(el => el.classList.toggle('d-none', !attention));
     }
 
+    let deepLinkHandled = false;
+
     async function refreshSyncControls() {
         if (!document.querySelector('[data-garmin-sync], [data-garmin-pending-banner]')) return;
         try {
@@ -466,6 +468,12 @@
             connection = null;
         }
         renderSyncControls();
+        // /workout-history.html?garmin=review (linked from Settings) opens the review list.
+        const wantsReview = new URLSearchParams(window.location.search).get('garmin') === 'review';
+        if (wantsReview && !deepLinkHandled && connection && connection.pending_count) {
+            deepLinkHandled = true;
+            openPendingQueue();
+        }
     }
 
     async function runSync(button) {

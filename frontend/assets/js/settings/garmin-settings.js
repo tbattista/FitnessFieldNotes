@@ -1,7 +1,7 @@
 /**
  * Garmin settings card: connect a Garmin Personal API key, sync, review
  * setting, disconnect. Requires window.garminImportService.
- * @version 1.1.0
+ * @version 1.1.2
  */
 (function () {
     'use strict';
@@ -172,8 +172,8 @@
               ? `Last sync ${esc(fmtDate(s.last_sync_at, true))}${esc(summaryText(s.last_summary))}`
               : 'Not synced yet'}</div>
           ${expiryHtml(s)}
-          ${s.pending_count ? `<div class="small mt-1"><a href="/workout-history.html">${s.pending_count}
-              ${s.pending_count === 1 ? 'activity' : 'activities'} waiting for review in History</a></div>` : ''}
+          ${s.pending_count ? `<div class="small mt-1"><a href="/workout-history.html?garmin=review" id="garminReviewLink">Review ${s.pending_count}
+              ${s.pending_count === 1 ? 'activity' : 'activities'} waiting</a></div>` : ''}
           ${activityLogHtml(s.recent_activity)}
 
           <div class="d-flex justify-content-between align-items-center my-3">
@@ -276,7 +276,7 @@
             return;
         }
         const extra = result.pending_total
-            ? ` <a href="/workout-history.html">Review in History</a>` : '';
+            ? ` <a href="/workout-history.html?garmin=review">Review them now</a>` : '';
         const errors = (result.errors || []).map(e => `<li>${esc(e)}</li>`).join('');
         message(`${esc(window.garminImportService.describeSync(result))}.${extra}${errors ? `<ul class="mb-0 mt-1">${errors}</ul>` : ''}`,
             result.errors && result.errors.length ? 'warning' : 'success');
