@@ -20,13 +20,15 @@ from ...models import (
     CreateCardioSessionRequest,
     CreateWorkoutRequest,
     ExerciseGroup,
+    ExercisePerformance,
     SectionExercise,
     WorkoutSection,
     UpdateWorkoutRequest,
 )
 from ...models.garmin import (
-    GarminPrepareSessionRequest,
-    GarminSessionPrefill,
+    GarminBuilderDraft,
+    GarminBuilderDraftRequest,
+    GarminLogFromBuilderRequest,
     GarminImportConfirmRequest,
     GarminImportPreview,
     GarminImportResult,
@@ -208,17 +210,28 @@ def workout_request_for(activity: ParsedGarminActivity, perfs, unit: str) -> Cre
     return CreateWorkoutRequest(name=name, description="Imported from Garmin", exercise_groups=groups, tags=[])
 
 
-# ── open in the session screen ───────────────────────────────────────────────
+# ── edit in the workout builder ──────────────────────────────────────────────
 
-async def prepare_session(user_id: str, req: GarminPrepareSessionRequest) -> GarminSessionPrefill:
-    """Find or create the workout and return the values to pre-fill the session screen.
+def _median_rest(ex_sets) -> Optional[int]:
+    rests = sorted(round(st.rest_s) for st in ex_sets if st.rest_s)
+    return rests[len(rests) // 2] if rests else None
 
-    Nothing is logged here: the session is saved by the session screen when the
-    user finishes it, carrying source/external_id/import_meta from this prefill.
-    """
+
+def _describe(activity: ParsedGarminActivity) -> str:
+    bits = [f"{activity.started_at:%a %b} {activity.started_at.day}", f"{round(activity.duration_minutes or 0)} min"]
+    if activity.avg_heart_rate:
+        bits.append(f"{activity.avg_heart_rate} bpm avg")
+    if activity.calories:
+        bits.append(f"{activity.calories} cal")
+    return "From Garmin: " + " · ".join(bits)
+
+
+async def builder_draft(user_id: str, req: GarminBuilderDraftRequest) -> GarminBuilderDraft:
+    """A Garmin activity as a workout-builder draft: one row per exercise with the
+    watch's sets x reps, rest and heaviest weight. Nothing is saved."""
     activity, unit = req.activity, req.weight_unit
     if activity.kind not in SET_KINDS or not activity.exercises:
-        raise GarminImportError("Only strength and HIIT activities with sets open in the session screen.")
+        raise GarminImportError("Only strength and HIIT activities with sets can be edited in the builder.")
     if await find_duplicate(user_id, activity.external_id):
         raise GarminImportError("This activity was already imported. Undo that import first.", 409)
 
@@ -226,37 +239,141 @@ async def prepare_session(user_id: str, req: GarminPrepareSessionRequest) -> Gar
     if req.save_mappings:
         await save_exercise_map(user_id, {k: v for k, v in named.items() if k.split("/")[0] != "unknown" and v})
 
-    created_workout_id = None
+    workouts = [w for w in await fds.get_user_workouts(user_id, limit=HISTORY_LOOKBACK) if not w.is_archived]
+    target = None
     if req.action == "attach":
-        workout = await fds.get_workout(user_id, req.target_id or "-")
-        if not workout:
+        target = next((w for w in workouts if w.id == req.target_id), None) or (
+            await fds.get_workout(user_id, req.target_id or "-"))
+        if not target:
             raise GarminImportError("That workout no longer exists.", 404)
-        group_ids = {normalize(n): gid for n, gid in _workout_exercises(workout) if gid}
-        perfs = matching.build_performances(activity, named, unit, group_ids)
-    else:
-        perfs = matching.build_performances(activity, named, unit)
-        workout = await fds.create_workout(user_id, workout_request_for(activity, perfs, unit))
-        if not workout:
-            raise GarminImportError("Couldn't create the workout record.", 500)
-        await fds.update_workout(user_id, workout.id, UpdateWorkoutRequest(is_archived=True))
-        created_workout_id = workout.id
+    group_ids = {normalize(n): gid for n, gid in _workout_exercises(target) if gid} if target else {}
+    perfs = matching.build_performances(activity, named, unit, group_ids)
 
-    meta = _created_meta(created_workout_id)
-    meta["garmin_started_at"] = activity.started_at
-    meta["opened_in_session_screen"] = True
-    return GarminSessionPrefill(
-        workout_id=workout.id, workout_name=workout.name,
-        exercises=[p.model_dump(mode="json") for p in perfs],
-        started_at=activity.started_at, completed_at=activity.completed_at,
-        duration_minutes=max(1, round(activity.duration_minutes or 1)),
-        calories=activity.calories, avg_heart_rate=activity.avg_heart_rate, max_heart_rate=activity.max_heart_rate,
-        external_id=activity.external_id, import_meta=jsonable(meta), pending_id=req.pending_id,
-        activity_name=activity.name, kind=activity.kind,
+    # Rest per exercise, from the sets that make it up (same order as build_performances).
+    rest_by_name: Dict[str, int] = {}
+    for ex in activity.exercises:
+        rest = _median_rest(ex.sets)
+        if rest is not None:
+            rest_by_name.setdefault(normalize(named[ex.garmin_key]), rest)
+
+    block = None
+    if activity.kind == "interval":
+        block = {"block_id": "garmin-hiit",
+                 "group_name": f"HIIT {activity.work_seconds or 20}s on / {activity.rest_seconds or 10}s off"}
+    groups = []
+    for p in perfs:
+        rest = rest_by_name.get(normalize(p.exercise_name))
+        group = {"group_id": p.group_id, "group_type": "standard", "exercises": {"a": p.exercise_name},
+                 "sets": p.target_sets, "reps": p.target_reps, "rest": f"{rest}s" if rest else "60s",
+                 "default_weight": p.weight or "", "default_weight_unit": unit}
+        if block:
+            group.update(block)
+        groups.append(group)
+
+    candidates = matching.workout_candidates(
+        [p.exercise_name for p in perfs],
+        [{"id": w.id, "name": w.name, "exercises": [n for n, _ in _workout_exercises(w)]} for w in workouts])
+    options = [{"id": c.id, "name": c.name, "reason": c.reason} for c in candidates[:5]]
+    if target and not any(o["id"] == target.id for o in options):
+        options.insert(0, {"id": target.id, "name": target.name, "reason": "Chosen on the Garmin page"})
+
+    name = target.name if target else f"Garmin {activity.name} {activity.started_at:%b} {activity.started_at.day}"
+    return GarminBuilderDraft(
+        workout={"name": name[:100], "description": _describe(activity), "tags": [], "exercise_groups": groups},
+        garmin_exercises=[p.model_dump(mode="json") for p in perfs],
+        workout_options=options,
+        target_id=target.id if target else None,
+        activity=activity,
+        pending_id=req.pending_id,
     )
 
 
-def jsonable(d: Dict[str, Any]) -> Dict[str, Any]:
-    return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in d.items()}
+def _same(a: Any, b: Any) -> bool:
+    return str(a or "").strip().lower() == str(b or "").strip().lower()
+
+
+async def log_from_builder(user_id: str, req: GarminLogFromBuilderRequest) -> GarminImportResult:
+    """Save the builder's (possibly edited) workout as a session linked to the Garmin activity.
+
+    Per-set detail from the watch is kept for an exercise only while its sets, reps
+    and weight are unchanged; heart rate is always kept.
+    """
+    activity, unit = req.activity, req.weight_unit
+    if await find_duplicate(user_id, activity.external_id):
+        raise GarminImportError("This activity was already imported. Undo that import first.", 409)
+    groups = [g for g in req.exercise_groups
+              if g.get("group_type") != "note" and (g.get("exercises") or {}).get("a")]
+    if not groups:
+        raise GarminImportError("Add at least one exercise before logging.")
+
+    created_workout_id = None
+    if req.target_id:
+        workout = await fds.get_workout(user_id, req.target_id)
+        if not workout:
+            raise GarminImportError("That workout no longer exists.", 404)
+        template_ids = {normalize(n): gid for n, gid in _workout_exercises(workout) if gid}
+    else:
+        allowed = set(ExerciseGroup.model_fields)
+        workout = await fds.create_workout(user_id, CreateWorkoutRequest(
+            name=req.workout_name.strip()[:100],
+            description=_describe(activity),
+            exercise_groups=[ExerciseGroup(**{k: v for k, v in g.items() if k in allowed and v is not None})
+                             for g in groups],
+            workout_type="tabata" if activity.kind == "interval" else "standard",
+            tags=[],
+        ))
+        if not workout:
+            raise GarminImportError("Couldn't create the workout.", 500)
+        if not req.save_as_template:
+            await fds.update_workout(user_id, workout.id, UpdateWorkoutRequest(is_archived=True))
+            created_workout_id = workout.id     # undo removes it again
+        template_ids = {normalize(g.exercises.get("a", "")): g.group_id for g in workout.exercise_groups}
+
+    perfs = []
+    for i, g in enumerate(groups):
+        name = g["exercises"]["a"].strip()
+        idx = g.get("garmin_index")
+        ge = req.garmin_exercises[idx] if isinstance(idx, int) and 0 <= idx < len(req.garmin_exercises) else None
+        unchanged = bool(ge) and _same(g.get("sets"), ge.get("target_sets")) and _same(
+            g.get("reps"), ge.get("target_reps")) and _same(g.get("default_weight"), ge.get("weight"))
+        sets = str(g.get("sets") or "")
+        perfs.append(ExercisePerformance(
+            exercise_name=name,
+            group_id=template_ids.get(normalize(name)) or g.get("group_id") or f"garmin-{i}",
+            sets_completed=int(sets) if sets.isdigit() else len((ge or {}).get("set_details") or []),
+            target_sets=sets or "1",
+            target_reps=str(g.get("reps") or ""),
+            weight=str(g["default_weight"]) if g.get("default_weight") not in (None, "") else None,
+            weight_unit=g.get("default_weight_unit") or unit,
+            set_details=(ge or {}).get("set_details") or [] if unchanged else [],
+            avg_heart_rate=(ge or {}).get("avg_heart_rate"),
+            max_heart_rate=(ge or {}).get("max_heart_rate"),
+            order_index=i,
+        ))
+
+    meta = _created_meta(created_workout_id)
+    meta["garmin_started_at"] = activity.started_at
+    meta["edited_in_builder"] = True
+    session = await fds.create_and_complete_workout_session(user_id, CreateAndCompleteSessionRequest(
+        workout_id=workout.id,
+        workout_name=workout.name,
+        started_at=activity.started_at,
+        completed_at=activity.completed_at,
+        exercises_performed=perfs,
+        session_mode="quick_log",
+        duration_minutes=max(1, round(activity.duration_minutes)) if activity.duration_minutes else None,
+        calories=activity.calories,
+        avg_heart_rate=activity.avg_heart_rate,
+        max_heart_rate=activity.max_heart_rate,
+        source="garmin",
+        external_id=activity.external_id,
+        import_meta=meta,
+        notes=f"Imported from Garmin ({activity.device})" if activity.device else "Imported from Garmin",
+    ))
+    if not session:
+        raise GarminImportError("Couldn't save the session.", 500)
+    return GarminImportResult(success=True, action="attach" if req.target_id else "new", session_id=session.id,
+                              session_type="workout", message=f"Logged to {workout.name}")
 
 
 # ── confirm ──────────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@
  *
  * Also used on History: undoFromHistory() and the "to review" banner.
  * Requires window.garminImportService.
- * @version 2.1.0
+ * @version 2.2.0
  */
 (function () {
     'use strict';
@@ -250,8 +250,8 @@
             <button class="btn btn-primary flex-grow-1 flex-sm-grow-0 px-4" id="garminConfirm">Import</button>
             <button class="btn btn-link btn-sm d-none" id="garminSaveDirect" type="button">Save without editing</button>
           </div>
-          <p class="small text-muted mt-2 mb-0 d-none" id="garminSessionHint">Opens in the session screen with
-            Garmin's sets, reps, weights and heart rate filled in, so you can adjust anything before you finish.</p>`;
+          <p class="small text-muted mt-2 mb-0 d-none" id="garminSessionHint">Opens in the workout builder with
+            Garmin's sets × reps, rest and weights filled in, so you can adjust anything before you log it.</p>`;
 
         const unitSel = document.getElementById('garminWeightUnit');
         if (unitSel) {
@@ -271,7 +271,7 @@
             const btn = document.getElementById('garminConfirm');
             if (chosen.action === 'skip') btn.textContent = state.opts.mode === 'activity' ? 'Dismiss' : 'Close';
             else if (chosen.action === 'merge') btn.textContent = 'Merge';
-            else btn.innerHTML = session ? '<i class="bx bx-edit-alt me-1"></i>Open in session' : 'Import';
+            else btn.innerHTML = session ? '<i class="bx bx-edit-alt me-1"></i>Edit in builder' : 'Import';
             document.getElementById('garminSaveDirect').classList.toggle('d-none', !session);
             document.getElementById('garminSessionHint').classList.toggle('d-none', !session);
         };
@@ -283,11 +283,11 @@
         return opts[Number((body().querySelector('input[name="garminAction"]:checked') || {}).value || 0)];
     }
 
-    /** Strength and HIIT logged against a workout open in the session screen for editing. */
+    /** Strength and HIIT logged against a workout open in the workout builder for editing. */
     function opensSession(chosen) {
         const kind = state.preview && state.preview.activity.kind;
         return !!(chosen && (chosen.action === 'attach' || chosen.action === 'new')
-            && (kind === 'strength' || kind === 'interval') && window.garminSessionBridge);
+            && (kind === 'strength' || kind === 'interval') && window.garminBuilderMode);
     }
 
     async function submit(opts, openInSession) {
@@ -330,7 +330,7 @@
         if (openInSession) {
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Opening…';
             try {
-                const prefill = await window.garminImportService.prepareSession({
+                const draft = await window.garminImportService.builderDraft({
                     activity: p.activity,
                     action: chosen.action,
                     target_id: chosen.target_id,
@@ -339,12 +339,12 @@
                     weight_unit: state.unit,
                     pending_id: state.opts.mode === 'activity' ? state.opts.activityId : null,
                 });
-                window.garminSessionBridge.open(prefill);
+                window.garminBuilderMode.open(draft);
             } catch (e) {
                 errorBox.textContent = e.message;
                 errorBox.classList.remove('d-none');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bx bx-edit-alt me-1"></i>Open in session';
+                btn.innerHTML = '<i class="bx bx-edit-alt me-1"></i>Edit in builder';
             }
             return;
         }

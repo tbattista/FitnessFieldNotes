@@ -122,8 +122,8 @@ class GarminImportConfirmRequest(BaseModel):
         None, description="Garmin activity ID from the Garmin page; marked imported on success")
 
 
-class GarminPrepareSessionRequest(BaseModel):
-    """Open a Garmin activity in the session screen, pre-filled, against a workout."""
+class GarminBuilderDraftRequest(BaseModel):
+    """Turn a Garmin activity into a workout draft for the workout builder."""
 
     activity: ParsedGarminActivity
     action: Literal["attach", "new"] = Field(..., description="attach: log against an existing workout; new: create one")
@@ -134,30 +134,31 @@ class GarminPrepareSessionRequest(BaseModel):
     pending_id: Optional[str] = Field(None, description="Garmin activity ID from the Garmin page")
 
 
-class GarminSessionPrefill(BaseModel):
-    """What the session screen needs to start pre-filled and to save the result as a Garmin import."""
+class GarminBuilderDraft(BaseModel):
+    """Everything the builder needs to show a Garmin activity and log it. Nothing is saved yet."""
 
-    workout_id: str
-    workout_name: str
-    exercises: List[Dict[str, Any]] = Field(..., description="ExercisePerformance dicts, in order")
-    started_at: datetime
-    completed_at: datetime
-    duration_minutes: int
-    calories: Optional[int] = None
-    avg_heart_rate: Optional[int] = None
-    max_heart_rate: Optional[int] = None
-    source: Literal["garmin"] = "garmin"
-    external_id: str
-    import_meta: Dict[str, Any]
+    workout: Dict[str, Any] = Field(..., description="Workout-builder data: name, description, exercise_groups")
+    garmin_exercises: List[Dict[str, Any]] = Field(
+        ..., description="What the watch recorded per exercise group, same order: ExercisePerformance dicts")
+    workout_options: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Workouts it could be logged against: [{id, name, reason}]")
+    target_id: Optional[str] = Field(None, description="Suggested workout to log against; None = new workout")
+    activity: ParsedGarminActivity
     pending_id: Optional[str] = None
-    activity_name: str
-    kind: Literal["strength", "interval", "cardio"]
 
 
-class GarminMarkImportedRequest(BaseModel):
-    session_id: str
-    session_type: Literal["workout", "cardio"] = "workout"
-    action: Literal["attach", "new", "merge"] = "new"
+class GarminLogFromBuilderRequest(BaseModel):
+    """Save the (possibly edited) builder workout as a session, linked to its Garmin activity."""
+
+    activity: ParsedGarminActivity
+    pending_id: Optional[str] = None
+    workout_name: str = Field(..., min_length=1, max_length=100)
+    exercise_groups: List[Dict[str, Any]] = Field(..., description="Builder groups, in order")
+    garmin_exercises: List[Dict[str, Any]] = Field(
+        default_factory=list, description="From the draft: what Garmin recorded, matched by garmin_index")
+    target_id: Optional[str] = Field(None, description="Existing workout to log against; None = new workout")
+    save_as_template: bool = Field(False, description="New workout: keep it in the library as a template")
+    weight_unit: Literal["lbs", "kg"] = "lbs"
 
 
 class GarminImportResult(BaseModel):

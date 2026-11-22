@@ -209,7 +209,7 @@ export function createCompleteWorkout(data, onConfirm) {
                         <div class="session-stat-value">
                             <input type="number"
                                    id="sessionCaloriesInput"
-                                   value="${data.calories || ''}"
+                                   value=""
                                    placeholder="0"
                                    min="0"
                                    max="9999"

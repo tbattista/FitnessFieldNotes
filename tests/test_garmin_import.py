@@ -20,7 +20,11 @@ from garmin_fakes import FakeFDS  # noqa: E402
 from garmin_fit_builder import cardio_file, strength_file  # noqa: E402
 
 from backend.models import WorkoutSession, WorkoutTemplate  # noqa: E402
-from backend.models.garmin import GarminImportConfirmRequest, GarminPrepareSessionRequest  # noqa: E402
+from backend.models.garmin import (  # noqa: E402
+    GarminBuilderDraftRequest,
+    GarminImportConfirmRequest,
+    GarminLogFromBuilderRequest,
+)
 from backend.services.firestore_session_ops import _is_before  # noqa: E402
 from backend.services.garmin import import_service, matching  # noqa: E402
 from backend.services.garmin.exercise_mapper import apply_mappings  # noqa: E402
@@ -322,30 +326,88 @@ def test_flow_cardio_new():
     assert s["pace_per_unit"] == "15:30" and s["avg_heart_rate"] == 135
 
 
-def test_prepare_session_against_a_template():
+def test_builder_draft_against_a_template():
+    fake = fresh_service()
+    w = add_workout(fake, "Lower Body", ["Squat", "Straight Leg Deadlift", "Barbell Deadlift"])
+    sets = [dict(category=28, reps=8, weight_kg=74.8125, duration_s=57), dict(set_type="rest", duration_s=90),
+            dict(category=28, reps=9, weight_kg=97.5, duration_s=60), dict(set_type="rest", duration_s=90),
+            dict(category=8, subtype=0, reps=9, weight_kg=97.5, duration_s=43)]
+    preview = run(import_service.build_preview(UID, strength_file(START, sets)))
+    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(
+        activity=preview.activity, action="attach", target_id=w.id, pending_id="25137407059")))
+    assert draft.target_id == w.id and draft.workout["name"] == "Lower Body"
+    assert draft.workout_options[0]["id"] == w.id
+    squat, dl = draft.workout["exercise_groups"]
+    assert (squat["exercises"]["a"], squat["sets"], squat["reps"], squat["rest"], squat["default_weight"]) == \
+        ("Squat", "2", "8-9", "90s", "215")
+    assert squat["group_id"] == w.exercise_groups[0].group_id
+    assert dl["rest"] == "60s"                                  # no rest recorded after the last set
+    assert draft.workout["description"].startswith("From Garmin: Wed Nov 18")
+    assert len(draft.garmin_exercises) == 2 and draft.garmin_exercises[0]["set_details"][0]["weight"] == 165.0
+    assert len(fake._col(UID, "workout_sessions").stream()) == 0     # nothing saved yet
+    assert len(fake._col(UID, "workouts").stream()) == 1
+
+
+def test_log_from_builder_new_workout_keeps_watch_detail_until_edited():
+    fake = fresh_service()
+    preview = run(import_service.build_preview(UID, strength_file(START, SESSION_SETS)))
+    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(activity=preview.activity, action="new")))
+    groups = [dict(g, garmin_index=i) for i, g in enumerate(draft.workout["exercise_groups"])]
+    groups[0]["exercises"] = {"a": "Back Squat"}           # renamed: still counts as unchanged values
+    groups[2]["default_weight"] = "225"                    # weight corrected: watch per-set detail dropped
+    groups.append({"group_id": "added-1", "group_type": "standard", "exercises": {"a": "Leg Press"},
+                   "sets": "3", "reps": "12", "rest": "60s", "default_weight": "180", "default_weight_unit": "lbs"})
+    result = run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
+        activity=draft.activity, workout_name="Leg Day (watch)", exercise_groups=groups,
+        garmin_exercises=draft.garmin_exercises, target_id=None, save_as_template=False)))
+    session = fake._col(UID, "workout_sessions").document(result.session_id).get().to_dict()
+    workout = fake._col(UID, "workouts").document(session["workout_id"]).get().to_dict()
+    assert workout["name"] == "Leg Day (watch)" and workout["is_archived"] is True
+    perfs = session["exercises_performed"]
+    draft_names = [g["exercises"]["a"] for g in draft.workout["exercise_groups"]]
+    assert [p["exercise_name"] for p in perfs] == ["Back Squat", draft_names[1], draft_names[2], "Leg Press"]
+    assert len(perfs[0]["set_details"]) == 4 and perfs[2]["set_details"] == [] and perfs[2]["weight"] == "225"
+    assert perfs[3]["sets_completed"] == 3 and perfs[3]["avg_heart_rate"] is None
+    assert session["source"] == "garmin" and session["import_meta"]["workout_id"] == workout["id"]
+    assert session["started_at"] == START
+
+    # Same activity again is refused; undo removes session and the hidden workout.
+    try:
+        run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
+            activity=draft.activity, workout_name="x", exercise_groups=groups, garmin_exercises=[])))
+        raise AssertionError("expected duplicate error")
+    except import_service.GarminImportError as e:
+        assert e.status_code == 409
+    run(import_service.undo(UID, result.session_id, "workout"))
+    assert fake._col(UID, "workouts").stream() == []
+
+
+def test_log_from_builder_against_template_and_as_new_template():
     fake = fresh_service()
     w = add_workout(fake, "Lower Body", ["Squat", "Straight Leg Deadlift", "Barbell Deadlift"])
     preview = run(import_service.build_preview(UID, strength_file(START, SESSION_SETS)))
-    prefill = run(import_service.prepare_session(UID, GarminPrepareSessionRequest(
-        activity=preview.activity, action="attach", target_id=w.id, pending_id="25137407059")))
-    assert (prefill.workout_id, prefill.workout_name) == (w.id, "Lower Body")
-    squat = prefill.exercises[0]
-    assert squat["exercise_name"] == "Squat" and squat["group_id"] == w.exercise_groups[0].group_id
-    assert [d["weight"] for d in squat["set_details"]] == [165.0, 165.0, 215.0, 215.0]
-    assert prefill.import_meta["type"] == "created" and "workout_id" not in prefill.import_meta
-    assert prefill.pending_id == "25137407059" and prefill.external_id == preview.activity.external_id
-    assert len(fake._col(UID, "workout_sessions").stream()) == 0     # nothing logged until Finish
+    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(
+        activity=preview.activity, action="attach", target_id=w.id)))
+    groups = [dict(g, garmin_index=i) for i, g in enumerate(draft.workout["exercise_groups"])]
+    result = run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
+        activity=draft.activity, workout_name="ignored for templates", exercise_groups=groups,
+        garmin_exercises=draft.garmin_exercises, target_id=w.id)))
+    session = fake._col(UID, "workout_sessions").document(result.session_id).get().to_dict()
+    assert session["workout_id"] == w.id and result.action == "attach"
+    assert session["exercises_performed"][0]["group_id"] == w.exercise_groups[0].group_id
+    assert len(fake._col(UID, "workouts").stream()) == 1          # the template itself isn't changed
 
-
-def test_prepare_session_new_hiit_creates_tabata_workout():
-    fake = fresh_service()
+    fake2 = fresh_service()
     preview = run(import_service.build_preview(UID, hiit_file()))
-    prefill = run(import_service.prepare_session(UID, GarminPrepareSessionRequest(
+    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(
         activity=preview.activity, action="new", exercise_mappings={"unknown": "Mountain Climber"})))
-    workout = fake._col(UID, "workouts").document(prefill.workout_id).get().to_dict()
-    assert workout["workout_type"] == "tabata" and workout["is_archived"] is True
-    assert prefill.import_meta["workout_id"] == prefill.workout_id and prefill.kind == "interval"
-    assert [e["exercise_name"] for e in prefill.exercises] == ["Sit Up", "Mountain Climber"]
+    assert {g["group_name"] for g in draft.workout["exercise_groups"]} == {"HIIT 40s on / 20s off"}
+    run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
+        activity=draft.activity, workout_name="Core HIIT", exercise_groups=draft.workout["exercise_groups"],
+        garmin_exercises=draft.garmin_exercises, save_as_template=True)))
+    workout = fake2._col(UID, "workouts").stream()[0].to_dict()
+    assert workout["name"] == "Core HIIT" and not workout.get("is_archived")
+    assert workout["exercise_groups"][0]["block_id"] == "garmin-hiit"
 
 
 # ── API ──────────────────────────────────────────────────────────────────────

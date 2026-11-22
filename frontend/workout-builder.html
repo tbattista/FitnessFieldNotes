@@ -61,6 +61,7 @@
     
     <!-- Unified Offcanvas CSS -->
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas.css" />
+    <link rel="stylesheet" href="/static/assets/css/components/garmin-import.css?v=2.1.1" />
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-specialized.css" />
     <link rel="stylesheet" href="/static/assets/css/components/unified-offcanvas-dark.css" />
     <link rel="stylesheet" href="/static/assets/css/components/desktop-offcanvas.css?v=20260217" />
@@ -704,6 +705,7 @@
     <script src="/static/assets/js/components/workout-editor-features.js?v=20260222-04"></script>
     <script src="/static/assets/js/components/workout-editor-save-manager.js?v=20260213-01"></script>
     <script src="/static/assets/js/services/import-service.js?v=20260216-01"></script>
+    <script src="/static/assets/js/components/garmin-builder-mode.js?v=1.0.1"></script>
     <script src="/static/assets/js/components/workout-editor-listeners.js?v=20260213-01"></script>
     <script src="/static/assets/js/components/workout-editor.js?v=20260213-01"></script>
 
@@ -940,6 +942,13 @@
                 return; // Exit early, don't load regular workout
             }
             
+            // Priority 1.25: A Garmin activity opened for editing (from the Garmin page)
+            if (window.garminBuilderMode && window.garminBuilderMode.isRequested()) {
+                loadingState.style.display = 'none';
+                emptyState.style.display = 'none';
+                if (window.garminBuilderMode.start()) return;
+            }
+
             // Priority 1.5: Create workout from session history data
             const fromSession = urlParams.get('from_session');
             if (fromSession === 'true') {

@@ -51,9 +51,9 @@ window.garminImportService = {
         return this._handle(response, 'Import failed.');
     },
 
-    /** Find or create the workout and get values to pre-fill the session screen (saves nothing). */
-    async prepareSession(payload) {
-        const response = await fetch('/api/v3/garmin/import/prepare-session', {
+    /** A Garmin activity as a workout-builder draft (saves nothing). */
+    async builderDraft(payload) {
+        const response = await fetch('/api/v3/garmin/import/builder-draft', {
             method: 'POST',
             headers: await this._headers(),
             body: JSON.stringify(payload),

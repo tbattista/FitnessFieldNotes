@@ -293,13 +293,6 @@ class CompleteSessionRequest(BaseModel):
         le=99999,
         description="Total calories burned during session (from user input at session completion)"
     )
-    # Watch imports (Garmin) completed in the session screen
-    started_at: Optional[datetime] = Field(None, description="Correct the start time (watch imports)")
-    avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Average heart rate")
-    max_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Maximum heart rate")
-    source: Optional[str] = Field(None, description="Session source, e.g. 'garmin'")
-    external_id: Optional[str] = Field(None, description="External source ID for duplicate detection")
-    import_meta: Optional[Dict[str, Any]] = Field(None, description="Import bookkeeping for undo")
 
     @field_validator('exercise_order', mode='before')
     @classmethod

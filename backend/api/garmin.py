@@ -19,9 +19,9 @@ from ..models.garmin import (
     GarminImportConfirmRequest,
     GarminImportPreview,
     GarminImportResult,
-    GarminMarkImportedRequest,
-    GarminPrepareSessionRequest,
-    GarminSessionPrefill,
+    GarminBuilderDraft,
+    GarminBuilderDraftRequest,
+    GarminLogFromBuilderRequest,
     GarminSyncResult,
     GarminUndoRequest,
 )
@@ -75,14 +75,28 @@ async def confirm_import(req: GarminImportConfirmRequest, current_user: Dict[str
     return result
 
 
-@router.post("/import/prepare-session", response_model=GarminSessionPrefill)
-async def prepare_session(req: GarminPrepareSessionRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Find or create the workout and return values to pre-fill the session screen. Saves no session."""
+@router.post("/import/builder-draft", response_model=GarminBuilderDraft)
+async def builder_draft(req: GarminBuilderDraftRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """A Garmin activity as a workout-builder draft (sets x reps, rest, weight per exercise). Saves nothing."""
     user_id = _require(current_user)
     try:
-        return await import_service.prepare_session(user_id, req)
+        return await import_service.builder_draft(user_id, req)
     except import_service.GarminImportError as e:
         _raise(e)
+
+
+@router.post("/import/log-from-builder", response_model=GarminImportResult)
+async def log_from_builder(req: GarminLogFromBuilderRequest,
+                           current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Save the builder's edited workout as a session linked to the Garmin activity."""
+    user_id = _require(current_user)
+    try:
+        result = await import_service.log_from_builder(user_id, req)
+    except import_service.GarminImportError as e:
+        _raise(e)
+    if req.pending_id:
+        await sync_service.mark_imported(user_id, req.pending_id, result)
+    return result
 
 
 @router.post("/import/undo")
@@ -187,16 +201,6 @@ async def patch_activity(activity_id: str, req: GarminActivityStatusUpdate,
         return await sync_service.set_status(user_id, activity_id, req.status)
     except import_service.GarminImportError as e:
         _raise(e)
-
-
-@router.post("/activities/{activity_id}/mark-imported")
-async def mark_activity_imported(activity_id: str, req: GarminMarkImportedRequest,
-                                 current_user: Dict[str, Any] = Depends(get_current_user)):
-    """The session screen saved this Garmin activity: link it to the session on the Garmin page."""
-    user_id = _require(current_user)
-    await sync_service.mark_imported(user_id, activity_id, GarminImportResult(
-        success=True, action=req.action, session_id=req.session_id, session_type=req.session_type))
-    return {"success": True}
 
 
 @router.post("/activities/dismiss-all")

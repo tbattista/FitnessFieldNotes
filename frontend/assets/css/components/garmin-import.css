@@ -94,3 +94,33 @@
     padding-left: 0;
   }
 }
+
+
+/* ── Workout builder in Garmin mode ─────────────────────────────────────── */
+
+body.garmin-builder-mode #desktopStartWorkoutBtn,
+body.garmin-builder-mode #mobileGoFab,
+body.garmin-builder-mode .import-workout-btn,
+body.garmin-builder-mode #desktopShareBtn {
+  display: none !important;
+}
+
+.garmin-builder-panel {
+  border-left: 3px solid var(--bs-primary);
+}
+
+.garmin-builder-panel summary {
+  cursor: pointer;
+}
+
+.garmin-recorded-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.garmin-recorded-row > :first-child {
+  min-width: 10rem;
+}
