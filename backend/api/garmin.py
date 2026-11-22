@@ -96,6 +96,8 @@ async def log_from_builder(req: GarminLogFromBuilderRequest,
         _raise(e)
     if req.pending_id:
         await sync_service.mark_imported(user_id, req.pending_id, result)
+    for other in result.linked_activity_ids:    # nearby cardio saved into the same session
+        await sync_service.mark_imported(user_id, other, result)
     return result
 
 

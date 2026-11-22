@@ -137,14 +137,17 @@ class GarminBuilderDraftRequest(BaseModel):
 class GarminBuilderDraft(BaseModel):
     """Everything the builder needs to show a Garmin activity and log it. Nothing is saved yet."""
 
-    workout: Dict[str, Any] = Field(..., description="Workout-builder data: name, description, exercise_groups")
-    garmin_exercises: List[Dict[str, Any]] = Field(
-        ..., description="What the watch recorded per exercise group, same order: ExercisePerformance dicts")
+    workout: Dict[str, Any] = Field(
+        ..., description="Workout-builder data in the builder's own format: name, description, sections")
+    garmin_exercises: Dict[str, Dict[str, Any]] = Field(
+        ..., description="What the watch recorded, keyed by the row's exercise_id ('garmin-ex-N' / 'garmin-act-ID')")
     workout_options: List[Dict[str, Any]] = Field(
         default_factory=list, description="Workouts it could be logged against: [{id, name, reason}]")
     target_id: Optional[str] = Field(None, description="Suggested workout to log against; None = new workout")
     activity: ParsedGarminActivity
     pending_id: Optional[str] = None
+    linked_activity_ids: List[str] = Field(
+        default_factory=list, description="Nearby Garmin cardio activities added as activity rows")
 
 
 class GarminLogFromBuilderRequest(BaseModel):
@@ -153,9 +156,9 @@ class GarminLogFromBuilderRequest(BaseModel):
     activity: ParsedGarminActivity
     pending_id: Optional[str] = None
     workout_name: str = Field(..., min_length=1, max_length=100)
-    exercise_groups: List[Dict[str, Any]] = Field(..., description="Builder groups, in order")
-    garmin_exercises: List[Dict[str, Any]] = Field(
-        default_factory=list, description="From the draft: what Garmin recorded, matched by garmin_index")
+    sections: List[Dict[str, Any]] = Field(..., description="The builder's sections, in order (collectSections)")
+    garmin_exercises: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict, description="From the draft: what Garmin recorded, keyed by row exercise_id")
     target_id: Optional[str] = Field(None, description="Existing workout to log against; None = new workout")
     save_as_template: bool = Field(False, description="New workout: keep it in the library as a template")
     weight_unit: Literal["lbs", "kg"] = "lbs"
@@ -163,6 +166,8 @@ class GarminLogFromBuilderRequest(BaseModel):
 
 class GarminImportResult(BaseModel):
     success: bool
+    linked_activity_ids: List[str] = Field(
+        default_factory=list, description="Other Garmin activities saved into the same session")
     action: ImportAction
     session_id: Optional[str] = None
     session_type: Optional[Literal["workout", "cardio"]] = None

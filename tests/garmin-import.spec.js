@@ -313,27 +313,37 @@ test.describe('Garmin page', () => {
 const DRAFT = {
     workout: {
         name: 'Lower Body', description: 'From Garmin: Wed Nov 18 · 18 min · 127 bpm avg · 216 cal', tags: [],
-        exercise_groups: [
-            { group_id: 'group-squat', group_type: 'standard', exercises: { a: 'Back Squat' }, sets: '4', reps: '7-9',
-              rest: '90s', default_weight: '215', default_weight_unit: 'lbs' },
-            { group_id: 'group-dl', group_type: 'standard', exercises: { a: 'Barbell Deadlift' }, sets: '2', reps: '9',
-              rest: '45s', default_weight: '215', default_weight_unit: 'lbs' },
+        workout_type: 'standard',
+        sections: [
+            { section_id: 'section-garmin-act-777', type: 'standard', name: null, exercises: [
+                { exercise_id: 'garmin-act-777', name: 'stair_climber', alternates: [], group_type: 'cardio',
+                  sets: '', reps: '', rest: '', default_weight: null, default_weight_unit: 'lbs',
+                  cardio_config: { activity_type: 'stair_climber', duration_minutes: 20 } }] },
+            { section_id: 'section-garmin-ex-0', type: 'standard', name: null, exercises: [
+                { exercise_id: 'garmin-ex-0', name: 'Back Squat', alternates: [], group_type: 'standard', sets: '4',
+                  reps: '7-9', rest: '90s', default_weight: '215', default_weight_unit: 'lbs' }] },
+            { section_id: 'section-garmin-ex-1', type: 'standard', name: null, exercises: [
+                { exercise_id: 'garmin-ex-1', name: 'Barbell Deadlift', alternates: [], group_type: 'standard', sets: '2',
+                  reps: '9', rest: '45s', default_weight: '215', default_weight_unit: 'lbs' }] },
         ],
     },
-    garmin_exercises: [
-        { exercise_name: 'Back Squat', target_sets: '4', target_reps: '7-9', weight: '215', weight_unit: 'lbs',
-          avg_heart_rate: 128, max_heart_rate: 145,
-          set_details: [{ set_number: 1, reps_completed: 8, weight: 165 }, { set_number: 2, reps_completed: 9, weight: 165 },
-                        { set_number: 3, reps_completed: 7, weight: 215 }, { set_number: 4, reps_completed: 7, weight: 215 }] },
-        { exercise_name: 'Barbell Deadlift', target_sets: '2', target_reps: '9', weight: '215', weight_unit: 'lbs',
-          set_details: [{ set_number: 1, reps_completed: 9, weight: 215 }, { set_number: 2, reps_completed: 9, weight: 215 }] },
-    ],
+    garmin_exercises: {
+        'garmin-act-777': { exercise_name: 'Stair Stepper', activity_type: 'stair_climber', duration_minutes: 20,
+                            avg_heart_rate: 140, calories: 285, garmin_activity_id: '777' },
+        'garmin-ex-0': { exercise_name: 'Back Squat', target_sets: '4', target_reps: '7-9', weight: '215', weight_unit: 'lbs',
+                         avg_heart_rate: 128, max_heart_rate: 145,
+                         set_details: [{ set_number: 1, reps_completed: 8, weight: 165 }, { set_number: 2, reps_completed: 9, weight: 165 },
+                                       { set_number: 3, reps_completed: 7, weight: 215 }, { set_number: 4, reps_completed: 7, weight: 215 }] },
+        'garmin-ex-1': { exercise_name: 'Barbell Deadlift', target_sets: '2', target_reps: '9', weight: '215', weight_unit: 'lbs',
+                         set_details: [{ set_number: 1, reps_completed: 9, weight: 215 }, { set_number: 2, reps_completed: 9, weight: 215 }] },
+    },
     workout_options: [{ id: 'workout-9', name: 'Lower Body', reason: '2 of 2 exercises match' }],
     target_id: 'workout-9',
     activity: { external_id: 'garmin:123:1795040846', kind: 'strength', name: 'Strength', device: 'venu3',
                 started_at: START, completed_at: '2026-11-18T22:45:35Z', duration_minutes: 18.15, calories: 216,
                 avg_heart_rate: 127, max_heart_rate: 149, exercises: [] },
     pending_id: '25137407059',
+    linked_activity_ids: ['777'],
 };
 
 /** Offline builder: Firebase stubbed (anonymous), so the builder boots without network. */
@@ -360,15 +370,29 @@ test.describe('Garmin in the workout builder', () => {
         await expect(page.locator('#garminBuilderActivity')).toContainText('Strength');
         await expect(page.locator('#garminBuilderPanel')).toContainText('127 bpm avg / 149 max');
         await expect(page.locator('#workoutName')).toHaveValue('Lower Body');
+        // Drawn through the builder's normal path: real sections, drag-and-drop, a cardio card.
+        await expect(page.locator('#exerciseGroups .workout-section')).toHaveCount(3);
         const rows = page.locator('#exerciseGroups .exercise-group-card');
-        await expect(rows).toHaveCount(2);
-        await expect(rows.nth(0)).toContainText('Back Squat');
-        await expect(rows.nth(0)).toContainText('4×7-9');
-        await expect(rows.nth(0)).toContainText('215');
+        await expect(rows).toHaveCount(3);
+        const types = await page.evaluate(() => ['garmin-act-777', 'garmin-ex-0'].map(id =>
+            window.exerciseGroupsData[id] && (window.exerciseGroupsData[id].group_type || 'standard')));
+        expect(types).toEqual(['cardio', 'standard']);
+        await expect(rows.nth(0)).toContainText('20');
+        await expect(rows.nth(1)).toContainText('Back Squat');
+        await expect(rows.nth(1)).toContainText('4×7-9');
+        await expect(rows.nth(1)).toContainText('215');
+        // Drag and drop is attached to the list and each section, as for any workout.
+        expect(await page.evaluate(() => {
+            const list = document.getElementById('exerciseGroups');
+            const sections = [...list.querySelectorAll('.section-exercises')];
+            return !!window.Sortable.get(list) && sections.every(el => !!window.Sortable.get(el));
+        })).toBe(true);
+        expect(await page.evaluate(() => localStorage.getItem('currentEditingWorkoutId'))).toBeNull();
 
         await page.locator('#garminRecorded summary').click();
         await expect(page.locator('#garminRecorded')).toContainText('8×165, 9×165, 7×215, 7×215 lbs');
         await expect(page.locator('#garminRecorded')).toContainText('128 bpm');
+        await expect(page.locator('#garminRecorded')).toContainText('Stair Stepper');
 
         // Garmin mode: no Start or Import; the target defaults to the suggested workout.
         await expect(page.locator('#desktopStartWorkoutBtn, #mobileGoFab').first()).toBeHidden();
@@ -388,12 +412,13 @@ test.describe('Garmin in the workout builder', () => {
         await page.route('**/garmin.html', route => route.fulfill({ contentType: 'text/html', body: 'garmin page' }));
         await openBuilderWithDraft(page);
 
+        // Autosave (silent) must never log the session.
+        await page.evaluate(() => window.saveWorkoutFromEditor(true));
+        await page.waitForTimeout(300);
+        expect(logged).toHaveLength(0);
+
         // Edit the deadlift's weight the way the builder does it, then save via the builder's own Save.
-        await page.evaluate(() => {
-            const id = Object.keys(window.exerciseGroupsData).find(k =>
-                window.exerciseGroupsData[k].exercises.a === 'Barbell Deadlift');
-            window.exerciseGroupsData[id].default_weight = '225';
-        });
+        await page.evaluate(() => { window.exerciseGroupsData['garmin-ex-1'].default_weight = '225'; });
         await page.evaluate(() => window.saveWorkoutFromEditor());
         await page.waitForURL(/garmin\.html/);
 
@@ -401,9 +426,11 @@ test.describe('Garmin in the workout builder', () => {
         expect(body.target_id).toBe('workout-9');
         expect(body.pending_id).toBe('25137407059');
         expect(body.workout_name).toBe('Lower Body');
-        expect(body.exercise_groups.map(g => [g.exercises.a, g.garmin_index, g.default_weight])).toEqual([
-            ['Back Squat', 0, '215'], ['Barbell Deadlift', 1, '225']]);
-        expect(body.garmin_exercises).toHaveLength(2);
+        const rowsSent = body.sections.flatMap(sec => sec.exercises);
+        expect(rowsSent.map(r => [r.exercise_id, r.group_type || 'standard', r.default_weight])).toEqual([
+            ['garmin-act-777', 'cardio', null], ['garmin-ex-0', 'standard', '215'], ['garmin-ex-1', 'standard', '225']]);
+        expect(rowsSent[0].cardio_config).toMatchObject({ activity_type: 'stair_climber', duration_minutes: 20 });
+        expect(Object.keys(body.garmin_exercises)).toHaveLength(3);
         expect(body.save_as_template).toBe(false);
         const left = await page.evaluate(() => sessionStorage.getItem('ffn_garmin_builder_draft'));
         expect(left).toBeNull();

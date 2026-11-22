@@ -9,13 +9,14 @@
  * Garmin page -> POST /api/v3/garmin/import/builder-draft -> open(draft)
  *   -> workout-builder.html?garmin=1 -> builder boot calls start()
  *   -> Log session -> POST /api/v3/garmin/import/log-from-builder
- * @version 1.0.0
+ * @version 1.1.0
  */
 (function () {
     'use strict';
 
     const KEY = 'ffn_garmin_builder_draft';
-    const state = { draft: null, indexByGroupId: {}, saving: false };
+    const state = { draft: null, saving: false };
+    const DRAFT_ID = 'garmin-draft';
 
     function esc(text) {
         const div = document.createElement('div');
@@ -46,6 +47,11 @@
     }
 
     function recordedText(ge) {
+        if (!ge.set_details && ge.duration_minutes != null) {     // a Garmin cardio activity
+            const bits = [`${Math.round(ge.duration_minutes)} min`];
+            if (ge.distance_m) bits.push(`${(ge.distance_m / 1609.344).toFixed(2)} mi`);
+            return bits.join(' · ');
+        }
         const sets = (ge.set_details || []).map(d => {
             const reps = d.reps_completed ? d.reps_completed : (d.duration_s ? `${Math.round(d.duration_s)}s` : '?');
             return d.weight != null ? `${reps}×${weightText(d.weight)}` : `${reps}`;
@@ -69,7 +75,8 @@
 
         const options = (d.workout_options || []).map(o => `
             <option value="${esc(o.id)}" ${o.id === d.target_id ? 'selected' : ''}>${esc(o.name)}${o.reason ? ` (${esc(o.reason)})` : ''}</option>`).join('');
-        const rows = (d.garmin_exercises || []).map(ge => `
+        const order = (d.workout.sections || []).flatMap(sec => (sec.exercises || []).map(ex => ex.exercise_id));
+        const rows = order.map(id => d.garmin_exercises[id]).filter(Boolean).map(ge => `
             <li class="garmin-recorded-row">
               <span class="fw-medium">${esc(ge.exercise_name)}</span>
               <span>${esc(recordedText(ge))}</span>
@@ -140,12 +147,9 @@
         return headers;
     }
 
-    function collectGroups() {
-        const groups = (window.collectExerciseGroups ? window.collectExerciseGroups() : []);
-        return groups.map(g => {
-            const idx = state.indexByGroupId[g.group_id];
-            return idx === undefined ? g : { ...g, garmin_index: idx };
-        });
+    /** The builder's sections as edited (rows keep their exercise_id, so their Garmin link survives drags). */
+    function collectSections() {
+        return window.collectSections ? window.collectSections() : [];
     }
 
     async function logSession() {
@@ -160,9 +164,9 @@
         errorBox.classList.add('d-none');
 
         const name = (document.getElementById('workoutName') || {}).value || '';
-        const groups = collectGroups();
+        const sections = collectSections();
         if (!name.trim()) return showError('Give the workout a name.');
-        if (!groups.length) return showError('Add at least one exercise before logging.');
+        if (!sections.length) return showError('Add at least one exercise before logging.');
 
         const targetId = document.getElementById('garminLogTarget').value || null;
         state.saving = true;
@@ -176,11 +180,11 @@
                     activity: d.activity,
                     pending_id: d.pending_id || null,
                     workout_name: name.trim(),
-                    exercise_groups: groups,
-                    garmin_exercises: d.garmin_exercises || [],
+                    sections,
+                    garmin_exercises: d.garmin_exercises || {},
                     target_id: targetId,
                     save_as_template: !targetId && document.getElementById('garminKeepTemplate').checked,
-                    weight_unit: (d.garmin_exercises[0] || {}).weight_unit || 'lbs',
+                    weight_unit: (Object.values(d.garmin_exercises || {}).find(g => g.weight_unit) || {}).weight_unit || 'lbs',
                 }),
             });
             if (!response.ok) {
@@ -220,15 +224,20 @@
         /** Fill the builder and switch it into Garmin mode (called from the builder's boot). */
         start() {
             const draft = readDraft();
-            if (!draft || !window.importService) return false;
+            if (!draft || !window.loadWorkoutIntoEditor) return false;
             state.draft = draft;
 
-            const before = new Set(Object.keys(window.exerciseGroupsData || {}));
-            window.importService.populateBuilder(draft.workout);
-            // populateBuilder creates one group per draft row, in order.
-            const created = Object.keys(window.exerciseGroupsData || {}).filter(id => !before.has(id));
-            state.indexByGroupId = {};
-            created.forEach((groupId, i) => { state.indexByGroupId[groupId] = i; });
+            // Load through the builder's normal path (sections, cards, drag and drop,
+            // blocks) as an unsaved workout that only exists on this page.
+            window.ffn = window.ffn || {};
+            window.ffn.workouts = (window.ffn.workouts || []).filter(w => w.id !== DRAFT_ID);
+            window.ffn.workouts.unshift({ ...draft.workout, id: DRAFT_ID, template_notes: [] });
+            window.loadWorkoutIntoEditor(DRAFT_ID);
+            // Not a saved workout: no refresh recovery, delete or library highlight for it.
+            try { localStorage.removeItem('currentEditingWorkoutId'); } catch (e) { /* ignore */ }
+            window.ffn.workoutBuilder.selectedWorkoutId = null;
+            const deleteBtn = document.getElementById('deleteWorkoutBtn');
+            if (deleteBtn) deleteBtn.style.display = 'none';
 
             document.body.classList.add('garmin-builder-mode');
             const form = document.getElementById('workoutEditorForm');
@@ -237,7 +246,8 @@
                 bindPanel();
             }
             // Every Save in the builder (toolbar, mobile button, shortcuts) logs the session instead.
-            window.saveWorkoutFromEditor = logSession;
+            // Autosave calls it with silent=true: that must never log a session.
+            window.saveWorkoutFromEditor = silent => (silent === true ? Promise.resolve() : logSession());
             const saveBtn = document.getElementById('saveWorkoutBtn');
             if (saveBtn && saveBtn.classList.contains('btn')) {
                 saveBtn.innerHTML = '<i class="bx bx-check me-1"></i>Log session';
