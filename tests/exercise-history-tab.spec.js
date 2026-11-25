@@ -11,7 +11,7 @@ test.describe('Exercise History Tab', () => {
             await page.goto(`${BASE}/workout-history.html`);
             const exercisesTab = page.locator('#exercises-tab');
             await expect(exercisesTab).toBeAttached();
-            await expect(exercisesTab).toHaveText(/Exercises/);
+            await expect(exercisesTab).toHaveText(/Exercise Stats/);
         });
 
         test('Exercises tab pane container exists', async ({ page }) => {
@@ -22,13 +22,16 @@ test.describe('Exercise History Tab', () => {
             await expect(container).toBeAttached();
         });
 
-        test('Three tabs exist: History, Calendar, Exercises', async ({ page }) => {
+        test('Two tabs exist: History, Exercise Stats', async ({ page }) => {
             await page.goto(`${BASE}/workout-history.html`);
-            const tabs = page.locator('.history-tabs .nav-link');
-            await expect(tabs).toHaveCount(3);
+            // The page has separate mobile and desktop tab bars; the active one
+            // carries the #historyTabs id (desktop swaps IDs at load time).
+            const tabs = page.locator('#historyTabs .nav-link');
+            // The calendar now lives inside the History pane, not its own tab.
+            await expect(tabs).toHaveCount(2);
             await expect(tabs.nth(0)).toHaveText(/History/);
-            await expect(tabs.nth(1)).toHaveText(/Calendar/);
-            await expect(tabs.nth(2)).toHaveText(/Exercises/);
+            await expect(tabs.nth(1)).toHaveText(/Exercise Stats/);
+            await expect(page.locator('#historyCalendarCard')).toBeAttached();
         });
     });
 
@@ -71,7 +74,7 @@ test.describe('Exercise History Tab', () => {
         test('aggregateExercisesFromSessions groups exercises correctly', async ({ page }) => {
             await page.goto(`${BASE}/workout-history.html`);
 
-            const result = await page.evaluate(() => {
+            let result = await page.evaluate(() => {
                 if (!window.aggregateExercisesFromSessions) return null;
 
                 const mockSessions = [
@@ -95,7 +98,12 @@ test.describe('Exercise History Tab', () => {
                 ];
 
                 const groups = window.aggregateExercisesFromSessions(mockSessions);
-                return groups.map(g => ({
+                // Base names resolve to canonical DB names (alias map / fuzzy match),
+                // so look up the expected canonical names rather than hardcoding them.
+                const canon = n => window.resolveCanonicalBaseName(n).canonical;
+                return {
+                  names: { bench: canon('Bench Press'), pushup: canon('Push-up'), squat: canon('Squat') },
+                  groups: groups.map(g => ({
                     baseName: g.baseName,
                     totalSessions: g.totalSessions,
                     variantCount: g.variants.length,
@@ -104,16 +112,19 @@ test.describe('Exercise History Tab', () => {
                         totalSessions: v.totalSessions,
                         lastWeight: v.lastWeight
                     }))
-                }));
+                  }))
+                };
             });
 
             expect(result).not.toBeNull();
+            const { names } = result;
+            result = result.groups;
 
             // Should have 3 groups: Bench Press (2 variants), Push-up, Squat
             expect(result.length).toBe(3);
 
             // Bench Press group (most sessions = 3 total: 2 barbell + 1 dumbbell)
-            const benchGroup = result.find(g => g.baseName === 'Bench Press');
+            const benchGroup = result.find(g => g.baseName === names.bench);
             expect(benchGroup).toBeDefined();
             expect(benchGroup.variantCount).toBe(2);
             expect(benchGroup.totalSessions).toBe(3);
@@ -129,12 +140,12 @@ test.describe('Exercise History Tab', () => {
             expect(dbVariant.lastWeight).toBe('50');
 
             // Push-up is ungrouped (no equipment prefix)
-            const pushup = result.find(g => g.baseName === 'Push-up');
+            const pushup = result.find(g => g.baseName === names.pushup);
             expect(pushup).toBeDefined();
             expect(pushup.variantCount).toBe(1);
 
             // Squat group
-            const squat = result.find(g => g.baseName === 'Squat');
+            const squat = result.find(g => g.baseName === names.squat);
             expect(squat).toBeDefined();
             expect(squat.variants[0].equipment).toBe('Barbell');
         });
