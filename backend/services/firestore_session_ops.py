@@ -32,6 +32,21 @@ def _sort_key(value) -> float:
     return value.timestamp()
 
 
+def _set_summary(exercise) -> Optional[str]:
+    """'8×185, 8×185, 7×185' from an exercise's per-set detail, or None."""
+    details = getattr(exercise, 'set_details', None) or []
+    parts = []
+    for d in details:
+        get = d.get if isinstance(d, dict) else lambda k, _d=d: getattr(_d, k, None)
+        reps, weight, duration = get('reps_completed'), get('weight'), get('duration_s')
+        left = str(reps) if reps else (f"{round(duration)}s" if duration else '?')
+        if weight is not None:
+            w = float(weight)
+            left += f"×{int(w) if w.is_integer() else w:g}"
+        parts.append(left)
+    return ', '.join(parts)[:200] if parts else None
+
+
 def _is_before(new_date, last_date) -> bool:
     """True when new_date is strictly older than last_date (both present)."""
     if new_date is None or last_date is None:
@@ -642,6 +657,10 @@ class FirestoreSessionOps:
                     'weight_unit': exercise.weight_unit,
                     'sets': exercise.sets_completed
                 }
+                # Per-set recall ("8×185, 8×185, 7×185") when the session kept set detail
+                summary = _set_summary(exercise)
+                if summary:
+                    session_data['set_summary'] = summary
 
                 # Extract weight direction if available
                 next_weight_direction = getattr(exercise, 'next_weight_direction', None)

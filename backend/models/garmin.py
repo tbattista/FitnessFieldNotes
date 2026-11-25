@@ -19,6 +19,12 @@ class ParsedGarminSet(BaseModel):
     rest_s: Optional[float] = Field(None, ge=0, description="Rest the watch recorded after this set")
     avg_heart_rate: Optional[int] = Field(None, description="Average heart rate during the set")
     max_heart_rate: Optional[int] = Field(None, description="Highest heart rate during the set")
+    # Set on timeline entries (ParsedGarminActivity.timeline)
+    index: Optional[int] = Field(None, description="Position among the watch's active sets, in time order")
+    garmin_key: Optional[str] = Field(None, description="Watch's exercise guess, e.g. 'squat' or 'unknown'")
+    garmin_label: Optional[str] = None
+    category: Optional[str] = None
+    accidental: bool = Field(False, description="Looks like a misfire: no reps and only a few seconds")
 
 
 class ParsedGarminExercise(BaseModel):
@@ -71,6 +77,9 @@ class ParsedGarminActivity(BaseModel):
     # Strength
     exercises: List[ParsedGarminExercise] = Field(default_factory=list)
     dropped_sets: int = Field(0, description="Sets discarded as misfires (0 reps, a few seconds)")
+    timeline: List[ParsedGarminSet] = Field(
+        default_factory=list,
+        description="Every active set the watch recorded, in time order, nothing merged or dropped")
     work_seconds: Optional[int] = Field(None, description="Interval: typical work time per set")
     rest_seconds: Optional[int] = Field(None, description="Interval: typical rest between sets")
 
@@ -122,45 +131,44 @@ class GarminImportConfirmRequest(BaseModel):
         None, description="Garmin activity ID from the Garmin page; marked imported on success")
 
 
-class GarminBuilderDraftRequest(BaseModel):
-    """Turn a Garmin activity into a workout draft for the workout builder."""
+class GarminSetLogRequest(BaseModel):
+    """Open a Garmin activity as an editable set log. Give the activity (file upload) or its Garmin page ID."""
 
-    activity: ParsedGarminActivity
-    action: Literal["attach", "new"] = Field(..., description="attach: log against an existing workout; new: create one")
-    target_id: Optional[str] = Field(None, description="Workout to log against (attach)")
-    exercise_mappings: Dict[str, str] = Field(default_factory=dict)
-    save_mappings: bool = True
-    weight_unit: Literal["lbs", "kg"] = "lbs"
+    activity: Optional[ParsedGarminActivity] = None
     pending_id: Optional[str] = Field(None, description="Garmin activity ID from the Garmin page")
+    weight_unit: Optional[Literal["lbs", "kg"]] = None
 
 
-class GarminBuilderDraft(BaseModel):
-    """Everything the builder needs to show a Garmin activity and log it. Nothing is saved yet."""
+class GarminSetLog(BaseModel):
+    """A Garmin activity as a time-ordered, editable list of sets (plus nearby cardio). Nothing is saved."""
 
-    workout: Dict[str, Any] = Field(
-        ..., description="Workout-builder data in the builder's own format: name, description, sections")
-    garmin_exercises: Dict[str, Dict[str, Any]] = Field(
-        ..., description="What the watch recorded, keyed by the row's exercise_id ('garmin-ex-N' / 'garmin-act-ID')")
+    activity: ParsedGarminActivity
+    pending_id: Optional[str] = None
+    session_id: Optional[str] = Field(None, description="Set when reopening an already imported session")
+    weight_unit: Literal["lbs", "kg"] = "lbs"
+    items: List[Dict[str, Any]] = Field(
+        ..., description="In time order. type 'set': id, started_at, garmin_key, garmin_label, exercise_name, "
+                         "name_source, reps, weight, weight_kg, bodyweight, duration_s, rest_s, avg_heart_rate, "
+                         "max_heart_rate, accidental, included. type 'cardio': a nearby Garmin cardio activity.")
     workout_options: List[Dict[str, Any]] = Field(
-        default_factory=list, description="Workouts it could be logged against: [{id, name, reason}]")
-    target_id: Optional[str] = Field(None, description="Suggested workout to log against; None = new workout")
+        default_factory=list, description="Workouts to log against: [{id, name, score, exercises: [{name, sets, reps, "
+                                          "weight, weight_unit}]}], best match first")
+    target_id: Optional[str] = Field(None, description="Suggested (or stored) workout; None = new workout")
+    workout_name: str = ""
+    known_exercises: List[str] = Field(default_factory=list)
+
+
+class GarminLogSetsRequest(BaseModel):
+    """Save an edited set log as a session linked to its Garmin activity."""
+
     activity: ParsedGarminActivity
     pending_id: Optional[str] = None
-    linked_activity_ids: List[str] = Field(
-        default_factory=list, description="Nearby Garmin cardio activities added as activity rows")
-
-
-class GarminLogFromBuilderRequest(BaseModel):
-    """Save the (possibly edited) builder workout as a session, linked to its Garmin activity."""
-
-    activity: ParsedGarminActivity
-    pending_id: Optional[str] = None
-    workout_name: str = Field(..., min_length=1, max_length=100)
-    sections: List[Dict[str, Any]] = Field(..., description="The builder's sections, in order (collectSections)")
-    garmin_exercises: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict, description="From the draft: what Garmin recorded, keyed by row exercise_id")
+    session_id: Optional[str] = Field(None, description="Update this already imported session instead of creating one")
+    items: List[Dict[str, Any]] = Field(..., description="All items as edited, in order, including excluded ones")
     target_id: Optional[str] = Field(None, description="Existing workout to log against; None = new workout")
+    workout_name: str = Field("", max_length=100)
     save_as_template: bool = Field(False, description="New workout: keep it in the library as a template")
+    save_mappings: bool = Field(True, description="Remember exercise names chosen for the watch's guesses")
     weight_unit: Literal["lbs", "kg"] = "lbs"
 
 
@@ -266,6 +274,7 @@ class GarminActivityItem(BaseModel):
     session_id: Optional[str] = None
     session_type: Optional[Literal["workout", "cardio"]] = None
     decided_at: Optional[datetime] = None
+    editable: bool = Field(False, description="Imported through the set log, so it can be reopened and corrected")
 
 
 class GarminActivityStatusUpdate(BaseModel):

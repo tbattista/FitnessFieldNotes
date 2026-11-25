@@ -19,14 +19,14 @@ from ..models.garmin import (
     GarminImportConfirmRequest,
     GarminImportPreview,
     GarminImportResult,
-    GarminBuilderDraft,
-    GarminBuilderDraftRequest,
-    GarminLogFromBuilderRequest,
+    GarminLogSetsRequest,
+    GarminSetLog,
+    GarminSetLogRequest,
     GarminSyncResult,
     GarminUndoRequest,
 )
 from ..services.firebase_service import firebase_service
-from ..services.garmin import import_service, sync_service
+from ..services.garmin import import_service, set_log, sync_service
 from ..services.garmin.secret_box import SecretBoxError
 from ..services.garmin.fit_parser import MAX_FIT_BYTES, FitParseError
 
@@ -75,29 +75,44 @@ async def confirm_import(req: GarminImportConfirmRequest, current_user: Dict[str
     return result
 
 
-@router.post("/import/builder-draft", response_model=GarminBuilderDraft)
-async def builder_draft(req: GarminBuilderDraftRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
-    """A Garmin activity as a workout-builder draft (sets x reps, rest, weight per exercise). Saves nothing."""
+@router.post("/import/set-log", response_model=GarminSetLog)
+async def open_set_log(req: GarminSetLogRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """A Garmin activity as an editable, time-ordered list of every set. Saves nothing."""
     user_id = _require(current_user)
     try:
-        return await import_service.builder_draft(user_id, req)
+        activity = req.activity
+        if activity is None:
+            if not req.pending_id:
+                raise HTTPException(status_code=400, detail="Give an activity or a Garmin activity ID")
+            activity = await sync_service.load_activity(user_id, req.pending_id)
+        return await set_log.build(user_id, activity, req.pending_id, req.weight_unit)
     except import_service.GarminImportError as e:
         _raise(e)
 
 
-@router.post("/import/log-from-builder", response_model=GarminImportResult)
-async def log_from_builder(req: GarminLogFromBuilderRequest,
-                           current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Save the builder's edited workout as a session linked to the Garmin activity."""
+@router.get("/import/set-log/session/{session_id}", response_model=GarminSetLog)
+async def reopen_set_log(session_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """The stored set log of an imported session, to correct it."""
     user_id = _require(current_user)
     try:
-        result = await import_service.log_from_builder(user_id, req)
+        return await set_log.reopen(user_id, session_id)
     except import_service.GarminImportError as e:
         _raise(e)
-    if req.pending_id:
-        await sync_service.mark_imported(user_id, req.pending_id, result)
-    for other in result.linked_activity_ids:    # nearby cardio saved into the same session
-        await sync_service.mark_imported(user_id, other, result)
+
+
+@router.post("/import/log-sets", response_model=GarminImportResult)
+async def log_sets(req: GarminLogSetsRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Save an edited set log as a session linked to the Garmin activity (or update an imported one)."""
+    user_id = _require(current_user)
+    try:
+        result = await set_log.save(user_id, req)
+    except import_service.GarminImportError as e:
+        _raise(e)
+    if not req.session_id:
+        if req.pending_id:
+            await sync_service.mark_imported(user_id, req.pending_id, result)
+        for other in result.linked_activity_ids:    # nearby cardio saved into the same session
+            await sync_service.mark_imported(user_id, other, result)
     return result
 
 

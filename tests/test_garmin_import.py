@@ -21,12 +21,11 @@ from garmin_fit_builder import cardio_file, strength_file  # noqa: E402
 
 from backend.models import WorkoutSession, WorkoutTemplate  # noqa: E402
 from backend.models.garmin import (  # noqa: E402
-    GarminBuilderDraftRequest,
     GarminImportConfirmRequest,
-    GarminLogFromBuilderRequest,
+    GarminLogSetsRequest,
 )
 from backend.services.firestore_session_ops import _is_before  # noqa: E402
-from backend.services.garmin import import_service, matching  # noqa: E402
+from backend.services.garmin import import_service, matching, set_log  # noqa: E402
 from backend.services.garmin.exercise_mapper import apply_mappings  # noqa: E402
 from backend.services.garmin.fit_parser import FitParseError, parse_activity  # noqa: E402
 
@@ -326,146 +325,168 @@ def test_flow_cardio_new():
     assert s["pace_per_unit"] == "15:30" and s["avg_heart_rate"] == 135
 
 
-def rows_of(draft):
-    """Exercise rows of a builder draft, in order."""
-    return [ex for sec in draft.workout["sections"] for ex in sec["exercises"]]
+# ── set log ──────────────────────────────────────────────────────────────────
+
+# Bench, an unnamed set, bench, a 4-second misfire, dips, then bench again.
+NOTEBOOK_SETS = [
+    dict(category=0, reps=8, weight_kg=84, duration_s=40), dict(set_type="rest", duration_s=90),
+    dict(category=65534, reps=8, weight_kg=84, duration_s=40), dict(set_type="rest", duration_s=90),
+    dict(category=0, reps=7, weight_kg=84, duration_s=40), dict(set_type="rest", duration_s=30),
+    dict(category=0, reps=0, weight_kg=84, duration_s=4),
+    dict(category=22, reps=12, duration_s=35), dict(set_type="rest", duration_s=60),
+    dict(category=0, reps=6, weight_kg=84, duration_s=40),
+]
 
 
-def test_builder_draft_against_a_template():
-    fake = fresh_service()
-    w = add_workout(fake, "Lower Body", ["Squat", "Straight Leg Deadlift", "Barbell Deadlift"])
-    sets = [dict(category=28, reps=8, weight_kg=74.8125, duration_s=57), dict(set_type="rest", duration_s=90),
-            dict(category=28, reps=9, weight_kg=97.5, duration_s=60), dict(set_type="rest", duration_s=90),
-            dict(category=8, subtype=0, reps=9, weight_kg=97.5, duration_s=43)]
-    preview = run(import_service.build_preview(UID, strength_file(START, sets)))
-    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(
-        activity=preview.activity, action="attach", target_id=w.id, pending_id="25137407059")))
-    assert draft.target_id == w.id and draft.workout["name"] == "Lower Body"
-    assert draft.workout_options[0]["id"] == w.id
-    # The builder's own format: one standard section per exercise, rows keyed by exercise_id.
-    assert [sec["type"] for sec in draft.workout["sections"]] == ["standard", "standard"]
-    squat, dl = rows_of(draft)
-    assert (squat["exercise_id"], squat["name"], squat["sets"], squat["reps"], squat["rest"], squat["default_weight"]) \
-        == ("garmin-ex-0", "Squat", "2", "8-9", "90s", "215")
-    assert dl["rest"] == "60s"                                  # no rest recorded after the last set
-    assert draft.workout["description"].startswith("From Garmin: Wed Nov 18")
-    assert draft.garmin_exercises["garmin-ex-0"]["set_details"][0]["weight"] == 165.0
-    assert len(fake._col(UID, "workout_sessions").stream()) == 0     # nothing saved yet
-    assert len(fake._col(UID, "workouts").stream()) == 1
+def open_log(fake=None, sets=NOTEBOOK_SETS):
+    preview = run(import_service.build_preview(UID, strength_file(START, sets, heart_rate=lambda s: 120)))
+    return run(set_log.build(UID, preview.activity, pending_id="555"))
 
 
-def test_builder_draft_row_types():
+def test_parser_timeline_keeps_every_set_in_time_order():
+    a = parse_activity(strength_file(START, NOTEBOOK_SETS))
+    assert [st.garmin_key for st in a.timeline] == ["bench_press", "unknown", "bench_press", "bench_press",
+                                                    "push_up", "bench_press"]
+    assert [st.accidental for st in a.timeline] == [False, False, False, True, False, False]
+    assert [st.index for st in a.timeline] == list(range(6))
+    times = [st.start_time for st in a.timeline]
+    assert times == sorted(times) and times[0] == START
+    assert a.dropped_sets == 1 and sum(len(e.sets) for e in a.exercises) == 5     # grouped view unchanged
+
+
+def test_set_log_lists_every_set_with_guesses():
     fresh_service()
-    sets = [dict(category=47, reps=0, duration_s=300),                   # stair stepper -> activity row
-            dict(category=22, reps=15, duration_s=40),                   # push-ups, no weight -> Body
-            dict(category=19, reps=0, duration_s=60),                    # plank: timed
-            dict(category=28, reps=8, weight_kg=60, duration_s=45)]      # squat with weight
-    preview = run(import_service.build_preview(UID, strength_file(START, sets)))
-    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(activity=preview.activity, action="new")))
-    stairs, push, plank, squat = rows_of(draft)
-    assert stairs["group_type"] == "cardio"
-    assert stairs["cardio_config"] == {"activity_type": "stair_climber", "duration_minutes": 5}
-    assert (push["group_type"], push["default_weight"], push["reps"]) == ("standard", "Body", "15")
-    assert (plank["default_weight"], plank["reps"]) == ("Body", "60s")
-    assert squat["default_weight"] == "132.5"
+    log = open_log()
+    sets = [i for i in log.items if i["type"] == "set"]
+    assert len(sets) == 6 and [s["id"] for s in sets] == [f"set-{n}" for n in range(6)]
+    assert sets[0]["exercise_name"] == "Barbell Bench Press - Medium Grip" and sets[0]["name_source"] == "suggested"
+    # The unnamed set between bench sets is assumed to be bench; the misfire is shown but excluded.
+    assert (sets[1]["exercise_name"], sets[1]["name_source"]) == (sets[0]["exercise_name"], "neighbor")
+    assert (sets[3]["accidental"], sets[3]["included"]) == (True, False)
+    assert (sets[0]["reps"], sets[0]["weight"], sets[0]["rest_s"], sets[0]["avg_heart_rate"]) == (8, 185.0, 90, 120)
+    assert sets[4]["bodyweight"] is True and sets[4]["weight"] is None
+    assert sets[0]["started_at"] == START.isoformat()
+    assert log.weight_unit == "lbs" and log.pending_id == "555" and log.workout_name.startswith("Garmin Strength")
 
 
-def test_builder_draft_adds_nearby_cardio_and_logging_links_it():
+def test_set_log_suggests_matching_workout():
     fake = fresh_service()
-    acts = fake._col(UID, "garmin_activities")
-    acts.document("777").set({"status": "review", "kind": "cardio", "activity_type": "stair_climbing",
-                              "name": "Stair Stepper", "started_at": START - timedelta(minutes=25),
-                              "duration_minutes": 20, "avg_heart_rate": 140, "calories": 285})
-    acts.document("888").set({"status": "review", "kind": "cardio", "activity_type": "running", "name": "Run",
-                              "started_at": START - timedelta(hours=6), "duration_minutes": 30})   # too far away
-    acts.document("999").set({"status": "review", "kind": "strength", "name": "Strength", "started_at": START})
-    preview = run(import_service.build_preview(UID, strength_file(START, SESSION_SETS)))
-    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(activity=preview.activity, action="new")))
-    first = rows_of(draft)[0]
-    assert first["exercise_id"] == "garmin-act-777" and first["cardio_config"]["activity_type"] == "stair_climber"
-    assert draft.linked_activity_ids == ["777"]
-
-    result = run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
-        activity=draft.activity, workout_name="Leg Day", sections=draft.workout["sections"],
-        garmin_exercises=draft.garmin_exercises)))
-    assert result.linked_activity_ids == ["777"]
-    session = fake._col(UID, "workout_sessions").document(result.session_id).get().to_dict()
-    cardio = session["exercises_performed"][0]
-    assert (cardio["exercise_name"], cardio["target_reps"], cardio["avg_heart_rate"], cardio["calories_burned"]) == \
-        ("stair_climber", "20 min", 140, 285)
-    assert "20 min · 140 bpm avg" in cardio["notes"]
-    workout = fake._col(UID, "workouts").document(session["workout_id"]).get().to_dict()
-    assert workout["sections"][0]["exercises"][0]["group_type"] == "cardio"
+    chest = add_workout(fake, "Chest Day", ["Dumbbell Bench Press", "Machine Seated Dips", "Push Ups"])
+    add_workout(fake, "Leg Day", ["Back Squat", "Leg Press"])
+    log = open_log()
+    assert [o["name"] for o in log.workout_options] == ["Chest Day", "Leg Day"]
+    assert log.target_id == chest.id and log.workout_options[0]["score"] == 1.0
+    assert log.workout_options[0]["exercises"][0] == {
+        "name": "Dumbbell Bench Press", "sets": "3", "reps": "8", "weight": None, "weight_unit": "lbs",
+        "group_id": chest.exercise_groups[0].group_id}
+    assert set_log.template_match("Bench Press", ["Incline Bench Press", "Dumbbell Bench Press", "Dips"]) \
+        == "Incline Bench Press"
+    assert set_log.template_match("push up", ["Push Up", "Boso Ball Push Ups"]) == "Push Up"
+    assert set_log.template_match("Squat", ["Deadlift"]) is None
 
 
-def test_log_from_builder_new_workout_keeps_watch_detail_until_edited():
+def test_log_sets_against_a_workout_keeps_every_set_with_its_time():
     fake = fresh_service()
-    preview = run(import_service.build_preview(UID, strength_file(START, SESSION_SETS)))
-    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(activity=preview.activity, action="new")))
-    sections = draft.workout["sections"]
-    draft_names = [r["name"] for r in rows_of(draft)]
-    sections[0]["exercises"][0]["name"] = "Back Squat"                    # renamed: values unchanged
-    sections[2]["exercises"][0]["default_weight"] = "225"                 # corrected weight: detail dropped
-    # Drag the deadlift into one block with the straight-leg deadlift (the builder's grouping).
-    block = {"section_id": "s-block", "type": "superset", "name": "Deadlifts",
-             "exercises": sections[1]["exercises"] + sections[2]["exercises"]}
-    added = {"section_id": "s-new", "type": "standard", "name": None, "exercises": [
-        {"exercise_id": "added-1", "name": "Leg Press", "sets": "3", "reps": "12", "rest": "60s",
-         "default_weight": "180", "default_weight_unit": "lbs"}]}
-    result = run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
-        activity=draft.activity, workout_name="Leg Day (watch)", sections=[sections[0], block, added],
-        garmin_exercises=draft.garmin_exercises, target_id=None, save_as_template=False)))
+    chest = add_workout(fake, "Chest Day", ["Dumbbell Bench Press", "Dips"])
+    log = open_log()
+    items = [dict(i) for i in log.items]
+    for it in items:                                   # what the editor does: use the workout's names
+        if it["garmin_key"] in ("bench_press", "unknown"):
+            it["exercise_name"] = "Dumbbell Bench Press"
+        elif it["garmin_key"] == "push_up":
+            it["exercise_name"] = "Dips"
+    items[2]["reps"], items[2]["weight"] = 8, 190       # corrected by hand
+    items.append({"id": "added-1", "type": "set", "exercise_name": "Dips", "reps": 10, "weight": None,
+                  "bodyweight": True, "included": True, "started_at": None})
+    result = run(set_log.save(UID, GarminLogSetsRequest(
+        activity=log.activity, pending_id="555", items=items, target_id=chest.id)))
+    assert result.action == "attach" and result.message == "Logged to Chest Day"
     session = fake._col(UID, "workout_sessions").document(result.session_id).get().to_dict()
-    workout = fake._col(UID, "workouts").document(session["workout_id"]).get().to_dict()
-    assert workout["name"] == "Leg Day (watch)" and workout["is_archived"] is True
-    assert [sec["type"] for sec in workout["sections"]] == ["standard", "superset", "standard"]
-    perfs = session["exercises_performed"]
-    assert [p["exercise_name"] for p in perfs] == ["Back Squat", draft_names[1], draft_names[2], "Leg Press"]
-    assert len(perfs[0]["set_details"]) == 4 and perfs[2]["set_details"] == [] and perfs[2]["weight"] == "225"
-    assert len(perfs[1]["set_details"]) == 1                              # dragged into a block: link kept
-    assert perfs[3]["sets_completed"] == 3 and perfs[3]["avg_heart_rate"] is None
-    assert session["source"] == "garmin" and session["import_meta"]["workout_id"] == workout["id"]
-    assert session["started_at"] == START
+    assert session["workout_id"] == chest.id and session["source"] == "garmin"
+    bench, dips = session["exercises_performed"]
+    assert (bench["exercise_name"], bench["sets_completed"], bench["weight"], bench["target_reps"]) == \
+        ("Dumbbell Bench Press", 4, "190", "6-8")
+    assert bench["group_id"] == chest.exercise_groups[0].group_id
+    assert [(d["reps_completed"], d["weight"]) for d in bench["set_details"]] == \
+        [(8, 185.0), (8, 185.0), (8, 190.0), (6, 185.0)]
+    # Time order survives: bench's 4th set happened after the dips.
+    assert bench["set_details"][3]["started_at"] > dips["set_details"][0]["started_at"]
+    assert (dips["sets_completed"], dips["weight"], dips["set_details"][1]["started_at"]) == (2, "Body", None)
+    assert bench["avg_heart_rate"] == 120
+    # The edited log and the original watch data are stored for reopening; the template is untouched.
+    meta = session["import_meta"]
+    assert len(meta["set_log"]["items"]) == 7 and len(meta["activity"]["timeline"]) == 6
+    assert len(fake._col(UID, "workouts").stream()) == 1
+    # The watch's guess is remembered only where every set with it got one name.
+    assert run(import_service.load_exercise_map(UID)) == {"bench_press": "Dumbbell Bench Press", "push_up": "Dips"}
 
-    # Same activity again is refused; undo removes session and the hidden workout.
+
+def test_log_sets_new_workout_reopen_and_correct():
+    fake = fresh_service()
+    log = open_log()
+    result = run(set_log.save(UID, GarminLogSetsRequest(
+        activity=log.activity, items=log.items, workout_name="Chest (watch)", save_as_template=True)))
+    workout = fake._col(UID, "workouts").stream()[0].to_dict()
+    assert workout["name"] == "Chest (watch)" and not workout.get("is_archived")
+    assert [g["exercises"]["a"] for g in workout["exercise_groups"]] == \
+        ["Barbell Bench Press - Medium Grip", "Push Up"]
+    assert workout["exercise_groups"][0]["sets"] == "4"
+
+    # Same activity can't be logged twice, but the saved one can be reopened and corrected.
     try:
-        run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
-            activity=draft.activity, workout_name="x", sections=sections, garmin_exercises={})))
+        run(set_log.build(UID, log.activity))
         raise AssertionError("expected duplicate error")
     except import_service.GarminImportError as e:
         assert e.status_code == 409
-    run(import_service.undo(UID, result.session_id, "workout"))
-    assert fake._col(UID, "workouts").stream() == []
-
-
-def test_log_from_builder_against_template_and_hiit_as_new_template():
-    fake = fresh_service()
-    w = add_workout(fake, "Lower Body", ["Squat", "Straight Leg Deadlift", "Barbell Deadlift"])
-    preview = run(import_service.build_preview(UID, strength_file(START, SESSION_SETS)))
-    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(
-        activity=preview.activity, action="attach", target_id=w.id)))
-    result = run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
-        activity=draft.activity, workout_name="ignored for templates", sections=draft.workout["sections"],
-        garmin_exercises=draft.garmin_exercises, target_id=w.id)))
+    again = run(set_log.reopen(UID, result.session_id))
+    assert again.session_id == result.session_id and len(again.items) == 6
+    items = [dict(i) for i in again.items]
+    items[3]["included"], items[3]["reps"] = True, 5                 # the "misfire" was a real set after all
+    items[4]["exercise_name"] = "Chest Dip"
+    run(set_log.save(UID, GarminLogSetsRequest(activity=again.activity, session_id=result.session_id, items=items)))
     session = fake._col(UID, "workout_sessions").document(result.session_id).get().to_dict()
-    assert session["workout_id"] == w.id and result.action == "attach"
-    assert session["exercises_performed"][0]["group_id"] == w.exercise_groups[0].group_id
-    assert len(fake._col(UID, "workouts").stream()) == 1          # the template itself isn't changed
+    assert [(p["exercise_name"], p["sets_completed"]) for p in session["exercises_performed"]] == \
+        [("Barbell Bench Press - Medium Grip", 5), ("Chest Dip", 1)]
+    assert session["import_meta"]["set_log"]["items"][3]["included"] is True
+    assert len(fake._col(UID, "workout_sessions").stream()) == 1
 
-    fake2 = fresh_service()
-    preview = run(import_service.build_preview(UID, hiit_file()))
-    draft = run(import_service.builder_draft(UID, GarminBuilderDraftRequest(
-        activity=preview.activity, action="new", exercise_mappings={"unknown": "Mountain Climber"})))
-    (section,) = draft.workout["sections"]
-    assert section["type"] == "tabata" and section["name"] == "HIIT 40s on / 20s off"
-    assert section["config"] == {"work_seconds": 40, "rest_seconds": 20, "rounds": 2}
-    assert [r["name"] for r in section["exercises"]] == ["Sit Up", "Mountain Climber"]
-    run(import_service.log_from_builder(UID, GarminLogFromBuilderRequest(
-        activity=draft.activity, workout_name="Core HIIT", sections=draft.workout["sections"],
-        garmin_exercises=draft.garmin_exercises, save_as_template=True)))
-    workout = fake2._col(UID, "workouts").stream()[0].to_dict()
-    assert workout["name"] == "Core HIIT" and not workout.get("is_archived")
-    assert workout["workout_type"] == "tabata" and workout["sections"][0]["type"] == "tabata"
+    run(import_service.undo(UID, result.session_id, "workout"))
+    assert fake._col(UID, "workout_sessions").stream() == []
+
+
+def test_log_sets_includes_nearby_cardio_and_validates():
+    fake = fresh_service()
+    fake._col(UID, "garmin_activities").document("777").set({
+        "status": "review", "kind": "cardio", "activity_type": "stair_climbing", "name": "Stair Stepper",
+        "started_at": START - timedelta(minutes=25), "duration_minutes": 20, "avg_heart_rate": 140, "calories": 285})
+    log = open_log()
+    assert (log.items[0]["type"], log.items[0]["id"], log.items[0]["activity_type"]) == \
+        ("cardio", "act-777", "stair_climber")
+    result = run(set_log.save(UID, GarminLogSetsRequest(activity=log.activity, items=log.items)))
+    assert result.linked_activity_ids == ["777"]
+    session = fake._col(UID, "workout_sessions").document(result.session_id).get().to_dict()
+    first = session["exercises_performed"][0]
+    assert (first["exercise_name"], first["target_reps"], first["calories_burned"]) == ("stair_climber", "20 min", 285)
+
+    fresh_service()
+    log = open_log()
+    for bad in ([dict(i, included=False) for i in log.items],
+                [dict(i, exercise_name=" ") for i in log.items]):
+        try:
+            run(set_log.save(UID, GarminLogSetsRequest(activity=log.activity, items=bad)))
+            raise AssertionError("expected validation error")
+        except import_service.GarminImportError:
+            pass
+
+
+def test_set_log_from_activity_cached_without_timeline():
+    fresh_service()
+    preview = run(import_service.build_preview(UID, strength_file(START, SESSION_SETS)))
+    old = preview.activity.model_copy(update={"timeline": []})
+    log = run(set_log.build(UID, old))
+    assert len(log.items) == 7 and log.items[0]["garmin_key"] == "squat"
+    times = [i["started_at"] for i in log.items]
+    assert times == sorted(times)
 
 
 # ── API ──────────────────────────────────────────────────────────────────────

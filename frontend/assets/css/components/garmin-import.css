@@ -96,31 +96,74 @@
 }
 
 
-/* ── Workout builder in Garmin mode ─────────────────────────────────────── */
+/* ── Set log (every set from the watch, editable) ───────────────────────── */
 
-body.garmin-builder-mode #desktopStartWorkoutBtn,
-body.garmin-builder-mode #mobileGoFab,
-body.garmin-builder-mode .import-workout-btn,
-body.garmin-builder-mode #desktopShareBtn {
-  display: none !important;
-}
-
-.garmin-builder-panel {
+.gsl-card {
   border-left: 3px solid var(--bs-primary);
 }
 
-.garmin-builder-panel summary {
-  cursor: pointer;
+.gsl-cardio {
+  border-left-color: var(--bs-info);
 }
 
-.garmin-recorded-row {
+.gsl-set {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--bs-border-color);
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--bs-border-color);
 }
 
-.garmin-recorded-row > :first-child {
-  min-width: 10rem;
+.gsl-time {
+  flex: 0 0 4.25rem;
+  white-space: nowrap;
+}
+
+.gsl-values {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.gsl-values input {
+  width: 4.5rem !important;
+  min-width: 0 !important;
+  text-align: center;
+}
+
+.gsl-meta {
+  flex: 1 1 8rem;
+}
+
+.gsl-actions {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.gsl-excluded {
+  opacity: 0.55;
+}
+
+.gsl-excluded .gsl-values input {
+  text-decoration: line-through;
+}
+
+.gsl-name {
+  flex: 1 1 12rem;
+  width: auto !important;
+  min-width: 10rem !important;
+}
+
+/* Room for the page's floating "Log Session" button below the save buttons. */
+.garmin-set-log {
+  padding-bottom: 5rem;
+}
+
+.gsl-planned-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.75rem;
+  padding: 0.2rem 0;
 }

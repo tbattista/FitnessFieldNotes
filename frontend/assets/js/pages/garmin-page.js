@@ -2,7 +2,7 @@
  * Garmin page: every Garmin activity (synced or uploaded) with its status.
  * Filters: To review | Imported | Dismissed | All. Review opens full width on
  * the page via window.garminImportReview.mount().
- * @version 1.0.0
+ * @version 2.0.0
  */
 (function () {
     'use strict';
@@ -60,14 +60,15 @@
 
     function rowActions(i) {
         if (i.status === 'review' && i.source === 'sync') {
-            return `<button class="btn btn-sm btn-primary" data-act="review" data-id="${esc(i.id)}">Review</button>
+            return `<button class="btn btn-sm btn-primary" data-act="review" data-id="${esc(i.id)}" data-kind="${esc(i.kind)}">Review</button>
                     <button class="btn btn-sm btn-outline-secondary" data-act="dismiss" data-id="${esc(i.id)}">Dismiss</button>`;
         }
         if (i.status === 'dismissed') {
             return `<button class="btn btn-sm btn-outline-secondary" data-act="restore" data-id="${esc(i.id)}">Restore</button>`;
         }
         if (i.status === 'imported' && i.session_id) {
-            return `<a class="btn btn-sm btn-outline-primary" href="/workout-history.html?all=true">View in History</a>
+            return `${i.editable ? `<button class="btn btn-sm btn-primary" data-act="edit" data-session="${esc(i.session_id)}">Edit sets</button>` : ''}
+                    <a class="btn btn-sm btn-outline-primary" href="/workout-history.html?all=true">View in History</a>
                     <button class="btn btn-sm btn-outline-danger" data-act="undo" data-session="${esc(i.session_id)}"
                             data-type="${esc(i.session_type)}">Undo</button>`;
         }
@@ -156,7 +157,22 @@
         $('garminReviewView').classList.remove('d-none');
         $('garminSyncMessage').classList.add('d-none');
         window.scrollTo({ top: 0 });
-        window.garminImportReview.mount($('garminReviewBody'), { ...opts, onClose: showList });
+        window.garminImportReview.mount($('garminReviewBody'), {
+            ...opts, onClose: showList, onSetLog: activity => showSetLog({ activity }) });
+    }
+
+    /** Strength and HIIT: every set from the watch, editable, matched to a workout. */
+    function showSetLog(opts) {
+        $('garminListView').classList.add('d-none');
+        $('garminReviewView').classList.remove('d-none');
+        $('garminSyncMessage').classList.add('d-none');
+        window.scrollTo({ top: 0 });
+        window.garminSetLog.mount($('garminReviewBody'), {
+            ...opts,
+            onClose: showList,
+            // Merging into a session logged in the app still uses the simple review.
+            onMerge: opts.pendingId ? () => showReview({ mode: 'activity', activityId: opts.pendingId }) : null,
+        });
     }
 
     // ── actions ────────────────────────────────────────────────────────────
@@ -189,7 +205,10 @@
         const id = btn.dataset.id;
         try {
             if (btn.dataset.act === 'review') {
-                showReview({ mode: 'activity', activityId: id });
+                if (btn.dataset.kind === 'cardio') showReview({ mode: 'activity', activityId: id });
+                else showSetLog({ pendingId: id });
+            } else if (btn.dataset.act === 'edit') {
+                showSetLog({ sessionId: btn.dataset.session });
             } else if (btn.dataset.act === 'dismiss') {
                 await svc().setActivityStatus(id, 'dismissed');
                 await loadList();
@@ -245,9 +264,9 @@
         $('garminSignedOut').classList.add('d-none');
         await Promise.all([loadConnection(), loadList()]);
         const id = new URLSearchParams(window.location.search).get('review');
-        if (id && state.items.some(i => i.id === id && i.status === 'review')) {
-            showReview({ mode: 'activity', activityId: id });
-        }
+        const hit = id && state.items.find(i => i.id === id && i.status === 'review');
+        if (hit && hit.kind === 'cardio') showReview({ mode: 'activity', activityId: id });
+        else if (hit) showSetLog({ pendingId: id });
     }
 
     function signedOut() {

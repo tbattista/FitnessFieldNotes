@@ -11,6 +11,7 @@ class SetDetail(BaseModel):
     reps_completed: Optional[int] = Field(None, ge=0, description="Actual reps completed")
     weight: Optional[float] = Field(None, ge=0, description="Weight used for this set")
     notes: Optional[str] = Field(None, max_length=200, description="Notes about this set")
+    started_at: Optional[datetime] = Field(None, description="When the set started (from a watch)")
     duration_s: Optional[float] = Field(None, ge=0, description="Time under work for this set (from a watch)")
     rest_s: Optional[float] = Field(None, ge=0, description="Rest after this set (from a watch)")
     avg_heart_rate: Optional[int] = Field(None, ge=20, le=250, description="Average heart rate during the set")

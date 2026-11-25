@@ -70,6 +70,49 @@ const ITEMS = [
       started_at: '2026-11-14T18:20:11Z', detail: 'Dismissed' },
 ];
 
+function setItem(n, key, label, name, source, reps, weightKg, extra = {}) {
+    return { id: `set-${n}`, type: 'set', started_at: new Date(Date.parse(START) + n * 150000).toISOString(),
+             garmin_key: key, garmin_label: label, exercise_name: name, name_source: source, reps,
+             weight: weightKg ? Math.round(weightKg * 2.20462 * 2) / 2 : null, weight_kg: weightKg, bodyweight: !weightKg,
+             duration_s: 40, rest_s: 90, avg_heart_rate: 120 + n, max_heart_rate: 130 + n, accidental: false,
+             included: true, ...extra };
+}
+
+const BENCH = 'Barbell Bench Press - Medium Grip';
+
+/** Bench, an unnamed set, bench, a misfire, push-ups, bench again; a stair-climber warm-up before. */
+function setLog(overrides = {}) {
+    return {
+        activity: { external_id: 'garmin:123:1795040846', kind: 'strength', name: 'Strength', device: 'venu3',
+                    started_at: START, completed_at: '2026-11-18T22:45:35Z', duration_minutes: 18.15, calories: 216,
+                    avg_heart_rate: 127, max_heart_rate: 149, exercises: [], timeline: [] },
+        pending_id: '25137407059', session_id: null, weight_unit: 'lbs',
+        items: [
+            { id: 'act-777', type: 'cardio', started_at: '2026-11-18T22:00:00Z', garmin_activity_id: '777',
+              name: 'Stair Stepper', activity_type: 'stair_climber', duration_minutes: 20, avg_heart_rate: 140,
+              calories: 285, included: true },
+            setItem(0, 'bench_press', 'Bench Press', BENCH, 'suggested', 8, 84),
+            setItem(1, 'unknown', 'Unknown', BENCH, 'neighbor', 8, 84),
+            setItem(2, 'bench_press', 'Bench Press', BENCH, 'suggested', 7, 84),
+            setItem(3, 'bench_press', 'Bench Press', BENCH, 'suggested', null, 84,
+                    { duration_s: 4, rest_s: null, accidental: true, included: false }),
+            setItem(4, 'push_up', 'Push Up', 'Push Up', 'garmin', 12, null),
+            setItem(5, 'bench_press', 'Bench Press', BENCH, 'suggested', 6, 84),
+        ],
+        workout_options: [
+            { id: 'w-chest', name: 'Chest Day', score: 0.5, exercises: [
+                { name: 'Dumbbell Bench Press', sets: '4', reps: '8', weight: '185', weight_unit: 'lbs', group_id: 'g1' },
+                { name: 'Machine Seated Dips', sets: '4', reps: '12', weight: 'Body', weight_unit: 'lbs', group_id: 'g2' },
+                { name: 'Incline Press', sets: '3', reps: '10', weight: null, weight_unit: 'lbs', group_id: 'g3' }] },
+            { id: 'w-legs', name: 'Leg Day', score: 0, exercises: [
+                { name: 'Back Squat', sets: '4', reps: '8', weight: '215', weight_unit: 'lbs', group_id: 'g9' }] },
+        ],
+        target_id: 'w-chest', workout_name: 'Garmin Strength Nov 18',
+        known_exercises: ['Chest Dip', 'Incline Press', 'Leg Press'],
+        ...overrides,
+    };
+}
+
 function json(route, body, status = 200) {
     return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 }
@@ -109,6 +152,21 @@ async function openGarminPage(page, { items = ITEMS, connection = CONNECTED, pre
         calls.push(['status', id, body.status]);
         current = current.map(i => (i.id === id ? { ...i, status: body.status } : i));
         return json(route, current.find(i => i.id === id));
+    });
+    await page.route('**/api/v3/garmin/import/set-log', route => {
+        calls.push(['set-log', route.request().postDataJSON()]);
+        return json(route, setLog());
+    });
+    await page.route('**/api/v3/garmin/import/set-log/session/*', route =>
+        json(route, setLog({ session_id: 's-9', pending_id: null, workout_options: [], target_id: null,
+                             workout_name: 'Chest Day' })));
+    await page.route('**/api/v3/garmin/import/log-sets', route => {
+        const body = route.request().postDataJSON();
+        calls.push(['log-sets', body]);
+        current = current.map(i => (i.id === body.pending_id ? { ...i, status: 'imported', session_id: 's-new',
+                                                                   session_type: 'workout', editable: true } : i));
+        return json(route, { success: true, action: 'attach', session_id: 's-new', session_type: 'workout',
+                             message: 'Logged to Chest Day', linked_activity_ids: [] });
     });
     await page.route('**/api/v3/garmin/import/confirm', route => {
         const body = route.request().postDataJSON();
@@ -172,96 +230,64 @@ test.describe('Garmin page', () => {
         await expect(page.locator('#garminEmpty')).toContainText('Nothing to review');
     });
 
-    test('review on the page: suggested match, names and weights, then import', async ({ page }) => {
+    test('cardio review on the page: suggested match, then import', async ({ page }) => {
         const calls = await openGarminPage(page);
-        await page.locator('[data-garmin-item="25137407059"] [data-act="review"]').click();
-
+        // HIIT without sets and other cardio use the simple review; strength opens the set log.
+        await page.locator('[data-garmin-item="25137406707"] [data-act="review"]').click();
         await expect(page.locator('#garminListView')).toBeHidden();
         await expect(page.locator('#garminActivityName')).toHaveText('Strength');
-        const suggested = page.locator('.garmin-option', { hasText: 'Suggested' });
-        await expect(suggested).toContainText('Merge into “Leg Day”');
+        await expect(page.locator('.garmin-option', { hasText: 'Suggested' })).toContainText('Merge into “Leg Day”');
         await expect(page.locator('#garminMergeNotes')).toContainText('per-set reps and weights');
-
         const rows = page.locator('.garmin-ex-row');
-        await expect(rows).toHaveCount(3);
         await expect(rows.nth(0).locator('.garmin-ex-sets')).toHaveText('8×165, 9×165, 7×215, 7×215 lbs');
-        await expect(rows.nth(1)).toContainText('Saved');
-        await page.selectOption('#garminWeightUnit', 'kg');
-        await expect(rows.nth(0).locator('.garmin-ex-sets')).toHaveText('8×75, 9×75, 7×97.5, 7×97.5 kg');
-        await page.selectOption('#garminWeightUnit', 'lbs');
-
         await page.locator('#garminConfirm').click();
         await expect(page.locator('#garminImportError')).toContainText('Give every exercise a name');
-
-        await rows.nth(0).locator('.garmin-ex-name').fill('Back Squat');
         await rows.nth(2).locator('.garmin-ex-name').fill('Leg Press');
-        // Merging stays on this page; logging against a workout opens the session screen.
-        await expect(page.locator('#garminConfirm')).toHaveText('Merge');
-        await page.locator('.garmin-option', { hasText: 'Log as “Lower Body”' }).click();
-        await expect(page.locator('#garminConfirm')).toContainText('Edit in builder');
-        await expect(page.locator('#garminSessionHint')).toBeVisible();
-
-        // "Save without editing" imports directly, as before.
-        await page.locator('#garminSaveDirect').click();
+        await page.locator('#garminConfirm').click();
         await expect(page.locator('#garminImportDone')).toBeVisible();
         const confirm = calls.find(c => c[0] === 'confirm')[1];
-        expect(confirm.action).toBe('attach');
-        expect(confirm.target_id).toBe('workout-9');
-        expect(confirm.pending_id).toBe('25137407059');
-        expect(confirm.exercise_mappings).toEqual({
-            'squat': 'Back Squat', 'deadlift/barbell_deadlift': 'Barbell Deadlift', 'unknown': 'Leg Press' });
-
+        expect(confirm.action).toBe('merge');
+        expect(confirm.pending_id).toBe('25137406707');
         await page.locator('#garminDone').click();
-        await expect(page.locator('#garminListView')).toBeVisible();
-        await expect(page.locator('#garminCountReview')).toHaveText('1');
         await expect(page.locator('#garminCountImported')).toHaveText('2');
-    });
-
-    test('Edit in builder asks for a builder draft and opens the builder', async ({ page }) => {
-        await openGarminPage(page);
-        const asked = [];
-        await page.route('**/api/v3/garmin/import/builder-draft', route => {
-            asked.push(route.request().postDataJSON());
-            return json(route, { ...DRAFT, pending_id: '25137407059' });
-        });
-        await page.route('**/workout-builder.html*', route =>
-            route.fulfill({ contentType: 'text/html', body: '<html><body>builder</body></html>' }));
-        await page.locator('[data-garmin-item="25137407059"] [data-act="review"]').click();
-        await page.locator('.garmin-ex-row').nth(2).locator('.garmin-ex-name').fill('Leg Press');
-        await page.locator('.garmin-option', { hasText: 'Log as “Lower Body”' }).click();
-        await expect(page.locator('#garminConfirm')).toContainText('Edit in builder');
-        await page.locator('#garminConfirm').click();
-
-        await page.waitForURL(/workout-builder\.html\?garmin=1/);
-        expect(asked[0]).toMatchObject({ action: 'attach', target_id: 'workout-9', pending_id: '25137407059' });
-        const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('ffn_garmin_builder_draft')));
-        expect(stored.target_id).toBe('workout-9');
     });
 
     test('dismiss from the review screen', async ({ page }) => {
         const calls = await openGarminPage(page);
-        await page.locator('[data-garmin-item="25137407059"] [data-act="review"]').click();
+        await page.locator('[data-garmin-item="25137406707"] [data-act="review"]').click();
         await page.locator('.garmin-option', { hasText: 'Dismiss' }).click();
         await expect(page.locator('#garminConfirm')).toHaveText('Dismiss');
         await page.locator('#garminConfirm').click();
         await expect(page.locator('#garminListView')).toBeVisible();
-        expect(calls).toEqual([['status', '25137407059', 'dismissed']]);
+        expect(calls).toEqual([['status', '25137406707', 'dismissed']]);
         await expect(page.locator('#garminCountReview')).toHaveText('1');
     });
 
-    test('upload a file and import it', async ({ page }) => {
+    test('uploading a strength file opens the set log; a cardio file uses the simple review', async ({ page }) => {
         const calls = await openGarminPage(page);
         await page.route('**/api/v3/garmin/import/parse-file', route => json(route, strengthPreview()));
         await page.locator('#garminUploadBtn').click();
         await page.locator('#garminFileInput').setInputFiles({
             name: 'activity.fit', mimeType: 'application/octet-stream', buffer: Buffer.from('fake fit bytes') });
-        await expect(page.locator('#garminActivityName')).toHaveText('Strength');
-        await page.locator('.garmin-ex-row').nth(2).locator('.garmin-ex-name').fill('Leg Press');
+        await expect(page.locator('#garminSetLog')).toBeVisible();
+        const opened = calls.find(c => c[0] === 'set-log')[1];
+        expect(opened.activity.external_id).toBe('garmin:123:1795040846');
+        expect(opened.pending_id).toBeNull();
+        await page.locator('#gslBack').click();
+
+        await page.unroute('**/api/v3/garmin/import/parse-file');
+        const cardio = strengthPreview();
+        cardio.activity.kind = 'cardio';
+        cardio.activity.exercises = [];
+        cardio.proposed = { action: 'new', confidence: 'high', reason: 'Nothing logged around this time' };
+        await page.route('**/api/v3/garmin/import/parse-file', route => json(route, cardio));
+        await page.locator('#garminUploadBtn').click();
+        await page.locator('#garminFileInput').setInputFiles({
+            name: 'run.fit', mimeType: 'application/octet-stream', buffer: Buffer.from('x') });
+        await expect(page.locator('#garminActivityName')).toBeVisible();
         await page.locator('#garminConfirm').click();
         await expect(page.locator('#garminImportDone')).toBeVisible();
-        const confirm = calls.find(c => c[0] === 'confirm')[1];
-        expect(confirm.action).toBe('merge');
-        expect(confirm.pending_id).toBeNull();
+        expect(calls.find(c => c[0] === 'confirm')[1].pending_id).toBeNull();
     });
 
     test('upload: unreadable file and already-imported file', async ({ page }) => {
@@ -308,149 +334,187 @@ test.describe('Garmin page', () => {
     });
 });
 
-// ── Workout builder in Garmin mode ────────────────────────────────────────
+// ── Set log: every set from the watch, editable ───────────────────────────
 
-const DRAFT = {
-    workout: {
-        name: 'Lower Body', description: 'From Garmin: Wed Nov 18 · 18 min · 127 bpm avg · 216 cal', tags: [],
-        workout_type: 'standard',
-        sections: [
-            { section_id: 'section-garmin-act-777', type: 'standard', name: null, exercises: [
-                { exercise_id: 'garmin-act-777', name: 'stair_climber', alternates: [], group_type: 'cardio',
-                  sets: '', reps: '', rest: '', default_weight: null, default_weight_unit: 'lbs',
-                  cardio_config: { activity_type: 'stair_climber', duration_minutes: 20 } }] },
-            { section_id: 'section-garmin-ex-0', type: 'standard', name: null, exercises: [
-                { exercise_id: 'garmin-ex-0', name: 'Back Squat', alternates: [], group_type: 'standard', sets: '4',
-                  reps: '7-9', rest: '90s', default_weight: '215', default_weight_unit: 'lbs' }] },
-            { section_id: 'section-garmin-ex-1', type: 'standard', name: null, exercises: [
-                { exercise_id: 'garmin-ex-1', name: 'Barbell Deadlift', alternates: [], group_type: 'standard', sets: '2',
-                  reps: '9', rest: '45s', default_weight: '215', default_weight_unit: 'lbs' }] },
-        ],
-    },
-    garmin_exercises: {
-        'garmin-act-777': { exercise_name: 'Stair Stepper', activity_type: 'stair_climber', duration_minutes: 20,
-                            avg_heart_rate: 140, calories: 285, garmin_activity_id: '777' },
-        'garmin-ex-0': { exercise_name: 'Back Squat', target_sets: '4', target_reps: '7-9', weight: '215', weight_unit: 'lbs',
-                         avg_heart_rate: 128, max_heart_rate: 145,
-                         set_details: [{ set_number: 1, reps_completed: 8, weight: 165 }, { set_number: 2, reps_completed: 9, weight: 165 },
-                                       { set_number: 3, reps_completed: 7, weight: 215 }, { set_number: 4, reps_completed: 7, weight: 215 }] },
-        'garmin-ex-1': { exercise_name: 'Barbell Deadlift', target_sets: '2', target_reps: '9', weight: '215', weight_unit: 'lbs',
-                         set_details: [{ set_number: 1, reps_completed: 9, weight: 215 }, { set_number: 2, reps_completed: 9, weight: 215 }] },
-    },
-    workout_options: [{ id: 'workout-9', name: 'Lower Body', reason: '2 of 2 exercises match' }],
-    target_id: 'workout-9',
-    activity: { external_id: 'garmin:123:1795040846', kind: 'strength', name: 'Strength', device: 'venu3',
-                started_at: START, completed_at: '2026-11-18T22:45:35Z', duration_minutes: 18.15, calories: 216,
-                avg_heart_rate: 127, max_heart_rate: 149, exercises: [] },
-    pending_id: '25137407059',
-    linked_activity_ids: ['777'],
-};
-
-/** Offline builder: Firebase stubbed (anonymous), so the builder boots without network. */
-async function stubFirebaseReady(page) {
-    await page.addInitScript(() => {
-        window.firebaseAuth = { currentUser: null, authStateReady: () => Promise.resolve(), onAuthStateChanged: () => () => {} };
-        window.firebaseReady = true;
-        setTimeout(() => { try { window.dispatchEvent(new Event('firebaseReady')); } catch (_) {} }, 0);
-    });
+async function openSetLog(page, opts = {}) {
+    const calls = await openGarminPage(page, opts);
+    await page.locator('[data-garmin-item="25137407059"] [data-act="review"]').click();
+    await expect(page.locator('#garminSetLog')).toBeVisible();
+    return calls;
 }
 
-async function openBuilderWithDraft(page) {
-    await stubFirebaseReady(page);
-    await page.goto(`${BASE}/settings.html`);
-    await page.evaluate(draft => sessionStorage.setItem('ffn_garmin_builder_draft', JSON.stringify(draft)), DRAFT);
-    await page.goto(`${BASE}/workout-builder.html?garmin=1`);
-    await expect(page.locator('#garminBuilderPanel')).toBeVisible({ timeout: 20000 });
-}
+const cardNames = page => page.locator('.gsl-card .gsl-name').evaluateAll(els => els.map(e => e.value));
 
-test.describe('Garmin in the workout builder', () => {
+test.describe('Garmin set log', () => {
 
-    test('opens the activity as editable exercise rows with a Garmin panel', async ({ page }) => {
-        await openBuilderWithDraft(page);
-        await expect(page.locator('#garminBuilderActivity')).toContainText('Strength');
-        await expect(page.locator('#garminBuilderPanel')).toContainText('127 bpm avg / 149 max');
-        await expect(page.locator('#workoutName')).toHaveValue('Lower Body');
-        // Drawn through the builder's normal path: real sections, drag-and-drop, a cardio card.
-        await expect(page.locator('#exerciseGroups .workout-section')).toHaveCount(3);
-        const rows = page.locator('#exerciseGroups .exercise-group-card');
-        await expect(rows).toHaveCount(3);
-        const types = await page.evaluate(() => ['garmin-act-777', 'garmin-ex-0'].map(id =>
-            window.exerciseGroupsData[id] && (window.exerciseGroupsData[id].group_type || 'standard')));
-        expect(types).toEqual(['cardio', 'standard']);
-        await expect(rows.nth(0)).toContainText('20');
-        await expect(rows.nth(1)).toContainText('Back Squat');
-        await expect(rows.nth(1)).toContainText('4×7-9');
-        await expect(rows.nth(1)).toContainText('215');
-        // Drag and drop is attached to the list and each section, as for any workout.
-        expect(await page.evaluate(() => {
-            const list = document.getElementById('exerciseGroups');
-            const sections = [...list.querySelectorAll('.section-exercises')];
-            return !!window.Sortable.get(list) && sections.every(el => !!window.Sortable.get(el));
-        })).toBe(true);
-        expect(await page.evaluate(() => localStorage.getItem('currentEditingWorkoutId'))).toBeNull();
+    test('shows every set in time order, matched to the suggested workout', async ({ page }) => {
+        const calls = await openSetLog(page);
+        expect(calls.find(c => c[0] === 'set-log')[1]).toEqual({ activity: null, pending_id: '25137407059' });
+        await expect(page.locator('#gslStats')).toContainText('5 of 6 sets included');
 
-        await page.locator('#garminRecorded summary').click();
-        await expect(page.locator('#garminRecorded')).toContainText('8×165, 9×165, 7×215, 7×215 lbs');
-        await expect(page.locator('#garminRecorded')).toContainText('128 bpm');
-        await expect(page.locator('#garminRecorded')).toContainText('Stair Stepper');
+        // Cards follow the workout's time order; the same exercise later is its own card.
+        await expect(page.locator('.gsl-card')).toHaveCount(4);
+        await expect(page.locator('.gsl-card').first()).toContainText('Stair Stepper');
+        expect(await cardNames(page)).toEqual(['Dumbbell Bench Press', 'Push Up', 'Dumbbell Bench Press']);
 
-        // Garmin mode: no Start or Import; the target defaults to the suggested workout.
-        await expect(page.locator('#desktopStartWorkoutBtn, #mobileGoFab').first()).toBeHidden();
-        await expect(page.locator('#garminLogTarget')).toHaveValue('workout-9');
-        await expect(page.locator('#garminKeepTemplateRow')).toBeHidden();
-        await page.selectOption('#garminLogTarget', '');
-        await expect(page.locator('#garminKeepTemplateRow')).toBeVisible();
+        // Nothing merged or hidden: the unnamed set and the accidental one are both there.
+        const bench = page.locator('.gsl-card').nth(1);
+        await expect(bench.locator('.gsl-set')).toHaveCount(4);
+        await expect(bench.locator('.gsl-plan')).toHaveText('Planned 4×8 @ 185 lbs');
+        await expect(page.locator('[data-set="set-1"]')).toContainText('Garmin: Unknown');
+        await expect(page.locator('[data-set="set-0"] .gsl-reps')).toHaveValue('8');
+        await expect(page.locator('[data-set="set-0"] .gsl-weight')).toHaveValue('185');
+        await expect(page.locator('[data-set="set-0"]')).toContainText('rest 1:30');
+        await expect(page.locator('[data-set="set-0"]')).toContainText('120 bpm');
+        await expect(page.locator('[data-set="set-3"]')).toContainText('Looks accidental');
+        await expect(page.locator('[data-set="set-3"] [data-act="set-include"]')).toBeVisible();
+        await expect(page.locator('[data-set="set-4"] .gsl-weight')).toHaveAttribute('placeholder', 'Body');
+        await expect(page.locator('.gsl-card').nth(2).locator('.gsl-plan')).toHaveText('Not in Chest Day');
+
+        // Planned vs actual.
+        await expect(page.locator('[data-planned="Dumbbell Bench Press"]')).toContainText(
+            'planned 4×8 @ 185 lbs → 8×185, 8×185, 7×185, 6×185 lbs');
+        await expect(page.locator('[data-planned="Incline Press"]')).toContainText('not done');
     });
 
-    test('Log session sends the edited rows with their Garmin link', async ({ page }) => {
-        const logged = [];
-        await page.route('**/api/v3/garmin/import/log-from-builder', route => {
-            logged.push(route.request().postDataJSON());
-            return json(route, { success: true, action: 'attach', session_id: 's-1', session_type: 'workout',
-                                 message: 'Logged to Lower Body' });
-        });
-        await page.route('**/garmin.html', route => route.fulfill({ contentType: 'text/html', body: 'garmin page' }));
-        await openBuilderWithDraft(page);
+    test('correct sets, regroup, and log against the workout', async ({ page }) => {
+        const calls = await openSetLog(page);
 
-        // Autosave (silent) must never log the session.
-        await page.evaluate(() => window.saveWorkoutFromEditor(true));
-        await page.waitForTimeout(300);
-        expect(logged).toHaveLength(0);
+        // The push-ups were dips: rename the card and it lines up with the plan.
+        const pushUps = page.locator('.gsl-card').nth(2).locator('.gsl-name');
+        await pushUps.fill('Machine Seated Dips');
+        await pushUps.dispatchEvent('change');
+        await expect(page.locator('[data-planned="Machine Seated Dips"]')).toContainText('→ 12');
 
-        // Edit the deadlift's weight the way the builder does it, then save via the builder's own Save.
-        await page.evaluate(() => { window.exerciseGroupsData['garmin-ex-1'].default_weight = '225'; });
-        await page.evaluate(() => window.saveWorkoutFromEditor());
-        await page.waitForURL(/garmin\.html/);
+        // Fix a rep count, include the "accidental" set with its real reps, add a missed set of dips.
+        await page.locator('[data-set="set-2"] .gsl-reps').fill('8');
+        await page.locator('[data-set="set-3"] [data-act="set-include"]').click();
+        await page.locator('[data-set="set-3"] .gsl-reps').fill('5');
+        await page.locator('.gsl-card').nth(2).locator('[data-act="add-set"]').click();
+        await expect(page.locator('.gsl-card').nth(2).locator('.gsl-set')).toHaveCount(2);
+        await expect(page.locator('#gslStats')).toContainText('7 of 7 sets included');
 
-        const body = logged[0];
-        expect(body.target_id).toBe('workout-9');
+        // Leave the warm-up out; move the last bench card up so it joins the first.
+        await page.locator('.gsl-card').first().locator('[data-act="set-exclude"]').click();
+        await page.locator('.gsl-card').nth(3).locator('[data-act="card-up"]').click();
+        expect(await cardNames(page)).toEqual(['Dumbbell Bench Press', 'Machine Seated Dips']);
+        await expect(page.locator('.gsl-card').nth(1).locator('.gsl-set')).toHaveCount(5);
+        await expect(page.locator('[data-planned="Dumbbell Bench Press"]')).toContainText(
+            '8×185, 8×185, 8×185, 5×185, 6×185 lbs');
+
+        await page.locator('#gslSave').click();
+        await expect(page.locator('#garminListView')).toBeVisible();
+        const body = calls.find(c => c[0] === 'log-sets')[1];
+        expect(body.target_id).toBe('w-chest');
         expect(body.pending_id).toBe('25137407059');
-        expect(body.workout_name).toBe('Lower Body');
-        const rowsSent = body.sections.flatMap(sec => sec.exercises);
-        expect(rowsSent.map(r => [r.exercise_id, r.group_type || 'standard', r.default_weight])).toEqual([
-            ['garmin-act-777', 'cardio', null], ['garmin-ex-0', 'standard', '215'], ['garmin-ex-1', 'standard', '225']]);
-        expect(rowsSent[0].cardio_config).toMatchObject({ activity_type: 'stair_climber', duration_minutes: 20 });
-        expect(Object.keys(body.garmin_exercises)).toHaveLength(3);
-        expect(body.save_as_template).toBe(false);
-        const left = await page.evaluate(() => sessionStorage.getItem('ffn_garmin_builder_draft'));
-        expect(left).toBeNull();
+        expect(body.session_id).toBeNull();
+        expect(body.weight_unit).toBe('lbs');
+        expect(body.items.map(i => [i.id.replace(/added-.*/, 'added'), i.exercise_name || i.name, i.reps ?? null, i.included]))
+            .toEqual([
+                ['act-777', 'Stair Stepper', null, false],
+                ['set-0', 'Dumbbell Bench Press', 8, true],
+                ['set-1', 'Dumbbell Bench Press', 8, true],
+                ['set-2', 'Dumbbell Bench Press', 8, true],
+                ['set-3', 'Dumbbell Bench Press', 5, true],
+                ['set-5', 'Dumbbell Bench Press', 6, true],
+                ['set-4', 'Machine Seated Dips', 12, true],
+                ['added', 'Machine Seated Dips', 12, true],
+            ]);
+        await expect(page.locator('#garminCountImported')).toHaveText('2');
+        await expect(page.locator('[data-garmin-item="25137407059"] [data-act="edit"]')).toHaveCount(0);  // filtered view
     });
 
-    test('a logging error stays on the builder with the message', async ({ page }) => {
-        await page.route('**/api/v3/garmin/import/log-from-builder', route =>
-            json(route, { detail: 'This activity was already imported. Undo that import first.' }, 409));
-        await openBuilderWithDraft(page);
-        await page.locator('#garminLogBtn').click();
-        await expect(page.locator('#garminBuilderError')).toContainText('already imported');
-        await expect(page.locator('#garminLogBtn')).toBeEnabled();
+    test('one set was a different exercise; rename the rest; save as a new workout', async ({ page }) => {
+        const calls = await openSetLog(page);
+        await page.selectOption('#gslTarget', '');
+        expect(await cardNames(page)).toEqual([BENCH, 'Push Up', BENCH]);
+        await expect(page.locator('#gslWorkoutName')).toHaveValue('Garmin Strength Nov 18');
+
+        // Rename the first bench card: the other bench sets are offered the same name.
+        const first = page.locator('.gsl-card').nth(1).locator('.gsl-name');
+        await first.fill('Bench');
+        await first.dispatchEvent('change');
+        await expect(page.locator('#gslRenameOffer')).toContainText('1 more set is still named');
+        await page.locator('[data-act="rename-all"]').click();
+        expect(await cardNames(page)).toEqual(['Bench', 'Push Up', 'Bench']);
+
+        // The second set was actually incline press: it splits into its own card, in place.
+        await page.locator('[data-set="set-1"] [data-act="set-rename"]').click();
+        await page.locator('[data-set="set-1"] .gsl-set-name').fill('Incline Press');
+        await page.locator('[data-set="set-1"] [data-act="set-rename-ok"]').click();
+        expect(await cardNames(page)).toEqual(['Bench', 'Incline Press', 'Bench', 'Push Up', 'Bench']);
+
+        // Moving a set keeps its exercise.
+        await page.locator('[data-set="set-1"] [data-act="set-up"]').click();
+        expect(await cardNames(page)).toEqual(['Incline Press', 'Bench', 'Push Up', 'Bench']);
+
+        await page.locator('#gslWorkoutName').fill('');
+        await page.locator('#gslSave').click();
+        await expect(page.locator('#gslError')).toContainText('Give the new workout a name');
+        await page.locator('#gslWorkoutName').fill('Chest (watch)');
+        await page.locator('#gslKeepTemplate').check();
+        await page.locator('#gslSave').click();
+        await expect(page.locator('#garminListView')).toBeVisible();
+        const body = calls.find(c => c[0] === 'log-sets')[1];
+        expect(body.target_id).toBeNull();
+        expect(body.save_as_template).toBe(true);
+        expect(body.workout_name).toBe('Chest (watch)');
+        expect(body.items.filter(i => i.type === 'set').map(i => i.exercise_name)).toEqual(
+            ['Incline Press', 'Bench', 'Bench', 'Bench', 'Push Up', 'Bench']);
     });
 
-    test('the builder opens normally without a Garmin draft', async ({ page }) => {
-        await stubFirebaseReady(page);
-        await page.goto(`${BASE}/workout-builder.html?garmin=1`);
-        await page.waitForTimeout(2500);
-        await expect(page.locator('#garminBuilderPanel')).toHaveCount(0);
-        expect(await page.evaluate(() => document.body.classList.contains('garmin-builder-mode'))).toBe(false);
+    test('unsaved edits survive leaving and coming back; reset returns to the watch data', async ({ page }) => {
+        await openSetLog(page);
+        await page.locator('[data-set="set-0"] .gsl-reps').fill('10');
+        await page.selectOption('#gslUnit', 'kg');
+        await expect(page.locator('[data-set="set-1"] .gsl-weight')).toHaveValue('84');
+        await page.locator('#gslBack').click();
+        await page.locator('[data-garmin-item="25137407059"] [data-act="review"]').click();
+        await expect(page.locator('#gslRestored')).toBeVisible();
+        await expect(page.locator('[data-set="set-0"] .gsl-reps')).toHaveValue('10');
+        await expect(page.locator('#gslUnit')).toHaveValue('kg');
+
+        await page.locator('#garminSetLog [data-act="reset"]').last().click();
+        await expect(page.locator('#gslRestored')).toHaveCount(0);
+        await expect(page.locator('[data-set="set-0"] .gsl-reps')).toHaveValue('8');
+        await expect(page.locator('[data-set="set-0"] .gsl-weight')).toHaveValue('185');
+    });
+
+    test('an imported session can be reopened and corrected', async ({ page }) => {
+        const items = [...ITEMS, { id: '25000000001', source: 'sync', status: 'imported', name: 'Strength',
+            kind: 'strength', activity_type: 'strength_training', started_at: '2026-11-16T18:04:36Z',
+            detail: 'Logged as “Chest Day”', action: 'attach', session_id: 's-9', session_type: 'workout', editable: true }];
+        const calls = await openGarminPage(page, { items });
+        await page.locator('#garminFilters [data-filter="imported"]').click();
+        await expect(page.locator('[data-garmin-item="25137406926"] [data-act="edit"]')).toHaveCount(0);
+        await page.locator('[data-garmin-item="25000000001"] [data-act="edit"]').click();
+        await expect(page.locator('#garminSetLog')).toContainText('Logged to Chest Day');
+        await expect(page.locator('#gslTarget')).toHaveCount(0);
+        await expect(page.locator('#gslSave')).toContainText('Save changes');
+        await page.locator('[data-set="set-5"] .gsl-reps').fill('7');
+        await page.locator('#gslSave').click();
+        await expect(page.locator('#garminListView')).toBeVisible();
+        const body = calls.find(c => c[0] === 'log-sets')[1];
+        expect(body.session_id).toBe('s-9');
+        expect(body.items.find(i => i.id === 'set-5').reps).toBe(7);
+    });
+
+    test('merging into a session logged in the app still uses the simple review', async ({ page }) => {
+        await openSetLog(page);
+        await page.locator('#gslMerge').click();
+        await expect(page.locator('#garminActivityName')).toBeVisible();
+        await expect(page.locator('.garmin-option', { hasText: 'Merge into “Leg Day”' })).toHaveCount(1);
+    });
+
+    test('a load error is shown with a way back', async ({ page }) => {
+        await openGarminPage(page);
+        await page.unroute('**/api/v3/garmin/import/set-log');
+        await page.route('**/api/v3/garmin/import/set-log', route =>
+            json(route, { detail: 'The watch recorded no sets for this activity.' }, 400));
+        await page.locator('[data-garmin-item="25137407059"] [data-act="review"]').click();
+        await expect(page.locator('#gslError')).toHaveText('The watch recorded no sets for this activity.');
+        await page.locator('#gslBack').click();
+        await expect(page.locator('#garminListView')).toBeVisible();
     });
 });
 
@@ -563,5 +627,36 @@ test.describe('Garmin on History', () => {
         expect(html.manual).not.toContain('garmin-badge');
         expect(html.cardio).toContain('garmin-badge');
         expect(html.cardio).toContain("undoFromHistory('c1', 'cardio')");
+    });
+
+    test('a session with per-set detail shows every set, like a notebook page', async ({ page }) => {
+        await gotoAfterAuthCheck(page, 'workout-history.html');
+        await page.waitForFunction(() => !!window.renderExerciseTableRow && !!window.perSetLine);
+        const out = await page.evaluate(() => {
+            const ex = { exercise_name: 'Bench Press', weight: '185', weight_unit: 'lbs', target_sets: '4',
+                         target_reps: '6-8', avg_heart_rate: 121, set_details: [
+                             { set_number: 1, reps_completed: 8, weight: 185 }, { set_number: 2, reps_completed: 8, weight: 185 },
+                             { set_number: 3, reps_completed: 7, weight: 187.5 }, { set_number: 4, duration_s: 40 }] };
+            return { line: window.perSetLine(ex), row: window.renderExerciseTableRow(ex, null),
+                     plain: window.renderExerciseTableRow({ ...ex, set_details: [] }, null) };
+        });
+        expect(out.line).toBe('8×185, 8×185, 7×187.5, 40s lbs · 121 bpm avg');
+        expect(out.row).toContain('session-set-line');
+        expect(out.plain).not.toContain('session-set-line');
+    });
+
+    test('the session screen recalls last time\'s sets for an exercise', async ({ page }) => {
+        await gotoAfterAuthCheck(page, 'garmin.html');
+        await page.addScriptTag({ url: '/static/assets/js/components/exercise-card-renderer.js' });
+        const html = await page.evaluate(() => {
+            const fake = { _escapeHtml: t => String(t).replace(/</g, '&lt;') };
+            const recent = [{ weight: '185', weight_unit: 'lbs', date: new Date().toISOString(),
+                              set_summary: '8×185, 8×185, 7×185, 6×185' }];
+            const proto = window.ExerciseCardRenderer.prototype;
+            return [proto._renderWeightHistory.call(fake, 'Bench', '185', 'lbs', new Date().toISOString(), recent),
+                    proto._renderWeightHistory.call(fake, 'Bench', '185', 'lbs', new Date().toISOString(), [{ weight: '185' }])];
+        });
+        expect(html[0]).toContain('8×185, 8×185, 7×185, 6×185');
+        expect(html[1]).not.toContain('workout-history-sets');
     });
 });

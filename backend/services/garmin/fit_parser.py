@@ -193,12 +193,15 @@ class _HeartRate:
 
 
 def _group_sets(raw_sets: List[Dict[str, Any]], hr: Optional["_HeartRate"] = None):
-    """Active sets -> consecutive runs of the same exercise. Returns (exercises, dropped).
+    """Active sets -> (exercises, dropped, timeline).
 
+    exercises: consecutive runs of the same exercise, misfires left out.
+    timeline: every active set in time order, misfires included and flagged.
     Each set also gets the rest recorded after it, and its average/max heart rate.
     """
     hr = hr or _HeartRate([])
     exercises: List[ParsedGarminExercise] = []
+    timeline: List[ParsedGarminSet] = []
     dropped = 0
     last: Optional[ParsedGarminSet] = None
     for s in raw_sets:
@@ -209,9 +212,7 @@ def _group_sets(raw_sets: List[Dict[str, Any]], hr: Optional["_HeartRate"] = Non
             continue
         reps = s.get("repetitions")
         duration = s.get("duration")
-        if (not reps) and (duration is None or duration < MISFIRE_MAX_SECONDS):
-            dropped += 1
-            continue
+        misfire = (not reps) and (duration is None or duration < MISFIRE_MAX_SECONDS)
 
         cat_raw, sub_raw = _first_pair(s.get("category"), s.get("category_subtype"))
         cat = category_name(cat_raw)
@@ -229,8 +230,13 @@ def _group_sets(raw_sets: List[Dict[str, Any]], hr: Optional["_HeartRate"] = Non
             start_time=start,
             avg_heart_rate=avg_hr,
             max_heart_rate=max_hr,
+            index=len(timeline), garmin_key=key, garmin_label=label, category=cat, accidental=misfire,
         )
+        timeline.append(parsed)
         last = parsed
+        if misfire:
+            dropped += 1
+            continue
         if exercises and exercises[-1].garmin_key == key:
             exercises[-1].sets.append(parsed)
         else:
@@ -243,7 +249,8 @@ def _group_sets(raw_sets: List[Dict[str, Any]], hr: Optional["_HeartRate"] = Non
             ex.avg_heart_rate = round(sum(h * d for h, d in timed) / total) if total else round(
                 sum(h for h, _ in timed) / len(timed))
             ex.max_heart_rate = max(st.max_heart_rate for st in ex.sets if st.max_heart_rate)
-    return exercises, dropped
+    timeline.sort(key=lambda st: (st.start_time is None, st.start_time or 0, st.index))
+    return exercises, dropped, timeline
 
 
 def _median(values: List[float]) -> Optional[int]:
@@ -297,16 +304,16 @@ def parse_activity(blob: bytes) -> ParsedGarminActivity:
 
     hr = _HeartRate(msgs["record"])
     if is_strength:
-        exercises, dropped = _group_sets(msgs["set"], hr)
+        exercises, dropped, timeline = _group_sets(msgs["set"], hr)
         return ParsedGarminActivity(kind="strength", name="Strength", exercises=exercises,
-                                    dropped_sets=dropped, **common)
+                                    dropped_sets=dropped, timeline=timeline, **common)
 
     if is_hiit:
-        exercises, dropped = _group_sets(msgs["set"], hr)
+        exercises, dropped, timeline = _group_sets(msgs["set"], hr)
         if exercises:
             all_sets = [st for ex in exercises for st in ex.sets]
             return ParsedGarminActivity(
-                kind="interval", name="HIIT", exercises=exercises, dropped_sets=dropped,
+                kind="interval", name="HIIT", exercises=exercises, dropped_sets=dropped, timeline=timeline,
                 work_seconds=_median([st.duration_s for st in all_sets]),
                 rest_seconds=_median([st.rest_s for st in all_sets]),
                 **common)

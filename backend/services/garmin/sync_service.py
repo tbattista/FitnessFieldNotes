@@ -284,40 +284,62 @@ async def list_activities(user_id: str, status: Optional[str] = None) -> List[Ga
     """Everything from Garmin, newest first: synced records plus file uploads that have no record."""
     items = [_item(d.id, d.to_dict() or {}) for d in _acts(user_id).stream()]
     recorded_sessions = {i.session_id for i in items if i.session_id}
+    editable = set()
     for imp in await _imported_sessions(user_id):
+        meta = getattr(imp["session"], "import_meta", None) or {}
+        if meta.get("set_log"):
+            editable.add(imp["session"].id)
         if imp["session"].id not in recorded_sessions:
             items.append(_upload_item(imp))
+    for i in items:
+        i.editable = i.status == "imported" and i.session_id in editable
     if status:
         items = [i for i in items if i.status == status]
     items.sort(key=lambda i: i.started_at or _now(), reverse=True)
     return items
 
 
-async def activity_preview(user_id: str, activity_id: str):
+async def load_activity(user_id: str, activity_id: str) -> ParsedGarminActivity:
+    """The parsed watch file for a synced activity: downloaded on first use, then cached on its record."""
     ref = _acts(user_id).document(activity_id)
     snap = ref.get()
     if not snap.exists:
         raise GarminImportError("That Garmin activity isn't on your list.", 404)
     d = snap.to_dict()
-    if d.get("activity"):
-        activity = ParsedGarminActivity(**d["activity"])
-    else:
-        conn = _load(user_id)
-        if not conn:
-            raise GarminImportError("Connect Garmin in Settings first.", 404)
-        client = _client_for(user_id, conn)
-        try:
-            activity = parse_activity(await client.download_original(int(activity_id)))
-        except GarminAuthError as e:
-            raise _auth_failed(user_id, e)
-        except GarminRateLimited as e:
-            raise GarminImportError(str(e), 429)
-        except GarminApiError as e:
-            raise GarminImportError(str(e), 502)
-        except FitParseError as e:
-            raise GarminImportError(f"Garmin's file for this activity couldn't be read: {e}")
-        ref.update({"activity": activity.model_dump(mode="json")})
-    return await import_service.build_preview_for_activity(user_id, activity)
+    cached = ParsedGarminActivity(**d["activity"]) if d.get("activity") else None
+    # Files cached before per-set timelines existed are fetched once more to get every set.
+    if cached and (cached.timeline or not cached.exercises):
+        return cached
+    conn = _load(user_id)
+    if not conn:
+        if cached:
+            return cached
+        raise GarminImportError("Connect Garmin in Settings first.", 404)
+    client = _client_for(user_id, conn)
+    try:
+        activity = parse_activity(await client.download_original(int(activity_id)))
+    except GarminAuthError as e:
+        if cached:
+            return cached
+        raise _auth_failed(user_id, e)
+    except GarminRateLimited as e:
+        if cached:
+            return cached
+        raise GarminImportError(str(e), 429)
+    except GarminApiError as e:
+        if cached:
+            return cached
+        raise GarminImportError(str(e), 502)
+    except FitParseError as e:
+        if cached:
+            return cached
+        raise GarminImportError(f"Garmin's file for this activity couldn't be read: {e}")
+    ref.update({"activity": activity.model_dump(mode="json")})
+    return activity
+
+
+async def activity_preview(user_id: str, activity_id: str):
+    return await import_service.build_preview_for_activity(user_id, await load_activity(user_id, activity_id))
 
 
 async def set_status(user_id: str, activity_id: str, status: str) -> GarminActivityItem:

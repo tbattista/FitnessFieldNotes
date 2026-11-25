@@ -415,6 +415,24 @@ function buildPreviousExerciseMap(currentSession) {
  * @param {Object} ex - Current exercise performance data
  * @param {Object} [prev] - Same exercise from the previous session (for diff)
  */
+/**
+ * "8×185, 8×185, 7×185 lbs · 121 bpm avg" when a session kept per-set detail
+ * (e.g. imported from a watch).
+ */
+function perSetLine(ex) {
+  const sets = Array.isArray(ex.set_details) ? ex.set_details : [];
+  if (!sets.length || ex.is_skipped) return '';
+  const fmt = w => (Number.isInteger(w) ? String(w) : String(Math.round(w * 2) / 2));
+  const parts = sets.map(s => {
+    const reps = s.reps_completed ? s.reps_completed : (s.duration_s ? `${Math.round(s.duration_s)}s` : '?');
+    return s.weight != null ? `${reps}×${fmt(s.weight)}` : `${reps}`;
+  });
+  const weighted = sets.some(s => s.weight != null);
+  const unit = weighted && ex.weight_unit && ex.weight_unit !== 'other' ? ` ${ex.weight_unit}` : '';
+  const hr = ex.avg_heart_rate ? ` · ${ex.avg_heart_rate} bpm avg` : '';
+  return `${parts.join(', ')}${unit}${hr}`;
+}
+
 function renderExerciseTableRow(ex, prev) {
   // Determine status badge
   let statusBadge = '';
@@ -508,6 +526,11 @@ function renderExerciseTableRow(ex, prev) {
       <td>${changeIndicator}</td>
       <td>${statusBadge}</td>
     </tr>
+    ${perSetLine(ex) ? `
+      <tr class="${rowClass} session-set-line">
+        <td colspan="5" class="small text-muted ps-4 pt-0 border-top-0">${escapeHtml(perSetLine(ex))}</td>
+      </tr>
+    ` : ''}
     ${ex.is_skipped && ex.skip_reason ? `
       <tr class="${rowClass}">
         <td colspan="5" class="small ps-4">
@@ -776,6 +799,7 @@ window.garminBadge = garminBadge;
 window.garminUndoItem = garminUndoItem;
 window.renderSessionDetails = renderSessionDetails;
 window.renderExerciseTableRow = renderExerciseTableRow;
+window.perSetLine = perSetLine;
 window.scrollToSession = scrollToSession;
 window.renderCardioHistoryEntry = renderCardioHistoryEntry;
 window.sessionToWorkoutData = sessionToWorkoutData;

@@ -749,6 +749,9 @@ class ExerciseCardRenderer {
                     <span class="history-weight">${lastWeight}${lastWeightUnit !== 'other' ? ` ${lastWeightUnit}` : ''}</span>
                     <span class="history-date">${formatDate(lastSessionDate)}</span>
                 </div>
+                ${recentSessions && recentSessions[0] && recentSessions[0].set_summary ? `
+                    <div class="workout-history-sets small text-muted">${this._escapeHtml(recentSessions[0].set_summary)}</div>
+                ` : ''}
                 ${sessionsToShow.length > 0 ? `
                     <div class="workout-history-tree">
                         ${sessionsToShow.map((session, index) => {

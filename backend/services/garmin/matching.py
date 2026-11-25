@@ -159,7 +159,8 @@ def build_performances(activity: ParsedGarminActivity, mappings: Dict[str, str],
         reps = [s.reps for s in sets if s.reps]
         top = max((w for w in weights if w is not None), default=None)
         details = [
-            SetDetail(set_number=n, reps_completed=s.reps, weight=w, duration_s=s.duration_s, rest_s=s.rest_s,
+            SetDetail(set_number=n, reps_completed=s.reps, weight=w, started_at=s.start_time,
+                      duration_s=s.duration_s, rest_s=s.rest_s,
                       avg_heart_rate=s.avg_heart_rate, max_heart_rate=s.max_heart_rate)
             for n, (s, w) in enumerate(zip(sets, weights), start=1)
         ]
